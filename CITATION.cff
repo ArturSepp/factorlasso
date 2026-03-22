@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+title: "factorlasso: Sparse Factor Model Estimation with Constrained LASSO in Python"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - given-names: Artur
+    family-names: Sepp
+    email: artursepp@gmail.com
+repository-code: "https://github.com/ArturSepp/factorlasso"
+url: "https://factorlasso.readthedocs.io"
+license: MIT
+version: 0.1.0
+date-released: "2026-03-21"
+keywords:
+  - lasso
+  - group-lasso
+  - factor-model
+  - sparse-regression
+  - sign-constraints
+  - covariance-estimation
+  - cvxpy
+  - python
+references:
+  - type: article
+    authors:
+      - given-names: Artur
+        family-names: Sepp
+      - given-names: Ivan
+        family-names: Ossa
+      - given-names: Mika
+        family-names: Kastenholz
+    title: "Robust Optimization of Strategic and Tactical Asset Allocation for Multi-Asset Portfolios"
+    journal: "The Journal of Portfolio Management"
+    volume: 52
+    issue: 4
+    start: 86
+    end: 120
+    year: 2026
+    url: "https://eprints.pm-research.com/17511/143431/index.html"

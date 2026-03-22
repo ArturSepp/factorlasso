@@ -1,0 +1,378 @@
+"""
+Factor covariance decomposition: Σ_y = β Σ_x β' + D.
+
+Given the factor model ``Y_t = α + β X_t + ε_t``, this module provides
+data containers and assembly logic for the covariance decomposition.
+Sparse factor loadings β estimated by :class:`~factorlasso.LassoModel`,
+factor covariance Σ_x, and idiosyncratic residual variances D are
+assembled into the full response-variable covariance matrix.
+
+Convention
+----------
+- β is ``(N × M)`` with ``index = response_names``, ``columns = factor_names``
+- α is ``(N × 1)`` intercept (EWMA-weighted mean residual)
+- Σ_x is ``(M × M)`` factor covariance
+- Σ_y is ``(N × N)`` response covariance
+- D is ``(N × N)`` diagonal residual variances
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Optional, Union
+
+import numpy as np
+import pandas as pd
+
+from factorlasso.ewm_utils import compute_ewm
+
+
+class VarianceColumns(str, Enum):
+    """Column labels for the variance diagnostics DataFrame."""
+    EWMA_VARIANCE = 'ewma_var'
+    RESIDUAL_VARS = 'residual_var'
+    INSAMPLE_ALPHA = 'insample_alpha'
+    R2 = 'r2'
+    ALPHA = 'stat_alpha'
+    TOTAL_VOL = 'total_vol'
+    SYST_VOL = 'sys_vol'
+    RESID_VOL = 'resid_vol'
+
+
+@dataclass(frozen=True)
+class CurrentFactorCovarData:
+    """
+    Factor model covariance snapshot: Σ_y = β Σ_x β' + D.
+
+    Stores all components of the factor decomposition at a single estimation
+    date and provides methods to assemble the full covariance matrix.
+
+    Parameters
+    ----------
+    x_covar : pd.DataFrame, shape (M, M)
+        Factor covariance Σ_x.
+    y_betas : pd.DataFrame, shape (N, M)
+        Factor loadings β.
+    y_variances : pd.DataFrame, shape (N, K)
+        Per-variable diagnostics (ewma_var, residual_var, r2, …).
+    estimation_date : pd.Timestamp, optional
+    residuals : pd.DataFrame, optional
+        In-sample residuals ε_t = y_t − x_t β'.
+    clusters, linkages, cutoffs
+        HCGL clustering outputs.
+
+    Examples
+    --------
+    >>> import numpy as np, pandas as pd
+    >>> from factorlasso.factor_covar import CurrentFactorCovarData, VarianceColumns
+    >>> M, N = 3, 5
+    >>> x_covar = pd.DataFrame(np.eye(M), columns=[f'f{i}' for i in range(M)],
+    ...                         index=[f'f{i}' for i in range(M)])
+    >>> betas = pd.DataFrame(np.random.randn(N, M),
+    ...                       index=[f'y{i}' for i in range(N)],
+    ...                       columns=[f'f{i}' for i in range(M)])
+    >>> diag = pd.DataFrame({VarianceColumns.RESIDUAL_VARS: np.ones(N) * 0.01},
+    ...                      index=[f'y{i}' for i in range(N)])
+    >>> data = CurrentFactorCovarData(x_covar=x_covar, y_betas=betas, y_variances=diag)
+    >>> cov = data.get_y_covar()
+    >>> cov.shape
+    (5, 5)
+    """
+
+    # --- Core components ---
+    x_covar: pd.DataFrame
+    y_betas: pd.DataFrame
+    y_variances: pd.DataFrame
+
+    # --- Metadata ---
+    estimation_date: Optional[pd.Timestamp] = None
+
+    # --- Optional time series ---
+    residuals: Optional[pd.DataFrame] = None
+
+    # --- Clustering outputs (HCGL) ---
+    clusters: Optional[Union[Dict[str, pd.Series], pd.Series]] = None
+    linkages: Optional[Union[Dict[str, np.ndarray], np.ndarray]] = None
+    cutoffs: Optional[Union[Dict[str, float], float]] = None
+
+    # ── Covariance assembly ──────────────────────────────────────────
+
+    def get_y_covar(
+        self,
+        residual_var_weight: float = 1.0,
+        assets: Optional[Union[List[str], pd.Index]] = None,
+    ) -> pd.DataFrame:
+        """
+        Assemble response covariance matrix.
+
+        .. math::
+
+            \\Sigma_y(w) = \\beta\\,\\Sigma_x\\,\\beta^\\top + w\\,D
+
+        Parameters
+        ----------
+        residual_var_weight : float, default 1.0
+            Scaling on the diagonal residual variances.
+        assets : list of str, optional
+            Subset of response variables.
+
+        Returns
+        -------
+        pd.DataFrame, shape (N, N) or (len(assets), len(assets))
+        """
+        betas = self.y_betas if assets is None else self.y_betas.loc[assets, :]
+        resid = self.y_variances[VarianceColumns.RESIDUAL_VARS.value]
+        resid = resid if assets is None else resid.loc[assets]
+        names = betas.index
+
+        betas_np = betas.values  # (N × M)
+        y_covar = betas_np @ self.x_covar.to_numpy() @ betas_np.T
+
+        if not np.isclose(residual_var_weight, 0.0):
+            y_covar += residual_var_weight * np.diag(resid.to_numpy())
+
+        return pd.DataFrame(y_covar, index=names, columns=names)
+
+    @property
+    def y_covar(self) -> pd.DataFrame:
+        """Shorthand for ``get_y_covar()``."""
+        return self.get_y_covar()
+
+    # ── Diagnostics ──────────────────────────────────────────────────
+
+    def get_model_vols(
+        self, assets: Optional[List[str]] = None,
+    ) -> pd.DataFrame:
+        """
+        Total, systematic, and residual volatilities per variable.
+
+        Returns
+        -------
+        pd.DataFrame
+            Columns: ``total_vol``, ``sys_vol``, ``resid_vol``.
+        """
+        if assets is None:
+            assets = self.y_betas.index.tolist()
+        betas_np = self.y_betas.loc[assets, :].values
+        sys_var = np.diag(betas_np @ self.x_covar.values @ betas_np.T)
+        res_var = self.y_variances.loc[assets, VarianceColumns.RESIDUAL_VARS.value].values
+        return pd.DataFrame({
+            VarianceColumns.TOTAL_VOL.value: np.sqrt(sys_var + res_var),
+            VarianceColumns.SYST_VOL.value: np.sqrt(sys_var),
+            VarianceColumns.RESID_VOL.value: np.sqrt(res_var),
+        }, index=assets)
+
+    def estimate_alpha(self, alpha_span: int = 120) -> pd.Series:
+        """
+        Estimate alpha from EWMA of residuals.
+
+        Parameters
+        ----------
+        alpha_span : int, default 120
+            EWMA span applied to the residual time series.
+
+        Returns
+        -------
+        pd.Series
+            Last EWMA value per response variable.
+        """
+        if self.residuals is None:
+            raise ValueError("Residuals required for alpha estimation")
+        if alpha_span is not None:
+            alphas = compute_ewm(self.residuals, span=alpha_span)
+            return alphas.iloc[-1, :].rename(VarianceColumns.ALPHA.value)
+        return self.residuals.iloc[-1, :].rename(VarianceColumns.ALPHA.value)
+
+    def get_snapshot(
+        self,
+        assets: Optional[List[str]] = None,
+        alpha_span: int = 120,
+    ) -> pd.DataFrame:
+        """
+        Summary table: betas, R², volatilities, alpha per variable.
+        """
+        assets = assets or self.y_betas.index.tolist()
+        df = self.y_betas.loc[assets, :].copy()
+        vols = self.get_model_vols(assets=assets)
+
+        if self.residuals is not None:
+            alphas = self.estimate_alpha(alpha_span=alpha_span).loc[assets]
+        else:
+            alphas = self.y_variances.loc[assets, VarianceColumns.INSAMPLE_ALPHA.value]
+
+        diag = pd.concat([
+            self.y_variances.loc[assets, VarianceColumns.R2.value],
+            alphas,
+            self.y_variances.loc[assets, VarianceColumns.INSAMPLE_ALPHA.value],
+        ], axis=1)
+
+        return pd.concat([df, diag, vols], axis=1)
+
+    # ── Subsetting ───────────────────────────────────────────────────
+
+    def filter_on_tickers(
+        self, assets: Union[List[str], pd.Index, Dict[str, str]],
+    ) -> CurrentFactorCovarData:
+        """
+        Subset to selected response variables (optionally renaming).
+        """
+        if isinstance(assets, dict):
+            y_betas = self.y_betas.loc[list(assets.keys()), :].rename(index=assets)
+            y_var = self.y_variances.loc[list(assets.keys())].rename(index=assets)
+            resid = (self.residuals.loc[:, list(assets.keys())].rename(columns=assets)
+                     if self.residuals is not None else None)
+        else:
+            y_betas = self.y_betas.loc[assets, :]
+            y_var = self.y_variances.loc[assets]
+            resid = self.residuals[assets] if self.residuals is not None else None
+
+        return CurrentFactorCovarData(
+            x_covar=self.x_covar, y_betas=y_betas, y_variances=y_var,
+            residuals=resid, estimation_date=self.estimation_date,
+        )
+
+    # ── Serialisation ────────────────────────────────────────────────
+
+    def save(self, path: str) -> None:
+        """Save core data to an Excel file (one sheet per component)."""
+        with pd.ExcelWriter(path) as writer:
+            self.x_covar.to_excel(writer, sheet_name='x_covar')
+            self.y_betas.to_excel(writer, sheet_name='y_betas')
+            self.y_variances.to_excel(writer, sheet_name='y_variances')
+            if self.residuals is not None:
+                self.residuals.to_excel(writer, sheet_name='residuals')
+
+    @classmethod
+    def load(cls, path: str) -> CurrentFactorCovarData:
+        """Load from an Excel file created by :meth:`save`."""
+        sheets = pd.read_excel(path, sheet_name=None, index_col=0)
+        residuals = sheets.get('residuals')
+        return cls(
+            x_covar=sheets['x_covar'],
+            y_betas=sheets['y_betas'],
+            y_variances=sheets['y_variances'],
+            residuals=residuals,
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Rolling container
+# ═══════════════════════════════════════════════════════════════════════
+
+@dataclass
+class RollingFactorCovarData:
+    """
+    Time series of :class:`CurrentFactorCovarData` snapshots.
+
+    Stores ``Dict[Timestamp, CurrentFactorCovarData]`` and provides
+    panel accessors for betas, R², variances, etc.
+    """
+
+    data: Dict[pd.Timestamp, CurrentFactorCovarData] = field(default_factory=dict)
+
+    # ── Container protocol ───────────────────────────────────────────
+
+    @property
+    def dates(self) -> pd.DatetimeIndex:
+        return pd.DatetimeIndex(sorted(self.data.keys()))
+
+    @property
+    def n_observations(self) -> int:
+        return len(self.data)
+
+    def __getitem__(self, date: pd.Timestamp) -> CurrentFactorCovarData:
+        return self.data[date]
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __iter__(self):
+        return iter(sorted(self.data.keys()))
+
+    def add(self, date: pd.Timestamp, estimation: CurrentFactorCovarData):
+        self.data[date] = estimation
+
+    def get_latest(self) -> CurrentFactorCovarData:
+        return self.data[max(self.data.keys())]
+
+    # ── Matrix time series ───────────────────────────────────────────
+
+    def get_x_covars(self) -> Dict[pd.Timestamp, pd.DataFrame]:
+        """Factor covariance matrices over time."""
+        return {d: e.x_covar for d, e in sorted(self.data.items())}
+
+    def get_y_covars(
+        self,
+        residual_var_weight: float = 1.0,
+        assets: Optional[Union[List[str], pd.Index]] = None,
+    ) -> Dict[pd.Timestamp, pd.DataFrame]:
+        """Response covariance matrices over time."""
+        return {
+            d: e.get_y_covar(residual_var_weight=residual_var_weight, assets=assets)
+            for d, e in sorted(self.data.items())
+        }
+
+    def get_y_betas(self) -> Dict[pd.Timestamp, pd.DataFrame]:
+        """Factor loadings over time.  Each DataFrame is (N × M)."""
+        return {d: e.y_betas for d, e in sorted(self.data.items())}
+
+    # ── Panel DataFrame accessors ────────────────────────────────────
+
+    def get_residual_vars(self) -> pd.DataFrame:
+        """Residual variances: index = dates, columns = variables."""
+        return pd.DataFrame({
+            d: e.y_variances[VarianceColumns.RESIDUAL_VARS.value]
+            for d, e in sorted(self.data.items())
+        }).T
+
+    def get_ewma_vars(self) -> pd.DataFrame:
+        return pd.DataFrame({
+            d: e.y_variances[VarianceColumns.EWMA_VARIANCE.value]
+            for d, e in sorted(self.data.items())
+        }).T
+
+    def get_r2(self) -> pd.DataFrame:
+        """R² panel: index = dates, columns = variables."""
+        return pd.DataFrame({
+            d: e.y_variances[VarianceColumns.R2.value]
+            for d, e in sorted(self.data.items())
+        }).T
+
+    def get_total_vols(self) -> pd.DataFrame:
+        return np.sqrt(self.get_ewma_vars() - self.get_residual_vars()
+                       + self.get_residual_vars())  # sys + resid
+
+    def get_residual_vols(self) -> pd.DataFrame:
+        return np.sqrt(self.get_residual_vars())
+
+    def get_alphas(self, alpha_span: int = 120) -> pd.DataFrame:
+        records = {}
+        for d, e in sorted(self.data.items()):
+            if e.residuals is not None:
+                records[d] = e.estimate_alpha(alpha_span=alpha_span)
+            else:
+                records[d] = e.y_variances[VarianceColumns.INSAMPLE_ALPHA.value]
+        return pd.DataFrame(records).T if records else pd.DataFrame()
+
+    def get_factor_var(self, factor: str) -> pd.Series:
+        return pd.Series(
+            {d: e.x_covar.loc[factor, factor] for d, e in sorted(self.data.items())},
+            name=factor,
+        )
+
+    def get_beta(self, factor: str) -> pd.DataFrame:
+        """Single factor loadings over time: index = dates, columns = variables."""
+        return pd.DataFrame(
+            {d: e.y_betas[factor] for d, e in sorted(self.data.items())}
+        ).T
+
+    def filter_on_tickers(
+        self, tickers: Union[List[str], pd.Index],
+    ) -> RollingFactorCovarData:
+        return RollingFactorCovarData(
+            data={d: e.filter_on_tickers(tickers) for d, e in self.data.items()}
+        )
+
+    def get_snapshot(self, alpha_span: int = 120) -> Dict[pd.Timestamp, pd.DataFrame]:
+        return {d: e.get_snapshot(alpha_span=alpha_span) for d, e in self.data.items()}
