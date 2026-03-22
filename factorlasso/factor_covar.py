@@ -339,9 +339,17 @@ class RollingFactorCovarData:
             for d, e in sorted(self.data.items())
         }).T
 
+    def get_systematic_vars(self) -> pd.DataFrame:
+        """Systematic variances diag(β Σ_x β'): index = dates, columns = variables."""
+        records = {}
+        for d, e in sorted(self.data.items()):
+            betas_np = e.y_betas.values  # (N × M)
+            sys_var = np.diag(betas_np @ e.x_covar.values @ betas_np.T)
+            records[d] = pd.Series(sys_var, index=e.y_betas.index)
+        return pd.DataFrame(records).T
+
     def get_total_vols(self) -> pd.DataFrame:
-        return np.sqrt(self.get_ewma_vars() - self.get_residual_vars()
-                       + self.get_residual_vars())  # sys + resid
+        return np.sqrt(self.get_systematic_vars() + self.get_residual_vars())
 
     def get_residual_vols(self) -> pd.DataFrame:
         return np.sqrt(self.get_residual_vars())
