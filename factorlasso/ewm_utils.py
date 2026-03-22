@@ -150,7 +150,9 @@ def compute_ewm_covar(a: np.ndarray,
     if is_corr:
         d = np.diag(covar)
         if np.nansum(d) > 1e-10:
-            inv_vol = np.reciprocal(np.sqrt(d))
+            # zero-variance assets get inv_vol=0 (zeroes their correlation row/column)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                inv_vol = np.where(d > 1e-16, np.reciprocal(np.sqrt(d)), 0.0)
             covar = covar * np.outer(inv_vol, inv_vol)
         else:
             covar = np.identity(n)
