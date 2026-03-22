@@ -12,11 +12,11 @@
 
 ## Overview
 
-`factorlasso` solves the sparse multi-output regression problem
+`factorlasso` estimates the sparse multi-output factor model
 
 $$Y_t = \alpha + \beta X_t + \varepsilon_t$$
 
-where $\beta$ is $(N \times M)$, $\alpha$ is $(N \times 1)$ intercept, $Y_t$ is $(N \times 1)$, and $X_t$ is $(M \times 1)$, under:
+where $Y_t$ is $(N \times 1)$, $X_t$ is $(M \times 1)$, $\beta$ is $(N \times M)$, and $\alpha$ is $(N \times 1)$ intercept, under:
 
 - **Sign constraints** on individual coefficients (non-negative, non-positive, zero, or free)
 - **Prior-centered regularisation** — penalise $\|\beta - \beta_0\|$ instead of $\|\beta\|$, shrinking toward domain-specific priors
@@ -32,6 +32,25 @@ where $\Sigma_x$ is the factor covariance and $D$ is diagonal idiosyncratic vari
 
 **No existing Python package** combines sign-constrained penalised regression with prior-centered shrinkage and integrated factor covariance assembly.
 
+## Convention: Paper vs Code
+
+The factor model in the paper uses **column vectors**:
+
+$$Y_t = \alpha + \beta\, X_t + \varepsilon_t, \qquad \beta \in \mathbb{R}^{N \times M}$$
+
+where $Y_t \in \mathbb{R}^{N \times 1}$ and $X_t \in \mathbb{R}^{M \times 1}$. For $T$ observations stacked as columns: $Y = \alpha\,\mathbf{1}^\top + \beta\, X + E$ where $Y$ is $(N \times T)$ and $X$ is $(M \times T)$.
+
+In Python, **pandas DataFrames store observations as rows** (the standard in ML). So the code works with transposed shapes:
+
+| Symbol | Paper (column-vector) | Code (row-major, pandas) |
+|--------|----------------------|--------------------------|
+| $Y$ | $(N \times T)$ | `y`: DataFrame $(T \times N)$ |
+| $X$ | $(M \times T)$ | `x`: DataFrame $(T \times M)$ |
+| $\beta$ | $(N \times M)$ | `coef_`: DataFrame $(N \times M)$ — **same as paper** |
+| $\alpha$ | $(N \times 1)$ | `intercept_`: Series $(N,)$ |
+
+The coefficient matrix `coef_` is stored in the **paper convention** $(N \times M)$.  The prediction `Y = X @ β' + α` in code is equivalent to the paper's `Y_t = α + β X_t` — just the row-major form of the same linear algebra.
+
 ## Installation
 
 ```bash
@@ -44,7 +63,7 @@ pip install factorlasso
 import numpy as np, pandas as pd
 from factorlasso import LassoModel, LassoModelType
 
-# Simulate: Y = X @ beta_true.T + noise
+# Simulate Y_t = β X_t + noise  (code uses row-major: Y = X @ β' + noise)
 np.random.seed(42)
 T, M, N = 200, 3, 5
 X = pd.DataFrame(np.random.randn(T, M), columns=['f0', 'f1', 'f2'])
@@ -61,7 +80,7 @@ print(model.intercept_.round(4))  # α (N,)
 ### Predict and Score (scikit-learn compatible)
 
 ```python
-y_hat = model.predict(X)  # Ŷ = α + X β'
+y_hat = model.predict(X)  # Ŷ_t = α + β X_t  (code: X @ β' + α)
 r2 = model.score(X, Y)    # mean R² across response variables
 ```
 
@@ -117,7 +136,7 @@ The API follows scikit-learn conventions: `fit` / `predict` / `score`.
 | Method | Description |
 |--------|-------------|
 | `model.fit(x, y)` | Estimate α, β — returns `self` |
-| `model.predict(x)` | Return Ŷ = α + X β' |
+| `model.predict(x)` | Return Ŷ_t = α + β X_t (row-major: `X @ β' + α`) |
 | `model.score(x, y)` | Return mean R² |
 
 | Fitted attribute | Shape | Description |

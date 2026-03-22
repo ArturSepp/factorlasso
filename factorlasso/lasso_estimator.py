@@ -15,14 +15,17 @@ Implements sparse multi-output regression with support for:
 
 Convention
 ----------
-The factor model follows the paper convention::
+The factor model follows the paper convention (column vectors)::
 
-    Y_t = α + β X_t + ε_t        (single observation)
-    Y   = 1 α' + X β' + E        (matrix form: T observations)
+    Y_t = α + β X_t + ε_t
 
-where β is ``(N × M)``, α is ``(N × 1)`` intercept, ``Y`` is ``(T × N)``,
-``X`` is ``(T × M)``, ``E`` is ``(T × N)``.  *N* is the number of response
-variables and *M* is the number of regressors (factors).
+where Y_t is ``(N × 1)``, X_t is ``(M × 1)``, β is ``(N × M)``,
+and α is ``(N × 1)``.  *N* is the number of response variables
+and *M* is the number of regressors (factors).
+
+In Python, pandas DataFrames store observations as rows (T × N).
+The code computes the equivalent row-major form ``Y = X β' + α``
+internally, but stores β as ``coef_`` in the paper shape ``(N × M)``.
 
 When ``demean=True`` (default), the intercept α is absorbed by subtracting
 the (EWMA) rolling mean from both Y and X before estimation.  The fitted
@@ -486,7 +489,7 @@ class LassoModel:
     The API follows scikit-learn conventions:
 
     - ``fit(x, y)`` estimates parameters, returns ``self``
-    - ``predict(x)`` returns fitted values ``α + X β'``
+    - ``predict(x)`` returns Ŷ_t = α + β X_t (computed as ``X @ β' + α``)
     - ``score(x, y)`` returns mean R² across response variables
     - Fitted attributes use trailing underscore: ``coef_``, ``intercept_``
 
@@ -780,7 +783,10 @@ class LassoModel:
 
     def predict(self, x: pd.DataFrame) -> pd.DataFrame:
         """
-        Predict response values: Ŷ = α + X β'.
+        Predict response values.
+
+        Paper convention: Ŷ_t = α + β X_t.
+        Code (row-major): Ŷ = X @ β' + α.
 
         Parameters
         ----------
@@ -793,6 +799,7 @@ class LassoModel:
         """
         if self.coef_ is None:
             raise RuntimeError("Model not fitted. Call fit() first.")
+        # Paper: Y_t = α + β X_t.  Row-major equivalent: Y = X @ β' + α
         y_hat = x[self.coef_.columns] @ self.coef_.T
         if self.intercept_ is not None:
             y_hat = y_hat + self.intercept_.values

@@ -28,7 +28,7 @@ from factorlasso import (
 
 @pytest.fixture
 def factor_data():
-    """Synthetic factor model: Y = X β' + noise."""
+    """Synthetic factor model: Y_t = β X_t + noise (code: Y = X @ β' + noise)."""
     np.random.seed(42)
     T, M, N = 200, 3, 5
     X = pd.DataFrame(np.random.randn(T, M), columns=['f0', 'f1', 'f2'])
