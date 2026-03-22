@@ -24,10 +24,8 @@ __version__ = "0.1.0"
 from factorlasso.ewm_utils import (
     compute_ewm,
     compute_ewm_covar,
-    compute_ewm_covar_newey_west,
     compute_expanding_power,
     set_group_loadings,
-    squeeze_covariance_matrix,
 )
 
 # --- Factor covariance assembly ---
@@ -62,8 +60,6 @@ __all__ = [
     # Utilities
     "compute_ewm",
     "compute_ewm_covar",
-    "compute_ewm_covar_newey_west",
     "compute_expanding_power",
     "set_group_loadings",
-    "squeeze_covariance_matrix",
 ]

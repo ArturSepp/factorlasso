@@ -300,14 +300,6 @@ class TestHCGL:
         assert model.clusters is not None
         assert len(model.clusters) == 5
 
-    def test_with_newey_west(self, factor_data):
-        X, Y, _ = factor_data
-        model = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
-            reg_lambda=1e-5, span=52,
-        )
-        model.fit(x=X, y=Y, num_lags_newey_west=2)
-        assert model.estimated_betas.shape == (5, 3)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -550,12 +542,6 @@ class TestEWMUtils:
         corr = compute_ewm_covar(a, span=20, is_corr=True)
         np.testing.assert_allclose(np.diag(corr), 1.0, atol=1e-10)
 
-    def test_newey_west(self):
-        from factorlasso.ewm_utils import compute_ewm_covar_newey_west
-        a = np.random.randn(100, 3)
-        cov = compute_ewm_covar_newey_west(a, num_lags=2, span=20)
-        assert cov.shape == (3, 3)
-
     def test_group_loadings(self):
         from factorlasso.ewm_utils import set_group_loadings
         g = pd.Series(['A', 'B', 'A', 'C'], index=['x', 'y', 'z', 'w'])
@@ -563,24 +549,3 @@ class TestEWMUtils:
         assert gl.shape == (4, 3)
         assert gl.loc['x', 'A'] == 1.0
         assert gl.loc['y', 'A'] == 0.0
-
-    def test_squeeze_covariance(self):
-        from factorlasso.ewm_utils import squeeze_covariance_matrix
-        np.random.seed(0)
-        a = np.random.randn(50, 3)
-        cov = a.T @ a / 50
-        squeezed = squeeze_covariance_matrix(cov, squeeze_factor=0.1)
-        eig_orig = np.linalg.eigvalsh(cov)
-        eig_sq = np.linalg.eigvalsh(squeezed)
-        assert eig_sq[0] >= eig_orig[0] - 1e-10  # floor raised
-
-    def test_squeeze_none(self):
-        from factorlasso.ewm_utils import squeeze_covariance_matrix
-        cov = np.eye(3)
-        assert squeeze_covariance_matrix(cov, squeeze_factor=None) is cov
-
-    def test_squeeze_dataframe(self):
-        from factorlasso.ewm_utils import squeeze_covariance_matrix
-        cov = pd.DataFrame(np.eye(3), columns=['a', 'b', 'c'], index=['a', 'b', 'c'])
-        result = squeeze_covariance_matrix(cov, squeeze_factor=0.1)
-        assert isinstance(result, pd.DataFrame)

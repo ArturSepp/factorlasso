@@ -57,7 +57,6 @@ import scipy.cluster.hierarchy as spc
 from factorlasso.ewm_utils import (
     compute_ewm,
     compute_ewm_covar,
-    compute_ewm_covar_newey_west,
     compute_expanding_power,
     set_group_loadings,
 )
@@ -664,7 +663,6 @@ class LassoModel:
         y: pd.DataFrame,
         verbose: bool = False,
         span: Optional[float] = None,
-        num_lags_newey_west: Optional[int] = None,
     ) -> LassoModel:
         """
         Estimate model: Y_t = α + β X_t + ε_t.
@@ -679,8 +677,6 @@ class LassoModel:
             Print solver diagnostics.
         span : float, optional
             Override EWMA span for this call.
-        num_lags_newey_west : int, optional
-            Newey–West lags (``GROUP_LASSO_CLUSTERS`` only).
 
         Returns
         -------
@@ -730,15 +726,9 @@ class LassoModel:
             )
 
         elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
-            if num_lags_newey_west is not None:
-                corr = compute_ewm_covar_newey_west(
-                    a=y_np, span=eff_span,
-                    num_lags=num_lags_newey_west, is_corr=True,
-                )
-            else:
-                corr = compute_ewm_covar(
-                    a=y_np, span=eff_span, is_corr=True,
-                )
+            corr = compute_ewm_covar(
+                a=y_np, span=eff_span, is_corr=True,
+            )
             corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
             clusters, linkage, cutoff = compute_clusters_from_corr_matrix(corr_df)
             gl = set_group_loadings(group_data=clusters)

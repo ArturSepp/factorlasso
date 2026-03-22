@@ -83,7 +83,7 @@ from factorlasso import (
 
 ## Key difference: qis dependency
 
-`factorlasso` has **no dependency on qis**.  The 5 `qis` functions used by
+`factorlasso` has **no dependency on qis**.  The 4 `qis` functions used by
 the lasso estimator were reimplemented in `factorlasso.ewm_utils`:
 
 | qis function | factorlasso replacement |
@@ -91,7 +91,6 @@ the lasso estimator were reimplemented in `factorlasso.ewm_utils`:
 | `qis.compute_expanding_power` | `factorlasso.ewm_utils.compute_expanding_power` |
 | `qis.compute_ewm` | `factorlasso.ewm_utils.compute_ewm` |
 | `qis.compute_ewm_covar` | `factorlasso.ewm_utils.compute_ewm_covar` |
-| `qis.compute_ewm_covar_newey_west` | `factorlasso.ewm_utils.compute_ewm_covar_newey_west` |
 | `qis.set_group_loadings` | `factorlasso.ewm_utils.set_group_loadings` |
 
 The implementations are numerically equivalent.

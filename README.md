@@ -1,63 +1,88 @@
-# factorlasso
+# 🚀 **Sparse Factor Model Estimation: factorlasso**
 
-**Sparse factor model estimation with sign-constrained LASSO, prior-centered regularisation, and hierarchical group LASSO (HCGL)**
-
-[![CI](https://github.com/ArturSepp/factorlasso/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturSepp/factorlasso/actions)
-[![PyPI](https://img.shields.io/pypi/v/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
-[![Python](https://img.shields.io/pypi/pyversions/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
-[![Coverage](https://img.shields.io/badge/coverage-%3E90%25-brightgreen)](https://github.com/ArturSepp/factorlasso)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+> `factorlasso` package implements sign-constrained LASSO, prior-centered regularisation, and hierarchical group LASSO (HCGL) for sparse multi-output factor model estimation with integrated factor covariance assembly
 
 ---
 
-## Overview
+| 📊 Metric | 🔢 Value |
+| --- | --- |
+| PyPI Version | [![PyPI](https://img.shields.io/pypi/v/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/) |
+| Python Versions | [![Python](https://img.shields.io/pypi/pyversions/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/) |
+| License | [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) |
 
-`factorlasso` estimates the sparse multi-output factor model
+### 📈 Package Statistics
+
+| 📊 Metric | 🔢 Value |
+| --- | --- |
+| Total Downloads | [![Total](https://pepy.tech/badge/factorlasso)](https://pepy.tech/project/factorlasso) |
+| CI Status | [![CI](https://github.com/ArturSepp/factorlasso/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturSepp/factorlasso/actions) |
+| Coverage | [![Coverage](https://img.shields.io/badge/coverage-%3E90%25-brightgreen)](https://github.com/ArturSepp/factorlasso) |
+| GitHub Stars | [![GitHub stars](https://img.shields.io/github/stars/ArturSepp/factorlasso?style=flat-square&logo=github)](https://github.com/ArturSepp/factorlasso/stargazers) |
+| GitHub Forks | [![GitHub forks](https://img.shields.io/github/forks/ArturSepp/factorlasso?style=flat-square&logo=github)](https://github.com/ArturSepp/factorlasso/network/members) |
+
+## **The Problem**
+
+In many applications — portfolio construction, genomics, macro-econometrics — you need to estimate a factor model
 
 $$Y_t = \alpha + \beta X_t + \varepsilon_t$$
 
-where $Y_t$ is $(N \times 1)$, $X_t$ is $(M \times 1)$, $\beta$ is $(N \times M)$, and $\alpha$ is $(N \times 1)$ intercept, under:
+where $Y_t \in \mathbb{R}^{N}$ are response variables (asset returns, gene expressions), $X_t \in \mathbb{R}^{M}$ are factors, $\beta \in \mathbb{R}^{N \times M}$ are sparse factor loadings, and $\alpha \in \mathbb{R}^{N}$ is the intercept.
 
-- **Sign constraints** on individual coefficients (non-negative, non-positive, zero, or free)
-- **Prior-centered regularisation** — penalise $\|\beta - \beta_0\|$ instead of $\|\beta\|$, shrinking toward domain-specific priors
-- **Group structure** — Group LASSO with user-defined groups or automatic hierarchical clustering (HCGL)
-- **EWMA-weighted observations** — exponential decay for non-stationary data
-- **NaN-aware estimation** — validity masking handles variables with different observation lengths
+In practice, you face several challenges that standard LASSO packages don't handle:
 
-After estimation, `factorlasso` assembles the consistent factor covariance decomposition
+1. **Domain knowledge constrains coefficient signs** — equity assets should have non-negative equity beta; government bonds should not load on commodity factors. Standard LASSO ignores this.
+2. **You have prior estimates** and want to shrink toward them, not toward zero — the penalty should be $\|\beta - \beta_0\|$ not $\|\beta\|$.
+3. **Variables have different history lengths** — some assets start trading later than others. Dropping rows with any NaN discards valid data for all other variables.
+4. **You need a consistent covariance matrix** — the factor covariance $\Sigma_y = \beta \Sigma_x \beta^\top + D$ must use the *same* $\beta$ from estimation, not a separate estimate.
+5. **Data is non-stationary** — recent observations should carry more weight (EWMA weighting).
 
-$$\Sigma_y = \beta\,\Sigma_x\,\beta^\top + D$$
+`factorlasso` solves all five in a single `fit()` call. The implementation follows scikit-learn conventions (`fit` / `predict` / `score` / `coef_` / `intercept_`).
 
-where $\Sigma_x$ is the factor covariance and $D$ is diagonal idiosyncratic variance.
+The methodology is based on the Hierarchical Clustering Group LASSO (HCGL) framework introduced in:
 
-**No existing Python package** combines sign-constrained penalised regression with prior-centered shrinkage and integrated factor covariance assembly.
+> Sepp A., Ossa I., Kastenholz M. (2026), "Robust Optimization of Strategic and Tactical Asset Allocation for Multi-Asset Portfolios", *The Journal of Portfolio Management*, 52(4), 86–120. [Paper link](https://eprints.pm-research.com/17511/143431/index.html)
 
-## Convention: Paper vs Code
+and the Capital Market Assumptions framework in the companion paper:
 
-The factor model in the paper uses **column vectors**:
+> Sepp A., Hansen E., Kastenholz M. (2026), "Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors", *Under revision at the Journal of Portfolio Management*.
 
-$$Y_t = \alpha + \beta\, X_t + \varepsilon_t, \qquad \beta \in \mathbb{R}^{N \times M}$$
+## **Installation**
 
-where $Y_t \in \mathbb{R}^{N \times 1}$ and $X_t \in \mathbb{R}^{M \times 1}$. For $T$ observations stacked as columns: $Y = \alpha\,\mathbf{1}^\top + \beta\, X + E$ where $Y$ is $(N \times T)$ and $X$ is $(M \times T)$.
-
-In Python, **pandas DataFrames store observations as rows** (the standard in ML). So the code works with transposed shapes:
-
-| Symbol | Paper (column-vector) | Code (row-major, pandas) |
-|--------|----------------------|--------------------------|
-| $Y$ | $(N \times T)$ | `y`: DataFrame $(T \times N)$ |
-| $X$ | $(M \times T)$ | `x`: DataFrame $(T \times M)$ |
-| $\beta$ | $(N \times M)$ | `coef_`: DataFrame $(N \times M)$ — **same as paper** |
-| $\alpha$ | $(N \times 1)$ | `intercept_`: Series $(N,)$ |
-
-The coefficient matrix `coef_` is stored in the **paper convention** $(N \times M)$.  The prediction `Y = X @ β' + α` in code is equivalent to the paper's `Y_t = α + β X_t` — just the row-major form of the same linear algebra.
-
-## Installation
-
+Install using
 ```bash
 pip install factorlasso
 ```
 
-## Quick Start
+Upgrade using
+```bash
+pip install --upgrade factorlasso
+```
+
+Clone using
+```bash
+git clone https://github.com/ArturSepp/factorlasso.git
+```
+
+Core dependencies:
+`numpy`, `pandas`, `scipy`, `cvxpy`, `openpyxl`
+
+## Table of Contents
+
+1. [Quick Start](#quick-start)
+2. [Convention: Paper vs Code](#convention-paper-vs-code)
+3. [Sign Constraints](#sign-constraints)
+4. [Prior-Centered Regularisation](#prior-centred-regularisation)
+5. [Hierarchical Clustering Group LASSO (HCGL)](#hierarchical-clustering-group-lasso-hcgl)
+6. [NaN-Aware Estimation](#nan-aware-estimation)
+7. [Factor Covariance Assembly](#factor-covariance-assembly)
+8. [API Summary](#api-summary)
+9. [Estimation Methods](#estimation-methods)
+10. [Applications](#applications)
+11. [Related Packages](#related-packages)
+12. [References](#references)
+13. [Citation](#citation)
+
+## **Quick Start**
 
 ```python
 import numpy as np, pandas as pd
@@ -71,32 +96,57 @@ beta_true = np.array([[1, 0, .5], [0, 1, 0], [.3, 0, 0], [0, .8, .2], [1, .5, 0]
 Y = pd.DataFrame(X.values @ beta_true.T + .1*np.random.randn(T, N),
                   columns=[f'y{i}' for i in range(N)])
 
+# Fit sparse factor model
 model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-4)
 model.fit(x=X, y=Y)
 print(model.coef_.round(2))       # β (N × M)
 print(model.intercept_.round(4))  # α (N,)
-```
 
-### Predict and Score (scikit-learn compatible)
-
-```python
+# Predict and score (scikit-learn compatible)
 y_hat = model.predict(X)  # Ŷ_t = α + β X_t  (code: X @ β' + α)
 r2 = model.score(X, Y)    # mean R² across response variables
 ```
 
-### Sign Constraints
+## **Convention: Paper vs Code**
+
+The factor model in the paper uses **column vectors**:
+
+$$Y_t = \alpha + \beta\, X_t + \varepsilon_t, \qquad \beta \in \mathbb{R}^{N \times M}$$
+
+where $Y_t \in \mathbb{R}^{N \times 1}$ and $X_t \in \mathbb{R}^{M \times 1}$.
+
+In Python, **pandas DataFrames store observations as rows**. The code works with the row-major equivalent:
+
+| Symbol | Paper (column-vector) | Code (row-major, pandas) |
+|--------|----------------------|--------------------------|
+| $Y$ | $(N \times T)$ | `y`: DataFrame $(T \times N)$ |
+| $X$ | $(M \times T)$ | `x`: DataFrame $(T \times M)$ |
+| $\beta$ | $(N \times M)$ | `coef_`: DataFrame $(N \times M)$ — **same as paper** |
+| $\alpha$ | $(N \times 1)$ | `intercept_`: Series $(N,)$ |
+
+The coefficient matrix `coef_` is stored in the **paper convention** $(N \times M)$.
+The prediction `Y = X @ β' + α` in code is the row-major form of the paper's `Y_t = α + β X_t`.
+
+## **Sign Constraints**
+
+Enforce domain knowledge on coefficient signs using a constraint matrix where
+`1` = non-negative, `-1` = non-positive, `0` = constrained to zero, `NaN` = free:
 
 ```python
-# 1 = non-negative, -1 = non-positive, 0 = zero, NaN = free
 signs = pd.DataFrame([[1, np.nan, 1], [np.nan, 1, 0], [1, 0, np.nan],
                        [np.nan, 1, 1], [1, 1, np.nan]],
                       index=Y.columns, columns=X.columns)
 
 model = LassoModel(reg_lambda=1e-4, factors_beta_loading_signs=signs)
 model.fit(x=X, y=Y)
+# All constrained coefficients satisfy their sign requirements by construction
 ```
 
-### Prior-Centered Regularisation
+## **Prior-Centred Regularisation**
+
+Shrink toward a non-zero prior instead of zero. When you have prior estimates
+$\beta_0$ (e.g., from a previous estimation period or theoretical model),
+the penalty becomes $\|\beta - \beta_0\|$ instead of $\|\beta\|$:
 
 ```python
 beta_prior = pd.DataFrame(beta_true, index=Y.columns, columns=X.columns)
@@ -104,7 +154,11 @@ model = LassoModel(reg_lambda=1e-2, factors_beta_prior=beta_prior)
 model.fit(x=X, y=Y)  # shrinks toward beta_prior instead of zero
 ```
 
-### Hierarchical Clustering Group LASSO (HCGL)
+## **Hierarchical Clustering Group LASSO (HCGL)**
+
+Automatically discover group structure among response variables via
+hierarchical clustering on their correlation matrix (Ward's method),
+then apply Group LASSO with group-adaptive penalties:
 
 ```python
 model = LassoModel(
@@ -115,21 +169,43 @@ model.fit(x=X, y=Y)
 print(model.clusters)  # auto-discovered groups
 ```
 
-### Factor Covariance Assembly
+## **NaN-Aware Estimation**
+
+Variables with different history lengths are handled naturally.
+Instead of dropping any row containing a NaN (which discards valid observations
+for all other variables), `factorlasso` applies a binary validity mask that
+zeros out the contribution of missing observations per variable while
+preserving all available data:
+
+```python
+Y_with_gaps = Y.copy()
+Y_with_gaps.iloc[:50, 3] = np.nan   # variable y3 starts 50 periods later
+Y_with_gaps.iloc[:100, 4] = np.nan  # variable y4 starts 100 periods later
+
+model = LassoModel(reg_lambda=1e-4)
+model.fit(x=X, y=Y_with_gaps)
+# All 5 variables estimated using their full available history
+# No data discarded for y0, y1, y2 despite gaps in y3, y4
+```
+
+## **Factor Covariance Assembly**
+
+After estimation, assemble the consistent factor covariance decomposition
+$\Sigma_y = \beta \Sigma_x \beta^\top + D$ where $\beta$ is the *same*
+matrix from the LASSO estimation — guaranteed consistency:
 
 ```python
 from factorlasso import CurrentFactorCovarData, VarianceColumns
-from factorlasso.ewm_utils import compute_ewm_covar
 
-# Assemble Sigma_y = beta @ Sigma_x @ beta.T + D
 sigma_y = CurrentFactorCovarData(
-    x_covar=factor_covariance,
-    y_betas=model.coef_,
-    y_variances=diagnostics_df,
+    x_covar=factor_covariance,   # Σ_x (M × M)
+    y_betas=model.coef_,          # β (N × M) from estimation
+    y_variances=diagnostics_df,   # residual variances D
 ).get_y_covar()
+# sigma_y is (N × N) positive semi-definite by construction
 ```
 
-## API Summary
+## **API Summary**
 
 The API follows scikit-learn conventions: `fit` / `predict` / `score`.
 
@@ -145,8 +221,21 @@ The API follows scikit-learn conventions: `fit` / `predict` / `score`.
 | `intercept_` | (N,) | Intercept α |
 | `estimated_betas` | (N, M) | Alias for `coef_` (backward compat) |
 | `clusters_` | (N,) | HCGL cluster labels |
+| `estimation_result_` | — | Full diagnostics (r2, ss_res, ss_total) |
 
-## Estimation Methods
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model_type` | `LassoModelType` | `LASSO` | Estimation method |
+| `reg_lambda` | `float` | `1e-5` | Regularisation strength |
+| `span` | `int` | `None` | EWMA span for observation weighting |
+| `factors_beta_loading_signs` | `DataFrame` | `None` | Sign constraint matrix (N × M) |
+| `factors_beta_prior` | `DataFrame` | `None` | Prior β₀ matrix (N × M) |
+| `group_data` | `Series` | `None` | Group labels (required for `GROUP_LASSO`) |
+| `demean` | `bool` | `True` | Subtract (rolling) mean before estimation |
+| `solver` | `str` | `'CLARABEL'` | CVXPY solver name |
+| `warmup_period` | `int` | `12` | Min observations before including a variable |
+
+## **Estimation Methods**
 
 | Method | `LassoModelType` | Penalty |
 |--------|-------------------|---------|
@@ -156,25 +245,37 @@ The API follows scikit-learn conventions: `fit` / `predict` / `score`.
 
 All methods support sign constraints, prior-centered shrinkage, EWMA weighting, and NaN-aware estimation.
 
-## Applications
+## **Applications**
 
-The methodology is domain-agnostic.  Examples are provided for:
+The methodology is domain-agnostic. Examples are provided for:
 
-- **Finance** — Multi-asset factor models with sign-constrained betas and consistent covariance estimation ([`examples/finance_factor_model.py`](examples/finance_factor_model.py))
-- **Genomics** — Gene expression driven by pathway activity factors with biological sign priors ([`examples/genomics_factor_model.py`](examples/genomics_factor_model.py))
+1. `examples/finance_factor_model.py` — Multi-asset factor models with sign-constrained betas and consistent covariance estimation
+2. `examples/genomics_factor_model.py` — Gene expression driven by pathway activity factors with biological sign priors
 
 The same estimation problem (sparse factor loadings with sign priors and consistent covariance) appears in macro-econometrics, signal processing, and multi-task learning.
 
-## Dependencies
+### Illustration: multi-asset factor model with HCGL
 
-Only standard scientific Python:
+```python
+from factorlasso import LassoModel, LassoModelType
 
-- `numpy ≥ 1.22`
-- `pandas ≥ 1.4`
-- `scipy ≥ 1.9`
-- `cvxpy ≥ 1.3`
+model = LassoModel(
+    model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+    reg_lambda=1e-5,
+    span=52,                                 # 1-year EWMA half-life (weekly data)
+    factors_beta_loading_signs=sign_matrix,   # domain-knowledge constraints
+    factors_beta_prior=prior_betas,           # shrink toward prior, not zero
+)
+model.fit(x=factor_returns, y=asset_returns)
 
-## Related Packages
+# Inspect results
+print(model.coef_)           # sparse factor loadings (N × M)
+print(model.intercept_)      # intercept α (N,)
+print(model.clusters_)       # auto-discovered asset groups
+print(model.score(factor_returns, asset_returns))  # mean R²
+```
+
+## **Related Packages**
 
 | Package | Key Difference |
 |---------|----------------|
@@ -183,13 +284,17 @@ Only standard scientific Python:
 | [abess](https://abess.readthedocs.io/) | Best-subset selection (L0), not L1/Group L2 |
 | [group-lasso](https://pypi.org/project/group-lasso/) | No sign constraints, no EWMA, no prior-centered |
 
-`factorlasso` is the only package that combines sign-constrained penalised regression, prior-centered shrinkage, HCGL clustering, and integrated factor covariance assembly.
+`factorlasso` is the only package that combines sign-constrained penalised regression, prior-centered shrinkage, HCGL clustering, NaN-aware estimation, and integrated factor covariance assembly.
 
-## References
+## **References**
 
-Sepp A., Ossa I., Kastenholz M. (2026), "Robust Optimization of Strategic and Tactical Asset Allocation for Multi-Asset Portfolios", *The Journal of Portfolio Management*, 52(4), 86–120. [Paper link](https://eprints.pm-research.com/17511/143431/index.html)
+1. Sepp A., Ossa I., Kastenholz M. (2026), "Robust Optimization of Strategic and Tactical Asset Allocation for Multi-Asset Portfolios", *The Journal of Portfolio Management*, 52(4), 86–120. [Paper link](https://eprints.pm-research.com/17511/143431/index.html)
 
-## Citation
+2. Sepp A., Hansen E., Kastenholz M. (2026), "Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors", *Under revision at the Journal of Portfolio Management*.
+
+## **Citation**
+
+If you use `factorlasso` in your research, please cite the software and the underlying papers:
 
 ```bibtex
 @software{sepp2026factorlasso,
@@ -198,8 +303,29 @@ Sepp A., Ossa I., Kastenholz M. (2026), "Robust Optimization of Strategic and Ta
   year = {2026},
   url = {https://github.com/ArturSepp/factorlasso}
 }
+
+@article{seppossa2026,
+  author = {Sepp, Artur and Ossa, Ivan and Kastenholz, Mika},
+  title = {Robust Optimization of Strategic and Tactical Asset Allocation for Multi-Asset Portfolios},
+  journal = {The Journal of Portfolio Management},
+  volume = {52},
+  number = {4},
+  pages = {86--120},
+  year = {2026}
+}
+
+@article{sepphansen2026,
+  author = {Sepp, Artur and Hansen, Emilie and Kastenholz, Mika},
+  title = {Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors},
+  journal = {Under revision at the Journal of Portfolio Management},
+  year = {2026}
+}
 ```
 
-## License
+## **Disclaimer**
 
-MIT — see [LICENSE](LICENSE).
+`factorlasso` package is distributed FREE & WITHOUT ANY WARRANTY under the MIT License.
+
+See [LICENSE](LICENSE) for details.
+
+Please report any bugs or suggestions by opening an [issue](https://github.com/ArturSepp/factorlasso/issues).
