@@ -44,6 +44,7 @@ dependencies = [
     "pandas>=1.4",
     "scipy>=1.9",
     "cvxpy>=1.3",
+    "openpyxl>=3.1.0",
 ]
 
 [project.optional-dependencies]
@@ -70,7 +71,7 @@ include = ["factorlasso*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--tb=short -q --cov=factorlasso --cov-report=term-missing"
+addopts = "--tb=short -q"
 
 [tool.ruff]
 line-length = 100
