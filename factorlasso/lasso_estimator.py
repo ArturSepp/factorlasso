@@ -569,7 +569,6 @@ class LassoModel:
     demean: bool = True
     solver: str = 'CLARABEL'
     warmup_period: Optional[int] = 12
-    exclude_zero_betas: bool = True
     nonneg: bool = False
     factors_beta_loading_signs: Optional[pd.DataFrame] = None
     factors_beta_prior: Optional[pd.DataFrame] = None
