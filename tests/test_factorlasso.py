@@ -492,6 +492,33 @@ class TestRollingFactorCovarData:
         beta_f0 = rolling.get_beta('f0')
         assert beta_f0.shape == (3, 5)
 
+    def test_systematic_vars(self, factor_covar_data):
+        rolling = RollingFactorCovarData()
+        for m in [1, 4, 7]:
+            rolling.add(pd.Timestamp(f'2024-{m:02d}-01'), factor_covar_data)
+        sys_vars = rolling.get_systematic_vars()
+        assert sys_vars.shape == (3, 5)
+        assert np.all(sys_vars.values >= -1e-12)
+        # systematic var should match diag(beta @ Sigma_x @ beta.T) from single date
+        single = factor_covar_data
+        betas_np = single.y_betas.values
+        expected = np.diag(betas_np @ single.x_covar.values @ betas_np.T)
+        np.testing.assert_allclose(sys_vars.iloc[0].values, expected, atol=1e-10)
+
+    def test_total_vols(self, factor_covar_data):
+        rolling = RollingFactorCovarData()
+        for m in [1, 4, 7]:
+            rolling.add(pd.Timestamp(f'2024-{m:02d}-01'), factor_covar_data)
+        total_vols = rolling.get_total_vols()
+        resid_vols = rolling.get_residual_vols()
+        sys_vars = rolling.get_systematic_vars()
+        resid_vars = rolling.get_residual_vars()
+        # total_vol = sqrt(systematic_var + residual_var)
+        expected = np.sqrt(sys_vars.values + resid_vars.values)
+        np.testing.assert_allclose(total_vols.values, expected, atol=1e-10)
+        # total_vol >= residual_vol
+        assert np.all(total_vols.values >= resid_vols.values - 1e-10)
+
     def test_get_latest(self, factor_covar_data):
         rolling = RollingFactorCovarData()
         rolling.add(pd.Timestamp('2024-01-01'), factor_covar_data)
