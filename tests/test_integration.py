@@ -37,6 +37,9 @@ class LocalTests(Enum):
     SIGN_CONSTRAINTS = 5
     GET_X_Y_NP_STANDALONE = 6
     SOLVER_STANDALONE_WITH_NANS = 7
+    SINGLE_FACTOR_MULTI_ASSET = 8
+    MULTI_FACTOR_SINGLE_ASSET = 9
+    SINGLE_FACTOR_SINGLE_ASSET = 10
 
 
 def generate_synthetic_data(
@@ -487,6 +490,233 @@ def run_local_test(local_test: LocalTests):
         assert not np.isnan(result1.ss_total[0]), "Asset 0 should have valid ss_total"
         assert not np.isnan(result1.ss_res[0]), "Asset 0 should have valid ss_res"
         print("PASS: Diagnostics finite for full-history assets")
+
+    elif local_test == LocalTests.SINGLE_FACTOR_MULTI_ASSET:
+        """
+        x is 1-dimensional (single factor), y is M-dimensional (multiple assets).
+        Tests that a single factor can explain multiple response variables.
+        Also tests pd.Series input for x.
+        """
+        rng = np.random.default_rng(42)
+        n_dates, n_assets = 200, 5
+
+        dates = pd.bdate_range('2020-01-01', periods=n_dates, freq='W-WED')
+        factor_name = 'Market'
+        asset_names = [f'Asset_{i+1}' for i in range(n_assets)]
+
+        # Single factor returns
+        x_returns = pd.DataFrame(
+            rng.normal(loc=0.001, scale=0.02, size=(n_dates, 1)),
+            index=dates, columns=[factor_name]
+        )
+
+        # True betas (N x 1): each asset has a different loading to the single factor
+        true_betas = np.array([[0.8], [1.2], [0.0], [0.5], [1.0]])
+
+        # Asset returns: y = x @ beta' + noise
+        noise = rng.normal(loc=0.0, scale=0.01, size=(n_dates, n_assets))
+        y_returns = pd.DataFrame(
+            x_returns.values @ true_betas.T + noise,
+            index=dates, columns=asset_names
+        )
+
+        print(f"\n{'='*60}")
+        print(f" SINGLE_FACTOR_MULTI_ASSET")
+        print(f"{'='*60}")
+        print(f"\nTrue betas (N x 1):\n{true_betas.flatten()}")
+        print(f"x shape: {x_returns.shape}, y shape: {y_returns.shape}")
+
+        # Test with DataFrame x
+        model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5, span=52)
+        model.fit(x=x_returns, y=y_returns)
+        print_beta_comparison(true_betas, model.estimated_betas, title='DataFrame x (1 col)')
+
+        assert model.coef_.shape == (n_assets, 1), f"Expected ({n_assets}, 1), got {model.coef_.shape}"
+        assert model.intercept_.shape == (n_assets,), f"Expected ({n_assets},), got {model.intercept_.shape}"
+        print(f"\npredict shape: {model.predict(x_returns).shape}")
+        print(f"score: {model.score(x_returns, y_returns):.4f}")
+        assert model.score(x_returns, y_returns) > 0.5
+        print("PASS: DataFrame x, shape and accuracy checks")
+
+        # Test with Series x (single column extracted)
+        x_series = x_returns[factor_name]
+        model2 = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5, span=52)
+        model2.fit(x=x_series, y=y_returns)
+        print(f"\nSeries x: coef_ shape = {model2.coef_.shape}")
+        assert model2.coef_.shape == (n_assets, 1)
+        # Results should be identical
+        np.testing.assert_allclose(model2.coef_.values, model.coef_.values, atol=1e-8)
+        print("PASS: Series x produces identical results to DataFrame x")
+
+        # Test HCGL falls back to LASSO for single factor (groups can still be formed on y)
+        model3 = LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS, reg_lambda=1e-5, span=52)
+        model3.fit(x=x_returns, y=y_returns)
+        assert model3.coef_.shape == (n_assets, 1)
+        print("PASS: HCGL with single factor")
+
+        print_diagnostics(model.estimation_result_, y_returns.columns)
+
+    elif local_test == LocalTests.MULTI_FACTOR_SINGLE_ASSET:
+        """
+        x is M-dimensional (multiple factors), y is 1-dimensional (single asset).
+        Tests that multiple factors can explain a single response variable.
+        Also tests pd.Series input for y.
+        """
+        rng = np.random.default_rng(42)
+        n_dates, n_factors = 200, 3
+
+        dates = pd.bdate_range('2020-01-01', periods=n_dates, freq='W-WED')
+        factor_names = [f'Factor_{i+1}' for i in range(n_factors)]
+        asset_name = 'SingleAsset'
+
+        # Multiple factor returns
+        x_returns = pd.DataFrame(
+            rng.normal(loc=0.001, scale=0.02, size=(n_dates, n_factors)),
+            index=dates, columns=factor_names
+        )
+
+        # True betas (1 x M): single asset loads on factors 1 and 3
+        true_betas = np.array([[0.8, 0.0, 0.5]])
+
+        # Asset returns: y = x @ beta' + noise
+        noise = rng.normal(loc=0.0, scale=0.01, size=(n_dates, 1))
+        y_returns = pd.DataFrame(
+            x_returns.values @ true_betas.T + noise,
+            index=dates, columns=[asset_name]
+        )
+
+        print(f"\n{'='*60}")
+        print(f" MULTI_FACTOR_SINGLE_ASSET")
+        print(f"{'='*60}")
+        print(f"\nTrue betas (1 x M): {true_betas.flatten()}")
+        print(f"x shape: {x_returns.shape}, y shape: {y_returns.shape}")
+
+        # Test with DataFrame y
+        model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5, span=52)
+        model.fit(x=x_returns, y=y_returns)
+        print_beta_comparison(true_betas, model.estimated_betas, title='DataFrame y (1 col)')
+
+        r = model.estimation_result_
+        assert model.coef_.shape == (1, n_factors), f"Expected (1, {n_factors}), got {model.coef_.shape}"
+        assert model.intercept_.shape == (1,), f"Expected (1,), got {model.intercept_.shape}"
+        assert r.alpha.shape == (1,), f"Expected alpha shape (1,), got {r.alpha.shape}"
+        assert r.r2.shape == (1,), f"Expected r2 shape (1,), got {r.r2.shape}"
+        assert r.ss_total.shape == (1,), f"Expected ss_total shape (1,), got {r.ss_total.shape}"
+        assert r.ss_res.shape == (1,), f"Expected ss_res shape (1,), got {r.ss_res.shape}"
+        print(f"\npredict shape: {model.predict(x_returns).shape}")
+        print(f"score: {model.score(x_returns, y_returns):.4f}")
+        assert model.score(x_returns, y_returns) > 0.5
+        print("PASS: DataFrame y, shape and accuracy checks")
+
+        # Test with Series y
+        y_series = y_returns[asset_name]
+        model2 = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5, span=52)
+        model2.fit(x=x_returns, y=y_series)
+        print(f"\nSeries y: coef_ shape = {model2.coef_.shape}")
+        assert model2.coef_.shape == (1, n_factors)
+        np.testing.assert_allclose(model2.coef_.values, model.coef_.values, atol=1e-8)
+        print("PASS: Series y produces identical results to DataFrame y")
+
+        # Test with NaN in single-asset y
+        y_nan = y_returns.copy()
+        y_nan.iloc[:50, 0] = np.nan
+        model3 = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5, span=52)
+        model3.fit(x=x_returns, y=y_nan)
+        assert model3.coef_.shape == (1, n_factors)
+        print(f"With NaN: coef_ = {model3.coef_.values.round(3)}")
+        print("PASS: Single asset with NaN masking")
+
+        # Test HCGL fallback for single asset
+        model4 = LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS, reg_lambda=1e-5, span=52)
+        model4.fit(x=x_returns, y=y_returns)
+        assert model4.coef_.shape == (1, n_factors)
+        print("PASS: HCGL fallback for single asset")
+
+        print_diagnostics(model.estimation_result_, y_returns.columns)
+
+    elif local_test == LocalTests.SINGLE_FACTOR_SINGLE_ASSET:
+        """
+        x is 1-dimensional (single factor), y is 1-dimensional (single asset).
+        The simplest possible regression: univariate on univariate.
+        Tests DataFrame, Series, and mixed Series/DataFrame inputs.
+        """
+        rng = np.random.default_rng(42)
+        n_dates = 200
+
+        dates = pd.bdate_range('2020-01-01', periods=n_dates, freq='W-WED')
+        true_beta = 0.75
+
+        # Single factor, single asset
+        x_returns = pd.DataFrame(
+            rng.normal(loc=0.001, scale=0.02, size=(n_dates, 1)),
+            index=dates, columns=['Factor']
+        )
+        y_returns = pd.DataFrame(
+            x_returns.values * true_beta + rng.normal(0, 0.005, size=(n_dates, 1)),
+            index=dates, columns=['Asset']
+        )
+
+        print(f"\n{'='*60}")
+        print(f" SINGLE_FACTOR_SINGLE_ASSET")
+        print(f"{'='*60}")
+        print(f"\nTrue beta: {true_beta}")
+        print(f"x shape: {x_returns.shape}, y shape: {y_returns.shape}")
+
+        # Case 1: Both DataFrames
+        model = LassoModel(reg_lambda=1e-5, span=52)
+        model.fit(x=x_returns, y=y_returns)
+        print(f"\n1. Both DataFrame: coef_={model.coef_.values.round(4)}, "
+              f"score={model.score(x_returns, y_returns):.4f}")
+        assert model.coef_.shape == (1, 1)
+        assert abs(model.coef_.values[0, 0] - true_beta) < 0.25
+        print("   PASS")
+
+        # Case 2: Both Series
+        model2 = LassoModel(reg_lambda=1e-5, span=52)
+        model2.fit(x=x_returns['Factor'], y=y_returns['Asset'])
+        print(f"2. Both Series:    coef_={model2.coef_.values.round(4)}, "
+              f"score={model2.score(x_returns, y_returns):.4f}")
+        assert model2.coef_.shape == (1, 1)
+        np.testing.assert_allclose(model2.coef_.values, model.coef_.values, atol=1e-8)
+        print("   PASS")
+
+        # Case 3: x=Series, y=DataFrame
+        model3 = LassoModel(reg_lambda=1e-5, span=52)
+        model3.fit(x=x_returns['Factor'], y=y_returns)
+        assert model3.coef_.shape == (1, 1)
+        np.testing.assert_allclose(model3.coef_.values, model.coef_.values, atol=1e-8)
+        print(f"3. x=Series, y=DF: coef_={model3.coef_.values.round(4)}  PASS")
+
+        # Case 4: x=DataFrame, y=Series
+        model4 = LassoModel(reg_lambda=1e-5, span=52)
+        model4.fit(x=x_returns, y=y_returns['Asset'])
+        assert model4.coef_.shape == (1, 1)
+        np.testing.assert_allclose(model4.coef_.values, model.coef_.values, atol=1e-8)
+        print(f"4. x=DF, y=Series: coef_={model4.coef_.values.round(4)}  PASS")
+
+        # Case 5: With NaN
+        y_nan = y_returns.copy()
+        y_nan.iloc[:80, 0] = np.nan
+        model5 = LassoModel(reg_lambda=1e-5, span=52)
+        model5.fit(x=x_returns, y=y_nan)
+        assert model5.coef_.shape == (1, 1)
+        print(f"5. With NaN:       coef_={model5.coef_.values.round(4)}  PASS")
+
+        # Case 6: With sign constraint (non-negative)
+        signs = pd.DataFrame([[1.0]], index=['Asset'], columns=['Factor'])
+        model6 = LassoModel(reg_lambda=1e-5, span=52, factors_beta_loading_signs=signs)
+        model6.fit(x=x_returns, y=y_returns)
+        assert model6.coef_.values[0, 0] >= -1e-8
+        print(f"6. Sign constrained: coef_={model6.coef_.values.round(4)}  PASS")
+
+        # Diagnostics checks
+        r = model.estimation_result_
+        assert r.estimated_beta.shape == (1, 1)
+        assert r.alpha.shape == (1,)
+        assert r.r2.shape == (1,)
+        assert r.r2[0] > 0.5, f"R² should be reasonable for low-noise regression, got {r.r2[0]:.4f}"
+        print(f"\nDiagnostics: R²={r.r2[0]:.4f}, alpha={r.alpha[0]:.6f}")
+        print("PASS: All 1x1 cases verified")
 
 
 if __name__ == '__main__':

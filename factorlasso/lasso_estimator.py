@@ -47,7 +47,7 @@ from __future__ import annotations
 import warnings
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 import cvxpy as cvx
 import numpy as np
@@ -136,7 +136,7 @@ def _compute_solver_weights(
     else:
         w = np.ones(t)
 
-    if n_y > 1 and valid_mask.ndim == 2:
+    if valid_mask.ndim == 2:
         w = np.tile(w, (n_y, 1)).T
 
     return w * valid_mask
@@ -194,8 +194,8 @@ def _nan_result(n_y: int, n_x: int) -> LassoEstimationResult:
 # ═══════════════════════════════════════════════════════════════════════
 
 def get_x_y_np(
-    x: pd.DataFrame,
-    y: pd.DataFrame,
+    x: Union[pd.DataFrame, pd.Series],
+    y: Union[pd.DataFrame, pd.Series],
     span: Optional[int] = None,
     demean: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -204,10 +204,11 @@ def get_x_y_np(
 
     Parameters
     ----------
-    x : pd.DataFrame, shape (T, M)
+    x : pd.DataFrame or pd.Series, shape (T, N) or (T,)
         Regressor data.  May have all-NaN rows.
-    y : pd.DataFrame, shape (T, N)
+    y : pd.DataFrame or pd.Series, shape (T, N) or (T,)
         Response data.  May contain NaNs (different history lengths).
+        Series is converted to single-column DataFrame.
     span : int, optional
         EWMA span for demeaning.  ``None`` uses simple mean.
     demean : bool, default True
@@ -220,6 +221,10 @@ def get_x_y_np(
     valid_mask : np.ndarray, shape (T', N)
         ``T' = T − 1`` when EWMA demeaning is used.
     """
+    if isinstance(x, pd.Series):
+        x = x.to_frame()
+    if isinstance(y, pd.Series):
+        y = y.to_frame()
     assert x.index.equals(y.index), (
         f"x and y must share the same index: "
         f"x has {len(x.index)} rows, y has {len(y.index)} rows"
@@ -658,8 +663,8 @@ class LassoModel:
 
     def fit(
         self,
-        x: pd.DataFrame,
-        y: pd.DataFrame,
+        x: Union[pd.DataFrame, pd.Series],
+        y: Union[pd.DataFrame, pd.Series],
         verbose: bool = False,
         span: Optional[float] = None,
     ) -> LassoModel:
@@ -668,10 +673,11 @@ class LassoModel:
 
         Parameters
         ----------
-        x : pd.DataFrame, shape (T, M)
-            Regressor (factor) returns.
-        y : pd.DataFrame, shape (T, N)
+        x : pd.DataFrame or pd.Series, shape (T, M) or (T,)
+            Regressor (factor) returns.  Series is converted to single-column DataFrame.
+        y : pd.DataFrame or pd.Series, shape (T, N) or (T,)
             Response (asset) returns.  May contain NaNs.
+            Series is converted to single-column DataFrame.
         verbose : bool, default False
             Print solver diagnostics.
         span : float, optional
@@ -682,6 +688,11 @@ class LassoModel:
         self
             Updated with ``coef_`` (N × M) and ``intercept_`` (N,).
         """
+        if isinstance(x, pd.Series):
+            x = x.to_frame()
+        if isinstance(y, pd.Series):
+            y = y.to_frame()
+
         eff_span = span or self.span
         x_np, y_np, valid_mask = get_x_y_np(
             x=x, y=y, span=eff_span, demean=self.demean

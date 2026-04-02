@@ -302,6 +302,90 @@ class TestHCGL:
 
 
 
+
+# ═══════════════════════════════════════════════════════════════════════
+# Single response variable (n_y=1) and Series inputs
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestSingleResponse:
+    """Tests for n_y=1 and pd.Series input handling."""
+
+    @pytest.fixture
+    def single_data(self):
+        np.random.seed(42)
+        T, M = 100, 3
+        X = pd.DataFrame(np.random.randn(T, M), columns=['f0', 'f1', 'f2'])
+        beta_true = np.array([[1.0, 0.5, 0.0]])
+        Y = pd.DataFrame(X.values @ beta_true.T + 0.1 * np.random.randn(T, 1),
+                          columns=['y0'])
+        return X, Y, beta_true
+
+    def test_single_response_lasso(self, single_data):
+        X, Y, beta_true = single_data
+        model = LassoModel(reg_lambda=1e-5, span=26)
+        model.fit(x=X, y=Y)
+        assert model.coef_.shape == (1, 3)
+        assert model.intercept_.shape == (1,)
+        np.testing.assert_allclose(model.coef_.values, beta_true, atol=0.05)
+
+    def test_single_response_predict_score(self, single_data):
+        X, Y, _ = single_data
+        model = LassoModel(reg_lambda=1e-5, span=26)
+        model.fit(x=X, y=Y)
+        pred = model.predict(X)
+        assert pred.shape == (len(X), 1)
+        assert model.score(X, Y) > 0.9
+
+    def test_single_response_hcgl_fallback(self, single_data):
+        X, Y, _ = single_data
+        model = LassoModel(
+            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            reg_lambda=1e-5, span=26,
+        )
+        model.fit(x=X, y=Y)
+        assert model.coef_.shape == (1, 3)
+
+    def test_single_response_with_nan(self, single_data):
+        X, Y, _ = single_data
+        Y_nan = Y.copy()
+        Y_nan.iloc[:30, 0] = np.nan
+        model = LassoModel(reg_lambda=1e-5, span=26)
+        model.fit(x=X, y=Y_nan)
+        assert model.coef_.shape == (1, 3)
+
+    def test_single_response_sign_constraints(self, single_data):
+        X, Y, _ = single_data
+        signs = pd.DataFrame([[1, np.nan, 0]], index=['y0'], columns=X.columns)
+        model = LassoModel(reg_lambda=1e-5, span=26, factors_beta_loading_signs=signs)
+        model.fit(x=X, y=Y)
+        assert model.coef_.values[0, 0] >= -1e-8
+        assert abs(model.coef_.values[0, 2]) < 1e-6
+
+    def test_y_series_input(self, single_data):
+        X, Y, _ = single_data
+        y_series = Y['y0']
+        model = LassoModel(reg_lambda=1e-5, span=26)
+        model.fit(x=X, y=y_series)
+        assert model.coef_.shape == (1, 3)
+
+    def test_x_series_input(self, single_data):
+        X, Y, _ = single_data
+        x_series = X['f0']
+        y_single = pd.DataFrame(
+            X['f0'].values * 0.8 + 0.1 * np.random.randn(len(X)),
+            columns=['y0'], index=X.index,
+        )
+        model = LassoModel(reg_lambda=1e-5, span=26)
+        model.fit(x=x_series, y=y_single)
+        assert model.coef_.shape == (1, 1)
+
+    def test_both_series_input(self, single_data):
+        X, Y, _ = single_data
+        model = LassoModel(reg_lambda=1e-5, span=26)
+        model.fit(x=X['f0'], y=Y['y0'])
+        assert model.coef_.shape == (1, 1)
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # NaN handling
 # ═══════════════════════════════════════════════════════════════════════
