@@ -36,7 +36,7 @@ def _build_snapshot(seed: int = 0, with_residuals: bool = True,
     """Build a small CurrentFactorCovarData by fitting a real model."""
     rng = np.random.default_rng(seed)
     T, M, N = 60, 3, 4
-    dates = pd.date_range("2019-01-31", periods=T, freq="ME")
+    dates = pd.date_range("2019-01-31", periods=T, freq="MS")
     X = pd.DataFrame(rng.standard_normal((T, M)),
                      index=dates, columns=[f"f{i}" for i in range(M)])
     beta_true = rng.standard_normal((N, M))
@@ -383,7 +383,7 @@ class TestHelpers:
         assert len(cons) == 1
 
     def test_get_x_y_np_accepts_series(self):
-        idx = pd.date_range("2024-01-31", periods=20, freq="ME")
+        idx = pd.date_range("2024-01-31", periods=20, freq="MS")
         x = pd.Series(np.arange(20, dtype=float), index=idx, name="f0")
         y = pd.Series(np.arange(20, dtype=float) * 2.0, index=idx, name="y0")
         x_np, y_np, mask = get_x_y_np(x=x, y=y, span=10)

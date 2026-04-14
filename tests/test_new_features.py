@@ -23,7 +23,7 @@ from factorlasso.cv import expanding_window_splits
 def panel():
     rng = np.random.default_rng(0)
     T, M, N = 120, 3, 4
-    idx = pd.date_range("2018-01-31", periods=T, freq="ME")
+    idx = pd.date_range("2018-01-31", periods=T, freq="MS")
     X = pd.DataFrame(
         rng.standard_normal((T, M)),
         index=idx, columns=[f"f{i}" for i in range(M)],
@@ -222,7 +222,7 @@ class TestFitValidation:
             LassoModel().fit(x=X.iloc[:-5], y=Y)
 
     def test_empty_input_raises(self):
-        empty_idx = pd.date_range("2024-01-31", periods=0, freq="ME")
+        empty_idx = pd.date_range("2024-01-31", periods=0, freq="MS")
         X = pd.DataFrame(index=empty_idx, columns=["f0"])
         Y = pd.DataFrame(index=empty_idx, columns=["y0"])
         with pytest.raises(ValueError, match="Empty input"):

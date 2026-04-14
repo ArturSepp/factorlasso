@@ -169,6 +169,38 @@ model.fit(x=X, y=Y)
 print(model.clusters)  # auto-discovered groups
 ```
 
+## **Cross-Validated Regularisation**
+
+Picking `reg_lambda` by hand is fine for exploration, but for serious
+work you want it chosen by data. `LassoModelCV` sweeps a log-spaced
+grid using **expanding-window time-series splits** — random K-fold leaks
+future information into training folds and is the wrong default for
+returns data, so the package gives you the right CV out of the box:
+
+```python
+import numpy as np
+from factorlasso import LassoModel, LassoModelCV
+
+cv = LassoModelCV(
+    lambdas=np.logspace(-6, -1, 15),  # default: 20-point grid on [1e-6, 1e-1]
+    n_splits=5,
+    base_model=LassoModel(span=52),    # inherits all hyperparameters except reg_lambda
+).fit(x=X, y=Y)
+
+print(cv.best_lambda_, cv.best_score_)
+print(cv.cv_scores_.mean(axis=1))      # diagnostic: stability across folds
+
+# After fit, predict/score delegate to a model refit on the full dataset
+y_hat = cv.predict(X_new)
+oos_r2 = cv.score(X_test, Y_test)
+```
+
+Per-fold solver failures leave a `NaN` in `cv_scores_` and the sweep
+continues; you only get a `RuntimeError` if every fold for every lambda
+fails. See `examples/cv_lambda_selection.py` for an end-to-end
+illustration on a synthetic asset-factor panel, including an
+out-of-sample comparison against fixed-lambda baselines.
+
 ## **NaN-Aware Estimation**
 
 Variables with different history lengths are handled naturally.
@@ -214,6 +246,8 @@ The API follows scikit-learn conventions: `fit` / `predict` / `score`.
 | `model.fit(x, y)` | Estimate α, β — returns `self` |
 | `model.predict(x)` | Return Ŷ_t = α + β X_t (row-major: `X @ β' + α`) |
 | `model.score(x, y)` | Return mean R² |
+| `model.get_params()` / `set_params(**)` | scikit-learn compatibility (works with `GridSearchCV`, `Pipeline`) |
+| `LassoModelCV(...).fit(x, y)` | Time-series CV for `reg_lambda` (expanding-window splits) |
 
 | Fitted attribute | Shape | Description |
 |-----------------|-------|-------------|

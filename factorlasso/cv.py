@@ -15,7 +15,7 @@ Examples
 >>> from factorlasso import LassoModel, LassoModelCV
 >>> rng = np.random.default_rng(0)
 >>> T, M, N = 200, 3, 4
->>> idx = pd.date_range('2020-01-31', periods=T, freq='ME')
+>>> idx = pd.date_range('2020-01-31', periods=T, freq='MS')
 >>> X = pd.DataFrame(rng.standard_normal((T, M)), index=idx,
 ...                   columns=[f'f{i}' for i in range(M)])
 >>> beta = rng.standard_normal((N, M))
@@ -38,7 +38,6 @@ import numpy as np
 import pandas as pd
 
 from factorlasso.lasso_estimator import LassoModel
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # Time-series splits
