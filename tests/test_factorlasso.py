@@ -479,7 +479,7 @@ class TestGetXYNP:
 
     def test_mismatched_index_raises(self, factor_data):
         X, Y, _ = factor_data
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError, match="must share the same index"):
             get_x_y_np(x=X.iloc[:-5], y=Y)
 
 

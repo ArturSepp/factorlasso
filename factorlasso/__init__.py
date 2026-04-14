@@ -12,14 +12,28 @@ Quick start
 >>> model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-4)
 >>> model.fit(x=X, y=Y)
 
+Cross-validated regularisation
+------------------------------
+>>> from factorlasso import LassoModelCV
+>>> cv = LassoModelCV(n_splits=5).fit(x=X, y=Y)
+>>> cv.best_lambda_
+1e-4
+
 Full pipeline
 -------------
 >>> from factorlasso import LassoModel, CurrentFactorCovarData, VarianceColumns
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
+
+try:
+    __version__ = _pkg_version("factorlasso")
+except PackageNotFoundError:  # pragma: no cover - editable install before metadata exists
+    __version__ = "0.0.0+unknown"
 
 # --- Core estimator ---
+from factorlasso.cv import LassoModelCV
+
 # --- Utilities ---
 from factorlasso.ewm_utils import (
     compute_ewm,
@@ -48,6 +62,7 @@ __all__ = [
     # Estimator
     "LassoModelType",
     "LassoModel",
+    "LassoModelCV",
     "LassoEstimationResult",
     "solve_lasso_cvx_problem",
     "solve_group_lasso_cvx_problem",

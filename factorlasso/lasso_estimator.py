@@ -45,9 +45,9 @@ Strategic and Tactical Asset Allocation for Multi-Asset Portfolios",
 from __future__ import annotations
 
 import warnings
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from enum import Enum
-from typing import Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import cvxpy as cvx
 import numpy as np
@@ -225,10 +225,11 @@ def get_x_y_np(
         x = x.to_frame()
     if isinstance(y, pd.Series):
         y = y.to_frame()
-    assert x.index.equals(y.index), (
-        f"x and y must share the same index: "
-        f"x has {len(x.index)} rows, y has {len(y.index)} rows"
-    )
+    if not x.index.equals(y.index):
+        raise ValueError(
+            f"x and y must share the same index: "
+            f"x has {len(x.index)} rows, y has {len(y.index)} rows"
+        )
 
     nan_mask_y = y.isna().to_numpy().copy()
     x_all_nan = x.isna().all(axis=1).to_numpy()
@@ -652,7 +653,82 @@ class LassoModel:
     def y(self, value):
         self.y_ = value
 
+    # ── scikit-learn compatibility ───────────────────────────────────
+
+    @classmethod
+    def _constructor_param_names(cls) -> List[str]:
+        """Names of constructor (non-fitted) dataclass fields."""
+        return [f.name for f in fields(cls) if not f.name.endswith("_")]
+
+    def get_params(self, deep: bool = True) -> Dict[str, Any]:
+        """
+        Return constructor hyperparameters as a dict (sklearn-compatible).
+
+        Parameters
+        ----------
+        deep : bool, default True
+            Present for sklearn API parity; LassoModel has no nested
+            estimators so this argument has no effect.
+
+        Returns
+        -------
+        dict
+            Mapping ``{param_name: value}`` for every constructor argument.
+            Fitted attributes (trailing underscore) are excluded.
+        """
+        del deep  # unused, kept for API parity
+        return {name: getattr(self, name) for name in self._constructor_param_names()}
+
+    def set_params(self, **params: Any) -> "LassoModel":
+        """
+        Set constructor hyperparameters in place (sklearn-compatible).
+
+        Returns ``self`` for method chaining.
+
+        Raises
+        ------
+        ValueError
+            If any key is not a valid constructor parameter.
+        """
+        valid = set(self._constructor_param_names())
+        invalid = sorted(set(params) - valid)
+        if invalid:
+            raise ValueError(
+                f"Invalid parameter(s) for LassoModel: {invalid}. "
+                f"Valid parameters: {sorted(valid)}"
+            )
+        for name, value in params.items():
+            setattr(self, name, value)
+        return self
+
     # ── Core API ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def _validate_fit_inputs(
+        x: Union[pd.DataFrame, pd.Series],
+        y: Union[pd.DataFrame, pd.Series],
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Coerce Series → DataFrame and validate shapes / index alignment."""
+        if isinstance(x, pd.Series):
+            x = x.to_frame()
+        if isinstance(y, pd.Series):
+            y = y.to_frame()
+        if not isinstance(x, pd.DataFrame):
+            raise TypeError(
+                f"x must be pd.DataFrame or pd.Series, got {type(x).__name__}"
+            )
+        if not isinstance(y, pd.DataFrame):
+            raise TypeError(
+                f"y must be pd.DataFrame or pd.Series, got {type(y).__name__}"
+            )
+        if len(x) == 0:
+            raise ValueError("Empty input: x and y must have at least one row")
+        if not x.index.equals(y.index):
+            raise ValueError(
+                f"x and y must share the same index: "
+                f"x has {len(x)} rows, y has {len(y)} rows"
+            )
+        return x, y
 
     def copy(self, kwargs: Optional[Dict] = None) -> LassoModel:
         """Create a copy, optionally overriding parameters."""
@@ -688,10 +764,7 @@ class LassoModel:
         self
             Updated with ``coef_`` (N × M) and ``intercept_`` (N,).
         """
-        if isinstance(x, pd.Series):
-            x = x.to_frame()
-        if isinstance(y, pd.Series):
-            y = y.to_frame()
+        x, y = self._validate_fit_inputs(x, y)
 
         eff_span = span or self.span
         x_np, y_np, valid_mask = get_x_y_np(
