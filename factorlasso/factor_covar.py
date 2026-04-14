@@ -163,31 +163,84 @@ class CurrentFactorCovarData:
             VarianceColumns.RESID_VOL.value: np.sqrt(res_var),
         }, index=assets)
 
-    def estimate_alpha(self, alpha_span: int = 120) -> pd.Series:
+    def estimate_alpha(
+            self,
+            alpha_span: Union[int, Dict[str, int]] = 120,
+            asset_frequencies: Union[str, pd.Series, None] = None,
+            default_freq: str = 'ME',
+    ) -> pd.Series:
         """
-        Estimate alpha from EWMA of residuals.
+        Estimate alpha from EWMA of residuals, respecting per-asset frequency.
 
         Parameters
         ----------
-        alpha_span : int, default 120
-            EWMA span applied to the residual time series.
-
-        Returns
-        -------
-        pd.Series
-            Last EWMA value per response variable.
+        alpha_span : int or dict
+            If int: single EWMA span applied to all columns.
+            If dict: keys are pandas freq codes ('ME', 'QE'), values are the
+            EWMA span in observations at that frequency, e.g.
+            ``{'ME': 120, 'QE': 40}`` (~10y calendar half-life for both).
+        asset_frequencies : str or pd.Series, optional
+            - str: a single freq code applied to all assets (e.g. 'ME').
+            - pd.Series: index = asset names, values = freq codes. Assets
+              absent from the index fall back to ``default_freq``.
+            - None: all assets use ``default_freq``.
+        default_freq : str, default 'ME'
+            Frequency assumed for assets not covered by ``asset_frequencies``.
         """
         if self.residuals is None:
             raise ValueError("Residuals required for alpha estimation")
-        if alpha_span is not None:
-            alphas = compute_ewm(self.residuals, span=alpha_span)
+
+        # Legacy scalar path
+        if isinstance(alpha_span, (int, float)):
+            alphas = compute_ewm(self.residuals, span=int(alpha_span))
             return alphas.iloc[-1, :].rename(VarianceColumns.ALPHA.value)
-        return self.residuals.iloc[-1, :].rename(VarianceColumns.ALPHA.value)
+
+        # Normalise asset_frequencies to a per-column lookup
+        if asset_frequencies is None:
+            freq_lookup: Dict[str, str] = {}
+        elif isinstance(asset_frequencies, str):
+            freq_lookup = {c: asset_frequencies for c in self.residuals.columns}
+        elif isinstance(asset_frequencies, pd.Series):
+            freq_lookup = asset_frequencies.to_dict()
+        else:
+            raise TypeError(
+                f"asset_frequencies must be str, pd.Series, or None; "
+                f"got {type(asset_frequencies).__name__}"
+            )
+
+        # Group columns by their native frequency
+        by_freq: Dict[str, List[str]] = {}
+        for col in self.residuals.columns:
+            freq = freq_lookup.get(col, default_freq)
+            by_freq.setdefault(freq, []).append(col)
+
+        last_values: Dict[str, float] = {}
+        for freq, cols in by_freq.items():
+            if freq not in alpha_span:
+                raise KeyError(
+                    f"alpha_span missing entry for frequency '{freq}' "
+                    f"(assets e.g. {cols[:3]})"
+                )
+            sub = self.residuals.loc[:, cols]
+            # Relies on upstream factor_covar_estimator preserving NaN on
+            # non-event rows. pandas ewm carries forward through NaN, so
+            # span is in observations at the column's native frequency.
+            ewm = compute_ewm(sub, span=int(alpha_span[freq]))
+            last = ewm.iloc[-1, :]
+            for c in cols:
+                last_values[c] = float(last.get(c, np.nan))
+
+        return pd.Series(
+            {c: last_values[c] for c in self.residuals.columns},
+            name=VarianceColumns.ALPHA.value,
+        )
 
     def get_snapshot(
-        self,
-        assets: Optional[List[str]] = None,
-        alpha_span: int = 120,
+            self,
+            assets: Optional[List[str]] = None,
+            alpha_span: Union[int, Dict[str, int]] = 120,
+            asset_frequencies: Union[str, pd.Series, None] = None,
+            default_freq: str = 'ME',
     ) -> pd.DataFrame:
         """
         Summary table: betas, R², volatilities, alpha per variable.
@@ -197,7 +250,11 @@ class CurrentFactorCovarData:
         vols = self.get_model_vols(assets=assets)
 
         if self.residuals is not None:
-            alphas = self.estimate_alpha(alpha_span=alpha_span).loc[assets]
+            alphas = self.estimate_alpha(
+                alpha_span=alpha_span,
+                asset_frequencies=asset_frequencies,
+                default_freq=default_freq,
+            ).loc[assets]
         else:
             alphas = self.y_variances.loc[assets, VarianceColumns.INSAMPLE_ALPHA.value]
 
