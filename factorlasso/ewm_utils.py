@@ -19,7 +19,6 @@ from typing import List, Optional, Union
 import numpy as np
 import pandas as pd
 
-
 # ── Enums (1-to-1 with qis) ───────────────────────────────────────────
 
 class InitType(Enum):
@@ -56,11 +55,13 @@ def set_init_dim1(data, init_type: InitType = InitType.X0) -> Union[float, np.nd
     if init_type == InitType.ZERO:
         return np.zeros_like(x0)
     if init_type == InitType.X0:
-        # NaN at t=0 → start from 0; otherwise start from the observation
-        return np.where(np.isnan(x0) == False, x0, 0.0)
+        # NaN at t=0 → start from 0; otherwise start from the observation.
+        # ``~np.isnan(x0)`` (not ``not np.isnan(x0)``) because x0 is a
+        # scalar for 1-D inputs and a vector for 2-D inputs.
+        return np.where(~np.isnan(x0), x0, 0.0)
     if init_type == InitType.MEAN:
         m = np.nanmean(x, axis=0)
-        return np.where(np.isnan(m) == False, m, 0.0)
+        return np.where(~np.isnan(m), m, 0.0)
     if init_type == InitType.VAR:
         return np.nanvar(x, axis=0)
     raise ValueError(f"Unsupported init_type {init_type!r}")
@@ -258,7 +259,17 @@ def compute_ewm_covar(a: np.ndarray,
     EWMA covariance (or correlation) matrix at the last observation.
 
     Pure-NumPy reimplementation of ``qis.models.linear.ewm.compute_ewm_covar``
-    — same recursion, same NaN handling, same correlation normalisation.
+    — same recursion, same NaN handling, same correlation normalisation
+    **with one deliberate deviation**: when ``is_corr=True`` and some
+    diagonal element of the EWMA covariance is zero (e.g. an all-NaN
+    column, or a constant column in the window), this function zeroes
+    out the corresponding row/column of the correlation matrix and sets
+    the diagonal to 1, rather than producing ``inf`` from
+    ``1/sqrt(0)``.  The qis reference propagates ``inf`` and ``NaN``
+    into the output, which in practice (a) floods the console with
+    ``RuntimeWarning`` and (b) silently corrupts downstream computation
+    such as HCGL clustering via Ward linkage.  The deviation only
+    affects inputs that qis cannot handle cleanly anyway.
 
     Recursion: ``Σ[t] = λ Σ[t−1] + (1−λ) a[t] ⊗ b[t]``
 
@@ -277,6 +288,7 @@ def compute_ewm_covar(a: np.ndarray,
         are zeroed.
     is_corr : bool, default False
         If True, normalise the final matrix to a correlation matrix.
+        See the note above on zero-variance handling.
     nan_backfill : NanBackfill, default FFILL
         How to handle rows where the outer product is non-finite.
 
@@ -293,6 +305,11 @@ def compute_ewm_covar(a: np.ndarray,
 
     if span is not None:
         ewm_lambda = 1.0 - 2.0 / (span + 1.0)
+    # Note: λ enters the covariance recursion *linearly* on the outer
+    # product a ⊗ b.  The matched quadratic-loss weights in
+    # ``lasso_estimator._compute_solver_weights`` therefore use
+    # ``sqrt(λ)`` so that the effective observation weight inside
+    # ``sum_squares(...)`` is λ^s — consistent with this convention.
     lam1 = 1.0 - ewm_lambda
 
     n = a.shape[0] if a.ndim == 1 else a.shape[1]
@@ -330,8 +347,20 @@ def compute_ewm_covar(a: np.ndarray,
         if is_corr:
             d = np.diag(last_covar)
             if np.nansum(d) > 1e-10:
-                inv_vol = np.reciprocal(np.sqrt(d))
+                # Per-element guard: invert sqrt only where variance is
+                # strictly positive. Assets with zero/negative diagonal
+                # (all-NaN column, no variance in the EWMA window) get
+                # a zero row/column in the correlation matrix — not an
+                # inf poisoning every other correlation. Diagonal is
+                # then forced back to 1 so the result remains a valid
+                # correlation matrix.
+                pos = d > 1e-12
+                inv_vol = np.zeros_like(d)
+                inv_vol[pos] = 1.0 / np.sqrt(d[pos])
                 covar = last_covar * np.outer(inv_vol, inv_vol)
+                np.fill_diagonal(
+                    covar, np.where(pos, np.diag(covar), 1.0),
+                )
             else:
                 covar = np.identity(n)
         else:

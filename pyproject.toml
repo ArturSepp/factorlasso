@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "factorlasso"
-version = "0.1.10"
+version = "0.1.11"
 description = "Sparse factor model estimation with sign-constrained LASSO, prior-centered regularisation, and hierarchical group LASSO (HCGL)"
 readme = "README.md"
 license = {text = "MIT"}
