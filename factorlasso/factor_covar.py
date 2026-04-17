@@ -615,4 +615,3 @@ def get_linkage_array(
             f"Available: {sorted(set(linkages.index.astype(str).str.split(':').str[0]))}"
         )
     return linkages.loc[mask, ['left', 'right', 'distance', 'n_samples']].to_numpy()
-
