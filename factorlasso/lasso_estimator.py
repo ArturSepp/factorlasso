@@ -469,9 +469,25 @@ def compute_clusters_from_corr_matrix(
         Scipy linkage matrix.
     cutoff : float
         Distance threshold used for cutting.
+
+    Notes
+    -----
+    The condensed distance vector is built via ``squareform(1 − corr)``,
+    which is the correct path from a correlation matrix to the 1-D input
+    that ``scipy.cluster.hierarchy.linkage`` expects. A previous
+    implementation passed ``pdist(1 − corr)``, which treated rows of
+    ``(1 − corr)`` as observations in N-dimensional space and computed
+    Euclidean distances between those rows — a different (non-standard)
+    metric that conflated correlation structure with higher-order geometry.
     """
     corr_matrix = corr_matrix.fillna(0.0)
-    pdist = spc.distance.pdist(1.0 - corr_matrix.to_numpy())
+    # squareform(1 - C) is the correct conversion from a correlation matrix
+    # to scipy's condensed pairwise-distance vector. Clip guards against
+    # tiny negative values from floating-point noise; fill_diagonal ensures
+    # exact zeros on the diagonal as squareform requires.
+    dist_square = np.clip(1.0 - corr_matrix.to_numpy(), 0.0, 2.0)
+    np.fill_diagonal(dist_square, 0.0)
+    pdist = spc.distance.squareform(dist_square, checks=False)
     linkage = spc.linkage(pdist, method='ward')
     cutoff = 0.5 * np.max(pdist)
     idx = spc.fcluster(linkage, cutoff, 'distance')
