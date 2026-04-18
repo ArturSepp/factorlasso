@@ -1,15 +1,61 @@
+# ─── Python ────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+
+# ─── Packaging / build artefacts ────────────────────────────────
 *.egg-info/
-dist/
-build/
-.eggs/
 *.egg
+.eggs/
+build/
+dist/
+wheels/
+pip-wheel-metadata/
+MANIFEST
+
+# ─── Testing / coverage ─────────────────────────────────────────
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
-.ruff_cache/
+.tox/
+.hypothesis/
+
+# ─── Type checkers / linters ────────────────────────────────────
 .mypy_cache/
-*.so
+.ruff_cache/
+.pyre/
+.pytype/
+
+# ─── Virtual environments ───────────────────────────────────────
 .venv/
 venv/
+env/
+ENV/
+
+# ─── IDE / editor metadata ──────────────────────────────────────
+# JetBrains (PyCharm, IntelliJ, etc.) — note: just `.idea/`, not `*.idea/`
+.idea/
+# VS Code
+.vscode/
+# Emacs, Vim, Sublime, nano
+*~
+*.swp
+*.swo
+.netrwhist
+.\#*
+\#*\#
+
+# ─── OS cruft ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ─── Jupyter ────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ─── Local data / secrets ───────────────────────────────────────
+.env
+.env.local
+*.local

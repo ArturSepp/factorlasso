@@ -52,8 +52,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import cvxpy as cvx
 import numpy as np
 import pandas as pd
-import scipy.cluster.hierarchy as spc
 
+from factorlasso.cluster_utils import compute_clusters_from_corr_matrix
 from factorlasso.ewm_utils import (
     compute_ewm,
     compute_ewm_covar,
@@ -443,59 +443,6 @@ def solve_group_lasso_cvx_problem(
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Clustering
-# ═══════════════════════════════════════════════════════════════════════
-
-def compute_clusters_from_corr_matrix(
-    corr_matrix: pd.DataFrame,
-) -> Tuple[pd.Series, np.ndarray, float]:
-    """
-    Hierarchical clustering from a correlation matrix (Ward's method).
-
-    Converts correlation to distance ``(1 − corr)``, applies Ward's
-    agglomerative clustering, and cuts the dendrogram at 50 % of the
-    maximum pairwise distance.
-
-    Parameters
-    ----------
-    corr_matrix : pd.DataFrame, shape (N, N)
-        Square correlation matrix.
-
-    Returns
-    -------
-    clusters : pd.Series
-        Cluster labels (1-indexed) for each column.
-    linkage : np.ndarray
-        Scipy linkage matrix.
-    cutoff : float
-        Distance threshold used for cutting.
-
-    Notes
-    -----
-    The condensed distance vector is built via ``squareform(1 − corr)``,
-    which is the correct path from a correlation matrix to the 1-D input
-    that ``scipy.cluster.hierarchy.linkage`` expects. A previous
-    implementation passed ``pdist(1 − corr)``, which treated rows of
-    ``(1 − corr)`` as observations in N-dimensional space and computed
-    Euclidean distances between those rows — a different (non-standard)
-    metric that conflated correlation structure with higher-order geometry.
-    """
-    corr_matrix = corr_matrix.fillna(0.0)
-    # squareform(1 - C) is the correct conversion from a correlation matrix
-    # to scipy's condensed pairwise-distance vector. Clip guards against
-    # tiny negative values from floating-point noise; fill_diagonal ensures
-    # exact zeros on the diagonal as squareform requires.
-    dist_square = np.clip(1.0 - corr_matrix.to_numpy(), 0.0, 2.0)
-    np.fill_diagonal(dist_square, 0.0)
-    pdist = spc.distance.squareform(dist_square, checks=False)
-    linkage = spc.linkage(pdist, method='ward')
-    cutoff = 0.5 * np.max(pdist)
-    idx = spc.fcluster(linkage, cutoff, 'distance')
-    clusters = pd.Series(idx, index=corr_matrix.columns)
-    return clusters, linkage, cutoff
-
-
-# ═══════════════════════════════════════════════════════════════════════
 # High-level model class
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -865,6 +812,13 @@ class LassoModel:
             result.alpha, index=y.columns, name='intercept',
         )
         self.estimation_result_ = result
+        # For GROUP_LASSO with externally supplied group_data, record it as
+        # clusters_ so downstream consumers (CurrentFactorCovarData,
+        # diagnostic plots, USD-anchored clustering in the CMA pipeline)
+        # see clusters populated uniformly for both HCGL and external-groups
+        # modes. The HCGL path already sets `clusters` above.
+        if clusters is None and self.model_type == LassoModelType.GROUP_LASSO:
+            clusters = self.group_data.reindex(y.columns).copy()
         self.clusters_ = clusters
         self.linkage_ = linkage
         self.cutoff_ = cutoff

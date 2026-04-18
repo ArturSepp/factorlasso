@@ -16,10 +16,11 @@ This mirrors the methodology from:
 
 import numpy as np
 import pandas as pd
+
 from factorlasso import (
+    CurrentFactorCovarData,
     LassoModel,
     LassoModelType,
-    CurrentFactorCovarData,
     VarianceColumns,
 )
 from factorlasso.ewm_utils import compute_ewm_covar
@@ -76,7 +77,7 @@ def main():
     print(model.estimated_betas.round(3))
     print()
 
-    print(f"=== Clusters ===")
+    print("=== Clusters ===")
     print(model.clusters)
     print()
 
@@ -114,7 +115,7 @@ def main():
     print(vols.round(4))
     print()
 
-    print(f"=== R² per asset ===")
+    print("=== R² per asset ===")
     print(y_variances[VarianceColumns.R2].round(3))
 
 

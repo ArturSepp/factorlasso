@@ -17,13 +17,11 @@ where domain knowledge constrains coefficient signs.
 
 import numpy as np
 import pandas as pd
+
 from factorlasso import (
     LassoModel,
     LassoModelType,
-    CurrentFactorCovarData,
-    VarianceColumns,
 )
-from factorlasso.ewm_utils import compute_ewm_covar
 
 
 def main():
@@ -84,7 +82,7 @@ def main():
     print(model.estimated_betas.round(2).to_string())
     print()
 
-    print(f"=== Discovered gene modules (clusters) ===")
+    print("=== Discovered gene modules (clusters) ===")
     print(model.clusters.sort_values().to_string())
     print()
 
@@ -107,7 +105,7 @@ def main():
 
     # --- 6. R² per gene ---
     r2 = model.estimation_result_.r2
-    print(f"=== R² per gene ===")
+    print("=== R² per gene ===")
     r2_series = pd.Series(r2, index=gene_names)
     print(f"  Mean R²:   {r2_series.mean():.3f}")
     print(f"  Median R²: {r2_series.median():.3f}")

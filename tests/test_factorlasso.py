@@ -9,18 +9,17 @@ import pandas as pd
 import pytest
 
 from factorlasso import (
+    CurrentFactorCovarData,
+    LassoEstimationResult,
     LassoModel,
     LassoModelType,
-    LassoEstimationResult,
-    solve_lasso_cvx_problem,
-    solve_group_lasso_cvx_problem,
-    get_x_y_np,
-    compute_clusters_from_corr_matrix,
-    CurrentFactorCovarData,
     RollingFactorCovarData,
     VarianceColumns,
+    compute_clusters_from_corr_matrix,
+    get_x_y_np,
+    solve_group_lasso_cvx_problem,
+    solve_lasso_cvx_problem,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # Fixtures

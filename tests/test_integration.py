@@ -15,17 +15,17 @@ betas vs true betas for visual verification.
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 from enum import Enum
 
+import numpy as np
+import pandas as pd
+
 from factorlasso import (
+    LassoEstimationResult,
     LassoModel,
     LassoModelType,
-    LassoEstimationResult,
     get_x_y_np,
     solve_lasso_cvx_problem,
-    solve_group_lasso_cvx_problem,
 )
 
 
@@ -375,14 +375,14 @@ def run_local_test(local_test: LocalTests):
         y.iloc[:20, 2] = np.nan
 
         print(f"\n{'='*60}")
-        print(f" GET_X_Y_NP_STANDALONE")
+        print(" GET_X_Y_NP_STANDALONE")
         print(f"{'='*60}")
         print(f"\nInput shapes: x={x.shape}, y={y.shape}")
         print(f"NaN counts per asset: {y.isna().sum().to_dict()}")
 
         # EWMA demeaning (drops first row)
         x_np, y_np, valid_mask = get_x_y_np(x=x, y=y, span=26, demean=True)
-        print(f"\nAfter get_x_y_np (span=26):")
+        print("\nAfter get_x_y_np (span=26):")
         print(f"  x_np shape: {x_np.shape}  (T-1 due to EWMA demeaning)")
         print(f"  y_np shape: {y_np.shape}")
         print(f"  valid_mask shape: {valid_mask.shape}")
@@ -392,7 +392,7 @@ def run_local_test(local_test: LocalTests):
 
         # Simple demeaning (no row drop)
         x_np2, y_np2, valid_mask2 = get_x_y_np(x=x, y=y, span=None, demean=True)
-        print(f"\nAfter get_x_y_np (span=None, simple demeaning):")
+        print("\nAfter get_x_y_np (span=None, simple demeaning):")
         print(f"  x_np shape: {x_np2.shape}  (same T, no row drop)")
         print(f"  valid_mask sum per asset: {valid_mask2.sum(axis=0).astype(int)}")
         assert x_np2.shape[0] == 50, "No row drop for simple demeaning"
@@ -401,13 +401,13 @@ def run_local_test(local_test: LocalTests):
         x_with_nan_row = x.copy()
         x_with_nan_row.iloc[0, :] = np.nan
         x_np3, y_np3, valid_mask3 = get_x_y_np(x=x_with_nan_row, y=y, span=None, demean=True)
-        print(f"\nAfter get_x_y_np with x all-NaN first row:")
+        print("\nAfter get_x_y_np with x all-NaN first row:")
         print(f"  valid_mask[0, :] (should be all 0): {valid_mask3[0, :]}")
         assert np.all(valid_mask3[0, :] == 0.0), "x all-NaN row should invalidate all assets"
         print("PASS: x all-NaN row correctly masked")
 
         # Index assertion
-        print(f"\nTesting index mismatch assertion...")
+        print("\nTesting index mismatch assertion...")
         try:
             y_bad = y.iloc[:-5]
             get_x_y_np(x=x, y=y_bad)
@@ -441,7 +441,7 @@ def run_local_test(local_test: LocalTests):
         y[:60, 2] = np.nan
 
         print(f"\n{'='*60}")
-        print(f" SOLVER_STANDALONE_WITH_NANS")
+        print(" SOLVER_STANDALONE_WITH_NANS")
         print(f"{'='*60}")
         print(f"\nTrue betas (N x M):\n{true_b.round(3)}")
 
@@ -454,7 +454,7 @@ def run_local_test(local_test: LocalTests):
         )
         assert isinstance(result1, LassoEstimationResult), "Should return LassoEstimationResult"
         assert result1.estimated_beta.shape == (n, m), f"beta shape should be ({n},{m}), got {result1.estimated_beta.shape}"
-        print(f"\nLASSO (valid_mask=None):")
+        print("\nLASSO (valid_mask=None):")
         print(f"  Estimated betas (N x M):\n{result1.estimated_beta.round(3)}")
         print(f"  R²:    {result1.r2.round(3)}")
         print(f"  Alpha: {result1.alpha.round(6)}")
@@ -471,7 +471,7 @@ def run_local_test(local_test: LocalTests):
             reg_lambda=1e-5,
             span=52,
         )
-        print(f"\nLASSO (valid_mask explicit):")
+        print("\nLASSO (valid_mask explicit):")
         print(f"  Estimated betas (N x M):\n{result2.estimated_beta.round(3)}")
         print(f"  R²: {result2.r2.round(3)}")
 
@@ -521,7 +521,7 @@ def run_local_test(local_test: LocalTests):
         )
 
         print(f"\n{'='*60}")
-        print(f" SINGLE_FACTOR_MULTI_ASSET")
+        print(" SINGLE_FACTOR_MULTI_ASSET")
         print(f"{'='*60}")
         print(f"\nTrue betas (N x 1):\n{true_betas.flatten()}")
         print(f"x shape: {x_returns.shape}, y shape: {y_returns.shape}")
@@ -586,7 +586,7 @@ def run_local_test(local_test: LocalTests):
         )
 
         print(f"\n{'='*60}")
-        print(f" MULTI_FACTOR_SINGLE_ASSET")
+        print(" MULTI_FACTOR_SINGLE_ASSET")
         print(f"{'='*60}")
         print(f"\nTrue betas (1 x M): {true_betas.flatten()}")
         print(f"x shape: {x_returns.shape}, y shape: {y_returns.shape}")
@@ -657,7 +657,7 @@ def run_local_test(local_test: LocalTests):
         )
 
         print(f"\n{'='*60}")
-        print(f" SINGLE_FACTOR_SINGLE_ASSET")
+        print(" SINGLE_FACTOR_SINGLE_ASSET")
         print(f"{'='*60}")
         print(f"\nTrue beta: {true_beta}")
         print(f"x shape: {x_returns.shape}, y shape: {y_returns.shape}")

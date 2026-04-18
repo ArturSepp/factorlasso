@@ -73,8 +73,8 @@ class CurrentFactorCovarData:
         frequencies. Columns: ``left``, ``right``, ``distance``,
         ``n_samples``. Index is freq-prefixed (e.g. ``"ME:step_0"``,
         ``"QE:step_7"``) so the per-freq block can be recovered by prefix
-        match. See :func:`get_linkage_array` for reconstructing a
-        scipy-compatible ndarray.
+        match. See :func:`factorlasso.cluster_utils.get_linkage_array` for
+        reconstructing a scipy-compatible ndarray.
     cutoffs : pd.Series, optional
         Dendrogram cutoff distance per frequency (index = freq code).
 
@@ -114,16 +114,11 @@ class CurrentFactorCovarData:
 
     def __post_init__(self):
         """
-        Mirror ``clusters`` (a per-asset Series) into
-        ``y_variances['cluster']`` so that cluster assignment is
-        persisted through save/load and subsets cleanly in
-        ``filter_on_tickers`` along with the other per-variable
-        diagnostics. No-op if clusters is None, not a Series, or
-        already present in y_variances.
-
-        This mirror is also what makes the save/load of ``clusters``
-        asymmetric relative to ``linkages`` and ``cutoffs`` — see the
-        block comment above ``save()`` for the full rationale.
+        Mirror ``clusters`` (if a per-asset Series) into
+        ``y_variances['cluster']`` so that cluster assignment is persisted
+        through save/load and survives filter_on_tickers along with the
+        other per-variable diagnostics. No-op if clusters is None, not a
+        Series, or already present in y_variances.
         """
         if self.clusters is None:
             return
@@ -355,46 +350,13 @@ class CurrentFactorCovarData:
         )
 
     # ── Serialisation ────────────────────────────────────────────────
-    #
-    # The three HCGL outputs are persisted at different granularities
-    # because they live at different granularities in memory:
-    #
-    #   • ``clusters`` is ASSET-indexed (one cluster ID per ticker). It
-    #     is NOT written to its own sheet — ``__post_init__`` mirrors it
-    #     into ``y_variances['cluster']`` so the cluster column rides
-    #     along with the rest of the per-asset diagnostics. Upside:
-    #     ``filter_on_tickers`` subsets clusters for free as a side-
-    #     effect of subsetting ``y_variances``. Downside: save/load are
-    #     asymmetric — ``save()`` has nothing to do for clusters (they
-    #     ride in y_variances), and ``load()`` has to slice the column
-    #     back out to reconstruct the standalone Series.
-    #
-    #   • ``linkages`` is FREQ×MERGE-STEP-indexed (no natural home in
-    #     any other sheet). Written as its own ``linkages`` sheet,
-    #     loaded directly as a DataFrame.
-    #
-    #   • ``cutoffs`` is FREQ-indexed (one scalar per freq). Also gets
-    #     its own sheet. The extra iloc/name dance on load is just
-    #     because ``pd.read_excel`` always returns a DataFrame, and we
-    #     want a Series back.
-    #
-    # If this asymmetry ever becomes a pain, the simplest symmetric
-    # alternative is to give ``clusters`` its own sheet too — at the
-    # cost of manually propagating the asset subset through
-    # ``filter_on_tickers``.
 
     def save(self, path: str) -> None:
-        """Save core data to an Excel file (one sheet per component).
-
-        Note: ``clusters`` is not written here — it is already mirrored
-        into ``y_variances['cluster']`` by ``__post_init__`` and rides
-        along with the y_variances sheet. See the block comment above
-        for the full rationale.
-        """
+        """Save core data to an Excel file (one sheet per component)."""
         with pd.ExcelWriter(path) as writer:
             self.x_covar.to_excel(writer, sheet_name='x_covar')
             self.y_betas.to_excel(writer, sheet_name='y_betas')
-            self.y_variances.to_excel(writer, sheet_name='y_variances')  # carries clusters column
+            self.y_variances.to_excel(writer, sheet_name='y_variances')
             if self.residuals is not None:
                 self.residuals.to_excel(writer, sheet_name='residuals')
             if self.linkages is not None:
@@ -404,26 +366,20 @@ class CurrentFactorCovarData:
 
     @classmethod
     def load(cls, path: str) -> CurrentFactorCovarData:
-        """Load from an Excel file created by :meth:`save`.
-
-        See the block comment above ``save()`` for why ``clusters``,
-        ``linkages`` and ``cutoffs`` are loaded with different logic.
-        """
+        """Load from an Excel file created by :meth:`save`."""
         sheets = pd.read_excel(path, sheet_name=None, index_col=0)
         y_var = sheets['y_variances']
 
-        # clusters live inside y_variances (not a separate sheet — see
-        # block comment on the asymmetry). Slice the column out to
-        # reconstruct the standalone Series.
+        # Reconstruct clusters from y_variances if present
         clusters: Optional[pd.Series] = None
         if VarianceColumns.CLUSTER.value in y_var.columns:
             clusters = y_var[VarianceColumns.CLUSTER.value].copy()
 
-        # linkages: freq-prefixed merge-step index, DataFrame as-is.
+        # Linkages — stacked DataFrame with freq-prefixed index
         linkages: Optional[pd.DataFrame] = sheets.get('linkages')
 
-        # cutoffs: freq-indexed scalars. read_excel returns a 1-column
-        # DataFrame; collapse it back to a Series with the right name.
+        # Cutoffs — Series with freq index. pd.read_excel returns a DataFrame
+        # with one column; take the first (and only) column as a Series.
         cutoffs: Optional[pd.Series] = None
         cutoffs_df = sheets.get('cutoffs')
         if cutoffs_df is not None:
@@ -569,49 +525,3 @@ class RollingFactorCovarData:
 
     def get_snapshot(self, alpha_span: int = 120) -> Dict[pd.Timestamp, pd.DataFrame]:
         return {d: e.get_snapshot(alpha_span=alpha_span) for d, e in self.data.items()}
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Helpers
-# ═══════════════════════════════════════════════════════════════════════
-
-def get_linkage_array(
-    linkages: pd.DataFrame,
-    freq: str,
-) -> np.ndarray:
-    """
-    Slice the stacked linkage DataFrame back to a scipy-compatible ndarray.
-
-    ``CurrentFactorCovarData.linkages`` stacks per-freq linkage matrices
-    into one DataFrame with a freq-prefixed index (e.g. ``"ME:step_0"``,
-    ``"QE:step_0"``). SciPy's dendrogram / fcluster routines expect a raw
-    ``(K, 4)`` ndarray. This helper extracts the rows for one frequency
-    and returns them as a plain array, suitable for passing directly to
-    ``scipy.cluster.hierarchy.dendrogram`` or ``fcluster``.
-
-    Parameters
-    ----------
-    linkages : pd.DataFrame
-        Stacked linkage matrix with columns
-        ``['left', 'right', 'distance', 'n_samples']`` and freq-prefixed
-        index. Typically ``covar_data.linkages``.
-    freq : str
-        Frequency code to extract, e.g. ``'ME'`` or ``'QE'``.
-
-    Returns
-    -------
-    np.ndarray, shape (K, 4)
-        Linkage matrix for the requested frequency.
-
-    Raises
-    ------
-    KeyError
-        If no rows match the given freq prefix.
-    """
-    mask = linkages.index.astype(str).str.startswith(f"{freq}:")
-    if not mask.any():
-        raise KeyError(
-            f"No linkage rows found for freq={freq!r}. "
-            f"Available: {sorted(set(linkages.index.astype(str).str.split(':').str[0]))}"
-        )
-    return linkages.loc[mask, ['left', 'right', 'distance', 'n_samples']].to_numpy()
