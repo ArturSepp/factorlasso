@@ -35,12 +35,21 @@ except PackageNotFoundError:  # pragma: no cover - editable install before metad
 # --- Core estimator ---
 from factorlasso.cv import LassoModelCV
 
-# --- Utilities ---
+# --- EWMA / group-loading utilities ---
 from factorlasso.ewm_utils import (
     compute_ewm,
     compute_ewm_covar,
     compute_expanding_power,
     set_group_loadings,
+)
+
+# --- Clustering utilities ---
+from factorlasso.cluster_utils import (
+    compute_clusters_from_corr_matrix,
+    get_clusters_by_freq,
+    get_cutoffs_by_freq,
+    get_linkage_array,
+    get_linkages_by_freq,
 )
 
 # --- Factor covariance assembly ---
@@ -53,7 +62,6 @@ from factorlasso.lasso_estimator import (
     LassoEstimationResult,
     LassoModel,
     LassoModelType,
-    compute_clusters_from_corr_matrix,
     get_x_y_np,
     solve_group_lasso_cvx_problem,
     solve_lasso_cvx_problem,
@@ -68,12 +76,17 @@ __all__ = [
     "solve_lasso_cvx_problem",
     "solve_group_lasso_cvx_problem",
     "get_x_y_np",
-    "compute_clusters_from_corr_matrix",
     # Factor covariance
     "VarianceColumns",
     "CurrentFactorCovarData",
     "RollingFactorCovarData",
-    # Utilities
+    # Clustering utilities
+    "compute_clusters_from_corr_matrix",
+    "get_linkage_array",
+    "get_clusters_by_freq",
+    "get_linkages_by_freq",
+    "get_cutoffs_by_freq",
+    # EWMA / group-loading utilities
     "compute_ewm",
     "compute_ewm_covar",
     "compute_expanding_power",
