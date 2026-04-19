@@ -27,23 +27,6 @@ Full pipeline
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
-try:
-    __version__ = _pkg_version("factorlasso")
-except PackageNotFoundError:  # pragma: no cover - editable install before metadata exists
-    __version__ = "0.0.0+unknown"
-
-# --- Core estimator ---
-from factorlasso.cv import LassoModelCV
-
-# --- EWMA / group-loading utilities ---
-from factorlasso.ewm_utils import (
-    compute_ewm,
-    compute_ewm_covar,
-    compute_expanding_power,
-    set_group_loadings,
-)
-
-# --- Clustering utilities ---
 from factorlasso.cluster_utils import (
     compute_clusters_from_corr_matrix,
     get_clusters_by_freq,
@@ -51,8 +34,13 @@ from factorlasso.cluster_utils import (
     get_linkage_array,
     get_linkages_by_freq,
 )
-
-# --- Factor covariance assembly ---
+from factorlasso.cv import LassoModelCV
+from factorlasso.ewm_utils import (
+    compute_ewm,
+    compute_ewm_covar,
+    compute_expanding_power,
+    set_group_loadings,
+)
 from factorlasso.factor_covar import (
     CurrentFactorCovarData,
     RollingFactorCovarData,
@@ -67,25 +55,30 @@ from factorlasso.lasso_estimator import (
     solve_lasso_cvx_problem,
 )
 
+try:
+    __version__ = _pkg_version("factorlasso")
+except PackageNotFoundError:  # pragma: no cover - editable install before metadata exists
+    __version__ = "0.0.0+unknown"
+
 __all__ = [
-    # Estimator
-    "LassoModelType",
+    # Core estimator
     "LassoModel",
     "LassoModelCV",
+    "LassoModelType",
     "LassoEstimationResult",
     "solve_lasso_cvx_problem",
     "solve_group_lasso_cvx_problem",
     "get_x_y_np",
-    # Factor covariance
-    "VarianceColumns",
+    # Factor covariance assembly
     "CurrentFactorCovarData",
     "RollingFactorCovarData",
+    "VarianceColumns",
     # Clustering utilities
     "compute_clusters_from_corr_matrix",
-    "get_linkage_array",
     "get_clusters_by_freq",
-    "get_linkages_by_freq",
     "get_cutoffs_by_freq",
+    "get_linkage_array",
+    "get_linkages_by_freq",
     # EWMA / group-loading utilities
     "compute_ewm",
     "compute_ewm_covar",
