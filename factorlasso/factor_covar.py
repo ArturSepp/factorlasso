@@ -156,12 +156,32 @@ class CurrentFactorCovarData:
         Returns
         -------
         pd.DataFrame, shape (N, N) or (len(assets), len(assets))
+
+        Raises
+        ------
+        ValueError
+            If ``y_betas`` and ``y_variances`` indices disagree for the
+            requested asset set.  Silent row-ordering mismatch between β
+            and D is a subtle bug class that surfaces as wrong but
+            non-throwing covariance matrices in production; the explicit
+            check here converts it into a loud error.
         """
         betas = self.y_betas if assets is None else self.y_betas.loc[assets, :]
         resid = self.y_variances[VarianceColumns.RESIDUAL_VARS.value]
         resid = resid if assets is None else resid.loc[assets]
-        names = betas.index
 
+        # Row-ordering guard: β and D must agree on the asset order,
+        # otherwise β Σ_x β' + diag(resid) silently mixes rows. This
+        # guards against partial filter_on_tickers or any upstream
+        # reindex that desynchronises the two containers.
+        if not betas.index.equals(resid.index):
+            raise ValueError(
+                "y_betas and y_variances residual index disagree; "
+                f"betas: {list(betas.index)[:5]}...; "
+                f"resid: {list(resid.index)[:5]}..."
+            )
+
+        names = betas.index
         betas_np = betas.values  # (N × M)
         y_covar = betas_np @ self.x_covar.to_numpy() @ betas_np.T
 

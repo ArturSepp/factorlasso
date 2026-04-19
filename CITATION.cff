@@ -9,8 +9,8 @@ authors:
 repository-code: "https://github.com/ArturSepp/factorlasso"
 url: "https://factorlasso.readthedocs.io"
 license: MIT
-version: 0.1.0
-date-released: "2026-03-21"
+version: 0.3.0
+date-released: "2026-04-20"
 keywords:
   - lasso
   - group-lasso
@@ -45,6 +45,6 @@ references:
         family-names: Hansen
       - given-names: Mika
         family-names: Kastenholz
-    title: "Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors"
+    title: "Capital Market Assumptions Using Multi-Asset Tradable Factors: The MATF-CMA Framework"
     journal: "Under revision at the Journal of Portfolio Management"
     year: 2026

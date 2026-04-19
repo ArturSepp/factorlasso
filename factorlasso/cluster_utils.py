@@ -46,21 +46,36 @@ import scipy.cluster.hierarchy as spc
 # Clustering from correlation
 # ═══════════════════════════════════════════════════════════════════════
 
+# Default fraction of ``max(pdist)`` at which to cut the dendrogram.
+# 0.5 is the package-wide convention — half the maximum pairwise
+# correlation-distance — and empirically produces ~15–25 clusters on
+# a 150-asset multi-asset universe.  Callers that need a different
+# granularity can override via ``cutoff_fraction``.
+DEFAULT_CUTOFF_FRACTION: float = 0.5
+
 
 def compute_clusters_from_corr_matrix(
     corr_matrix: pd.DataFrame,
+    cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION,
 ) -> Tuple[pd.Series, np.ndarray, float]:
     """
     Hierarchical clustering from a correlation matrix (Ward's method).
 
     Converts correlation to distance ``(1 − corr)``, applies Ward's
-    agglomerative clustering, and cuts the dendrogram at 50 % of the
-    maximum pairwise distance.
+    agglomerative clustering, and cuts the dendrogram at
+    ``cutoff_fraction × max(pairwise distance)``.
 
     Parameters
     ----------
     corr_matrix : pd.DataFrame, shape (N, N)
         Square correlation matrix.
+    cutoff_fraction : float, default 0.5
+        Fraction of ``max(pdist)`` at which to cut the dendrogram.
+        Must lie in ``(0, 1]``.  Smaller values produce more, tighter
+        clusters; larger values produce fewer, looser clusters.  The
+        default ``0.5`` is the canonical setting used throughout the
+        MATF-CMA pipeline and typically yields ~15–25 clusters on a
+        150-asset multi-asset universe.
 
     Returns
     -------
@@ -69,7 +84,8 @@ def compute_clusters_from_corr_matrix(
     linkage : np.ndarray
         Scipy linkage matrix.
     cutoff : float
-        Distance threshold used for cutting.
+        Absolute distance threshold used for cutting
+        (``cutoff_fraction × max(pdist)``).
 
     Notes
     -----
@@ -81,7 +97,24 @@ def compute_clusters_from_corr_matrix(
     and computed Euclidean distances between those rows — a different
     (non-semantic) metric that conflated correlation structure with
     higher-order geometric relationships.
+
+    Examples
+    --------
+    >>> import numpy as np, pandas as pd
+    >>> from factorlasso import compute_clusters_from_corr_matrix
+    >>> rng = np.random.default_rng(0)
+    >>> X = rng.standard_normal((200, 6))
+    >>> X[:, 1] = X[:, 0] + 0.1 * rng.standard_normal(200)  # 0 & 1 correlated
+    >>> C = pd.DataFrame(np.corrcoef(X, rowvar=False),
+    ...                  columns=list("abcdef"), index=list("abcdef"))
+    >>> clusters, _, cutoff = compute_clusters_from_corr_matrix(C)
+    >>> clusters.loc['a'] == clusters.loc['b']
+    True
     """
+    if not (0.0 < cutoff_fraction <= 1.0):
+        raise ValueError(
+            f"cutoff_fraction must lie in (0, 1], got {cutoff_fraction!r}"
+        )
     corr_matrix = corr_matrix.fillna(0.0)
     # squareform(1 - C) is the correct conversion from a correlation matrix
     # to scipy's condensed pairwise-distance vector. Clip guards against
@@ -91,7 +124,7 @@ def compute_clusters_from_corr_matrix(
     np.fill_diagonal(dist_square, 0.0)
     pdist = spc.distance.squareform(dist_square, checks=False)
     linkage = spc.linkage(pdist, method='ward')
-    cutoff = 0.5 * np.max(pdist)
+    cutoff = cutoff_fraction * np.max(pdist)
     idx = spc.fcluster(linkage, cutoff, 'distance')
     clusters = pd.Series(idx, index=corr_matrix.columns)
     return clusters, linkage, cutoff

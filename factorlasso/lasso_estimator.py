@@ -40,6 +40,9 @@ References
 Sepp A., Ossa I., Kastenholz M. (2026), "Robust Optimization of
 Strategic and Tactical Asset Allocation for Multi-Asset Portfolios",
 *Journal of Portfolio Management*, 52(4), 86–120.
+
+Yuan, M., Lin, Y. (2006), "Model selection and estimation in regression
+with grouped variables", *J. R. Statist. Soc. B*, 68(1), 49–67.
 """
 
 from __future__ import annotations
@@ -53,8 +56,12 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
-from factorlasso.cluster_utils import compute_clusters_from_corr_matrix
+from factorlasso.cluster_utils import (
+    DEFAULT_CUTOFF_FRACTION,
+    compute_clusters_from_corr_matrix,
+)
 from factorlasso.ewm_utils import (
+    _validate_span,
     compute_ewm,
     compute_ewm_covar,
     compute_expanding_power,
@@ -124,7 +131,7 @@ def _compute_solver_diagnostics(
 
 
 def _compute_solver_weights(
-    t: int, n_y: int, span: Optional[int], valid_mask: np.ndarray
+    t: int, n_y: int, span: Optional[float], valid_mask: np.ndarray
 ) -> np.ndarray:
     """Observation weights: EWMA decay × validity mask."""
     if span is not None:
@@ -196,7 +203,7 @@ def _nan_result(n_y: int, n_x: int) -> LassoEstimationResult:
 def get_x_y_np(
     x: Union[pd.DataFrame, pd.Series],
     y: Union[pd.DataFrame, pd.Series],
-    span: Optional[int] = None,
+    span: Optional[float] = None,
     demean: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -209,8 +216,10 @@ def get_x_y_np(
     y : pd.DataFrame or pd.Series, shape (T, N) or (T,)
         Response data.  May contain NaNs (different history lengths).
         Series is converted to single-column DataFrame.
-    span : int, optional
-        EWMA span for demeaning.  ``None`` uses simple mean.
+    span : float, optional
+        EWMA span for demeaning.  ``None`` uses simple mean.  Must be ≥ 1
+        when provided.  Float accepted — the recursion math does not
+        require an integer span.
     demean : bool, default True
         If True, subtract (rolling) mean before estimation.
 
@@ -221,6 +230,7 @@ def get_x_y_np(
     valid_mask : np.ndarray, shape (T', N)
         ``T' = T − 1`` when EWMA demeaning is used.
     """
+    _validate_span(span)
     if isinstance(x, pd.Series):
         x = x.to_frame()
     if isinstance(y, pd.Series):
@@ -262,7 +272,7 @@ def solve_lasso_cvx_problem(
     y: np.ndarray,
     valid_mask: Optional[np.ndarray] = None,
     reg_lambda: float = 1e-8,
-    span: Optional[int] = None,
+    span: Optional[float] = None,
     verbose: bool = False,
     solver: str = 'CLARABEL',
     nonneg: bool = False,
@@ -291,8 +301,9 @@ def solve_lasso_cvx_problem(
         Binary validity mask.  Derived from ``y`` if ``None``.
     reg_lambda : float, default 1e-8
         L1 regularisation strength.
-    span : int, optional
-        EWMA span for observation weighting.
+    span : float, optional
+        EWMA span for observation weighting.  Must be ≥ 1 when provided.
+        Float accepted.
     verbose : bool, default False
         Print CVXPY solver output.
     solver : str, default 'CLARABEL'
@@ -308,6 +319,7 @@ def solve_lasso_cvx_problem(
     -------
     LassoEstimationResult
     """
+    _validate_span(span)
     assert y.ndim == 2 and x.ndim == 2 and x.shape[0] == y.shape[0]
     t, n_x = x.shape
     n_y = y.shape[1]
@@ -355,7 +367,7 @@ def solve_group_lasso_cvx_problem(
     group_loadings: np.ndarray,
     valid_mask: Optional[np.ndarray] = None,
     reg_lambda: float = 1e-8,
-    span: Optional[int] = None,
+    span: Optional[float] = None,
     nonneg: bool = False,
     verbose: bool = False,
     solver: str = 'CLARABEL',
@@ -370,9 +382,16 @@ def solve_group_lasso_cvx_problem(
     .. math::
 
         \frac{1}{T}\|W \odot (X\beta^\top - Y)\|_F^2
-        + \sum_g \lambda\sqrt{|g|/G}\,\|\beta_{g,:} - \beta_{0,g,:}\|_2
+        + \lambda \sum_g \sqrt{|g|} \sum_{i \in g}
+          \|\beta_{i,:} - \beta_{0,i,:}\|_2
 
-    where *g* indexes groups of response variables (rows of β).
+    where *g* indexes groups of response variables (rows of β) and the
+    per-group weight ``√|g|`` follows the Yuan–Lin (2006) convention:
+    penalty grows with group size so that large groups are not implicitly
+    preferred over small ones.  The inner sum is the ``L_{2,1}`` norm of
+    the group submatrix — each response's loading vector is shrunk by an
+    L2 norm, and the block sparsity is driven across responses within a
+    group.
 
     Parameters
     ----------
@@ -387,7 +406,18 @@ def solve_group_lasso_cvx_problem(
     Returns
     -------
     LassoEstimationResult
+
+    Notes
+    -----
+    Earlier versions used the weight ``√(|g|/G)``, which shrank the
+    penalty as more groups were added to the partition — an undesirable
+    property when the group structure is data-driven (HCGL) and the
+    number of clusters varies across estimation dates.  The ``√|g|``
+    convention removes that dependency and is the standard choice in the
+    group-lasso literature.  Users who tuned ``reg_lambda`` under the old
+    weighting will need to rescale: ``λ_new ≈ λ_old / √G``.
     """
+    _validate_span(span)
     assert y.ndim == 2 and x.ndim == 2 and group_loadings.ndim == 2
     assert x.shape[0] == y.shape[0] and y.shape[1] == group_loadings.shape[0]
 
@@ -415,12 +445,12 @@ def solve_group_lasso_cvx_problem(
     # Fit term
     fit = (1.0 / t) * cvx.sum_squares(cvx.multiply(weights, x @ beta.T - y))
 
-    # Group penalty
+    # Group penalty — Yuan–Lin weighting √|g| per group
     masks = [
         np.isclose(group_loadings[:, g], 1.0) for g in range(n_groups)
     ]
     penalty = cvx.sum([
-        reg_lambda * np.sqrt(np.sum(m) / n_groups)
+        reg_lambda * np.sqrt(np.sum(m))
         * cvx.sum(cvx.norm2(beta[m, :] - prior[m, :], axis=1))
         for m in masks
     ])
@@ -486,10 +516,23 @@ class LassoModel:
     ----------
     model_type : LassoModelType, default LASSO
     reg_lambda : float, default 1e-5
-    span : int, optional
-        EWMA span for observation weighting.
+    span : float, optional
+        EWMA span for observation weighting.  Must be ≥ 1 when provided.
+        Float accepted — integer is the common case, but the recursion
+        math does not require it.
+    span_freq_dict : dict, optional
+        Per-frequency override of ``span`` used by multi-frequency
+        pipelines downstream (``optimalportfolios`` / ``rosaa``).  Keys
+        are pandas freq codes (``'ME'``, ``'QE'``), values are spans at
+        that frequency (float).  Carried through the model specification
+        but not consumed by :meth:`fit`; the caller selects the right
+        span when it slices per frequency.
     group_data : pd.Series, optional
         Group labels (required for ``GROUP_LASSO``).
+    cutoff_fraction : float, default 0.5
+        Fraction of ``max(pdist)`` at which to cut the dendrogram when
+        ``model_type == GROUP_LASSO_CLUSTERS``.  Ignored by other modes.
+        See :func:`factorlasso.compute_clusters_from_corr_matrix`.
     factors_beta_loading_signs : pd.DataFrame, optional
     factors_beta_prior : pd.DataFrame, optional
     demean : bool, default True
@@ -533,8 +576,9 @@ class LassoModel:
     model_type: LassoModelType = LassoModelType.LASSO
     group_data: Optional[pd.Series] = None
     reg_lambda: float = 1e-5
-    span: Optional[int] = None
-    span_freq_dict: Optional[Dict[str, int]] = None
+    span: Optional[float] = None
+    span_freq_dict: Optional[Dict[str, float]] = None
+    cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION
     demean: bool = True
     solver: str = 'CLARABEL'
     warmup_period: Optional[int] = 12
@@ -552,12 +596,18 @@ class LassoModel:
     linkage_: Optional[np.ndarray] = None
     cutoff_: Optional[float] = None
     valid_mask_: Optional[np.ndarray] = None
-    effective_span_: Optional[int] = None
+    effective_span_: Optional[float] = None
 
     def __post_init__(self):
         if self.model_type == LassoModelType.GROUP_LASSO and self.group_data is None:
             raise ValueError(
                 "group_data must be provided for model_type=GROUP_LASSO"
+            )
+        _validate_span(self.span)
+        if not (0.0 < self.cutoff_fraction <= 1.0):
+            raise ValueError(
+                f"cutoff_fraction must lie in (0, 1], "
+                f"got {self.cutoff_fraction!r}"
             )
 
     # ── Backward-compatible property aliases ─────────────────────────
@@ -720,7 +770,10 @@ class LassoModel:
         verbose : bool, default False
             Print solver diagnostics.
         span : float, optional
-            Override EWMA span for this call.
+            Per-call override of the model's ``span`` hyperparameter.
+            ``None`` (the default) falls back to ``self.span`` without
+            modification — previous versions used ``span or self.span``
+            which would treat ``span=0`` as "unset".
 
         Returns
         -------
@@ -729,7 +782,12 @@ class LassoModel:
         """
         x, y = self._validate_fit_inputs(x, y)
 
-        eff_span = span or self.span
+        # Explicit None-check for span precedence: ``span or self.span``
+        # would mistakenly treat span=0 as falsy and fall back to
+        # self.span. Zero is not a valid span anyway (validated below),
+        # but the correct idiom is an explicit None check.
+        eff_span = self.span if span is None else span
+        _validate_span(eff_span)
         x_np, y_np, valid_mask = get_x_y_np(
             x=x, y=y, span=eff_span, demean=self.demean
         )
@@ -776,7 +834,9 @@ class LassoModel:
                 a=y_np, span=eff_span, is_corr=True,
             )
             corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
-            clusters, linkage, cutoff = compute_clusters_from_corr_matrix(corr_df)
+            clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
+                corr_df, cutoff_fraction=self.cutoff_fraction,
+            )
             gl = set_group_loadings(group_data=clusters)
             result = solve_group_lasso_cvx_problem(
                 x=x_np, y=y_np, group_loadings=gl.to_numpy(),

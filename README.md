@@ -1,104 +1,225 @@
-# factorlasso 0.2.0 — Release Bundle
+# factorlasso
 
-This bundle contains the three source files that need to be committed to the
-repo for the 0.2.0 release, plus the built distribution artefacts.
+**Sparse multi-output regression with sign constraints, prior-centered
+regularisation, and hierarchical group LASSO — via CVXPY.**
 
-## Contents
+[![PyPI](https://img.shields.io/pypi/v/factorlasso.svg)](https://pypi.org/project/factorlasso/)
+[![Python](https://img.shields.io/pypi/pyversions/factorlasso.svg)](https://pypi.org/project/factorlasso/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-| File | Where it goes | What changed |
-|---|---|---|
-| `__init__.py` | `factorlasso/__init__.py` | Rewritten to export the 5 cluster utilities from `cluster_utils` |
-| `.gitignore` | repo root | Fixed `.idea/` exclusion; expanded Python project ignores |
-| `pyproject.toml` | repo root | Version bumped `0.1.12 → 0.2.0` |
-| `factorlasso-0.2.0-py3-none-any.whl` | `dist/` | Fresh wheel build (includes `cluster_utils.py`) |
-| `factorlasso-0.2.0.tar.gz` | `dist/` | Fresh sdist build |
+`factorlasso` is a small, dependency-light Python package for fitting sparse
+multi-output linear models
 
-## What verified
+$$
+Y = X\beta^\top + \varepsilon,
+\qquad \beta \in \mathbb{R}^{N \times M}
+$$
 
-Against the full repo state (cluster_utils.py + updated __init__.py + all other modules):
+when three things matter:
 
-- ✓ `python -m pytest tests/` → **143 passed, 9 skipped** (skipped are environment-specific)
-- ✓ `python tests/test_integration.py` → runs end-to-end
-- ✓ Fresh wheel builds cleanly via `python -m build --wheel --sdist`
-- ✓ Installing from the fresh wheel and re-running all tests → all pass
-- ✓ `from factorlasso import get_clusters_by_freq, get_linkages_by_freq, get_cutoffs_by_freq, get_linkage_array, compute_clusters_from_corr_matrix` → all importable
-- ✓ Round-trip HCGL ≡ GROUP_LASSO-with-external-clusters semantic test passes
-- ✓ `.gitignore` correctly excludes `.idea/*`, `__pycache__/`, build artefacts
+- Some coefficients **must be zero, non-negative, or non-positive**, possibly by
+  asset, by factor, or both.
+- You have a **prior** β₀ and want to penalise `‖β − β₀‖`, not `‖β‖`.
+- You want **structured sparsity** — groups of responses entering or leaving
+  the model together — where the groups are either user-supplied or discovered
+  by hierarchical clustering of the response correlation matrix (HCGL).
 
-## Version bump rationale (semver)
+It is written in pure numpy/pandas/scipy/cvxpy. No numba, no custom
+coordinate descent. The solver is CVXPY (default `CLARABEL`), so problem
+formulation is explicit and auditable.
 
-0.1.12 → 0.2.0 because the release **adds new public API**:
+---
 
-- `get_clusters_by_freq` (new)
-- `get_linkages_by_freq` (new)
-- `get_cutoffs_by_freq` (new)
-- `get_linkage_array` (promoted from internal to public export)
-
-Plus a module-level reorganisation (all clustering utilities consolidated
-into the new `factorlasso.cluster_utils` module). The existing public
-API is fully preserved — `compute_clusters_from_corr_matrix` is still
-importable from `factorlasso` top-level exactly as before.
-
-## One manual cleanup step needed in your working copy
-
-The `.idea/` directory was previously committed (the old `.gitignore` had
-`*.idea/` which doesn't match `.idea/`). Updating `.gitignore` alone
-won't untrack what's already in git. Run this once:
+## Installation
 
 ```bash
-git rm -r --cached .idea/
-git commit -m "chore: untrack .idea IDE metadata"
+pip install factorlasso
 ```
 
-After that, future changes to `.idea/` files will be ignored correctly.
+Requires Python ≥ 3.9, CVXPY ≥ 1.3, and numpy / pandas / scipy / openpyxl.
 
-## Suggested commit structure
+---
 
-Three logical commits:
+## Quickstart
+
+```python
+import numpy as np
+import pandas as pd
+from factorlasso import LassoModel, LassoModelType
+
+rng = np.random.default_rng(0)
+T, M, N = 200, 4, 10
+X = pd.DataFrame(rng.standard_normal((T, M)), columns=[f"f{i}" for i in range(M)])
+Y = pd.DataFrame(rng.standard_normal((T, N)), columns=[f"y{i}" for i in range(N)])
+
+model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-3).fit(x=X, y=Y)
+
+model.coef_         # (N, M) estimated β
+model.intercept_    # (N,) estimated α
+model.predict(X)    # Ŷ
+model.score(X, Y)   # mean R²
+```
+
+The API mirrors scikit-learn: `fit(x, y)`, `predict(x)`, `score(x, y)`,
+`get_params()`, `set_params()`. Fitted attributes carry a trailing underscore.
+
+---
+
+## What makes it different
+
+### 1. Per-element sign constraints
+
+A `(N × M)` matrix drives the constraints. Each entry is one of
+`{0, 1, -1, NaN}`: equality-to-zero, non-negative, non-positive, or free.
+This lets a single fit encode structural knowledge that spans multiple
+responses.
+
+```python
+signs = pd.DataFrame(np.nan, index=Y.columns, columns=X.columns)
+signs.loc["y0", "f0"] = 1      # β[y0, f0] ≥ 0
+signs.loc["y0", "f1"] = 0      # β[y0, f1] == 0
+signs.loc["y1", "f0"] = -1     # β[y1, f0] ≤ 0
+
+model = LassoModel(
+    reg_lambda=1e-3,
+    factors_beta_loading_signs=signs,
+).fit(x=X, y=Y)
+```
+
+Scikit-learn's `Lasso` supports only a single `positive` flag across the whole
+coefficient matrix. Arbitrary per-element sign constraints are not expressible
+without a custom CVXPY problem; this is that custom problem, packaged.
+
+### 2. Prior-centered regularisation
+
+Pass a `(N × M)` DataFrame `factors_beta_prior` to penalise `‖β − β₀‖` instead
+of `‖β‖`. The prior is a soft target, not a hard constraint — the penalty
+tension between data fit and prior is still controlled by `reg_lambda`.
+
+```python
+prior = 0.5 * np.sign(X.corrwith(Y["y0"]).to_numpy())
+# ... build an (N, M) DataFrame `prior_df` with that structure ...
+
+model = LassoModel(
+    reg_lambda=1e-3,
+    factors_beta_prior=prior_df,
+).fit(x=X, y=Y)
+```
+
+### 3. Hierarchical Clustering Group LASSO (HCGL)
+
+The groups in classical group LASSO are user-specified. HCGL discovers them
+from the data: EWMA correlation of the response matrix → Ward's linkage →
+dendrogram cut at `cutoff_fraction × max(pdist)` → block-sparse penalty on
+the resulting clusters.
+
+```python
+model = LassoModel(
+    model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+    reg_lambda=1e-4,
+    cutoff_fraction=0.5,   # tune granularity; smaller → tighter clusters
+    span=60,               # EWMA span for correlation estimate
+).fit(x=X, y=Y)
+
+model.coef_        # (N, M)
+model.clusters_    # pd.Series of cluster labels per response
+model.linkage_     # scipy linkage matrix
+```
+
+Useful when you suspect group structure in the responses but don't know the
+partition — or when the correct partition drifts over time, so any manual
+grouping would need to be refit anyway.
+
+---
+
+## When to use it — and when not
+
+**Use it when:**
+
+- Multi-output LASSO with heterogeneous sign constraints across the coefficient
+  matrix.
+- You have a prior `β₀` that should shrink the fit instead of zero.
+- You need discovered-group structured sparsity (HCGL).
+- You want a small, auditable CVXPY-based tool rather than a coordinate-descent
+  library with opaque internals.
+
+**Reach for something else when:**
+
+- Your problem is single-output elastic-net at large scale — `scikit-learn`,
+  `celer`, or `skglm` will be faster and have years of battle-testing.
+- You need fixed-group group LASSO at very large scale — `group-lasso` or
+  `asgl` are the standard tools.
+- You need non-linear models, random effects, or GLM link functions.
+
+A feature-by-feature comparison matrix is in
+[`COMPARISON.md`](COMPARISON.md).
+
+---
+
+## Examples
+
+Three runnable examples in [`examples/`](examples/):
+
+- [`genomics_factor_model.py`](examples/genomics_factor_model.py) —
+  QTL-style multi-response LASSO: genotype matrix → expression panel, with
+  sign constraints derived from biological priors.
+- [`finance_factor_model.py`](examples/finance_factor_model.py) —
+  Multi-asset factor decomposition with sign constraints and HCGL clustering.
+- [`cv_lambda_selection.py`](examples/cv_lambda_selection.py) —
+  Time-series cross-validated `reg_lambda` selection via `LassoModelCV` with
+  expanding-window splits.
+
+---
+
+## Testing
 
 ```bash
-# 1. Code reorganisation (already in your repo — cluster_utils.py, the
-#    updated lasso_estimator.py and factor_covar.py)
-git add factorlasso/cluster_utils.py factorlasso/lasso_estimator.py factorlasso/factor_covar.py
-git commit -m "refactor: consolidate clustering utilities into cluster_utils module"
-
-# 2. Public API update
-git add factorlasso/__init__.py
-git commit -m "feat: export cluster helpers (get_*_by_freq, get_linkage_array)"
-
-# 3. Version bump + .gitignore fix
-git add pyproject.toml .gitignore
-git rm -r --cached .idea/
-git commit -m "chore: bump to 0.2.0; fix .idea gitignore glob"
-
-# 4. (optional) Rebuild dist/ if you want to commit artefacts
-# Most projects don't commit dist/ — just build on release via CI
+pip install -e ".[dev]"
+pytest
 ```
 
-## Changelog entry (for `CHANGELOG.md` if you have one)
+The suite currently has 201 tests at 98%+ coverage, including numerical parity
+tests against `qis` for the EWMA primitives and against `scikit-learn` for the
+LASSO path.
 
-```markdown
-## [0.2.0] - 2026-04-18
+---
 
-### Added
-- New module `factorlasso.cluster_utils` consolidating all clustering utilities
-- Public API exports: `get_clusters_by_freq`, `get_linkages_by_freq`, `get_cutoffs_by_freq`
-- Public API export: `get_linkage_array` (previously internal)
+## Citation
 
-### Changed
-- `compute_clusters_from_corr_matrix` moved from `lasso_estimator.py` to `cluster_utils.py`
-  (still importable from top-level `factorlasso`)
-- `get_linkage_array` moved from `factor_covar.py` to `cluster_utils.py`
-- `LassoModel` with `model_type=GROUP_LASSO` now populates `.clusters_` attribute from
-  externally-supplied `group_data`, for API uniformity with HCGL mode
+If you use `factorlasso` in academic work, please cite:
 
-### Fixed
-- `compute_clusters_from_corr_matrix` now uses `squareform(1 - C)` (correct correlation-to-distance
-  conversion) instead of the previous buggy `pdist(1 - C)` (which computed Euclidean distances
-  between rows of the correlation matrix)
-- `.gitignore` glob `*.idea/` corrected to `.idea/`
+```bibtex
+@article{SeppOssaKastenholz2026,
+  author  = {Sepp, Artur and Ossa, Ivan and Kastenholz, Mika},
+  title   = {Robust Optimization of Strategic and Tactical Asset Allocation
+             for Multi-Asset Portfolios},
+  journal = {The Journal of Portfolio Management},
+  year    = {2026},
+  volume  = {52},
+  number  = {4},
+  pages   = {86--120},
+}
 
-### Internal
-- All 143 existing tests continue to pass
-- Wheel now correctly includes `cluster_utils.py`
+@software{factorlasso,
+  author  = {Sepp, Artur},
+  title   = {factorlasso: Sparse Factor Model Estimation with Constrained LASSO
+             in Python},
+  year    = {2026},
+  url     = {https://github.com/ArturSepp/factorlasso},
+}
 ```
+
+---
+
+## Contributing & feedback
+
+Issues and pull requests welcome at
+<https://github.com/ArturSepp/factorlasso>.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for release history.
+
+---
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).

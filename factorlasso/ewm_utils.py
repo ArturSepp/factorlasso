@@ -37,6 +37,59 @@ class NanBackfill(Enum):
     NAN_FILL = 4         # like DEFLATED_FFILL but mark output as NaN
 
 
+# ── Validation helpers ────────────────────────────────────────────────
+
+def _validate_span(span: Optional[float], name: str = "span") -> None:
+    """
+    Validate an EWMA span value.
+
+    A valid span is either ``None`` (caller will fall back to
+    ``ewm_lambda``) or a finite number ≥ 1.  The recursion coefficient
+    ``λ = 1 − 2/(span + 1)`` lands in ``[0, 1)`` for ``span ≥ 1``;
+    anything smaller yields ``λ < 0`` which is nonsensical.
+
+    Parameters
+    ----------
+    span : float or None
+        The span to validate.
+    name : str, default 'span'
+        Parameter name used in the error message (lets callers surface
+        the original kwarg name, e.g. ``'alpha_span'``).
+
+    Raises
+    ------
+    ValueError
+        If ``span`` is non-finite or below 1.
+    """
+    if span is None:
+        return
+    if not np.isfinite(span) or span < 1.0:
+        raise ValueError(
+            f"{name} must be a finite number >= 1.0, got {span!r}"
+        )
+
+
+def _validate_ewm_lambda(ewm_lambda: float) -> None:
+    """
+    Validate an EWMA decay factor.
+
+    Parameters
+    ----------
+    ewm_lambda : float
+        Must be finite and lie in ``[0, 1)``.  ``λ = 1`` is excluded
+        because it produces a constant series that never updates.
+
+    Raises
+    ------
+    ValueError
+        If ``ewm_lambda`` is non-finite or outside ``[0, 1)``.
+    """
+    if not np.isfinite(ewm_lambda) or not (0.0 <= ewm_lambda < 1.0):
+        raise ValueError(
+            f"ewm_lambda must be a finite number in [0, 1), got {ewm_lambda!r}"
+        )
+
+
 # ── Internal helpers ──────────────────────────────────────────────────
 
 def _to_np(data, fill_value: float = np.nan) -> np.ndarray:
@@ -90,9 +143,9 @@ def ewm_recursion(a: np.ndarray,
         Initial state at t = 0 (or at the first non-NaN observation when
         ``is_start_from_first_nonan`` is True).
     span : float, optional
-        EWMA span; converts to ``λ = 1 − 2/(span+1)``.
+        EWMA span; converts to ``λ = 1 − 2/(span+1)``.  Must be ≥ 1.
     ewm_lambda : float, default 0.94
-        Decay factor.  Used only if ``span`` is None.
+        Decay factor.  Used only if ``span`` is None.  Must lie in [0, 1).
     is_start_from_first_nonan : bool, default True
         If True, the recursion only "starts" at the first non-NaN
         observation; earlier rows stay NaN. Recommended — avoids
@@ -100,9 +153,17 @@ def ewm_recursion(a: np.ndarray,
         when the series begins with missing data.
     nan_backfill : NanBackfill, default FFILL
         How to handle NaN observations mid-stream.
+
+    Raises
+    ------
+    ValueError
+        If ``span`` is below 1 (when provided) or ``ewm_lambda`` is
+        outside ``[0, 1)`` (when ``span`` is ``None``).
     """
+    _validate_span(span)
     if span is not None:
         ewm_lambda = 1.0 - 2.0 / (span + 1.0)
+    _validate_ewm_lambda(ewm_lambda)
     lam1 = 1.0 - ewm_lambda
     is_1d = (a.ndim == 1)
 
@@ -170,17 +231,36 @@ def compute_expanding_power(n: int,
     Parameters
     ----------
     n : int
-        Length of the sequence.
+        Length of the sequence.  Must be ≥ 1.
     power_lambda : float
-        Base of the geometric sequence.
+        Base of the geometric sequence.  Must be strictly positive and
+        finite.  Values in ``(0, 1]`` produce the usual non-increasing
+        sequence; ``λ = 1`` gives uniform weights.  Callers pass
+        ``sqrt(1 − 2/(span+1))`` in practice, which is always positive,
+        but the explicit guard catches corrupt upstream values before
+        ``np.log(λ)`` poisons the output with ``-inf`` / ``NaN``.
     reverse_columns : bool, default False
         If True, reverse so that the most recent observation has weight 1.
 
     Returns
     -------
     np.ndarray
-        1-D array of length *n*.
+        1-D array of length *n*.  When ``n == 1`` the result is
+        ``[1.0]`` regardless of ``power_lambda`` — a single observation
+        trivially carries the full (equal) weight.
+
+    Raises
+    ------
+    ValueError
+        If ``n < 1`` or ``power_lambda`` is non-positive / non-finite.
     """
+    if n < 1:
+        raise ValueError(f"n must be >= 1, got {n}")
+    if not (np.isfinite(power_lambda) and power_lambda > 0.0):
+        raise ValueError(
+            f"power_lambda must be finite and strictly positive, "
+            f"got {power_lambda!r}"
+        )
     a = np.log(power_lambda) * np.ones(n)
     a[0] = 0.0
     b = np.exp(np.cumsum(a))
@@ -209,8 +289,9 @@ def compute_ewm(data: Union[pd.DataFrame, pd.Series, np.ndarray],
     data : pd.DataFrame, pd.Series, or np.ndarray, shape (T,) or (T, N)
     span : float, optional
         EWMA span; ``λ = 1 − 2/(span+1)``.  Overrides ``ewm_lambda``.
+        Must be ≥ 1 when provided.
     ewm_lambda : float, default 0.94
-        Decay factor (used only if ``span`` is None).
+        Decay factor (used only if ``span`` is None).  Must lie in [0, 1).
     init_value : float or ndarray, optional
         Override for the recursion's initial state.  Derived from
         ``init_type`` if not provided.
@@ -221,6 +302,7 @@ def compute_ewm(data: Union[pd.DataFrame, pd.Series, np.ndarray],
     -------
     Same type and shape as ``data``.
     """
+    _validate_span(span)
     a = _to_np(data, fill_value=np.nan)
 
     if init_value is None:
@@ -249,7 +331,7 @@ def compute_ewm(data: Union[pd.DataFrame, pd.Series, np.ndarray],
 
 def compute_ewm_covar(a: np.ndarray,
                       b: Optional[np.ndarray] = None,
-                      span: Optional[int] = None,
+                      span: Optional[float] = None,
                       ewm_lambda: float = 0.94,
                       covar0: Optional[np.ndarray] = None,
                       is_corr: bool = False,
@@ -279,10 +361,11 @@ def compute_ewm_covar(a: np.ndarray,
         Returns matrix (typically demeaned).
     b : np.ndarray, optional
         Cross matrix; defaults to ``a``. Must have the same shape as ``a``.
-    span : int, optional
-        EWMA span; ``λ = 1 − 2/(span+1)``.
+    span : float, optional
+        EWMA span; ``λ = 1 − 2/(span+1)``.  Must be ≥ 1 when provided.
+        Float accepted.
     ewm_lambda : float, default 0.94
-        Decay factor (used only if ``span`` is None).
+        Decay factor (used only if ``span`` is None).  Must lie in [0, 1).
     covar0 : np.ndarray, optional
         Initial covariance matrix; defaults to zeros. Non-finite entries
         are zeroed.
@@ -296,6 +379,7 @@ def compute_ewm_covar(a: np.ndarray,
     -------
     np.ndarray, shape (N, N)
     """
+    _validate_span(span)
     if b is None:
         b = a
     else:
@@ -305,6 +389,7 @@ def compute_ewm_covar(a: np.ndarray,
 
     if span is not None:
         ewm_lambda = 1.0 - 2.0 / (span + 1.0)
+    _validate_ewm_lambda(ewm_lambda)
     # Note: λ enters the covariance recursion *linearly* on the outer
     # product a ⊗ b.  The matched quadratic-loss weights in
     # ``lasso_estimator._compute_solver_weights`` therefore use

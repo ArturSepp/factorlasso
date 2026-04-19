@@ -31,13 +31,27 @@ True
 
 from __future__ import annotations
 
+import sys
+import warnings
 from dataclasses import dataclass, field
 from typing import Iterator, Optional, Sequence, Tuple
 
+import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
 from factorlasso.lasso_estimator import LassoModel
+
+# Errors we treat as "this fold failed, record NaN and continue".
+# Anything else (KeyboardInterrupt, MemoryError, attribute errors from
+# bad user kwargs) should propagate to the caller.
+_FOLD_ERRORS: Tuple[type, ...] = (
+    cvx.error.SolverError,
+    cvx.error.DCPError,
+    ValueError,
+    np.linalg.LinAlgError,
+)
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # Time-series splits
@@ -134,6 +148,13 @@ class LassoModelCV:
     -----
     Scoring uses :meth:`LassoModel.score`, which is mean R² across
     response variables.  Higher is better.
+
+    Fold failures in the solver (``cvx.error.SolverError``,
+    ``LinAlgError``, ``ValueError``, ``cvx.error.DCPError``) are caught
+    and recorded as NaN in ``cv_scores_``.  Any other exception —
+    ``KeyboardInterrupt``, ``MemoryError``, ``AttributeError`` from
+    an unexpected kwarg — propagates so that real bugs are not silently
+    swallowed by the CV loop.
     """
 
     lambdas: Optional[Sequence[float]] = None
@@ -165,7 +186,8 @@ class LassoModelCV:
         y : pd.DataFrame, shape (T, N)
             Response (asset) returns.  May contain NaNs.
         verbose : bool, default False
-            Forwarded to :meth:`LassoModel.fit`.
+            If True, forwarded to :meth:`LassoModel.fit` and a warning
+            is emitted for every fold that fails.
 
         Returns
         -------
@@ -196,9 +218,21 @@ class LassoModelCV:
                         x=x.iloc[tr], y=y.iloc[tr], verbose=verbose,
                     )
                     scores[i, j] = model.score(x.iloc[te], y.iloc[te])
-                except Exception:
-                    # Solver failure or degenerate fold — leave NaN
-                    pass
+                except _FOLD_ERRORS as err:
+                    if verbose:
+                        warnings.warn(
+                            f"CV fold (lambda={lam:.2e}, split={j}) failed: "
+                            f"{type(err).__name__}: {err}",
+                            RuntimeWarning,
+                            stacklevel=2,
+                        )
+                        print(
+                            f"[LassoModelCV] fold failed "
+                            f"(lambda={lam:.2e}, split={j}): "
+                            f"{type(err).__name__}: {err}",
+                            file=sys.stderr,
+                        )
+                    # Fall through with NaN score
 
         cv_scores = pd.DataFrame(
             scores,

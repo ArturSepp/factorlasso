@@ -24,6 +24,7 @@ from factorlasso import (
     VarianceColumns,
 )
 from factorlasso.ewm_utils import compute_ewm_covar
+from factorlasso.lasso_estimator import get_x_y_np
 
 
 def main():
@@ -74,20 +75,17 @@ def main():
     model.fit(x=X, y=Y)
 
     print("=== Estimated betas (N × M) ===")
-    print(model.estimated_betas.round(3))
+    print(model.coef_.round(3))
     print()
 
     print("=== Clusters ===")
-    print(model.clusters)
+    print(model.clusters_)
     print()
 
     # --- 4. Assemble covariance decomposition ---
-    # Estimate factor covariance
-    x_np, _, _ = LassoModel(span=52, demean=True).fit(x=X, y=Y).valid_mask_, None, None
-    # Actually compute factor covariance from raw demeaned returns
-    from factorlasso.lasso_estimator import get_x_y_np
+    # Compute factor covariance from raw demeaned returns (no model fit needed)
     x_dm, _, _ = get_x_y_np(x=X, y=Y, span=52)
-    x_covar_np = compute_ewm_covar(a=x_dm[:, :M], span=52)
+    x_covar_np = compute_ewm_covar(a=x_dm, span=52)
     # Annualise (52 weekly observations per year)
     x_covar = pd.DataFrame(52.0 * x_covar_np, index=factor_names, columns=factor_names)
 
@@ -101,7 +99,7 @@ def main():
 
     covar_data = CurrentFactorCovarData(
         x_covar=x_covar,
-        y_betas=model.estimated_betas,
+        y_betas=model.coef_,
         y_variances=y_variances,
     )
 
