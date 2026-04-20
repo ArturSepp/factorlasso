@@ -373,6 +373,7 @@ def solve_group_lasso_cvx_problem(
     solver: str = 'CLARABEL',
     factors_beta_loading_signs: Optional[np.ndarray] = None,
     factors_beta_prior: Optional[np.ndarray] = None,
+    group_penalty: str = "normalized",
 ) -> LassoEstimationResult:
     r"""
     Group LASSO multi-output regression via CVXPY.
@@ -382,16 +383,14 @@ def solve_group_lasso_cvx_problem(
     .. math::
 
         \frac{1}{T}\|W \odot (X\beta^\top - Y)\|_F^2
-        + \lambda \sum_g \sqrt{|g|} \sum_{i \in g}
+        + \lambda \sum_g w_g \sum_{i \in g}
           \|\beta_{i,:} - \beta_{0,i,:}\|_2
 
     where *g* indexes groups of response variables (rows of β) and the
-    per-group weight ``√|g|`` follows the Yuan–Lin (2006) convention:
-    penalty grows with group size so that large groups are not implicitly
-    preferred over small ones.  The inner sum is the ``L_{2,1}`` norm of
-    the group submatrix — each response's loading vector is shrunk by an
-    L2 norm, and the block sparsity is driven across responses within a
-    group.
+    per-group weight ``w_g`` is set by ``group_penalty`` (see below).
+    The inner sum is the ``L_{2,1}`` norm of the group submatrix —
+    each response's loading vector is shrunk by an L2 norm, and block
+    sparsity is driven across responses within a group.
 
     Parameters
     ----------
@@ -402,22 +401,34 @@ def solve_group_lasso_cvx_problem(
     valid_mask, reg_lambda, span, nonneg, verbose, solver,
     factors_beta_loading_signs, factors_beta_prior
         See :func:`solve_lasso_cvx_problem`.
+    group_penalty : {"normalized", "yuan_lin"}, default "normalized"
+        Per-group weighting convention:
+
+        - ``"normalized"``: ``w_g = √(|g|/G)``. Group-count-invariant —
+          keeps the effective regularisation scale stable across
+          problems with different numbers of groups G. This is the
+          package default and the appropriate choice for HCGL, where
+          G is data-driven and can vary across estimation dates or
+          rolling windows.
+        - ``"yuan_lin"``: ``w_g = √|g|``. Classical Yuan–Lin (2006)
+          weighting. Opt in when the number of groups is fixed by the
+          problem specification (not data-driven) and you want the
+          textbook convention.
+
+        The two conventions are related by a constant factor √G, so
+        results under ``"yuan_lin"`` at regularisation ``λ`` match
+        results under ``"normalized"`` at regularisation ``λ·√G``.
 
     Returns
     -------
     LassoEstimationResult
-
-    Notes
-    -----
-    Earlier versions used the weight ``√(|g|/G)``, which shrank the
-    penalty as more groups were added to the partition — an undesirable
-    property when the group structure is data-driven (HCGL) and the
-    number of clusters varies across estimation dates.  The ``√|g|``
-    convention removes that dependency and is the standard choice in the
-    group-lasso literature.  Users who tuned ``reg_lambda`` under the old
-    weighting will need to rescale: ``λ_new ≈ λ_old / √G``.
     """
     _validate_span(span)
+    if group_penalty not in ("normalized", "yuan_lin"):
+        raise ValueError(
+            f"group_penalty must be 'normalized' or 'yuan_lin', "
+            f"got {group_penalty!r}"
+        )
     assert y.ndim == 2 and x.ndim == 2 and group_loadings.ndim == 2
     assert x.shape[0] == y.shape[0] and y.shape[1] == group_loadings.shape[0]
 
@@ -445,12 +456,20 @@ def solve_group_lasso_cvx_problem(
     # Fit term
     fit = (1.0 / t) * cvx.sum_squares(cvx.multiply(weights, x @ beta.T - y))
 
-    # Group penalty — Yuan–Lin weighting √|g| per group
+    # Per-group weight. "normalized" (default) preserves the v0.2.2
+    # behaviour √(|g|/G); "yuan_lin" uses the classical √|g|.
+    def _weight(m: np.ndarray) -> float:
+        g = np.sum(m)
+        if group_penalty == "yuan_lin":
+            return float(np.sqrt(g))
+        return float(np.sqrt(g / n_groups))
+
+    # Group penalty
     masks = [
         np.isclose(group_loadings[:, g], 1.0) for g in range(n_groups)
     ]
     penalty = cvx.sum([
-        reg_lambda * np.sqrt(np.sum(m))
+        reg_lambda * _weight(m)
         * cvx.sum(cvx.norm2(beta[m, :] - prior[m, :], axis=1))
         for m in masks
     ])
@@ -533,6 +552,13 @@ class LassoModel:
         Fraction of ``max(pdist)`` at which to cut the dendrogram when
         ``model_type == GROUP_LASSO_CLUSTERS``.  Ignored by other modes.
         See :func:`factorlasso.compute_clusters_from_corr_matrix`.
+    group_penalty : {"normalized", "yuan_lin"}, default "normalized"
+        Per-group weighting for the group-LASSO penalty.  ``"normalized"``
+        uses ``√(|g|/G)`` (group-count-invariant) and is the default —
+        appropriate for HCGL where the number of groups is data-driven.
+        ``"yuan_lin"`` uses the classical Yuan–Lin (2006) ``√|g|``.
+        Ignored for ``model_type == LASSO``.  See
+        :func:`solve_group_lasso_cvx_problem` for the full formula.
     factors_beta_loading_signs : pd.DataFrame, optional
     factors_beta_prior : pd.DataFrame, optional
     demean : bool, default True
@@ -579,6 +605,7 @@ class LassoModel:
     span: Optional[float] = None
     span_freq_dict: Optional[Dict[str, float]] = None
     cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION
+    group_penalty: str = "normalized"
     demean: bool = True
     solver: str = 'CLARABEL'
     warmup_period: Optional[int] = 12
@@ -608,6 +635,11 @@ class LassoModel:
             raise ValueError(
                 f"cutoff_fraction must lie in (0, 1], "
                 f"got {self.cutoff_fraction!r}"
+            )
+        if self.group_penalty not in ("normalized", "yuan_lin"):
+            raise ValueError(
+                f"group_penalty must be 'normalized' or 'yuan_lin', "
+                f"got {self.group_penalty!r}"
             )
 
     # ── Backward-compatible property aliases ─────────────────────────
@@ -827,6 +859,7 @@ class LassoModel:
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
+                group_penalty=self.group_penalty,
             )
 
         elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
@@ -846,6 +879,7 @@ class LassoModel:
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
+                group_penalty=self.group_penalty,
             )
         else:
             raise NotImplementedError(f"Unsupported model_type: {self.model_type}")

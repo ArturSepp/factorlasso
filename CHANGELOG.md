@@ -9,18 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] — 2026-04-20
 
-### Changed (breaking)
-
-- **Group LASSO penalty weighting aligned with Yuan–Lin (2006).** The per-group
-  weight in `solve_group_lasso_cvx_problem` is now `√|g|` (group size) instead of
-  `√(|g|/G)` (group size divided by number of groups). The old weighting shrank
-  the effective penalty as more groups were added — an undesirable property for
-  data-driven HCGL where the number of clusters can vary across estimation dates.
-  **Impact on existing users**: any `reg_lambda` value tuned under the old
-  weighting will now produce stronger regularisation by a factor of `√G`. Rescale
-  as `λ_new ≈ λ_old / √G`, or re-tune via `LassoModelCV`.
-
 ### Added
+
+- **`group_penalty` keyword on `solve_group_lasso_cvx_problem` and `LassoModel`.**
+  Selects between two weighting schemes for the per-group `L_{2,1}` penalty:
+  - `"normalized"` (default, unchanged from v0.2.2): `w_g = √(|g|/G)`.
+    Group-count-invariant — keeps the effective regularisation scale stable
+    across problems where the number of groups `G` varies. This is the
+    appropriate choice for HCGL, where `G` is data-driven.
+  - `"yuan_lin"` (opt-in): `w_g = √|g|`. Classical Yuan–Lin (2006).
+
+  The two conventions are related by a constant factor `√G`, so results at
+  `group_penalty="yuan_lin"` with regularisation `λ` match results at
+  `group_penalty="normalized"` with regularisation `λ·√G`. Existing tuned
+  `reg_lambda` values continue to produce bit-identical β under the default.
 
 - **`cutoff_fraction` hyperparameter** on `LassoModel` and
   `compute_clusters_from_corr_matrix`. Controls the fraction of `max(pdist)` at
@@ -38,6 +40,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Shape/index guard in `CurrentFactorCovarData.get_y_covar`**: raises
   `ValueError` when `y_betas` and `y_variances` disagree on row ordering, rather
   than silently assembling a wrong-but-shape-matching covariance matrix.
+- **Python 3.14 support** declared in `pyproject.toml` classifiers and CI matrix.
+
+### Changed
+
+- **`LassoModelCV.fit` exception handling narrowed.** Previously a bare
+  `except Exception: pass` silently turned every fold failure into a NaN score.
+  Now only solver-domain errors are swallowed — the tuple is
+  `(cvx.error.SolverError, cvx.error.DCPError, ValueError,
+  np.linalg.LinAlgError)`. `KeyboardInterrupt`, `MemoryError`, and bugs from
+  invalid kwargs now propagate so real issues surface during debugging. A
+  `verbose=True` CV run additionally logs each fold failure to stderr.
+  `LassoModelCV` was new in 0.2.x and is not known to be used externally; if
+  you rely on the old behaviour, pin 0.2.2.
 
 ### Fixed
 
@@ -49,12 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `power_lambda > 0` and is finite before `np.log`. Previously a corrupt upstream
   value would poison the weight vector with `-inf` / `NaN` silently. Also guards
   `n >= 1`.
-- **`LassoModelCV.fit` narrower exception handling**: `bare except Exception`
-  replaced with a tuple of solver-specific errors
-  (`cvx.error.SolverError`, `cvx.error.DCPError`, `ValueError`,
-  `np.linalg.LinAlgError`). `KeyboardInterrupt`, `MemoryError`, and bugs from
-  invalid kwargs now propagate instead of being silently recorded as NaN. A
-  `verbose=True` CV run additionally logs each fold failure to stderr.
 - **`examples/finance_factor_model.py`**: removed a dead line that fit and
   discarded an entire `LassoModel` without using the result. The example now
   uses the post-refactor `coef_` / `clusters_` attribute names directly.
@@ -62,17 +71,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Multi-Asset Tradable Factors: The MATF-CMA Framework"_ (the previous title
   conflated the CMA paper with an earlier SAA scope). Version aligned with
   `pyproject.toml`.
+- **`factorlasso/__init__.py`**: imports sorted alphabetically within the
+  first-party group to satisfy ruff `I001`. Section-label comments moved from
+  between imports into `__all__` where they don't interrupt the sort.
 
 ### Documentation
 
-- **README fully rewritten** following the MLOSS template: one-line pitch,
-  install + quickstart, three distinguishing features with snippets, when to use
-  / when not, link to examples, citation, development. Release-notes content
-  previously in the README has moved to this file.
+- **README rewritten** in MLOSS style: one-line pitch, install + quickstart,
+  three distinguishing features with snippets, when to use / when not, link to
+  examples, citation, development. Release-notes content previously in the
+  README has moved to this file.
 - Docstrings for `solve_group_lasso_cvx_problem`, `LassoModel`, `get_y_covar`,
   `compute_clusters_from_corr_matrix`, `compute_expanding_power`, and
-  `LassoModelCV` expanded to document new parameters, validation behaviour, and
-  the Yuan–Lin weighting convention.
+  `LassoModelCV` expanded to document new parameters and validation behaviour.
+
+### Backward compatibility
+
+All public API is preserved. Default behaviour of `solve_group_lasso_cvx_problem`
+and `LassoModel` is bit-identical to v0.2.2 (verified via β-level parity test at
+Max |Δβ| = 0 on a 140-asset × 8-factor HCGL problem with 15 clusters). Existing
+`reg_lambda` values do not need retuning. The old sklearn-style attribute names
+(`estimated_betas`, `clusters`, `linkage`, `cutoff`, `x`, `y`) remain available
+as property aliases for `coef_`, `clusters_`, `linkage_`, `cutoff_`, `x_`, `y_`.
 
 ---
 

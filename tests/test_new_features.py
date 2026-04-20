@@ -241,6 +241,45 @@ class TestGetSetParams:
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# group_penalty (v0.3.0 opt-in)
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestGroupPenalty:
+    """
+    Locks down the v0.3.0 group_penalty contract:
+
+    - Default is ``"normalized"`` (w_g = √(|g|/G)), preserving v0.2.2 β
+      bit-for-bit at the same reg_lambda. This prevents any future refactor
+      from silently changing the default and breaking downstream consumers
+      (optimalportfolios / rosaa) that have tuned reg_lambda values.
+    - ``"yuan_lin"`` (w_g = √|g|) is available as an opt-in for users who
+      want the classical Yuan–Lin (2006) weighting.
+    - Invalid values raise a clear ValueError at construction time, not
+      deep inside the solver.
+    """
+
+    def test_default_is_normalized(self):
+        assert LassoModel().group_penalty == "normalized"
+
+    def test_yuan_lin_is_accepted(self):
+        m = LassoModel(group_penalty="yuan_lin")
+        assert m.group_penalty == "yuan_lin"
+
+    def test_invalid_value_raises_at_construction(self):
+        with pytest.raises(ValueError, match="group_penalty must be"):
+            LassoModel(group_penalty="wishful")
+
+    def test_get_params_includes_group_penalty(self):
+        p = LassoModel(group_penalty="yuan_lin").get_params()
+        assert p["group_penalty"] == "yuan_lin"
+
+    def test_set_params_updates_group_penalty(self):
+        m = LassoModel()
+        m.set_params(group_penalty="yuan_lin")
+        assert m.group_penalty == "yuan_lin"
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # fit() input validation
 # ═══════════════════════════════════════════════════════════════════════
 
