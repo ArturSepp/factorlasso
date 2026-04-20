@@ -1,10 +1,12 @@
 """
-Tests for new package features in 0.1.9:
+Tests for package features through 0.3.0:
 
 - LassoModelCV (time-series CV for reg_lambda)
 - LassoModel.get_params / set_params (sklearn compat)
 - LassoModel.fit input validation (ValueError / TypeError)
 - expanding_window_splits helper
+- Narrow fold-exception handling (0.3.0): solver-domain errors are
+  swallowed as NaN, other exceptions propagate out of the CV loop.
 """
 from __future__ import annotations
 
@@ -150,7 +152,13 @@ class TestLassoModelCV:
             cv.fit(x=X, y=Y)
 
     def test_fold_exception_is_swallowed(self, panel, monkeypatch):
-        """A fit/score exception in one fold leaves a NaN but does not abort CV."""
+        """A solver-domain exception in one fold leaves a NaN but does not abort CV.
+
+        As of v0.3.0, only exceptions in ``factorlasso.cv._FOLD_ERRORS``
+        (``SolverError``, ``DCPError``, ``ValueError``, ``LinAlgError``)
+        are swallowed. Other exception classes propagate — see
+        :meth:`test_fold_unexpected_exception_propagates`.
+        """
         X, Y = panel
         original_fit = LassoModel.fit
         call_count = {"n": 0}
@@ -158,7 +166,8 @@ class TestLassoModelCV:
         def flaky_fit(self, x, y, verbose=False, span=None):
             call_count["n"] += 1
             if call_count["n"] == 2:
-                raise RuntimeError("simulated fold failure")
+                # ValueError is in _FOLD_ERRORS — caught by the CV loop
+                raise ValueError("simulated fold failure")
             return original_fit(self, x=x, y=y, verbose=verbose, span=span)
 
         monkeypatch.setattr(LassoModel, "fit", flaky_fit)
@@ -166,6 +175,26 @@ class TestLassoModelCV:
         # At least one NaN, but a best lambda was still chosen
         assert cv.cv_scores_.isna().any().any()
         assert cv.best_lambda_ is not None
+
+    def test_fold_unexpected_exception_propagates(self, panel, monkeypatch):
+        """Exceptions outside _FOLD_ERRORS must NOT be swallowed (v0.3.0 contract).
+
+        This guards against the pre-0.3.0 behaviour where a bare
+        ``except Exception: pass`` silently buried bugs in user code,
+        ``AttributeError`` from bad kwargs, etc., as NaN fold scores.
+        ``RuntimeError`` is chosen as a stand-in for "something genuinely
+        wrong that the caller needs to know about".
+        """
+        X, Y = panel
+
+        def buggy_fit(self, x, y, verbose=False, span=None):
+            raise RuntimeError("bug in user code")
+
+        monkeypatch.setattr(LassoModel, "fit", buggy_fit)
+        with pytest.raises(RuntimeError, match="bug in user code"):
+            LassoModelCV(
+                lambdas=[1e-3, 1e-4], n_splits=3, refit=False,
+            ).fit(x=X, y=Y)
 
 
 # ═══════════════════════════════════════════════════════════════════════
