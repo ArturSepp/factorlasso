@@ -863,8 +863,31 @@ class LassoModel:
             )
 
         elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
+            # Restore NaN positions before computing the EWMA correlation for
+            # clustering. ``get_x_y_np`` zero-fills NaN in y_np so the CVXPY
+            # quadratic-loss solvers can process a finite array (the weights
+            # matrix ``valid_mask`` separately zeros out those observations in
+            # the loss). But ``compute_ewm_covar`` interprets every finite row
+            # as a legitimate observation — a zero-filled row enters the
+            # correlation recursion as a "zero return" observation rather than
+            # as "no observation", which systematically shrinks the estimated
+            # correlations of assets with longer leading-NaN prefixes toward
+            # zero. That shrinkage then propagates into Ward linkage distances,
+            # dendrogram cuts, and group-lasso β estimates, producing results
+            # that depend on how much pre-history each asset carries rather
+            # than on economic correlation structure.
+            #
+            # Passing NaN through lets compute_ewm_covar's NaN-aware recursion
+            # (NanBackfill.FFILL on non-finite outer products) handle leading
+            # and mid-stream missing observations correctly: the correlation
+            # for each asset is estimated only over its valid window, and the
+            # zero-variance guard on the diagonal still protects against
+            # degenerate columns. See CHANGELOG entry for 2026-04-16 commit
+            # 937ba7c "align ewma with qis" for compute_ewm_covar's current
+            # NaN-handling contract.
+            y_for_corr = np.where(valid_mask > 0, y_np, np.nan)
             corr = compute_ewm_covar(
-                a=y_np, span=eff_span, is_corr=True,
+                a=y_for_corr, span=eff_span, is_corr=True,
             )
             corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
             clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
