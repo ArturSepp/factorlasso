@@ -374,6 +374,7 @@ def solve_group_lasso_cvx_problem(
     factors_beta_loading_signs: Optional[np.ndarray] = None,
     factors_beta_prior: Optional[np.ndarray] = None,
     group_penalty: str = "normalized",
+    l1_weight: float = 0.0,
 ) -> LassoEstimationResult:
     r"""
     Group LASSO multi-output regression via CVXPY.
@@ -383,14 +384,22 @@ def solve_group_lasso_cvx_problem(
     .. math::
 
         \frac{1}{T}\|W \odot (X\beta^\top - Y)\|_F^2
-        + \lambda \sum_g w_g \sum_{i \in g}
+        + (1 - \alpha)\,\lambda \sum_g w_g \sum_{i \in g}
           \|\beta_{i,:} - \beta_{0,i,:}\|_2
+        + \alpha\,\lambda \,\|\beta - \beta_0\|_1
 
     where *g* indexes groups of response variables (rows of β) and the
     per-group weight ``w_g`` is set by ``group_penalty`` (see below).
-    The inner sum is the ``L_{2,1}`` norm of the group submatrix —
-    each response's loading vector is shrunk by an L2 norm, and block
-    sparsity is driven across responses within a group.
+    The inner sum of the group term is the ``L_{2,1}`` norm of the group
+    submatrix — each response's loading vector is shrunk by an L2 norm,
+    and block sparsity is driven across responses within a group. The
+    optional L1 term drives elementwise sparsity on top, zeroing
+    individual assets whose loadings are noisy even within an "active"
+    group — the Simon–Friedman–Hastie–Tibshirani (2013) Sparse Group
+    LASSO formulation.
+
+    At ``l1_weight=0.0`` (default) the problem reduces to the previous
+    pure group LASSO and is numerically identical to v0.3.1.
 
     Parameters
     ----------
@@ -418,6 +427,18 @@ def solve_group_lasso_cvx_problem(
         The two conventions are related by a constant factor √G, so
         results under ``"yuan_lin"`` at regularisation ``λ`` match
         results under ``"normalized"`` at regularisation ``λ·√G``.
+    l1_weight : float, default 0.0
+        Sparse Group LASSO mixing parameter ``α ∈ [0, 1]``. Weight on
+        the elementwise L1 penalty term; ``(1 - α)`` weights the group
+        L2 term. Set ``α = 0`` (default) for pure group LASSO —
+        backward compatible with v0.3.1. Set ``α = 1`` for pure LASSO
+        (no group structure). Typical research values are ``α ∈
+        [0.05, 0.20]``: preserve group structure as the primary
+        selection mechanism while allowing additional within-group
+        elementwise zeroing for assets whose loadings are noisy. The
+        L1 term shrinks ``β`` toward the prior ``β_0`` elementwise,
+        consistent with the group term which also shrinks toward the
+        prior.
 
     Returns
     -------
@@ -428,6 +449,10 @@ def solve_group_lasso_cvx_problem(
         raise ValueError(
             f"group_penalty must be 'normalized' or 'yuan_lin', "
             f"got {group_penalty!r}"
+        )
+    if not (0.0 <= l1_weight <= 1.0):
+        raise ValueError(
+            f"l1_weight must lie in [0, 1], got {l1_weight!r}"
         )
     assert y.ndim == 2 and x.ndim == 2 and group_loadings.ndim == 2
     assert x.shape[0] == y.shape[0] and y.shape[1] == group_loadings.shape[0]
@@ -464,15 +489,25 @@ def solve_group_lasso_cvx_problem(
             return float(np.sqrt(g))
         return float(np.sqrt(g / n_groups))
 
-    # Group penalty
+    # Group penalty (L_{2,1} norm within each group, scaled by (1 - α))
     masks = [
         np.isclose(group_loadings[:, g], 1.0) for g in range(n_groups)
     ]
-    penalty = cvx.sum([
+    group_pen = cvx.sum([
         reg_lambda * _weight(m)
         * cvx.sum(cvx.norm2(beta[m, :] - prior[m, :], axis=1))
         for m in masks
     ])
+
+    # Elementwise L1 penalty (scaled by α). Shrinks toward the same
+    # prior used by the group term so at α=1 the problem is consistent
+    # with plain LASSO centred on β₀. At α=0 this term vanishes and
+    # the problem reduces exactly to the v0.3.1 pure group LASSO.
+    if l1_weight > 0.0:
+        l1_pen = reg_lambda * cvx.sum(cvx.abs(beta - prior))
+        penalty = (1.0 - l1_weight) * group_pen + l1_weight * l1_pen
+    else:
+        penalty = group_pen
 
     problem = cvx.Problem(cvx.Minimize(fit + penalty), constraints) \
         if constraints else cvx.Problem(cvx.Minimize(fit + penalty))
@@ -559,6 +594,17 @@ class LassoModel:
         ``"yuan_lin"`` uses the classical Yuan–Lin (2006) ``√|g|``.
         Ignored for ``model_type == LASSO``.  See
         :func:`solve_group_lasso_cvx_problem` for the full formula.
+    l1_weight : float, default 0.0
+        Sparse Group LASSO mixing parameter ``α ∈ [0, 1]``. Adds an
+        elementwise L1 penalty ``α·λ·|β - β₀|`` on top of the standard
+        group L2 penalty (which is scaled by ``(1 - α)``). Set ``α = 0``
+        (default) for pure group LASSO — backward compatible with
+        v0.3.1. Typical research values: ``α ∈ [0.05, 0.20]`` — preserve
+        group structure as the primary mechanism while allowing
+        additional within-group elementwise zeroing for assets whose
+        loadings are noisy. Only consumed when ``model_type`` is
+        ``GROUP_LASSO`` or ``GROUP_LASSO_CLUSTERS``; ignored for pure
+        ``LASSO`` since L1 is the only penalty already.
     factors_beta_loading_signs : pd.DataFrame, optional
     factors_beta_prior : pd.DataFrame, optional
     demean : bool, default True
@@ -606,6 +652,7 @@ class LassoModel:
     span_freq_dict: Optional[Dict[str, float]] = None
     cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION
     group_penalty: str = "normalized"
+    l1_weight: float = 0.0
     demean: bool = True
     solver: str = 'CLARABEL'
     warmup_period: Optional[int] = 12
@@ -640,6 +687,10 @@ class LassoModel:
             raise ValueError(
                 f"group_penalty must be 'normalized' or 'yuan_lin', "
                 f"got {self.group_penalty!r}"
+            )
+        if not (0.0 <= self.l1_weight <= 1.0):
+            raise ValueError(
+                f"l1_weight must lie in [0, 1], got {self.l1_weight!r}"
             )
 
     # ── Backward-compatible property aliases ─────────────────────────
@@ -860,6 +911,7 @@ class LassoModel:
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
                 group_penalty=self.group_penalty,
+                l1_weight=self.l1_weight,
             )
 
         elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
@@ -903,12 +955,14 @@ class LassoModel:
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
                 group_penalty=self.group_penalty,
+                l1_weight=self.l1_weight,
             )
         else:
             raise NotImplementedError(f"Unsupported model_type: {self.model_type}")
 
         # Zero out betas for variables with insufficient history
         est_beta = result.estimated_beta
+        short_assets: Optional[pd.Index] = None
         if self.warmup_period is not None:
             n_valid = np.count_nonzero(~np.isnan(y.to_numpy()), axis=0)
             short = n_valid < self.warmup_period
@@ -916,6 +970,14 @@ class LassoModel:
                 est_beta[short, :] = 0.0
                 for attr in ('alpha', 'ss_total', 'ss_res', 'r2'):
                     getattr(result, attr)[short] = np.nan
+                # Capture for use below — the cluster-assignment step
+                # at the end of fit() needs to drop these same assets
+                # so clusters_, coef_, and per-asset diagnostics stay
+                # mutually consistent. Without this the zeroed-beta
+                # assets would still receive spurious singleton cluster
+                # labels that inflate downstream n_clusters and pollute
+                # cluster-based risk attribution / regime diagnostics.
+                short_assets = y.columns[short]
 
         # Store fitted state (trailing underscore convention)
         self.x_ = x
@@ -936,6 +998,18 @@ class LassoModel:
         # modes. The HCGL path already sets `clusters` above.
         if clusters is None and self.model_type == LassoModelType.GROUP_LASSO:
             clusters = self.group_data.reindex(y.columns).copy()
+        # Filter out cluster labels for ghost assets — assets whose betas
+        # were zeroed above because they had fewer than ``warmup_period``
+        # valid observations. Dropping them here keeps ``clusters_``
+        # consistent with ``coef_`` (zeroed) and per-asset diagnostics
+        # (NaN), so downstream consumers that count or analyse clusters
+        # see only assets that actually contributed to the fit. Without
+        # this, pre-launch / short-history assets receive placeholder
+        # singleton labels that inflate ``n_clusters`` in early history
+        # (observed: 83 raw vs 31 real on a 160-asset multi-asset
+        # universe at 2002-12-31).
+        if clusters is not None and short_assets is not None and len(short_assets) > 0:
+            clusters = clusters.drop(short_assets, errors='ignore')
         self.clusters_ = clusters
         self.linkage_ = linkage
         self.cutoff_ = cutoff

@@ -1,7 +1,7 @@
 # factorlasso
 
 **Sparse multi-output regression with sign constraints, prior-centered
-regularisation, and hierarchical group LASSO — via CVXPY.**
+regularisation, hierarchical group LASSO, and sparse group LASSO — via CVXPY.**
 
 [![PyPI](https://img.shields.io/pypi/v/factorlasso.svg)](https://pypi.org/project/factorlasso/)
 [![Python](https://img.shields.io/pypi/pyversions/factorlasso.svg)](https://pypi.org/project/factorlasso/)
@@ -15,7 +15,7 @@ Y = X\beta^\top + \varepsilon,
 \qquad \beta \in \mathbb{R}^{N \times M}
 $$
 
-when three things matter:
+when four things matter:
 
 - Some coefficients **must be zero, non-negative, or non-positive**, possibly by
   asset, by factor, or both.
@@ -23,6 +23,9 @@ when three things matter:
 - You want **structured sparsity** — groups of responses entering or leaving
   the model together — where the groups are either user-supplied or discovered
   by hierarchical clustering of the response correlation matrix (HCGL).
+- You want to combine **group-level selection with within-group elementwise
+  sparsity** via a tunable mix of group L2 and L1 penalties (Sparse Group
+  LASSO).
 
 It is written in pure numpy/pandas/scipy/cvxpy. No numba, no custom
 coordinate descent. The solver is CVXPY (default `CLARABEL`), so problem
@@ -130,6 +133,49 @@ Useful when you suspect group structure in the responses but don't know the
 partition — or when the correct partition drifts over time, so any manual
 grouping would need to be refit anyway.
 
+### 4. Sparse Group LASSO
+
+Group LASSO selects whole groups in or out — every response inside an
+"active" group gets a non-zero loading. When the discovered groups are
+slightly heterogeneous (and HCGL clusters often are, especially at coarser
+`cutoff_fraction`), this admits noisy within-group loadings on responses
+that don't actually load on the factor.
+
+The `l1_weight` mixing parameter α ∈ [0, 1] adds an elementwise L1 penalty
+on top of the group L2 (Simon, Friedman, Hastie & Tibshirani 2013):
+
+$$
+\mathcal{P}(\beta) = (1 - \alpha)\,\lambda \sum_g w_g \, \|\beta_g - \beta_0\|_{2,1}
+\;+\; \alpha\,\lambda \, \|\beta - \beta_0\|_1
+$$
+
+```python
+model = LassoModel(
+    model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+    reg_lambda=1e-4,
+    cutoff_fraction=0.65,   # coarser clusters
+    l1_weight=0.10,         # α — group L2 still primary, L1 corrects within-group
+).fit(x=X, y=Y)
+```
+
+The interpretation is "group-then-prune": the group L2 term still drives
+group-level selection, while the L1 term zeros individual asset-factor
+coefficients within active groups whose contribution is noise. Setting
+`l1_weight=0.0` (the default) reduces exactly to pure group LASSO and is
+backward-compatible — the L1 term is dropped from the CVX problem entirely
+when α = 0, with zero runtime cost.
+
+Typical research range: α ∈ [0.05, 0.20]. Above ~0.30 the group structure
+stops driving the model and the result reverts toward plain LASSO. The
+penalty is centered on the same prior `β₀` as the group term, so the two
+shrinkage mechanisms compose consistently.
+
+The L1 term respects the same per-element sign constraints and the same
+prior as the group term, so all four features in this section compose: a
+single fit can simultaneously enforce sign constraints, shrink toward a
+prior, group-select via HCGL clusters, and apply within-group elementwise
+sparsity.
+
 ---
 
 ## When to use it — and when not
@@ -140,6 +186,8 @@ grouping would need to be refit anyway.
   matrix.
 - You have a prior `β₀` that should shrink the fit instead of zero.
 - You need discovered-group structured sparsity (HCGL).
+- You need group-level selection with within-group elementwise sparsity
+  (sparse group LASSO at small-to-moderate α).
 - You want a small, auditable CVXPY-based tool rather than a coordinate-descent
   library with opaque internals.
 
@@ -149,6 +197,11 @@ grouping would need to be refit anyway.
   `celer`, or `skglm` will be faster and have years of battle-testing.
 - You need fixed-group group LASSO at very large scale — `group-lasso` or
   `asgl` are the standard tools.
+- You need sparse group LASSO at large α (close to 1.0) or at very large
+  scale — specialised solvers like `asgl` or `SGL` handle proximal-operator
+  acceleration that the CVXPY formulation here does not. This package's
+  sparse group LASSO is intended for moderate α ∈ [0, 0.3] where the group
+  structure remains primary.
 - You need non-linear models, random effects, or GLM link functions.
 
 A feature-by-feature comparison matrix is in

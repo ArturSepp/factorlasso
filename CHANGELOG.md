@@ -5,6 +5,101 @@ All notable changes to `factorlasso` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+## [0.3.2] — 2026-04-25
+
+### Added
+
+- **`l1_weight` keyword on `solve_group_lasso_cvx_problem` and `LassoModel`.**
+  Adds an elementwise L1 penalty term on top of the existing group L2
+  penalty, parameterised by a mixing weight `α ∈ [0, 1]`:
+
+  ```
+  P(β) = (1 - α) · λ · Σ_g w_g · ||β_g - β₀||_{2,1}
+       +      α  · λ ·       ||β   - β₀||_1
+  ```
+
+  This is the Simon–Friedman–Hastie–Tibshirani (2013) Sparse Group LASSO
+  formulation. The L1 term enables within-group elementwise sparsity:
+  inside an HCGL cluster that is "active" under the group term,
+  individual response-factor cells with noisy loadings can be zeroed
+  out without killing the whole group.
+
+  **Backward compatibility**: `l1_weight=0.0` is the default and the L1
+  term is gated behind an explicit `if l1_weight > 0.0` check, so
+  existing callers see a zero-cost no-op — β is bit-identical to v0.3.1
+  (verified: Max |Δβ| = 0 across the test suite). The L1 term shares the
+  same prior `β₀` as the group term, so the two shrinkage mechanisms
+  compose consistently. Sign constraints and the `group_penalty`
+  convention apply to both terms.
+
+  **Limits**: at `α = 0` the problem reduces exactly to v0.3.1 pure
+  group LASSO. At `α = 1` the group term drops out and the problem
+  reduces to plain LASSO (verified parity: Max |Δβ| < 1e-4 against
+  `solve_lasso_cvx_problem` at the same λ, solver-precision noise).
+  Typical research range is `α ∈ [0.05, 0.20]`: the group term remains
+  the primary selection mechanism while the L1 term prunes within-group
+  noise.
+
+  **Ignored for `model_type == LASSO`**, since L1 is the only penalty
+  already — passing `l1_weight` has no effect in that path.
+
+  **Validated at construction**: `l1_weight` outside `[0, 1]`, or
+  non-finite (NaN, inf) raises `ValueError` in `LassoModel.__post_init__`
+  and at solver entry.
+
+### Tests
+
+- New file `tests/test_l1_weight.py` with 26 tests covering: α=0
+  backward compatibility (bit-identical to pre-feature code path at
+  solver and LassoModel levels), LASSO-mode no-op, input validation,
+  α=1 equivalence to pure LASSO, `l1_weight × group_penalty`
+  interaction (group scheme is irrelevant at α=1 as expected),
+  sparsity-progression property on an adversarial noise panel (spurious
+  β mass decreases monotonically with α, at least 2× reduction from α=0
+  to α=0.8), signal preservation at moderate α, sign constraint
+  preservation at all α, and prior-centering applied to the L1 term.
+
+### Fixed
+
+- **`CITATION.cff` version alignment.** Bumped from 0.3.0 → 0.3.2 to
+  match `pyproject.toml`.
+
+
+
+## [0.3.1] — 2026-04-24
+
+### Fixed
+
+- **Ghost-asset cluster labels in `LassoModel.fit`.** Assets with fewer than
+  `warmup_period` valid observations had their `coef_` zeroed and per-asset
+  diagnostics (`alpha`, `ss_total`, `ss_res`, `r2`) NaN-ed — but still received
+  cluster labels in `clusters_`. Downstream consumers that count or analyse
+  clusters (e.g., `n_clusters` diagnostics, cluster-based risk attribution,
+  regime detection) saw placeholder singleton labels for pre-launch or
+  short-history assets, inflating cluster counts in early history (observed:
+  83 raw vs 31 real clusters on a 160-asset multi-asset universe at
+  2002-12-31; mean 40 vs 25 clusters across a 23-year backtest).
+
+  **Fix**: cluster labels for short-history assets are now dropped from
+  `clusters_` using the same mask already applied to `coef_`/diagnostics.
+  After the fix, `clusters_`, `coef_`, and per-asset diagnostics are mutually
+  consistent — a short-history asset has no cluster label, zeroed betas,
+  and NaN statistics.
+
+  **Backward compatibility**: when `warmup_period=None` (no warmup check),
+  behavior is unchanged — `clusters_` contains labels for every asset in
+  `y.columns`, as before.
+
+  **Affected consumers**: any code that reads `clusters_` from a fitted
+  `LassoModel` or the `clusters` field on `CurrentFactorCovarData`. In
+  practice this includes HCGL (`GROUP_LASSO_CLUSTERS`) and external-groups
+  (`GROUP_LASSO`) paths; `LASSO` and `OLS` paths are unaffected because
+  they don't produce `clusters_`.
+
+
+
 ---
 
 ## [0.3.0] — 2026-04-20

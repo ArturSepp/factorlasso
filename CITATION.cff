@@ -9,11 +9,12 @@ authors:
 repository-code: "https://github.com/ArturSepp/factorlasso"
 url: "https://factorlasso.readthedocs.io"
 license: MIT
-version: 0.3.0
-date-released: "2026-04-20"
+version: 0.3.2
+date-released: "2026-04-25"
 keywords:
   - lasso
   - group-lasso
+  - sparse-group-lasso
   - factor-model
   - sparse-regression
   - sign-constraints
