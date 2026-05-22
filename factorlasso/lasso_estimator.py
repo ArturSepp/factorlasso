@@ -89,7 +89,27 @@ class LassoEstimationResult:
     estimated_beta : np.ndarray, shape (N, M)
         Factor loadings.  NaN if solver failed.
     alpha : np.ndarray, shape (N,)
-        EWMA-weighted mean residual per response variable.
+        EWMA-weighted mean of the *demeaned* residuals, per response.
+
+        Important: this is **not** the regression intercept in the original
+        ``y = α + Xβ + ε`` representation.  Because :func:`get_x_y_np` removes
+        the conditional mean of both ``y`` and ``X`` before the solver runs,
+        the model that is actually fitted is
+
+            ``y_demeaned ≈ X_demeaned · β``       (no intercept term)
+
+        and ``alpha`` here is computed *post-hoc* as the weighted mean of the
+        residuals on the demeaned data.  In particular:
+
+        * If ``span is None`` (sample-mean demeaning), this quantity is
+          identically zero by the OLS first-order condition.
+        * If ``span`` is set (one-sided EWMA demeaning), this quantity is the
+          leftover when the EWMA mean does not match the sample mean — i.e.
+          a *finite-sample EWMA-demean residual*, not an intercept.
+
+        ``LassoModel`` exposes this value as ``model.intercept_`` for
+        backward compatibility; the **economic intercept** of the regression
+        in original units is available separately as ``model.alpha_const_``.
     ss_total : np.ndarray, shape (N,)
         EWMA-weighted total variance per response variable.
     ss_res : np.ndarray, shape (N,)
@@ -114,7 +134,16 @@ def _compute_solver_diagnostics(
     estimated_beta: np.ndarray,
     weights: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """In-sample fit diagnostics from solver weights."""
+    """In-sample fit diagnostics from solver weights.
+
+    The returned ``alpha`` is the EWMA-weighted mean of residuals on the
+    demeaned data the solver received. It is **not** the regression
+    intercept in original units; see the docstring of
+    :class:`LassoEstimationResult` for the distinction. The economic
+    intercept of ``y = α + Xβ + ε`` is computed in
+    :meth:`LassoModel.fit` from the sample means of the original (pre-
+    demean) ``y`` and ``X``, and is exposed as ``model.alpha_const_``.
+    """
     col_sums = np.sum(weights, axis=0)
     norm_w = np.divide(weights, col_sums, out=np.zeros_like(weights),
                        where=col_sums != 0)
@@ -615,8 +644,31 @@ class LassoModel:
     --------------------------------------
     coef_ : pd.DataFrame, shape (N, M)
         Estimated factor loadings β.
+    alpha_const_ : pd.Series, shape (N,)
+        **Economic intercept α** — what users typically mean by "alpha"
+        when decomposing returns into ``y = α + Xβ + ε``. Reconstructed
+        from sample means of the *original* (pre-demean) ``y`` and ``X``
+        and the fitted β, so the identity ``y_mean = α + x_mean · β``
+        holds exactly. For ``span=None`` and unconstrained coefficients
+        this equals the OLS intercept exactly; for ``span=integer`` it
+        is reconstructed from sample means rather than EWMA means and
+        thus stays interpretable regardless of EWMA span.
+
+        This is the field to read when reporting the regression intercept.
     intercept_ : pd.Series, shape (N,)
-        Estimated intercept α.
+        Raw solver output: the EWMA-weighted mean of residuals on the
+        *demeaned* data, equal to ``estimation_result_.alpha``. Because
+        the underlying solver fits a no-intercept model on centered data,
+        this is a mechanical artefact of the fit, **not** the regression
+        intercept in original units:
+
+        * for ``span=None`` this is identically zero by the OLS
+          first-order condition;
+        * for ``span=integer`` it is a finite-sample EWMA-demean leftover.
+
+        Preserved under this name for back-compatibility with code that
+        read ``model.intercept_`` in pre-0.3.4 versions. New code should
+        use ``alpha_const_`` for the economic intercept.
     estimation_result_ : LassoEstimationResult
         Full diagnostics (alpha, ss_total, ss_res, r2).
     clusters_ : pd.Series or None
@@ -665,6 +717,7 @@ class LassoModel:
     y_: Optional[pd.DataFrame] = None
     coef_: Optional[pd.DataFrame] = None
     intercept_: Optional[pd.Series] = None
+    alpha_const_: Optional[pd.Series] = None
     estimation_result_: Optional[LassoEstimationResult] = None
     clusters_: Optional[pd.Series] = None
     linkage_: Optional[np.ndarray] = None
@@ -987,9 +1040,35 @@ class LassoModel:
         self.coef_ = pd.DataFrame(
             est_beta, index=y.columns, columns=x.columns,
         )
+        # intercept_ : preserved from v0.3.3 — the raw solver output, namely
+        # the EWMA-weighted residual mean on the demeaned data. This is the
+        # mechanical artefact of fitting a no-intercept model on centered
+        # inputs (see :class:`LassoEstimationResult` docstring on ``alpha``).
+        # It is NOT the regression intercept in the original
+        # ``y = α + Xβ + ε`` representation; for span=None it is identically
+        # zero by construction. Kept under this name for back-compat with
+        # any analytics that read ``model.intercept_``.
         self.intercept_ = pd.Series(
             result.alpha, index=y.columns, name='intercept',
         )
+        # alpha_const_ : the economic intercept α — what users typically
+        # mean by "alpha" when decomposing returns into ``α + Xβ + ε``.
+        # Reconstructed from sample means of the *original* (pre-demean)
+        # ``y`` and ``X`` and the fitted β so the identity
+        # ``y_mean = α + x_mean · β`` holds exactly. For span=None and
+        # unconstrained coefficients this equals the OLS intercept exactly;
+        # for span=integer it remains the interpretable
+        # ``α + factor exposure`` decomposition regardless of EWMA span.
+        x_mean = np.asarray(x.mean(skipna=True).values, dtype=float)
+        y_mean = np.asarray(y.mean(skipna=True).values, dtype=float)
+        beta_arr = np.where(np.isnan(est_beta), 0.0, est_beta)
+        alpha_const_arr = y_mean - beta_arr @ x_mean
+        alpha_const_ser = pd.Series(
+            alpha_const_arr, index=y.columns, name='alpha_const',
+        )
+        if short_assets is not None:
+            alpha_const_ser.loc[short_assets] = np.nan
+        self.alpha_const_ = alpha_const_ser
         self.estimation_result_ = result
         # For GROUP_LASSO with externally supplied group_data, record it as
         # clusters_ so downstream consumers (CurrentFactorCovarData,

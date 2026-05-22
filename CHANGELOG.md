@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.3.4] — 2026-05-22
+
+### Added
+
+- **`LassoModel.alpha_const_`** — new attribute holding the **economic
+  intercept α** of the regression in the original ``y = α + Xβ + ε``
+  representation. Reconstructed from the sample means of the *original*
+  (pre-demean) ``y`` and ``X`` and the fitted β, so the identity
+  ``y_mean = α + x_mean · β`` holds exactly. For ``span=None`` and
+  unconstrained coefficients this equals the OLS intercept exactly; for
+  ``span=integer`` it is reconstructed from sample means rather than
+  EWMA means and thus stays interpretable regardless of EWMA span.
+
+  This is the field to read when reporting "alpha after factor exposure".
+
+- **`examples/alpha_const_vs_intercept.py`** — worked example
+  demonstrating the difference across span choices on a synthetic
+  single-asset factor model with known α.
+
+### Changed (documentation only, no behavioural change)
+
+- **`LassoModel.intercept_` is now documented as raw solver output**, not
+  the regression intercept. Its value is unchanged from 0.3.3 — it is
+  populated from ``LassoEstimationResult.alpha``, which is the
+  EWMA-weighted residual mean on the demeaned data the solver receives.
+  Because the underlying solver fits a no-intercept model on centered
+  data, this is a mechanical artefact of the fit:
+
+  * for ``span=None`` it is identically zero by the OLS first-order
+    condition;
+  * for ``span=integer`` it is a finite-sample EWMA-demean leftover.
+
+  Code that read ``model.intercept_`` in 0.3.3 continues to receive the
+  same value. New code should use ``alpha_const_`` for the economic
+  intercept.
+
+- `LassoEstimationResult.alpha` docstring now explicitly states that the
+  field is not the regression intercept and refers users to
+  ``LassoModel.alpha_const_`` for the economic quantity.
+
+- `LassoModel` class docstring updated with a clear distinction between
+  ``alpha_const_`` (economic intercept α) and ``intercept_`` (raw solver
+  output / EWMA-demean diagnostic).
+
+
+
 ## [0.3.2] — 2026-04-25
 
 ### Added
