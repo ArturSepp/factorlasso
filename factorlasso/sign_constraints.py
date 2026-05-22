@@ -31,6 +31,28 @@ Two derivation modes share the same entry point:
 
 No preprocessing is done on ``x`` or ``y`` — any centering, standardization,
 EWMA-weighting, residualization etc. is the caller's responsibility.
+
+References
+----------
+The univariate-slope-as-sign-constraint mechanism is adapted from the
+uniLasso framework:
+
+* Chatterjee, S., Hastie, T., & Tibshirani, R. (2025). Univariate-guided
+  sparse regression. *Harvard Data Science Review* 7(3).
+* Richland, J., Kiiskinen, T., Wang, W., Lu, S., Narasimhan, B., Hastie,
+  T., Rivas, M., & Tibshirani, R. (2025). Univariate-guided sparse
+  regression for biobank-scale high-dimensional -omics data.
+  arXiv:2511.22049.
+
+Specifically, Richland et al. (2025) eq. (3.3) imposes
+``sign(γ_j) = sign(β̃_j)`` as a hard constraint on the original variables
+— structurally identical to what ``factors_beta_loading_signs`` encodes
+in factorlasso. The broader use of univariate evidence to guide a
+multivariate fit goes back to Zou (2006)'s adaptive Lasso. The
+``auto_sign_threshold_t`` noise-floor gate is conceptually closer to
+Fan & Lv (2008)'s Sure Independence Screening; it is not part of
+uniLasso, which achieves smoother noise downweighting via its
+leave-one-out stage-2 reparameterization.
 """
 from __future__ import annotations
 
@@ -245,8 +267,7 @@ def _compute_sign_matrix_per_response(
     if np.isnan(y_arr).any():
         y_arr = np.nan_to_num(y_arr, nan=0.0)
 
-    T, M = x_arr.shape
-    N = y_arr.shape[1]
+    T = x_arr.shape[0]
     xx = (x_arr * x_arr).sum(axis=0)               # (M,)
     yy = (y_arr * y_arr).sum(axis=0)               # (N,)
     xy = x_arr.T @ y_arr                           # (M, N)

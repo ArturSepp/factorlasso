@@ -1048,8 +1048,8 @@ class LassoModel:
 
         if self.auto_sign_constraints:
             from factorlasso.sign_constraints import (
-                _compute_sign_vector,
                 _compute_sign_matrix_per_response,
+                _compute_sign_vector,
             )
             N = y_np.shape[1]
             M = x_np.shape[1]
