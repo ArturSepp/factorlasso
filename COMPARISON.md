@@ -15,6 +15,7 @@ All information in the tables below was verified by inspecting each package's pu
 | Sparse Group Lasso | — | — | — | ✓ | ✓ | ✓ | — |
 | **Data-driven groups (HCGL)** | — | — | — | — | — | — | **✓** |
 | **Element-wise sign constraints** | blanket only¹ | blanket only¹ | blanket only¹ | — | — | — | **✓** |
+| **Data-driven sign derivation with noise gate** | — | — | — | — | — | — | **✓** |
 | **Prior-centered penalty** ‖β − β₀‖ | — | — | — | — | — | — | **✓** |
 | Multi-output regression $(N > 1)$ | MultiTask only² | — | — | — | — | — | **✓** |
 | **Ragged histories (per-response NaN mask)** | — | — | — | — | — | — | **✓** |

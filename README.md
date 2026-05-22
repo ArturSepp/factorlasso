@@ -93,7 +93,100 @@ Scikit-learn's `Lasso` supports only a single `positive` flag across the whole
 coefficient matrix. Arbitrary per-element sign constraints are not expressible
 without a custom CVXPY problem; this is that custom problem, packaged.
 
-### 2. Prior-centered regularisation
+### 2. Data-driven sign constraints with a noise-floor gate
+
+Hand-coding an `(N × M)` sign matrix scales poorly. Setting
+`auto_sign_constraints=True` derives signs inside `fit()` from pooled
+univariate slopes computed on the same EWMA-demeaned arrays the CVXPY
+solver consumes (no train/test inconsistency, automatic per-fold
+derivation under `LassoModelCV`).
+
+```python
+model = LassoModel(
+    reg_lambda=1e-3,
+    auto_sign_constraints=True,    # derive signs from univariate slopes
+    auto_sign_threshold_t=0.75,    # noise floor (default 0.75)
+).fit(x=X, y=Y)
+
+# Inspect the matrix the solver actually saw
+model.derived_signs_
+```
+
+How the pooling is dispatched depends on `model_type`:
+
+| `model_type` | Sign-derivation pooling |
+|---|---|
+| `LASSO` (or single-column `y`) | Per-`y`-column independent univariate fit. Rows of `derived_signs_` may differ across responses. |
+| `GROUP_LASSO` | Pool `y` within each `group_data` group. All members of a group share their `derived_signs_` row. |
+| `GROUP_LASSO_CLUSTERS` | Pool `y` within each HCGL asset cluster (the same clustering the solver uses). |
+
+**The threshold gate.** `auto_sign_threshold_t` (default `0.75`) is a noise
+floor on the per-column univariate t-statistic. Factors with `|t| <`
+threshold have their sign pinned to `0`, forcing `β = 0` in the fit.
+Rationale: under weak L1 (typical of factor models with `reg_lambda` ≪ 1
+and `l1_weight = 0`), an unfiltered slope sign drawn from sampling noise
+becomes a hard constraint that the solver can exploit to fit residual
+variance via offsetting loading pairs (e.g. +Credit ↔ −Inflation on a
+factor whose true effect is zero). The gate is **not a significance test**
+— `|t| = 0.75` corresponds to two-sided `p ≈ 0.45`. It is a defensive
+filter that removes only the worst noise-driven sign constraints.
+
+Set `auto_sign_threshold_t=None` to disable the gate entirely
+(reproduces v0.3.6 behaviour, every univariate sign is enforced regardless
+of evidence strength).
+
+**Explicit overrides still work.** Setting `factors_beta_loading_signs`
+alongside `auto_sign_constraints=True` overlays the user's matrix on top
+of the auto-derived signs per-cell — non-NaN entries win, NaN cells
+inherit the auto value. Use this for asset-specific constraints that no
+amount of marginal-correlation data could surface (e.g. forcing a
+mandate-restricted bond fund to zero equity loading regardless of
+spurious sample correlations).
+
+**Related work and intellectual lineage.** The univariate-slope-as-
+sign-constraint mechanism is adapted from the **uniLasso** framework of
+Chatterjee, Hastie & Tibshirani (2025) and its biobank-scale follow-up
+by Richland et al. (2025). Specifically, Richland et al. (2025)
+eq. (3.3) imposes `sign(γ_j) = sign(β̃_j)` as a hard constraint on the
+original variables — structurally identical to what
+`factors_beta_loading_signs` encodes here. The broader idea of using
+univariate marginal evidence to guide a multivariate fit goes back to
+Zou (2006)'s adaptive Lasso, which uses univariate *magnitudes* as
+adaptive penalty weights.
+
+Two things factorlasso does *not* inherit from uniLasso, worth flagging
+to avoid overclaiming:
+
+* uniLasso's stage-2 architecture (Chatterjee et al. 2025 §2.1) fits a
+  non-negative Lasso on leave-one-out fitted values used as new
+  features. factorlasso instead constrains coefficients directly on
+  the original variables via the CVXPY sign-constraint set — simpler
+  in financial-panel sizes where `n` is typically in the hundreds,
+  not the hundreds of thousands.
+* The hard t-statistic noise floor (`auto_sign_threshold_t`) is not in
+  uniLasso. uniLasso's LOO machinery achieves a smoother form of
+  noise downweighting via stage-2 regularization on out-of-sample
+  predictions. The threshold gate here is conceptually closer to
+  **Sure Independence Screening** (Fan & Lv 2008): screen marginal
+  evidence first, then regularize.
+
+Adaptive penalty weights from univariate magnitudes — Richland et al.
+(2025) eq. (3.3), based on Zou (2006) — are not yet implemented; this
+is a natural future extension (see CHANGELOG roadmap).
+
+References:
+* Chatterjee, S., Hastie, T., & Tibshirani, R. (2025). Univariate-
+  guided sparse regression. *Harvard Data Science Review* 7(3).
+* Fan, J., & Lv, J. (2008). Sure independence screening for ultrahigh
+  dimensional feature space. *J. R. Stat. Soc. B* 70(5), 849–911.
+* Richland, J., Kiiskinen, T., Wang, W., Lu, S., Narasimhan, B.,
+  Hastie, T., Rivas, M., & Tibshirani, R. (2025). Univariate-guided
+  sparse regression for biobank-scale high-dimensional -omics data.
+  arXiv:2511.22049.
+* Zou, H. (2006). The adaptive Lasso and its oracle properties.
+  *J. Amer. Stat. Assoc.* 101(476), 1418–1429.
+
+### 3. Prior-centered regularisation
 
 Pass a `(N × M)` DataFrame `factors_beta_prior` to penalise `‖β − β₀‖` instead
 of `‖β‖`. The prior is a soft target, not a hard constraint — the penalty
@@ -109,7 +202,7 @@ model = LassoModel(
 ).fit(x=X, y=Y)
 ```
 
-### 3. Hierarchical Clustering Group LASSO (HCGL)
+### 4. Hierarchical Clustering Group LASSO (HCGL)
 
 The groups in classical group LASSO are user-specified. HCGL discovers them
 from the data: EWMA correlation of the response matrix → Ward's linkage →
@@ -133,7 +226,7 @@ Useful when you suspect group structure in the responses but don't know the
 partition — or when the correct partition drifts over time, so any manual
 grouping would need to be refit anyway.
 
-### 4. Sparse Group LASSO
+### 5. Sparse Group LASSO
 
 Group LASSO selects whole groups in or out — every response inside an
 "active" group gets a non-zero loading. When the discovered groups are

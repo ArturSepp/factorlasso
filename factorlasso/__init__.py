@@ -54,6 +54,10 @@ from factorlasso.lasso_estimator import (
     solve_group_lasso_cvx_problem,
     solve_lasso_cvx_problem,
 )
+from factorlasso.sign_constraints import (
+    derive_sign_constraints,
+    validate_cluster_signs,
+)
 
 try:
     __version__ = _pkg_version("factorlasso")
@@ -84,4 +88,7 @@ __all__ = [
     "compute_ewm_covar",
     "compute_expanding_power",
     "set_group_loadings",
+    # Sign-constraint derivation
+    "derive_sign_constraints",
+    "validate_cluster_signs",
 ]

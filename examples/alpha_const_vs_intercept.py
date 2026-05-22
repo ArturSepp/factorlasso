@@ -10,29 +10,31 @@ then fits the no-intercept model
 
     y_demeaned ≈ X_demeaned · β
 
-The fitted ``LassoModel`` exposes two distinct quantities. Their naming
-preserves backward compatibility with pre-0.3.4 code while making the
-financial concept of "alpha" available cleanly:
+The fitted ``LassoModel`` exposes two distinct quantities:
 
-* ``model.alpha_const_`` — the **economic intercept** α in the original
-  ``y = α + Xβ + ε`` representation.  Reconstructed from the sample
-  means of the *original* (uncentered) ``y`` and ``X`` and the fitted β,
-  so the identity ``y_mean = α + x_mean · β`` holds exactly.  This is
-  the quantity you want when reporting "alpha after factor exposure".
+* ``model.alpha_const_`` — the **economic intercept** α paired
+  consistently with β under the same weighted-least-squares objective.
+  For ``span=None`` (uniform weights) this is the sample-mean
+  reconstruction ``α = ȳ_sample − x̄_sample · β`` (= OLS intercept);
+  for ``span=integer`` (EWMA weights) it is the EWMA-weighted-mean
+  reconstruction, with the same weights factorlasso applies in the loss
+  function.  The result is that the (α, β) pair represents one coherent
+  estimator — the weighted-residual mean is zero by the first-order
+  condition.
 
 * ``model.intercept_`` — the **raw solver output**: the EWMA-weighted
   residual mean on the demeaned data the solver actually saw, equal to
   ``model.estimation_result_.alpha``.  This is a mechanical artefact of
-  fitting a no-intercept model on centered data:
+  fitting a no-intercept model on centered data, preserved under this
+  name for back-compat with pre-0.3.4 code:
   * for ``span=None`` it is identically zero by the OLS first-order
     condition;
   * for ``span=integer`` it is a finite-sample EWMA-demean leftover.
 
-  Preserved under this name for back-compat with pre-0.3.4 code.
-
 The example below estimates a synthetic single-asset factor model where
-the true α is known.  Compare the two attributes across span choices to
-see why ``alpha_const_`` is the right field to read.
+the true α is known.  It also verifies the FOC: under the same
+weighting, the weighted residual mean using ``α_const`` is identically
+zero.
 """
 
 import numpy as np
@@ -43,10 +45,9 @@ from factorlasso import LassoModel, LassoModelType
 
 def main():
     np.random.seed(2026)
-    T, M = 2000, 4
+    T, M = 200, 4
     factor_names = ['Equity', 'Rates', 'Credit', 'Commodity']
 
-    # Drift the factor means away from zero so demeaning is non-trivial
     X = pd.DataFrame(np.random.randn(T, M), columns=factor_names)
     X['Equity'] += 0.40
     X['Rates'] -= 0.20
@@ -60,12 +61,12 @@ def main():
     )
 
     print(f"True intercept: {alpha_true:+.4f}")
-    print(f"True β:         {dict(zip(factor_names, beta_true))}")
+    print(f"True β:         {dict(zip(factor_names, beta_true.tolist()))}")
     print()
 
     print(f"{'span':>6} {'β fit':>40} {'alpha_const_':>15} "
-          f"{'intercept_':>13} {'note':<42}")
-    print("-" * 130)
+          f"{'intercept_':>13} {'FOC (wtd resid mean)':>22}")
+    print("-" * 100)
 
     for span in [None, 500, 200, 60, 24, 12]:
         m = LassoModel(
@@ -80,22 +81,32 @@ def main():
         alpha_const = float(m.alpha_const_.iloc[0])
         intercept_raw = float(m.intercept_.iloc[0])
 
+        # FOC check: under the same weighting as the fit, the weighted
+        # mean of residuals (y - α_const - X·β) must be zero.
         if span is None:
-            note = "intercept_ = 0 exactly (OLS-on-centered)"
-        elif span > T:
-            note = "EWMA never converges → intercept_ ≠ 0"
+            w = np.ones(T) / T
         else:
-            note = "EWMA approximates sample mean"
+            lam = 1.0 - 2.0 / (span + 1.0)
+            w = lam ** np.arange(T - 1, -1, -1)
+            w = w / w.sum()
+        resid = Y.values[:, 0] - alpha_const - X.values @ beta_est
+        foc = float(w @ resid)
 
         beta_str = "[" + ", ".join(f"{b:+.2f}" for b in beta_est) + "]"
         span_str = str(span) if span is not None else "None"
         print(f"{span_str:>6} {beta_str:>40} {alpha_const:>+15.4f} "
-              f"{intercept_raw:>+13.4f} {note:<42}")
+              f"{intercept_raw:>+13.4f} {foc:>+22.2e}")
 
     print()
-    print("Read ``alpha_const_`` for the economic intercept α; ``intercept_`` "
-          "is the raw solver")
-    print("output (a residual-mean diagnostic, not the regression intercept).")
+    print("FOC column verifies internal consistency: under each span's "
+          "weighting, the (α_const, β) pair")
+    print("makes the weighted residual mean exactly zero — both are "
+          "estimators on the same weighted objective.")
+    print()
+    print("Read alpha_const_ for the economic intercept α; intercept_ is "
+          "the raw solver output")
+    print("(a residual-mean diagnostic on demeaned data, not the regression "
+          "intercept).")
 
 
 if __name__ == '__main__':

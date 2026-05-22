@@ -636,6 +636,22 @@ class LassoModel:
         ``LASSO`` since L1 is the only penalty already.
     factors_beta_loading_signs : pd.DataFrame, optional
     factors_beta_prior : pd.DataFrame, optional
+    auto_sign_constraints : bool, default False
+        If True, signs are derived inside ``fit()`` from the EWMA-demeaned,
+        NaN-masked arrays returned by ``get_x_y_np`` (i.e. the same data the
+        CVXPY solver consumes). Pooling strategy is dispatched by
+        ``model_type``:
+
+        * ``LASSO`` (or single-column y): per-y-column independent
+          univariate sign derivation; rows of ``derived_signs_`` may differ.
+        * ``GROUP_LASSO``: signs pooled within each ``group_data`` group;
+          members of a group share their ``derived_signs_`` row.
+        * ``GROUP_LASSO_CLUSTERS``: signs pooled within each HCGL asset
+          cluster (the same clustering the group solver uses).
+
+        When ``factors_beta_loading_signs`` is *also* supplied, the explicit
+        matrix is overlaid on the auto-derived signs per-cell: non-NaN
+        explicit values win, NaN cells inherit the auto value.
     demean : bool, default True
     solver : str, default 'CLARABEL'
     warmup_period : int, default 12
@@ -645,16 +661,22 @@ class LassoModel:
     coef_ : pd.DataFrame, shape (N, M)
         Estimated factor loadings β.
     alpha_const_ : pd.Series, shape (N,)
-        **Economic intercept α** — what users typically mean by "alpha"
-        when decomposing returns into ``y = α + Xβ + ε``. Reconstructed
-        from sample means of the *original* (pre-demean) ``y`` and ``X``
-        and the fitted β, so the identity ``y_mean = α + x_mean · β``
-        holds exactly. For ``span=None`` and unconstrained coefficients
-        this equals the OLS intercept exactly; for ``span=integer`` it
-        is reconstructed from sample means rather than EWMA means and
-        thus stays interpretable regardless of EWMA span.
+        **Economic intercept α** — the constant term in the regression
+        ``y = α + Xβ + ε`` paired consistently with the fitted β.
+        Reconstructed from weighted means of ``y`` and ``X`` using the
+        same weighting that produced β:
 
-        This is the field to read when reporting the regression intercept.
+        * for ``span=None`` (uniform weights), this is the sample-mean
+          reconstruction ``α = ȳ_sample − x̄_sample · β``, identical to
+          the OLS intercept;
+        * for ``span=integer`` (EWMA weights), this uses EWMA-weighted
+          means with the same weights factorlasso applies in the loss
+          function, so the ``(α, β)`` pair represents one coherent
+          weighted-least-squares solution rather than two estimators
+          under different weightings.
+
+        This is the field to read when reporting "alpha after factor
+        exposure".
     intercept_ : pd.Series, shape (N,)
         Raw solver output: the EWMA-weighted mean of residuals on the
         *demeaned* data, equal to ``estimation_result_.alpha``. Because
@@ -677,6 +699,25 @@ class LassoModel:
         Scipy linkage matrix (HCGL only).
     cutoff_ : float or None
         Dendrogram cut distance (HCGL only).
+    derived_signs_ : pd.DataFrame or None
+        The final ``(N × M)`` sign matrix that was passed to the solver,
+        in ``LassoModel.factors_beta_loading_signs`` convention
+        (``+1`` non-negative, ``-1`` non-positive, ``0`` forced zero,
+        ``NaN`` unconstrained). Populated whenever sign constraints were
+        actually applied during the fit:
+
+        * ``auto_sign_constraints=True`` only — pooled univariate signs
+          from the EWMA-demeaned, NaN-masked arrays the solver consumes,
+          identical across response rows.
+        * ``factors_beta_loading_signs`` only — the user's matrix reindexed
+          to the fit universe.
+        * Both — auto-derived signs as the base layer, overlaid with the
+          explicit per-cell values wherever ``factors_beta_loading_signs``
+          is non-NaN (per-asset overrides for the asset-specific master
+          constraints).
+
+        Read this attribute to inspect, log, or render the constraints
+        that actually shaped the fitted ``coef_``.
 
     Examples
     --------
@@ -711,6 +752,28 @@ class LassoModel:
     nonneg: bool = False
     factors_beta_loading_signs: Optional[pd.DataFrame] = None
     factors_beta_prior: Optional[pd.DataFrame] = None
+    # Auto sign-constraint derivation (signs computed inside fit on the
+    # solver-ready EWMA-demeaned, NaN-masked arrays). Pooling strategy is
+    # determined by ``model_type``:
+    #   * GROUP_LASSO_CLUSTERS → pool within each asset cluster from HCGL
+    #   * GROUP_LASSO          → pool within each ``group_data`` group
+    #   * LASSO / single-col y → per-y-column independent derivation
+    auto_sign_constraints: bool = False
+
+    # Significance gate for auto-derived signs.  When set (>0), only
+    # columns whose univariate ``|t|`` meets the threshold get a hard
+    # sign constraint; columns failing the threshold are pinned to 0
+    # (β forced to zero), excluding them from the regression.  This
+    # enforces parsimony directly and is robust to the choice of
+    # ``reg_lambda``.  Default 0.75 acts as a noise floor — it is
+    # well below conventional significance levels but high enough
+    # to filter columns whose univariate slope sign is dominated by
+    # sampling noise (|t| < 0.75 ⇒ two-sided p > 0.45).  Pass
+    # ``None`` to disable the gate and reproduce v0.3.6 behaviour.
+    #
+    # Typical alternative values: 0.5 (looser) to 1.0 (stricter).
+    # Only effective when ``auto_sign_constraints=True``.
+    auto_sign_threshold_t: Optional[float] = 0.75
 
     # ── Fitted state (set by fit(), trailing underscore) ──────────────
     x_: Optional[pd.DataFrame] = None
@@ -724,6 +787,7 @@ class LassoModel:
     cutoff_: Optional[float] = None
     valid_mask_: Optional[np.ndarray] = None
     effective_span_: Optional[float] = None
+    derived_signs_: Optional[pd.DataFrame] = None
 
     def __post_init__(self):
         if self.model_type == LassoModelType.GROUP_LASSO and self.group_data is None:
@@ -928,12 +992,116 @@ class LassoModel:
             x=x, y=y, span=eff_span, demean=self.demean
         )
 
-        # Extract sign constraints and prior as numpy
+        # ── Asset-side clustering (length N), computed once and shared by
+        #    both the auto-sign derivation block and the solver dispatch.
+        #    None for plain LASSO / single-column y; pd.Series indexed by
+        #    y.columns for the GROUP modes.
+        # ----------------------------------------------------------------
+        asset_clusters: Optional[pd.Series] = None
+        linkage = None
+        cutoff = None
+        is_lasso_mode = (
+            self.model_type == LassoModelType.LASSO or y_np.shape[1] == 1
+        )
+
+        if is_lasso_mode:
+            # asset_clusters stays None → per-y-column sign derivation below
+            pass
+        elif self.model_type == LassoModelType.GROUP_LASSO:
+            asset_clusters = self.group_data[y.columns]
+        elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
+            # Restore NaN before EWMA correlation (see block comment in the
+            # solver-dispatch section below for the rationale).
+            y_for_corr = np.where(valid_mask > 0, y_np, np.nan)
+            corr = compute_ewm_covar(
+                a=y_for_corr, span=eff_span, is_corr=True,
+            )
+            corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
+            asset_clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
+                corr_df, cutoff_fraction=self.cutoff_fraction,
+            )
+
+        # ── Sign-constraint assembly ─────────────────────────────────
+        # Two layers can contribute:
+        #
+        #   1. Auto-derived signs (auto_sign_constraints=True): univariate
+        #      slopes computed on the EWMA-demeaned, NaN-masked arrays the
+        #      solver actually consumes. Pooling strategy mirrors the
+        #      solver's structural assumption:
+        #        * GROUP modes  → pool y within each asset cluster; signs
+        #          shared by every cluster member (rows identical within
+        #          a cluster, can differ across clusters).
+        #        * LASSO / single-col → derive signs per y-column
+        #          independently; each row of the (N × M) matrix comes
+        #          from a univariate fit against a single response.
+        #
+        #   2. Explicit factors_beta_loading_signs (N × M, NaN-permissive):
+        #      asset-specific per-cell overrides. NaN means "use the auto
+        #      layer here"; any non-NaN value wins.
+        #
+        # When both are supplied, (2) is overlaid on (1). When only (1) or
+        # only (2) is supplied, the other layer is treated as all-NaN.
+        # ----------------------------------------------------------------
         signs_np = None
+        auto_signs_np = None
+        explicit_signs_np = None
+
+        if self.auto_sign_constraints:
+            from factorlasso.sign_constraints import (
+                _compute_sign_vector,
+                _compute_sign_matrix_per_response,
+            )
+            N = y_np.shape[1]
+            M = x_np.shape[1]
+
+            if asset_clusters is not None:
+                # Pool y columns within each asset cluster — one call per
+                # cluster, broadcast result to all members.
+                auto_signs_np = np.empty((N, M), dtype=float)
+                cluster_vals = (
+                    asset_clusters.values
+                    if isinstance(asset_clusters, pd.Series)
+                    else np.asarray(asset_clusters)
+                )
+                for c in np.unique(cluster_vals):
+                    members_idx = np.where(cluster_vals == c)[0]
+                    y_sub = y_np[:, members_idx]
+                    sign_vec, _ = _compute_sign_vector(
+                        x_arr=x_np, y_arr=y_sub,
+                        clusters=None, master_constraints=None,
+                        auto_sign_threshold_t=self.auto_sign_threshold_t,
+                    )
+                    auto_signs_np[members_idx, :] = sign_vec
+            else:
+                # LASSO or single-column y: per-y-column independent signs.
+                # Bulk-vectorised closed-form path — eliminates the N-deep
+                # Python loop of the prior implementation.
+                auto_signs_np = _compute_sign_matrix_per_response(
+                    x_arr=x_np, y_arr=y_np,
+                    auto_sign_threshold_t=self.auto_sign_threshold_t,
+                )
+
         if self.factors_beta_loading_signs is not None:
-            signs_np = self.factors_beta_loading_signs.loc[
+            explicit_signs_np = self.factors_beta_loading_signs.loc[
                 y.columns, x.columns
             ].to_numpy()
+
+        if auto_signs_np is not None and explicit_signs_np is not None:
+            # Overlay: explicit per-cell value wins where non-NaN
+            signs_np = np.where(
+                np.isnan(explicit_signs_np), auto_signs_np, explicit_signs_np
+            )
+        elif auto_signs_np is not None:
+            signs_np = auto_signs_np
+        elif explicit_signs_np is not None:
+            signs_np = explicit_signs_np
+
+        # Persist the final solver-facing sign matrix for monitoring /
+        # downstream inspection. Stored only when signs were actually used.
+        if signs_np is not None:
+            self.derived_signs_ = pd.DataFrame(
+                signs_np, index=y.columns, columns=x.columns,
+            )
 
         prior_np = None
         if self.factors_beta_prior is not None:
@@ -941,9 +1109,8 @@ class LassoModel:
                 y.columns, x.columns
             ].to_numpy()
 
-        clusters = linkage = cutoff = None
-
-        if self.model_type == LassoModelType.LASSO or y_np.shape[1] == 1:
+        # ── Solver dispatch (consumes the pre-computed asset_clusters) ──
+        if is_lasso_mode:
             result = solve_lasso_cvx_problem(
                 x=x_np, y=y_np, valid_mask=valid_mask,
                 reg_lambda=self.reg_lambda, span=eff_span,
@@ -954,20 +1121,6 @@ class LassoModel:
             )
 
         elif self.model_type == LassoModelType.GROUP_LASSO:
-            gl = set_group_loadings(group_data=self.group_data[y.columns])
-            result = solve_group_lasso_cvx_problem(
-                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
-                valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                nonneg=self.nonneg,
-                factors_beta_loading_signs=signs_np,
-                factors_beta_prior=prior_np,
-                group_penalty=self.group_penalty,
-                l1_weight=self.l1_weight,
-            )
-
-        elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
             # Restore NaN positions before computing the EWMA correlation for
             # clustering. ``get_x_y_np`` zero-fills NaN in y_np so the CVXPY
             # quadratic-loss solvers can process a finite array (the weights
@@ -990,15 +1143,21 @@ class LassoModel:
             # degenerate columns. See CHANGELOG entry for 2026-04-16 commit
             # 937ba7c "align ewma with qis" for compute_ewm_covar's current
             # NaN-handling contract.
-            y_for_corr = np.where(valid_mask > 0, y_np, np.nan)
-            corr = compute_ewm_covar(
-                a=y_for_corr, span=eff_span, is_corr=True,
+            gl = set_group_loadings(group_data=asset_clusters)
+            result = solve_group_lasso_cvx_problem(
+                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
+                valid_mask=valid_mask,
+                reg_lambda=self.reg_lambda, span=eff_span,
+                verbose=verbose, solver=self.solver,
+                nonneg=self.nonneg,
+                factors_beta_loading_signs=signs_np,
+                factors_beta_prior=prior_np,
+                group_penalty=self.group_penalty,
+                l1_weight=self.l1_weight,
             )
-            corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
-            clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
-                corr_df, cutoff_fraction=self.cutoff_fraction,
-            )
-            gl = set_group_loadings(group_data=clusters)
+
+        elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
+            gl = set_group_loadings(group_data=asset_clusters)
             result = solve_group_lasso_cvx_problem(
                 x=x_np, y=y_np, group_loadings=gl.to_numpy(),
                 valid_mask=valid_mask,
@@ -1053,16 +1212,52 @@ class LassoModel:
         )
         # alpha_const_ : the economic intercept α — what users typically
         # mean by "alpha" when decomposing returns into ``α + Xβ + ε``.
-        # Reconstructed from sample means of the *original* (pre-demean)
-        # ``y`` and ``X`` and the fitted β so the identity
-        # ``y_mean = α + x_mean · β`` holds exactly. For span=None and
-        # unconstrained coefficients this equals the OLS intercept exactly;
-        # for span=integer it remains the interpretable
-        # ``α + factor exposure`` decomposition regardless of EWMA span.
-        x_mean = np.asarray(x.mean(skipna=True).values, dtype=float)
-        y_mean = np.asarray(y.mean(skipna=True).values, dtype=float)
+        #
+        # Reconstructed from the same weighting that produced β: for
+        # ``span=None`` (uniform weights) this is the sample-mean
+        # reconstruction ``α = ȳ - x̄·β``; for ``span=integer`` it uses
+        # EWMA-weighted means with the same weights factorlasso applies in
+        # the loss function. This guarantees the (α, β) pair is
+        # internally consistent — both are estimators on the same weighted
+        # objective. Using sample means with EWMA-weighted β would mix two
+        # different estimators and the resulting α would not be the
+        # weighted-residual-mean that pairs with β.
+        #
+        # For ``span=None`` and unconstrained coefficients this equals
+        # the OLS intercept exactly.
+        x_arr = x.to_numpy(dtype=float)
+        y_arr = y.to_numpy(dtype=float)
+        T_full, n_x_full = x_arr.shape
+        n_y_full = y_arr.shape[1]
+        # Per-response valid mask of full (pre-demean) length T_full.
+        # NaN in y[:, j] or all-NaN in x[t] makes row invalid for response j.
+        y_valid = (~np.isnan(y_arr)).astype(float)
+        x_row_valid = (~np.isnan(x_arr).all(axis=1)).astype(float)
+        valid_full = y_valid * x_row_valid[:, None]
+        # Weights aligned with the original T_full rows. Match factorlasso's
+        # loss function: w_t² = (1 - 2/(span+1))^(T-1-t) for EWMA, uniform
+        # for span=None.
+        if eff_span is None:
+            w_sq_full = np.ones(T_full)
+        else:
+            lam = 1.0 - 2.0 / (float(eff_span) + 1.0)
+            w_sq_full = lam ** np.arange(T_full - 1, -1, -1)
+        x_safe = np.nan_to_num(x_arr)
+        y_safe = np.nan_to_num(y_arr)
+        x_means = np.zeros((n_y_full, n_x_full))
+        y_means = np.zeros(n_y_full)
+        for j in range(n_y_full):
+            w_j = w_sq_full * valid_full[:, j]
+            tot = w_j.sum()
+            if tot > 0.0:
+                w_j_norm = w_j / tot
+                x_means[j] = w_j_norm @ x_safe
+                y_means[j] = w_j_norm @ y_safe[:, j]
+            else:
+                x_means[j] = np.nan
+                y_means[j] = np.nan
         beta_arr = np.where(np.isnan(est_beta), 0.0, est_beta)
-        alpha_const_arr = y_mean - beta_arr @ x_mean
+        alpha_const_arr = y_means - np.einsum('ij,ij->i', beta_arr, x_means)
         alpha_const_ser = pd.Series(
             alpha_const_arr, index=y.columns, name='alpha_const',
         )
@@ -1070,26 +1265,21 @@ class LassoModel:
             alpha_const_ser.loc[short_assets] = np.nan
         self.alpha_const_ = alpha_const_ser
         self.estimation_result_ = result
-        # For GROUP_LASSO with externally supplied group_data, record it as
-        # clusters_ so downstream consumers (CurrentFactorCovarData,
-        # diagnostic plots, USD-anchored clustering in the CMA pipeline)
-        # see clusters populated uniformly for both HCGL and external-groups
-        # modes. The HCGL path already sets `clusters` above.
-        if clusters is None and self.model_type == LassoModelType.GROUP_LASSO:
-            clusters = self.group_data.reindex(y.columns).copy()
-        # Filter out cluster labels for ghost assets — assets whose betas
-        # were zeroed above because they had fewer than ``warmup_period``
-        # valid observations. Dropping them here keeps ``clusters_``
-        # consistent with ``coef_`` (zeroed) and per-asset diagnostics
-        # (NaN), so downstream consumers that count or analyse clusters
-        # see only assets that actually contributed to the fit. Without
-        # this, pre-launch / short-history assets receive placeholder
-        # singleton labels that inflate ``n_clusters`` in early history
-        # (observed: 83 raw vs 31 real on a 160-asset multi-asset
+        # asset_clusters is already populated by the upstream dispatch (HCGL
+        # output for GROUP_LASSO_CLUSTERS, group_data for GROUP_LASSO, None
+        # for plain LASSO). Filter out cluster labels for ghost assets —
+        # assets whose betas were zeroed above because they had fewer than
+        # ``warmup_period`` valid observations. Dropping them here keeps
+        # ``clusters_`` consistent with ``coef_`` (zeroed) and per-asset
+        # diagnostics (NaN), so downstream consumers that count or analyse
+        # clusters see only assets that actually contributed to the fit.
+        # Without this, pre-launch / short-history assets receive
+        # placeholder singleton labels that inflate ``n_clusters`` in early
+        # history (observed: 83 raw vs 31 real on a 160-asset multi-asset
         # universe at 2002-12-31).
-        if clusters is not None and short_assets is not None and len(short_assets) > 0:
-            clusters = clusters.drop(short_assets, errors='ignore')
-        self.clusters_ = clusters
+        if asset_clusters is not None and short_assets is not None and len(short_assets) > 0:
+            asset_clusters = asset_clusters.drop(short_assets, errors='ignore')
+        self.clusters_ = asset_clusters
         self.linkage_ = linkage
         self.cutoff_ = cutoff
         return self

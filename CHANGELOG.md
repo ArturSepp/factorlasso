@@ -7,24 +7,251 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [0.3.4] — 2026-05-22
+## [Unreleased] — Roadmap
+
+### Planned
+
+- **Adaptive penalty weights from univariate magnitudes.** Extend
+  `auto_sign_constraints` to optionally use `|β̂_uni_j|` as adaptive
+  weights in the L1 penalty (`λ · |γ_j| / |β̂_uni_j|^γ`), following
+  Zou (2006) and the formulation in Richland et al. (2025) eq. (3.3).
+  This composes naturally with the existing sign-constraint machinery
+  and would tighten sparsity at no expected accuracy cost. Likely
+  shipped behind a new `auto_sign_adaptive_weights: bool = False`
+  field on `LassoModel`.
+
+
+
+## [0.3.8] — 2026-05-22
+
+### Performance
+
+- **~5–140× speedup of the `auto_sign_constraints=True` derivation block.**
+  The univariate t-statistic computation in `_compute_sign_vector` previously
+  ran an `M`-deep Python loop that allocated a `(T, q)` residual matrix per
+  column. Replaced with a closed-form pooled-OLS SSR identity that is fully
+  vectorisable in `j`:
+
+      SSR_j  =  ||Y||²_F  −  q · β_j² · (x_j' x_j)
+
+  using `x_j' y_sum = β_j · q · (x_j' x_j)` from the slope definition. No
+  residuals are materialised. Numerical output is bit-identical to the prior
+  implementation (max abs diff ≈ 1e-15).
+
+- **Bulk per-y-column path** for LASSO mode in `LassoModel.fit`. The previous
+  implementation called `_compute_sign_vector` once per response column in
+  an `N`-deep Python loop. Replaced with a single matrix-product + closed-form
+  block (`_compute_sign_matrix_per_response`) that returns the full `(N, M)`
+  sign matrix in one call. End-to-end rolling-window benchmark on a 25-factor
+  × 160-asset universe: prior 2.5× slowdown of `auto_sign_constraints=True`
+  vs `False` reduced to ~1.15–1.22×; the residual is dominated by the CVXPY
+  solver itself processing the additional sign constraints.
+
+### Tests
+
+- **Cluster-mode threshold coverage.** Added four tests pinning the
+  cluster-aggregated threshold gate behaviour (strong cluster survives,
+  weak cluster pinned uniformly, master constraint can pierce a single
+  cluster member, HCGL within-cluster sign coherence). Closes the v0.3.7
+  coverage gap.
+
+### Documentation
+
+- **README** gains a dedicated section *"Data-driven sign constraints with
+  a noise-floor gate"* covering `auto_sign_constraints`,
+  `auto_sign_threshold_t`, the model-type dispatch table, and the explicit
+  overlay semantic.
+- **COMPARISON.md** gains a *"Data-driven sign derivation with noise gate"*
+  row in the feature comparison table.
+
+### Internal
+
+- New helper `_compute_sign_matrix_per_response(x_arr, y_arr, threshold)`
+  returns the bulk `(N, M)` sign matrix in a single vectorised call. Used by
+  `LassoModel.fit` in LASSO / single-response mode. Cluster mode continues to
+  use `_compute_sign_vector` per cluster — each call is now O(M) closed-form,
+  not O(M) Python loop.
+
+
+## [0.3.7] — 2026-05-22
+
+### Added
+
+- **`auto_sign_threshold_t`** — new optional parameter on `LassoModel` and
+  on the public `derive_sign_constraints` function (default `0.75`). When
+  `auto_sign_constraints=True` and the threshold is active, columns whose
+  univariate t-statistic falls below the threshold have their sign
+  constraint pinned to `0`, forcing β = 0 in the multivariate fit. This
+  acts as a noise floor on the data-derived sign machinery: it prevents
+  the multivariate solver from inheriting a noise-driven hard constraint
+  for factors whose univariate slope sign is dominated by sampling noise.
+
+  The default `0.75` is intentionally well below conventional significance
+  thresholds (|t| = 0.75 corresponds to two-sided p ≈ 0.45). It is not a
+  hypothesis test — only the worst noise-driven signs are filtered.
+  Empirical calibration on thin financial panels: across five PE-strategy
+  panels (T = 49–71 quarters), cap-weighted aggregate Direct Alpha shifts
+  by ≤ 100 basis points across the threshold range [None, 1.0].
+
+  Pass `auto_sign_threshold_t=None` to disable the gate and reproduce
+  the v0.3.6 behaviour of always enforcing the slope-sign.
+
+### Changed
+
+- **`LassoModel(auto_sign_constraints=True)` is now noise-filtered by
+  default.** Previously every auto-derived sign was enforced regardless
+  of the strength of univariate evidence; now the default threshold of
+  `0.75` filters out columns with negligible signal. Code that depends
+  on the old behaviour can opt out by passing
+  `auto_sign_threshold_t=None` explicitly.
+
+### Internal
+
+- `_compute_sign_vector` accepts `auto_sign_threshold_t` and computes
+  per-column univariate t-statistics using the same no-intercept formula
+  the slopes themselves are computed against. Cluster mode uses the
+  cluster-mean regressor and shares the t-statistic across cluster
+  members. Multi-response y pools residuals across response columns.
+
+
+
+## [0.3.5] — 2026-05-22
+
+### Added
+
+- **`factorlasso.sign_constraints`** — new module providing data-driven
+  derivation of sign constraints for ``LassoModel.factors_beta_loading_signs``
+  from pooled univariate slopes. Addresses the within-cluster sign-alternation
+  problem in tightly-collinear factor sets, where vanilla LASSO can assign
+  opposite signs to two regressors with > 0.95 correlation, producing
+  artificial long/short profiles inside a single factor cluster.
+
+- **`derive_sign_constraints(x, y, clusters=None, master_constraints=None)`** —
+  public function returning an ``(N × M)`` DataFrame compatible with
+  ``LassoModel.factors_beta_loading_signs``. Two operating modes via the
+  ``clusters`` argument:
+
+  * **column-level** (``clusters=None``): one sign per regressor from its own
+    pooled univariate slope. Allows within-cluster sign disagreement if two
+    correlated regressors have opposite marginal effect on ``y``.
+  * **cluster-level** (``clusters=<array>``): one sign per cluster from the
+    slope of the cluster-mean regressor vs ``y``, broadcast to every cluster
+    member. Guarantees within-cluster sign coherence — the property that
+    eliminates within-cluster alternations in the fitted ``coef_``.
+
+  Pooled across multi-response ``y`` (``Σ_k y[:, k]``); the resulting sign
+  vector is broadcast across response rows of the output DataFrame.
+  ``master_constraints`` accepts ``{name_or_idx: sign}`` for explicit
+  column-level overrides on top of the data-derived signs. No preprocessing
+  is performed on ``x`` or ``y`` — caller owns any centering/standardization.
+
+- **`validate_cluster_signs(x, y, clusters)`** — diagnostic helper that
+  flags regressors whose column-level univariate sign disagrees with their
+  cluster's aggregate sign. Emits a ``UserWarning`` with the offending
+  factor names. Use this before committing to a cluster spec to detect
+  groupings that mix economically-different regressors.
+
+- **`LassoModel.auto_sign_constraints: bool = False`** — new hyperparameter.
+  When ``True``, signs are derived inside ``fit()`` from the EWMA-demeaned,
+  NaN-masked arrays returned by ``get_x_y_np``, i.e. the exact same data
+  the CVXPY solver consumes. This avoids the inconsistency of deriving
+  signs on raw inputs while fitting on demeaned ones, and ensures
+  per-fold sign derivation under ``LassoModelCV`` (no cross-fold leakage).
+
+  The pooling strategy is dispatched by ``model_type`` — the auto-derivation
+  uses the same asset-side grouping the solver does, with no extra user
+  configuration:
+
+  * ``LASSO`` (or single-column y): each y-column gets an independent
+    univariate sign derivation. Rows of ``derived_signs_`` are produced
+    one-by-one and may differ across responses.
+  * ``GROUP_LASSO``: signs are pooled within each ``group_data`` group;
+    every member of a group shares the same row in ``derived_signs_``.
+  * ``GROUP_LASSO_CLUSTERS``: signs are pooled within each HCGL asset
+    cluster (the same ``compute_clusters_from_corr_matrix`` output the
+    group solver already uses).
+
+  No factor-side cluster argument is exposed — sign-pooling structure is
+  fully determined by the model type and its existing grouping inputs.
+
+- **`LassoModel.derived_signs_`** — new fitted attribute (``pd.DataFrame``
+  or ``None``) holding the final ``(N × M)`` sign matrix passed to the
+  solver. Populated whenever sign constraints reached the solver — under
+  ``auto_sign_constraints=True``, under explicit ``factors_beta_loading_signs``,
+  or both. Provides a single audit artifact for monitoring and dendrogram
+  / heatmap rendering of the constraint surface.
+
+- **`tests/test_sign_constraints.py`** — 25 integration tests against the
+  real ``LassoModel`` and ``LassoModelCV``, covering external API shape,
+  drop-in compatibility with ``factors_beta_loading_signs``, cluster-mode
+  coherence, CV propagation, demean-data sensitivity, misspecified-cluster
+  diagnostics, the explicit-overlay-on-auto composition, and edge cases
+  (X/Y shape mismatch, missing cluster assignments, invalid master values).
+
+### Behaviour
+
+- **`_compute_sign_vector`** (and through it, both ``derive_sign_constraints``
+  and the internal ``LassoModel`` auto-sign path) is now NaN-agnostic at
+  the function boundary. NaN entries in ``x`` or ``y`` are zero-filled on
+  entry — mathematically equivalent to dropping those observations for the
+  no-intercept univariate slope ``(x · y) / (x · x)``, since a zeroed row
+  contributes nothing to either inner product. Previously, a single NaN
+  in ``y`` poisoned every slope (because ``y.sum(axis=1)`` propagated NaN),
+  and the external ``derive_sign_constraints`` returned an all-NaN sign
+  matrix silently. The internal LassoModel path was incidentally safe
+  because ``get_x_y_np`` zero-fills upstream, but the function itself was
+  load-bearing on that. Now the safety is at the function boundary, where
+  it belongs.
+
+- When **both** ``auto_sign_constraints=True`` and ``factors_beta_loading_signs``
+  are supplied to ``LassoModel``, they **compose** rather than conflict:
+
+  * Auto-derived signs form the base layer — one pooled sign per factor,
+    broadcast across responses (same sign across all assets).
+  * The explicit ``factors_beta_loading_signs`` matrix is overlaid on top
+    per-cell: non-NaN entries win, NaN entries inherit the auto value.
+
+  This is the recommended pattern for production ROSAA pipelines where
+  most factor signs should be data-driven (cluster-coherent) but specific
+  assets need asset-specific overrides (e.g. a bond fund forced to zero
+  equity loading regardless of marginal correlation).
+
+- The single-layer paths are preserved unchanged. Setting only
+  ``factors_beta_loading_signs`` works identically to ``< 0.3.5``; setting
+  only ``auto_sign_constraints=True`` produces a pure data-derived
+  ``(N × M)`` sign matrix.
+
+- ``LassoModelCV`` automatically benefits from ``auto_sign_constraints``:
+  when the ``base_model`` carries the flag, each fold derives its own
+  signs from its training subset, eliminating the silent cross-fold
+  leakage that exists when signs are derived once externally on full
+  training data.
+
+
+
 
 ### Added
 
 - **`LassoModel.alpha_const_`** — new attribute holding the **economic
   intercept α** of the regression in the original ``y = α + Xβ + ε``
-  representation. Reconstructed from the sample means of the *original*
-  (pre-demean) ``y`` and ``X`` and the fitted β, so the identity
-  ``y_mean = α + x_mean · β`` holds exactly. For ``span=None`` and
-  unconstrained coefficients this equals the OLS intercept exactly; for
-  ``span=integer`` it is reconstructed from sample means rather than
-  EWMA means and thus stays interpretable regardless of EWMA span.
+  representation, paired consistently with the fitted β under the same
+  weighted-least-squares objective:
 
-  This is the field to read when reporting "alpha after factor exposure".
+  * for ``span=None`` (uniform weights), this is the sample-mean
+    reconstruction ``α = ȳ_sample − x̄_sample · β`` (= OLS intercept);
+  * for ``span=integer`` (EWMA weights), this is the EWMA-weighted-mean
+    reconstruction using the same weights factorlasso applies in the
+    loss function.
+
+  The result is an internally consistent ``(α, β)`` pair: the weighted
+  mean of residuals ``y − α − X·β`` is identically zero by the first-
+  order condition. This is what users typically mean by "alpha" when
+  decomposing returns into ``α + factor exposure``.
 
 - **`examples/alpha_const_vs_intercept.py`** — worked example
   demonstrating the difference across span choices on a synthetic
-  single-asset factor model with known α.
+  single-asset factor model with known α, including an explicit FOC
+  check that confirms internal consistency at machine precision.
 
 ### Changed (documentation only, no behavioural change)
 
@@ -48,8 +275,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ``LassoModel.alpha_const_`` for the economic quantity.
 
 - `LassoModel` class docstring updated with a clear distinction between
-  ``alpha_const_`` (economic intercept α) and ``intercept_`` (raw solver
-  output / EWMA-demean diagnostic).
+  ``alpha_const_`` (economic intercept α, weighted-consistent with β)
+  and ``intercept_`` (raw solver output / EWMA-demean diagnostic).
 
 
 
