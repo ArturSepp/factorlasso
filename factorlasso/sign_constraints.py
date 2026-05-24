@@ -240,7 +240,8 @@ def _compute_sign_matrix_per_response(
     x_arr: np.ndarray,
     y_arr: np.ndarray,
     auto_sign_threshold_t: Optional[float] = None,
-) -> np.ndarray:
+    return_slopes: bool = False,
+) -> Union[np.ndarray, tuple]:
     """
     Vectorised bulk equivalent of N calls to ``_compute_sign_vector`` with
     ``clusters=None`` and ``y_arr[:, k:k+1]`` — i.e. per-y-column independent
@@ -249,17 +250,26 @@ def _compute_sign_matrix_per_response(
 
     Computes the full ``(N, M)`` slope and t-stat matrix in a single
     matrix-product + closed-form SSR (q = 1 per row). Returns the
-    threshold-gated ``(N, M)`` sign matrix.
+    threshold-gated ``(N, M)`` sign matrix, and optionally the underlying
+    univariate slope matrix for downstream adaptive-weight derivation.
 
     Parameters
     ----------
     x_arr : ndarray (T, M)
     y_arr : ndarray (T, N)
     auto_sign_threshold_t : float, optional
+        Threshold-gate parameter; see ``_compute_sign_vector``.
+    return_slopes : bool, default False
+        If True, returns ``(signs, slopes)``; otherwise returns ``signs`` only.
+        Slopes are the raw univariate estimates β̂_kj before thresholding —
+        i.e. the magnitudes consumed by the Zou (2006) adaptive-weight
+        formula ``λ · |β_kj| / |β̂_kj|`` when paired with
+        ``LassoModel.auto_sign_adaptive_weights=True``.
 
     Returns
     -------
     signs : ndarray (N, M) of float in {-1, 0, +1}
+    slopes : ndarray (N, M), only when ``return_slopes=True``
     """
     # NaN safety (same contract as _compute_sign_vector)
     if np.isnan(x_arr).any():
@@ -293,6 +303,8 @@ def _compute_sign_matrix_per_response(
             t_stats = np.where(se > 0, slopes / se, 0.0)
         signs[np.abs(t_stats) < auto_sign_threshold_t] = 0.0
 
+    if return_slopes:
+        return signs, slopes
     return signs
 
 
@@ -510,3 +522,111 @@ def validate_cluster_signs(
             stacklevel=2,
         )
     return disagreements
+
+
+def _adaptive_penalty_weights(
+    slopes: np.ndarray,
+    signs: np.ndarray,
+    gamma: float = 1.0,
+    floor: float = 1e-3,
+) -> np.ndarray:
+    """
+    Derive adaptive L1 penalty weights from univariate slopes, following
+    Zou (2006) and the formulation in Richland et al. (2025) eq. (3.3).
+
+    For each cell (k, j), the adaptive penalty weight is
+
+        W_kj = 1 / max(|β̂_uni_kj|, floor)^gamma
+
+    where ``β̂_uni_kj`` is the pooled univariate slope and ``floor`` is a
+    stabiliser preventing weight explosion on near-zero slopes. Cells where
+    the sign-gate has already pinned ``s_kj = 0`` receive weight ``1.0`` as
+    a placeholder (the hard sign constraint forces ``β_kj = 0`` so the
+    penalty term contributes zero regardless).
+
+    Parameters
+    ----------
+    slopes : ndarray (N, M)
+        Univariate slope matrix β̂_uni from
+        ``_compute_sign_matrix_per_response(..., return_slopes=True)`` or
+        from the per-cluster path in ``LassoModel.fit``.
+    signs : ndarray (N, M) of {-1, 0, +1}
+        Threshold-gated sign matrix from the same source. Cells with
+        ``signs[k, j] == 0`` are pinned to zero by the solver and receive
+        a placeholder weight of 1.0.
+    gamma : float, default 1.0
+        Zou (2006) exponent. ``gamma = 1`` is the standard adaptive-Lasso
+        choice; larger values amplify the magnitude-aware reweighting.
+    floor : float, default 1e-3
+        Stabiliser on the absolute slope. The slope magnitude is clipped
+        at this floor before inversion to prevent weight explosion when a
+        cell's univariate evidence is borderline-significant.
+
+    Returns
+    -------
+    weights : ndarray (N, M) of float, all values in [floor**(-gamma), 1.0]
+              after subsequent normalisation; weights of zero-pinned cells
+              are set to 1.0 placeholder.
+    """
+    abs_slopes = np.abs(slopes)
+    clipped = np.maximum(abs_slopes, floor)
+    weights = 1.0 / (clipped ** gamma)
+    # Cells pinned to zero by the sign-gate get a placeholder weight of 1.0;
+    # the hard equality β_kj = 0 makes the penalty term contribution zero
+    # regardless.
+    weights = np.where(signs == 0.0, 1.0, weights)
+    return weights
+
+
+def _aggregate_to_row_weights(
+    cell_weights: np.ndarray,
+    signs: np.ndarray,
+) -> np.ndarray:
+    """
+    Aggregate the ``(N, M)`` cell-level adaptive weights into a per-asset
+    row-weight vector of length ``N`` suitable for adaptive Group LASSO
+    reweighting.
+
+    For each asset row ``k``, the aggregation is the root-mean-square of
+    the cell weights over the *non-gated* factors (cells where
+    ``signs[k, j] != 0``)::
+
+        W_k = sqrt( mean_{j: s_kj != 0} W_kj^2 )
+
+    Rationale:
+
+    - Root-mean-square is the L2-natural aggregation to pair with the
+      L2 norm in the group-LASSO penalty term ``W_k * ||β_k - β⁰_k||_2``.
+      Mean would be too soft; max would be overly aggressive.
+    - For an asset with ``|β̂_uni_kj| = 1`` across all factors, the
+      aggregation returns ``W_k = 1`` exactly, preserving the existing
+      per-cluster scaling ``√(|g|/G)`` of ``solve_group_lasso_cvx_problem``
+      without any multiplicative drift.
+    - Gate-pinned cells (``s_kj = 0``) are *excluded* from the
+      aggregation. Their placeholder weight of 1.0 is irrelevant — the
+      hard sign constraint forces ``β_kj = 0`` independently — and
+      including them would artificially pull ``W_k`` toward unity.
+
+    If an asset has *every* cell pinned (degenerate row), the
+    aggregation falls back to ``W_k = 1`` to avoid a divide-by-zero.
+
+    Parameters
+    ----------
+    cell_weights : ndarray (N, M)
+        Per-cell adaptive weights from ``_adaptive_penalty_weights``.
+    signs : ndarray (N, M) of {-1, 0, +1}
+        Gated sign matrix; cells with ``signs[k, j] == 0`` are excluded
+        from the row aggregation.
+
+    Returns
+    -------
+    row_weights : ndarray (N,) of float, with W_k = 1.0 for any
+                  fully-pinned row.
+    """
+    active = (signs != 0.0).astype(float)              # (N, M)
+    n_active = active.sum(axis=1)                      # (N,)
+    sq_sum = (active * cell_weights * cell_weights).sum(axis=1)  # (N,)
+    # Mean of squares, fallback to 1.0 for fully-pinned rows
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ms = np.where(n_active > 0, sq_sum / np.where(n_active > 0, n_active, 1.0), 1.0)
+    return np.sqrt(ms)

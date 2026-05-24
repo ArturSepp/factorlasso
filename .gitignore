@@ -59,3 +59,23 @@ Desktop.ini
 .env
 .env.local
 *.local
+
+# ─── papers/jss_2026/ artefacts ─────────────────────────────────
+# Simulation harness outputs (parquet + manifest); regenerable via
+# `python -m papers.jss_2026.simulations.run`.
+papers/
+papers/jss_2026/simulations/results/
+
+# §6 application data and outputs.
+# Bloomberg holdings are licensed and must not be redistributed;
+# the fetcher scripts encode the regeneration recipe.
+papers/jss_2026/applications/data/
+papers/jss_2026/applications/results/
+
+# LaTeX build artefacts
+papers/jss_2026/paper/*.aux
+papers/jss_2026/paper/*.bbl
+papers/jss_2026/paper/*.blg
+papers/jss_2026/paper/*.log
+papers/jss_2026/paper/*.out
+papers/jss_2026/paper/*.toc

@@ -112,20 +112,15 @@ class CurrentFactorCovarData:
     linkages: Optional[pd.DataFrame] = None
     cutoffs: Optional[pd.Series] = None
 
-    # --- Sign-constraint matrix actually applied by the LASSO solver ---
-    # ``(N × M)`` DataFrame in ``LassoModel.factors_beta_loading_signs``
-    # convention: +1 non-negative, -1 non-positive, 0 forced-zero,
-    # NaN unconstrained. Mirrors the orientation of ``y_betas`` so the
-    # two can be read row-by-row.
-    #
-    # Populated by ``FactorCovarEstimator`` whenever sign constraints
-    # were active during the per-frequency LASSO fit (auto-derived,
-    # explicit, or both — see ``LassoModel.derived_signs_``). When all
-    # frequencies fit with no sign layer, this stays ``None``.
-    #
-    # Asset-indexed (rows), so the asset-level subsetting in
-    # ``filter_on_tickers`` slices it the same way as ``y_betas``;
-    # factor-indexed columns pass through.
+    # --- Sign-constraint outputs (v0.3.10+) ---
+    # ``(N × M)`` matrix of solver-facing sign constraints actually consumed
+    # by the LASSO problem (auto-derived layer optionally overlaid with the
+    # practitioner-set ``factors_beta_loading_signs`` layer). Values are
+    # ``-1``, ``0``, ``+1``, or ``NaN``; NaN entries were unconstrained,
+    # ``0`` entries forced ``β_kj = 0``, ``±1`` entries imposed a one-sided
+    # constraint. Stored only when sign constraints were actually used.
+    # Downstream pipelines write this as a ``derived_signs`` Excel sheet
+    # for diagnostic and audit purposes.
     derived_signs: Optional[pd.DataFrame] = None
 
     def __post_init__(self):
@@ -365,7 +360,6 @@ class CurrentFactorCovarData:
                      if self.residuals is not None else None)
             clusters = (self.clusters.loc[keys].rename(assets)
                         if self.clusters is not None else None)
-            # derived_signs is (N x M) like y_betas — same slicing convention.
             derived_signs = (
                 self.derived_signs.loc[keys, :].rename(index=assets)
                 if self.derived_signs is not None else None
@@ -377,8 +371,10 @@ class CurrentFactorCovarData:
             resid = self.residuals[keys] if self.residuals is not None else None
             clusters = (self.clusters.loc[keys]
                         if self.clusters is not None else None)
-            derived_signs = (self.derived_signs.loc[keys, :]
-                             if self.derived_signs is not None else None)
+            derived_signs = (
+                self.derived_signs.loc[keys, :]
+                if self.derived_signs is not None else None
+            )
 
         # linkages and cutoffs are freq-level, not asset-level — pass through.
         return CurrentFactorCovarData(
@@ -432,7 +428,8 @@ class CurrentFactorCovarData:
             cutoffs = cutoffs_df.iloc[:, 0]
             cutoffs.name = 'cluster_cutoff'
 
-        # Sign-constraint matrix — (N x M) DataFrame, optional.
+        # Derived signs sheet — optional, only present when sign constraints
+        # were used at the originating fit.
         derived_signs: Optional[pd.DataFrame] = sheets.get('derived_signs')
 
         return cls(
@@ -507,20 +504,6 @@ class RollingFactorCovarData:
     def get_y_betas(self) -> Dict[pd.Timestamp, pd.DataFrame]:
         """Factor loadings over time.  Each DataFrame is (N × M)."""
         return {d: e.y_betas for d, e in sorted(self.data.items())}
-
-    def get_derived_signs(self) -> Dict[pd.Timestamp, pd.DataFrame]:
-        """Sign-constraint matrices over time.  Each DataFrame is (N × M).
-
-        Only dates whose snapshot carries a non-None ``derived_signs``
-        DataFrame are included — dates fitted with no sign-constraint
-        layer are silently skipped (matches the convention used by
-        ``get_alphas`` for missing residuals).
-        """
-        return {
-            d: e.derived_signs
-            for d, e in sorted(self.data.items())
-            if e.derived_signs is not None
-        }
 
     # ── Panel DataFrame accessors ────────────────────────────────────
 

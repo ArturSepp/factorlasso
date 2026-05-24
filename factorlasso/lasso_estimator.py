@@ -307,6 +307,7 @@ def solve_lasso_cvx_problem(
     nonneg: bool = False,
     factors_beta_loading_signs: Optional[np.ndarray] = None,
     factors_beta_prior: Optional[np.ndarray] = None,
+    penalty_weights: Optional[np.ndarray] = None,
 ) -> LassoEstimationResult:
     r"""
     L1-regularised (LASSO) multi-output regression via CVXPY.
@@ -370,9 +371,23 @@ def solve_lasso_cvx_problem(
     weights = _compute_solver_weights(t, n_y, span, valid_mask)
     prior = _clean_beta_prior(factors_beta_prior, n_y, n_x)
 
+    # L1 penalty term: weighted elementwise if penalty_weights supplied
+    # (Zou 2006 adaptive Lasso); plain L1 otherwise.
+    if penalty_weights is not None:
+        if penalty_weights.shape != (n_y, n_x):
+            raise ValueError(
+                f"penalty_weights shape {penalty_weights.shape} "
+                f"!= expected ({n_y}, {n_x})"
+            )
+        l1_term = reg_lambda * cvx.sum(
+            cvx.multiply(penalty_weights, cvx.abs(beta - prior))
+        )
+    else:
+        l1_term = reg_lambda * cvx.norm1(beta - prior)
+
     objective = cvx.Minimize(
         (1.0 / t) * cvx.sum_squares(cvx.multiply(weights, x @ beta.T - y))
-        + reg_lambda * cvx.norm1(beta - prior)
+        + l1_term
     )
     problem = cvx.Problem(objective, constraints) if constraints else cvx.Problem(objective)
     problem.solve(verbose=verbose, solver=solver)
@@ -404,6 +419,8 @@ def solve_group_lasso_cvx_problem(
     factors_beta_prior: Optional[np.ndarray] = None,
     group_penalty: str = "normalized",
     l1_weight: float = 0.0,
+    penalty_weights: Optional[np.ndarray] = None,
+    row_weights: Optional[np.ndarray] = None,
 ) -> LassoEstimationResult:
     r"""
     Group LASSO multi-output regression via CVXPY.
@@ -518,22 +535,46 @@ def solve_group_lasso_cvx_problem(
             return float(np.sqrt(g))
         return float(np.sqrt(g / n_groups))
 
-    # Group penalty (L_{2,1} norm within each group, scaled by (1 - α))
+    # Group penalty (L_{2,1} norm within each group, scaled by (1 - α)).
+    # Per-asset row weights (Wang & Leng 2008 adaptive group lasso) are
+    # applied as scalar multipliers on each row's L2 norm when supplied.
+    # When row_weights=None, each row's multiplier is 1.0 — backward
+    # compatible with the v0.3.8 pure group LASSO.
+    if row_weights is not None:
+        if row_weights.shape != (n_y,):
+            raise ValueError(
+                f"row_weights shape {row_weights.shape} != expected ({n_y},)"
+            )
     masks = [
         np.isclose(group_loadings[:, g], 1.0) for g in range(n_groups)
     ]
-    group_pen = cvx.sum([
-        reg_lambda * _weight(m)
-        * cvx.sum(cvx.norm2(beta[m, :] - prior[m, :], axis=1))
-        for m in masks
-    ])
+    group_terms = []
+    for m in masks:
+        # cvx.norm2(beta[m, :] - prior[m, :], axis=1) is a vector of L2
+        # norms, one per asset in the group. With row_weights, each
+        # element is scaled by its asset-specific weight before summing.
+        norms = cvx.norm2(beta[m, :] - prior[m, :], axis=1)
+        if row_weights is not None:
+            norms = cvx.multiply(row_weights[m], norms)
+        group_terms.append(reg_lambda * _weight(m) * cvx.sum(norms))
+    group_pen = cvx.sum(group_terms)
 
     # Elementwise L1 penalty (scaled by α). Shrinks toward the same
     # prior used by the group term so at α=1 the problem is consistent
     # with plain LASSO centred on β₀. At α=0 this term vanishes and
     # the problem reduces exactly to the v0.3.1 pure group LASSO.
     if l1_weight > 0.0:
-        l1_pen = reg_lambda * cvx.sum(cvx.abs(beta - prior))
+        if penalty_weights is not None:
+            if penalty_weights.shape != (n_y, n_x):
+                raise ValueError(
+                    f"penalty_weights shape {penalty_weights.shape} "
+                    f"!= expected ({n_y}, {n_x})"
+                )
+            l1_pen = reg_lambda * cvx.sum(
+                cvx.multiply(penalty_weights, cvx.abs(beta - prior))
+            )
+        else:
+            l1_pen = reg_lambda * cvx.sum(cvx.abs(beta - prior))
         penalty = (1.0 - l1_weight) * group_pen + l1_weight * l1_pen
     else:
         penalty = group_pen
@@ -774,6 +815,27 @@ class LassoModel:
     # Typical alternative values: 0.5 (looser) to 1.0 (stricter).
     # Only effective when ``auto_sign_constraints=True``.
     auto_sign_threshold_t: Optional[float] = 0.75
+
+    # ── Adaptive penalty weights (Zou 2006; Richland et al. 2025 eq. 3.3) ──
+    # When True and auto_sign_constraints=True, the L1 penalty becomes
+    # weighted: each |β_kj| is scaled by 1 / max(|β̂_uni_kj|, floor)^gamma,
+    # where β̂_uni is the pooled univariate slope (same quantity that
+    # produces the sign matrix). Cells with strong univariate evidence
+    # (large |β̂_uni|) get a lighter L1 penalty and can take larger
+    # multivariate coefficients; cells with weak evidence get a heavier
+    # penalty and are pushed harder toward the prior.
+    #
+    # Default ``False`` preserves v0.3.8 behaviour exactly. Independent of
+    # the threshold gate: cells pinned to zero by the gate continue to be
+    # forced to zero by the hard sign constraint, with the adaptive weight
+    # acting only on the non-pinned cells.
+    auto_sign_adaptive_weights: bool = False
+    # Zou (2006) exponent γ on |β̂_uni|. γ=1 is the standard adaptive-Lasso
+    # default. Larger values amplify the magnitude-aware reweighting.
+    auto_sign_adaptive_gamma: float = 1.0
+    # Stabiliser preventing weight explosion on near-zero slopes:
+    # |β̂_uni| is clipped at this floor before inversion.
+    auto_sign_adaptive_floor: float = 1e-3
 
     # ── Fitted state (set by fit(), trailing underscore) ──────────────
     x_: Optional[pd.DataFrame] = None
@@ -1045,6 +1107,12 @@ class LassoModel:
         signs_np = None
         auto_signs_np = None
         explicit_signs_np = None
+        # Track univariate slope magnitudes when adaptive penalty weighting
+        # is requested; same provenance as the signs (per-cluster or per-y).
+        auto_slopes_np = None
+        want_adaptive = (
+            self.auto_sign_constraints and self.auto_sign_adaptive_weights
+        )
 
         if self.auto_sign_constraints:
             from factorlasso.sign_constraints import (
@@ -1058,6 +1126,8 @@ class LassoModel:
                 # Pool y columns within each asset cluster — one call per
                 # cluster, broadcast result to all members.
                 auto_signs_np = np.empty((N, M), dtype=float)
+                if want_adaptive:
+                    auto_slopes_np = np.empty((N, M), dtype=float)
                 cluster_vals = (
                     asset_clusters.values
                     if isinstance(asset_clusters, pd.Series)
@@ -1066,20 +1136,33 @@ class LassoModel:
                 for c in np.unique(cluster_vals):
                     members_idx = np.where(cluster_vals == c)[0]
                     y_sub = y_np[:, members_idx]
-                    sign_vec, _ = _compute_sign_vector(
+                    sign_vec, slope_vec = _compute_sign_vector(
                         x_arr=x_np, y_arr=y_sub,
                         clusters=None, master_constraints=None,
                         auto_sign_threshold_t=self.auto_sign_threshold_t,
                     )
                     auto_signs_np[members_idx, :] = sign_vec
+                    if want_adaptive:
+                        # Cluster-aggregated slope shared by all members
+                        # (same broadcast logic as the sign matrix).
+                        auto_slopes_np[members_idx, :] = slope_vec
             else:
                 # LASSO or single-column y: per-y-column independent signs.
                 # Bulk-vectorised closed-form path — eliminates the N-deep
                 # Python loop of the prior implementation.
-                auto_signs_np = _compute_sign_matrix_per_response(
-                    x_arr=x_np, y_arr=y_np,
-                    auto_sign_threshold_t=self.auto_sign_threshold_t,
-                )
+                if want_adaptive:
+                    auto_signs_np, auto_slopes_np = (
+                        _compute_sign_matrix_per_response(
+                            x_arr=x_np, y_arr=y_np,
+                            auto_sign_threshold_t=self.auto_sign_threshold_t,
+                            return_slopes=True,
+                        )
+                    )
+                else:
+                    auto_signs_np = _compute_sign_matrix_per_response(
+                        x_arr=x_np, y_arr=y_np,
+                        auto_sign_threshold_t=self.auto_sign_threshold_t,
+                    )
 
         if self.factors_beta_loading_signs is not None:
             explicit_signs_np = self.factors_beta_loading_signs.loc[
@@ -1109,6 +1192,38 @@ class LassoModel:
                 y.columns, x.columns
             ].to_numpy()
 
+        # ── Adaptive L1 penalty weights (Zou 2006; opt-in) ───────────────
+        # When auto_sign_adaptive_weights=True, derive per-cell L1 weights
+        # from the univariate slope magnitudes captured above. Only the
+        # auto-derived layer contributes; explicit sign overrides do not
+        # carry magnitude information.
+        #
+        # The per-cell weights are used by both:
+        #   • the L1 term (Zou 2006 adaptive Lasso), when ``l1_weight > 0``;
+        #   • the group-L2 term (Wang & Leng 2008 adaptive group lasso),
+        #     via row aggregation. This is what gives the adaptive flag
+        #     impact in the production GROUP_LASSO_CLUSTERS config where
+        #     ``l1_weight = 0`` and the group penalty does all the work.
+        penalty_weights_np = None
+        row_weights_np = None
+        if want_adaptive and auto_slopes_np is not None:
+            from factorlasso.sign_constraints import (
+                _adaptive_penalty_weights,
+                _aggregate_to_row_weights,
+            )
+            penalty_weights_np = _adaptive_penalty_weights(
+                slopes=auto_slopes_np,
+                signs=auto_signs_np if auto_signs_np is not None
+                else np.sign(auto_slopes_np),
+                gamma=self.auto_sign_adaptive_gamma,
+                floor=self.auto_sign_adaptive_floor,
+            )
+            row_weights_np = _aggregate_to_row_weights(
+                cell_weights=penalty_weights_np,
+                signs=auto_signs_np if auto_signs_np is not None
+                else np.sign(auto_slopes_np),
+            )
+
         # ── Solver dispatch (consumes the pre-computed asset_clusters) ──
         if is_lasso_mode:
             result = solve_lasso_cvx_problem(
@@ -1118,6 +1233,7 @@ class LassoModel:
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
+                penalty_weights=penalty_weights_np,
             )
 
         elif self.model_type == LassoModelType.GROUP_LASSO:
@@ -1154,6 +1270,8 @@ class LassoModel:
                 factors_beta_prior=prior_np,
                 group_penalty=self.group_penalty,
                 l1_weight=self.l1_weight,
+                penalty_weights=penalty_weights_np,
+                row_weights=row_weights_np,
             )
 
         elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
@@ -1168,6 +1286,8 @@ class LassoModel:
                 factors_beta_prior=prior_np,
                 group_penalty=self.group_penalty,
                 l1_weight=self.l1_weight,
+                penalty_weights=penalty_weights_np,
+                row_weights=row_weights_np,
             )
         else:
             raise NotImplementedError(f"Unsupported model_type: {self.model_type}")

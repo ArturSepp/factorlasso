@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "factorlasso"
-version = "0.3.8"
-description = "Sparse factor model estimation with sign-constrained LASSO, prior-centered regularisation, and hierarchical group LASSO (HCGL)"
+version = "0.4.0"
+description = "Sparse multi-asset factor model estimation with cluster-pooled sign derivation, hierarchical group LASSO (HCGL), adaptive penalty reweighting, and consistent factor covariance assembly"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
@@ -15,13 +15,18 @@ authors = [
 keywords = [
     "lasso",
     "group-lasso",
+    "sparse-group-lasso",
+    "adaptive-lasso",
+    "hcgl",
     "factor-model",
     "penalized-regression",
     "sparse-regression",
     "sign-constraints",
+    "cluster-pooled-sign-derivation",
     "covariance-estimation",
     "cvxpy",
     "multi-output-regression",
+    "multi-response-regression",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -58,6 +63,30 @@ docs = [
     "sphinx>=6.0",
     "sphinx-rtd-theme>=1.0",
     "numpydoc>=1.5",
+]
+# Dependencies for the in-repo simulation harness
+# (``papers/jss_2026/simulations/`` directory).
+# Not required by the published wheel; install with::
+#
+#     pip install factorlasso[simulations]
+#
+# or for editable development from the repo::
+#
+#     pip install -e ".[simulations]"
+#
+# Notes on the included solvers:
+# - ``scs`` and ``ecos`` are added so the simulation harness's
+#   CLARABEL→ECOS→SCS solver fallback chain has a real fallback
+#   available. Production rosaa code does not retry on solver failure;
+#   it surfaces the underlying problem. The harness, however, must
+#   complete the full study grid even when a small fraction of cells
+#   hit numerically pathological problem instances.
+simulations = [
+    "pyyaml>=6.0",
+    "joblib>=1.2",
+    "pyarrow>=12.0",
+    "scs>=3.0",
+    "ecos>=2.0",
 ]
 
 [project.urls]

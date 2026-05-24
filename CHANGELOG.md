@@ -9,17 +9,247 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — Roadmap
 
-### Planned
+- JSS submission (Q3 2026): cluster-pooled sign-derivation paper.
+- Sphinx documentation under `docs/`, deployed to ReadTheDocs.
+- Benchmark suite under `benchmarks/` comparing against `sparsegl`,
+  `asgl`, `celer`, `adelie` on synthetic data.
+- Simulation study harness under `simulations/` for support-recovery,
+  sign-agreement, and prediction-MSE comparisons.
+- Public reproduction notebook on the Fama-French 5-factor + S&P 500
+  universe.
 
-- **Adaptive penalty weights from univariate magnitudes.** Extend
-  `auto_sign_constraints` to optionally use `|β̂_uni_j|` as adaptive
-  weights in the L1 penalty (`λ · |γ_j| / |β̂_uni_j|^γ`), following
-  Zou (2006) and the formulation in Richland et al. (2025) eq. (3.3).
-  This composes naturally with the existing sign-constraint machinery
-  and would tighten sparsity at no expected accuracy cost. Likely
-  shipped behind a new `auto_sign_adaptive_weights: bool = False`
-  field on `LassoModel`.
+### Simulation harness (in-repo, not part of published wheel)
 
+- Solver fallback chain `CLARABEL → ECOS → SCS` in
+  `simulations.estimators._factorlasso_fit` handles rare pathological
+  problem instances on the JSS 2026 grid (e.g. orthogonal factor
+  covariance + cluster-pooled signs at very small `reg_lambda`).
+- Result of solver choice surfaced as `solver_used` column in
+  `results_long.parquet` for audit transparency.
+- `scs` and `ecos` added to the `simulations` optional-dependency
+  group so the fallback chain has alternates available. Without
+  these, only CLARABEL is tried and cells with CLARABEL-specific
+  numerical issues fail.
+
+
+## [0.4.0] — 2026-05-24
+
+**Stabilisation release.** Promotes the v0.3.5 – v0.3.10 cluster-pooled
+sign-derivation, closed-form SSR noise-floor gate, adaptive penalty
+reweighting, and HCGL integration features to a stable API. No new
+functional code, no breaking changes from v0.3.11; this release is a
+deliberate API freeze before the JSS paper draft starts citing specific
+function signatures.
+
+### Stable API surface
+
+The following surface is now committed to be backward-compatible until
+v0.5.0 (see `COMPATIBILITY.md`):
+
+- `LassoModel` constructor parameters, in particular the full
+  `auto_sign_*` family (`auto_sign_constraints`, `auto_sign_threshold_t`,
+  `auto_sign_adaptive_weights`, `auto_sign_adaptive_gamma`,
+  `auto_sign_adaptive_floor`), `cutoff_fraction`, `l1_weight`,
+  `group_penalty`, `factors_beta_loading_signs`, `factors_beta_prior`.
+- `LassoModel` fitted attributes with trailing underscore, in particular
+  `derived_signs_`, `clusters_`, `linkage_`, `cutoff_`, `alpha_const_`.
+- `derive_sign_constraints` public signature
+  (`x`, `y`, `clusters`, `master_constraints`, `auto_sign_threshold_t`,
+  `return_slopes`).
+- `validate_cluster_signs` public signature.
+- `compute_clusters_from_corr_matrix` public signature.
+- `CurrentFactorCovarData` / `RollingFactorCovarData` dataclass fields,
+  including `derived_signs`.
+- `LassoModelCV` constructor and fitted attributes.
+
+Internal helpers (leading underscore in `sign_constraints.py`,
+`lasso_estimator.py`, `ewm_utils.py`, etc.) remain unconstrained.
+
+### Added
+
+- `COMPATIBILITY.md` documenting the v0.4.x API stability commitment,
+  the deprecation policy, and the upgrade path to v0.5.0.
+- `simulations/` in-repo methodology study harness (not part of the
+  published wheel): DGP, unified estimator interface, metrics module,
+  orchestration CLI, JSS 2026 study YAML, 54 unit and smoke tests.
+- New `simulations` optional dependency group in `pyproject.toml`
+  (`pyyaml`, `joblib`, `pyarrow`); install with
+  `pip install -e ".[simulations]"`.
+- README section on the cluster-pooled sign-derivation mechanism with
+  a minimal end-to-end example, surfacing the headline differentiator
+  for first-time visitors.
+- Mika Kastenholz added to `CITATION.cff` as co-author, reflecting the
+  forthcoming JSS methodology paper. Preferred citation now points to
+  the forthcoming MATF-CMA paper.
+- Additional discoverability keywords in `pyproject.toml`
+  (`sparse-group-lasso`, `adaptive-lasso`, `hcgl`,
+  `cluster-pooled-sign-derivation`, `multi-response-regression`).
+
+### Changed
+
+- Package description updated to surface the cluster-pooled
+  sign-derivation mechanism, HCGL integration, and adaptive penalty
+  reweighting as the headline features. No code-level change.
+
+### Migration
+
+- **None.** Every v0.3.11 API contract holds bit-identically in v0.4.0.
+  Confirmed by the full test suite (240 tests) plus a smoke test
+  against the production rosaa pipeline config.
+
+### Versioning policy from here
+
+- v0.4.x: bug fixes, documentation, internal refactors. No public API
+  changes.
+- v0.5.0: any breaking API change to the stabilised surface. Will ship
+  with at least one minor-version deprecation cycle of the affected
+  symbols.
+- v1.0.0: reserved for post-JSS-acceptance production-final stamp.
+
+
+## [0.3.10] — 2026-05-23
+
+### Fixed
+
+- **`CurrentFactorCovarData` now carries a `derived_signs` field.**
+  Closes a downstream-pipeline gap that surfaced from `rosaa`'s
+  `unified_pipeline` write-out step: the pipeline tries to persist a
+  `derived_signs` Excel sheet from `CurrentFactorCovarData.derived_signs`,
+  but no such field existed in the dataclass. The auto-sign mechanism
+  populated `LassoModel.derived_signs_` (since v0.3.5) but never
+  propagated it through to the covariance snapshot consumed by
+  downstream code. The field is `Optional[pd.DataFrame] = None`,
+  defaults preserve backward compatibility, and the value flows through
+  `filter_on_tickers` and `save`/`load` automatically.
+
+- **`auto_sign_adaptive_weights=True` now has impact in the pure
+  group-LASSO production config** (`l1_weight=0`). In v0.3.9 the adaptive
+  reweighting was plumbed only through the L1 penalty term, which is
+  zero-weighted in the production `GROUP_LASSO_CLUSTERS` configuration
+  used by MAC and CMA pipelines. The adaptive flag therefore had no
+  effect on the actual production estimator.
+
+  This release routes the same per-cell adaptive weights through the
+  group L2 norms via a per-asset row aggregation, following
+  Wang & Leng (2008)'s adaptive group lasso. The penalty becomes
+
+      λ · Σ_g w_g · Σ_k∈g  W_k · ||β_k - β⁰_k||_2
+
+  where `W_k = sqrt(mean_{j: s_kj ≠ 0} W_kj²)` is the root-mean-square
+  of the per-cell weights `W_kj = 1 / max(|β̂_uni_kj|, floor)^γ` over
+  the non-pinned factors in asset row `k`. Gated cells (`s_kj = 0`)
+  are excluded from the aggregation; their hard sign constraint
+  already forces `β_kj = 0` independently.
+
+### Added
+
+- New `derived_signs: Optional[pd.DataFrame] = None` field on
+  `CurrentFactorCovarData`. Stores the `(N × M)` solver-facing sign
+  matrix actually consumed by the LASSO problem (auto-derived layer
+  optionally overlaid with practitioner-set explicit signs).
+  Round-trips through `filter_on_tickers` (subset/rename in lock-step
+  with `y_betas`) and `save`/`load` (new `derived_signs` Excel sheet,
+  optional — files predating this version load with the field set to
+  `None`).
+
+- New helper `factorlasso.sign_constraints._aggregate_to_row_weights`
+  performing the RMS row aggregation. Returns a length-N vector of
+  per-asset weights; assets with all cells pinned fall back to
+  `W_k = 1` (no-op).
+- New optional `row_weights: np.ndarray (N,)` parameter on
+  `solve_group_lasso_cvx_problem`. When supplied, each per-asset L2
+  norm `||β_k - β⁰_k||_2` in the group penalty is multiplied by
+  `row_weights[k]` before being summed within its group. Plumbed
+  automatically by `LassoModel.fit` when `auto_sign_adaptive_weights=True`.
+
+### Rationale for row aggregation by root-mean-square
+
+The L2 norm in the group penalty pairs naturally with an L2-aggregation
+of the per-cell weights. RMS preserves Cauchy-Schwarz scaling: a row of
+uniformly small slopes gets a uniformly large weight, a row dominated by
+one strong slope gets a moderate weight. For an asset with
+`|β̂_uni_kj| = 1` across all factors, the aggregation returns
+`W_k = 1` exactly, preserving the existing per-cluster scaling
+`√(|g|/G)` without any multiplicative drift — backward-compatible
+with v0.3.9 default behaviour. Alternatives considered (mean, max,
+sum) were rejected: mean would be too soft, max would be overly
+aggressive on rows with one weak factor, sum would scale with row
+length.
+
+### Tests
+
+- 4 new tests in `tests/test_auto_sign_adaptive_weights.py` covering:
+  RMS aggregation correctness (uniform weights → 1.0, pinned cells
+  excluded, all-pinned fallback to 1.0), multi-row vectorisation,
+  production-config impact regression (the v0.3.9 no-op bug must not
+  resurface), and backward-compatible default behaviour.
+
+### Documentation
+
+- README: extended the adaptive-weights subsection with a paragraph on
+  the row-aggregation path and its impact in pure-group-LASSO configs.
+- LaTeX note `factorlasso_sign_constraints_note.tex`: extended the
+  adaptive-reweighting paragraph to cover both the L1 and group-L2
+  formulations, with Wang & Leng (2008) cited as the adaptive group
+  lasso antecedent.
+
+
+## [0.3.9] — 2026-05-23
+
+### Added
+
+- **`auto_sign_adaptive_weights: bool = False`** field on `LassoModel`.
+  When set to `True` alongside `auto_sign_constraints=True`, the L1
+  penalty becomes elementwise reweighted by the inverse univariate-slope
+  magnitude:
+
+      λ · |β_kj| / max(|β̂_uni_kj|, floor)^γ
+
+  Following Zou (2006)'s adaptive Lasso and the formulation in Richland
+  et al. (2025) eq. (3.3). Strong-evidence factors (large |β̂_uni|) get
+  a lighter L1 penalty and can take larger multivariate coefficients;
+  weak-evidence factors get a heavier penalty and are pushed harder
+  toward the prior. The Zou (2006) oracle property carries over: at
+  γ = 1 the penalty is magnitude-aware without being a thresholding
+  operator.
+
+- Two associated configuration fields:
+  - `auto_sign_adaptive_gamma: float = 1.0` — Zou (2006) exponent.
+    γ = 1 is the standard adaptive-Lasso default; larger values amplify
+    the magnitude-aware reweighting.
+  - `auto_sign_adaptive_floor: float = 1e-3` — stabiliser preventing
+    weight explosion on near-zero slopes. |β̂_uni| is clipped at this
+    floor before inversion.
+
+- New helper `factorlasso.sign_constraints._adaptive_penalty_weights`
+  converts (slopes, signs) → adaptive penalty matrix.
+
+- New optional `penalty_weights: np.ndarray (N, M)` parameter on
+  `solve_lasso_cvx_problem` and `solve_group_lasso_cvx_problem`. When
+  supplied, the L1 penalty becomes `λ · Σ W_kj |β_kj - β⁰_kj|`. Plumbed
+  automatically by `LassoModel.fit` when the adaptive flag is active.
+
+### Internal
+
+- `_compute_sign_matrix_per_response` gained a `return_slopes: bool`
+  parameter to expose the underlying univariate slope matrix needed by
+  the adaptive-weight derivation. Backward compatible: existing
+  call-sites that don't request slopes get unchanged behaviour.
+
+### Tests
+
+- 8 new tests in `tests/test_auto_sign_adaptive_weights.py` covering:
+  default-False behaviour, no-op when sign-constraints disabled,
+  Zou (2006) oracle property (strong factors preserved, weak factors
+  shrunk harder), γ-exponent amplification, floor stabiliser preventing
+  numerical explosion, and direct correctness of the
+  `_adaptive_penalty_weights` helper.
+
+### Documentation
+
+- README: new subsection under *Data-driven sign constraints* documenting
+  the adaptive-weight option, parameter triple, and pointer to the
+  technical note for the formal derivation.
 
 
 ## [0.3.8] — 2026-05-22

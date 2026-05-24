@@ -143,6 +143,60 @@ amount of marginal-correlation data could surface (e.g. forcing a
 mandate-restricted bond fund to zero equity loading regardless of
 spurious sample correlations).
 
+**Adaptive L1 penalty weights (Zou 2006).** Set
+`auto_sign_adaptive_weights=True` (default `False`) alongside
+`auto_sign_constraints=True` to reweight the L1 penalty elementwise by
+the inverse univariate-slope magnitude:
+
+```python
+model = LassoModel(
+    reg_lambda=1e-3,
+    auto_sign_constraints=True,
+    auto_sign_adaptive_weights=True,   # opt in to magnitude-aware L1
+    auto_sign_adaptive_gamma=1.0,      # Zou (2006) exponent γ
+    auto_sign_adaptive_floor=1e-3,     # stabiliser on tiny slopes
+).fit(x=X, y=Y)
+```
+
+The L1 penalty becomes
+
+```
+λ · |β_kj − β⁰_kj| / max(|β̂_uni_kj|, floor)^γ
+```
+
+where `β̂_uni_kj` is the same pooled univariate slope used to derive the
+sign matrix. Strong-evidence factors (large `|β̂_uni|`) get a lighter L1
+penalty and can take larger multivariate coefficients; weak-evidence
+factors get a heavier penalty and are pushed harder toward the prior.
+This is the Zou (2006) adaptive Lasso oracle property: the penalty
+becomes magnitude-aware without being a thresholding operator. The
+formulation matches Richland et al. (2025) eq. (3.3); see the technical
+note `factorlasso_sign_constraints_note.tex` for the derivation.
+
+The adaptive layer is independent of the threshold gate: cells pinned
+to `β = 0` by the gate continue to be forced to zero by the hard sign
+constraint, with the adaptive weight acting only on the non-pinned
+cells. Default behaviour (`auto_sign_adaptive_weights=False`)
+reproduces v0.3.8 fits bit-for-bit.
+
+**Group LASSO mode (`l1_weight=0`).** In pure group-LASSO configurations
+where the L1 term is inactive, the adaptive reweighting is routed
+through the group L2 norms following Wang & Leng (2008)'s adaptive
+group lasso. Per-cell weights are aggregated per-asset by
+root-mean-square over the non-pinned factors:
+
+```
+W_k  =  sqrt( mean_{j: s_kj ≠ 0} W_kj² )
+```
+
+and each asset's contribution `‖β_k − β⁰_k‖₂` to the group penalty is
+scaled by `W_k`. This is what gives the adaptive flag actual impact in
+the production `GROUP_LASSO_CLUSTERS` configuration where the L1 term
+is zero-weighted. Assets with uniformly strong univariate evidence
+across factors get `W_k → 1` (preserved); assets with uniformly weak
+evidence get `W_k > 1` (shrunk harder toward the prior). Assets with
+all cells pinned by the gate fall back to `W_k = 1` (no-op).
+
 **Related work and intellectual lineage.** The univariate-slope-as-
 sign-constraint mechanism is adapted from the **uniLasso** framework of
 Chatterjee, Hastie & Tibshirani (2025) and its biobank-scale follow-up
@@ -170,10 +224,6 @@ to avoid overclaiming:
   **Sure Independence Screening** (Fan & Lv 2008): screen marginal
   evidence first, then regularize.
 
-Adaptive penalty weights from univariate magnitudes — Richland et al.
-(2025) eq. (3.3), based on Zou (2006) — are not yet implemented; this
-is a natural future extension (see CHANGELOG roadmap).
-
 References:
 * Chatterjee, S., Hastie, T., & Tibshirani, R. (2025). Univariate-
   guided sparse regression. *Harvard Data Science Review* 7(3).
@@ -183,6 +233,8 @@ References:
   Hastie, T., Rivas, M., & Tibshirani, R. (2025). Univariate-guided
   sparse regression for biobank-scale high-dimensional -omics data.
   arXiv:2511.22049.
+* Wang, H., & Leng, C. (2008). A note on adaptive group lasso.
+  *Comput. Stat. Data Anal.* 52(12), 5277–5286.
 * Zou, H. (2006). The adaptive Lasso and its oracle properties.
   *J. Amer. Stat. Assoc.* 101(476), 1418–1429.
 
@@ -332,9 +384,20 @@ LASSO path.
 
 ## Citation
 
-If you use `factorlasso` in academic work, please cite:
+If you use `factorlasso` in academic work, please cite both the
+methodology paper documenting the framework in which the package was
+developed, and the software itself:
 
 ```bibtex
+@article{SeppHansenKastenholz2026MATF,
+  author  = {Sepp, Artur and Hansen, Emilie and Kastenholz, Mika},
+  title   = {Capital Market Assumptions Using Multi-Asset Tradable Factors:
+             The {MATF-CMA} Framework},
+  journal = {Journal of Portfolio Management},
+  year    = {2026},
+  note    = {Forthcoming.}
+}
+
 @article{SeppOssaKastenholz2026,
   author  = {Sepp, Artur and Ossa, Ivan and Kastenholz, Mika},
   title   = {Robust Optimization of Strategic and Tactical Asset Allocation
@@ -347,10 +410,12 @@ If you use `factorlasso` in academic work, please cite:
 }
 
 @software{factorlasso,
-  author  = {Sepp, Artur},
-  title   = {factorlasso: Sparse Factor Model Estimation with Constrained LASSO
-             in Python},
+  author  = {Sepp, Artur and Kastenholz, Mika},
+  title   = {factorlasso: Sparse Multi-Asset Factor Model Estimation with
+             Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
+             in {Python}},
   year    = {2026},
+  version = {0.4.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```
@@ -362,7 +427,9 @@ If you use `factorlasso` in academic work, please cite:
 Issues and pull requests welcome at
 <https://github.com/ArturSepp/factorlasso>.
 
-See [`CHANGELOG.md`](CHANGELOG.md) for release history.
+See [`CHANGELOG.md`](CHANGELOG.md) for release history and
+[`COMPATIBILITY.md`](COMPATIBILITY.md) for the API stability policy
+covering the v0.4.x line.
 
 ---
 

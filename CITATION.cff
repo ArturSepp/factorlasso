@@ -1,26 +1,44 @@
 cff-version: 1.2.0
-title: "factorlasso: Sparse Factor Model Estimation with Constrained LASSO in Python"
+title: "factorlasso: Sparse Multi-Asset Factor Model Estimation with Cluster-Pooled Sign Derivation and Hierarchical Group LASSO in Python"
 message: "If you use this software, please cite it as below."
 type: software
 authors:
   - given-names: Artur
     family-names: Sepp
     email: artursepp@gmail.com
+  - given-names: Mika
+    family-names: Kastenholz
 repository-code: "https://github.com/ArturSepp/factorlasso"
 url: "https://factorlasso.readthedocs.io"
 license: MIT
-version: 0.3.2
-date-released: "2026-04-25"
+version: 0.4.0
+date-released: "2026-05-24"
 keywords:
   - lasso
   - group-lasso
   - sparse-group-lasso
+  - adaptive-lasso
+  - hcgl
   - factor-model
   - sparse-regression
   - sign-constraints
+  - cluster-pooled-sign-derivation
   - covariance-estimation
   - cvxpy
   - python
+preferred-citation:
+  type: article
+  authors:
+    - given-names: Artur
+      family-names: Sepp
+    - given-names: Emilie
+      family-names: Hansen
+    - given-names: Mika
+      family-names: Kastenholz
+  title: "Capital Market Assumptions Using Multi-Asset Tradable Factors: The MATF-CMA Framework"
+  journal: "Journal of Portfolio Management"
+  year: 2026
+  notes: "Methodology paper documenting the framework in which factorlasso is deployed; forthcoming."
 references:
   - type: article
     authors:
@@ -46,6 +64,84 @@ references:
         family-names: Hansen
       - given-names: Mika
         family-names: Kastenholz
-    title: "Capital Market Assumptions Using Multi-Asset Tradable Factors: The MATF-CMA Framework"
-    journal: "Under revision at the Journal of Portfolio Management"
+    title: "Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors"
+    journal: "Journal of Portfolio Management, forthcoming"
     year: 2026
+  - type: article
+    authors:
+      - given-names: Sourav
+        family-names: Chatterjee
+      - given-names: Trevor
+        family-names: Hastie
+      - given-names: Robert
+        family-names: Tibshirani
+    title: "Univariate-Guided Sparse Regression"
+    journal: "Harvard Data Science Review"
+    volume: 7
+    issue: 3
+    year: 2025
+    doi: "10.1162/99608f92.c79ff6db"
+    notes: "Intellectual antecedent of the auto_sign_constraints mechanism (univariate-slope-as-sign-constraint)."
+  - type: article
+    authors:
+      - given-names: Joshua
+        family-names: Richland
+      - given-names: Tuomo
+        family-names: Kiiskinen
+      - given-names: William
+        family-names: Wang
+      - given-names: Sophia
+        family-names: Lu
+      - given-names: Balasubramanian
+        family-names: Narasimhan
+      - given-names: Trevor
+        family-names: Hastie
+      - given-names: Manuel
+        family-names: Rivas
+      - given-names: Robert
+        family-names: Tibshirani
+    title: "Univariate-Guided Sparse Regression for Biobank-Scale High-Dimensional -omics Data"
+    journal: "arXiv preprint"
+    year: 2025
+    url: "https://arxiv.org/abs/2511.22049"
+    notes: "Biobank-scale uniLasso follow-up; eq. (3.3) is the closest published analogue to factorlasso's auto-derived sign-constraint topology."
+  - type: article
+    authors:
+      - given-names: Hui
+        family-names: Zou
+    title: "The Adaptive Lasso and Its Oracle Properties"
+    journal: "Journal of the American Statistical Association"
+    volume: 101
+    issue: 476
+    start: 1418
+    end: 1429
+    year: 2006
+    notes: "Conceptual ancestor for using univariate magnitudes as adaptive penalty weights; relevant to the auto_sign_adaptive_weights L1 reweighting (shipped in v0.3.9)."
+  - type: article
+    authors:
+      - given-names: Hansheng
+        family-names: Wang
+      - given-names: Chenlei
+        family-names: Leng
+    title: "A Note on Adaptive Group Lasso"
+    journal: "Computational Statistics & Data Analysis"
+    volume: 52
+    issue: 12
+    start: 5277
+    end: 5286
+    year: 2008
+    notes: "Adaptive Group Lasso: extends the Zou (2006) reweighting to group L2 norms. Basis for the row-aggregation path in auto_sign_adaptive_weights when l1_weight=0 (shipped in v0.3.10)."
+  - type: article
+    authors:
+      - given-names: Jianqing
+        family-names: Fan
+      - given-names: Jinchi
+        family-names: Lv
+    title: "Sure Independence Screening for Ultrahigh Dimensional Feature Space"
+    journal: "Journal of the Royal Statistical Society: Series B"
+    volume: 70
+    issue: 5
+    start: 849
+    end: 911
+    year: 2008
+    notes: "Closest precedent for the auto_sign_threshold_t noise floor (screen by marginal evidence, then regularize)."
