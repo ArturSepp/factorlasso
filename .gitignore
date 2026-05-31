@@ -63,7 +63,6 @@ Desktop.ini
 # ─── papers/jss_2026/ artefacts ─────────────────────────────────
 # Simulation harness outputs (parquet + manifest); regenerable via
 # `python -m papers.jss_2026.simulations.run`.
-papers/
 papers/jss_2026/simulations/results/
 
 # §6 application data and outputs.

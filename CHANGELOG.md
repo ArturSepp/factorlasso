@@ -32,6 +32,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   numerical issues fail.
 
 
+## [0.4.2] — 2026-05-31
+
+**Documentation and packaging metadata fixes (no functional code changes).**
+
+### Fixed
+
+- Citation block in `README.md` updated to `version = {0.4.2}` (was stale
+  at 0.4.0).
+- Test-count claim in `README.md` corrected to 252 shipped tests (was 201).
+- Backward-compatibility note clarified: the "reproduces v0.3.8 fits
+  bit-for-bit" claim now states this holds on fully observed panels only,
+  cross-referencing the 0.4.1 valid-observation correctness fix for
+  `NaN`-bearing panels.
+- `Documentation` project URL (`pyproject.toml`) and `url` (`CITATION.cff`)
+  redirected from the not-yet-live `factorlasso.readthedocs.io` to the
+  GitHub repository.
+
+### Added
+
+- `README.md` quickstart now documents the scikit-learn interoperability
+  (NumPy-array inputs, `Pipeline` / `GridSearchCV` / `cross_val_score`
+  composition) and the `summary()` / `plot_signs()` helpers introduced in
+  0.4.1.
+
+
+## [0.4.1] — 2026-05-31
+
+**Correctness fix (sign-derivation under heterogeneous inception dates).**
+
+### Fixed
+
+- The cluster-pooled (`_compute_sign_vector`) and per-response
+  (`_compute_sign_matrix_per_response`) sign-derivation paths now compute
+  the univariate slope denominator, the residual sum of squares, and the
+  degrees of freedom over genuine (row, response) observations only,
+  rather than over zero-filled rows with nominal sample length `T`. On
+  panels with leading-`NaN` prefixes (assets with later inception dates),
+  the previous code biased the pooled slope and inflated the gate
+  `t`-statistic (the zero-filled rows deflated the residual variance
+  because the dof charged the nominal `T`). The corrected slope now equals
+  the honest drop-`NaN` univariate OLS slope to machine precision, and the
+  gate `t`-statistic uses the valid-observation count in its dof.
+- On fully observed panels (no `NaN`) the corrected code reproduces the
+  previous nominal-`T` formula exactly, so all simulation-study results
+  (which use complete synthetic panels) are unchanged. The S&P 500
+  application is materially unchanged at the default `auto_sign_threshold_t
+  = 0.75`: the 9 reduced-coverage constituents clear or fail the gate on
+  the same side, so the derived sign matrix, the BIC tournament, and every
+  printed Table 5 number are identical.
+
+### Added
+
+- `tests/test_nan_valid_row_invariance.py` pins the corrected behaviour:
+  valid-row slope equality, gated-sign equality against the drop-`NaN`
+  reference, and full-data backward compatibility with the nominal-`T`
+  formula.
+- scikit-learn interoperability: `LassoModel.fit`, `predict`, and `score`
+  now accept NumPy arrays in addition to pandas objects, and the
+  estimator declares `__sklearn_tags__` (sklearn >= 1.6), so it composes
+  with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`
+  without wrapper code. Covered by `tests/test_sklearn_interop.py`.
+- `LassoModel.summary()` returns a human-readable fit summary (dimensions,
+  active-coefficient count, discovered cluster count, mean R^2);
+  `LassoModel.plot_signs()` renders the derived sign matrix as a heatmap.
+- JSS reproduction materials under `papers/jss_2026/`: single
+  `replicate.py` entry point (quick/full modes with a captured
+  session-info log), the S&P 500 application, and an empirical comparison
+  script (`applications/compare_external.py`) benchmarking against
+  scikit-learn, `asgl`, and `skglm`.
+
+### Changed
+
+- **License changed from MIT to GPL-3.0-or-later** (`LICENSE`,
+  `pyproject.toml`, `CITATION.cff`, README). Note: the full GPL-3.0
+  licence text must be present in `LICENSE` before distribution; the
+  current file carries the standard GPL-3 header and notice.
+- Application `run_application.py` lambda grid corrected to 8 points
+  (10^-8 ... 10^-1); BIC-best selection breaks ties toward the smallest
+  lambda; boxplot tick labels set via `set_xticklabels` for matplotlib
+  cross-version compatibility.
+
+
 ## [0.4.0] — 2026-05-24
 
 **Stabilisation release.** Promotes the v0.3.5 – v0.3.10 cluster-pooled

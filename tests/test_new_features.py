@@ -296,15 +296,26 @@ class TestFitValidation:
         with pytest.raises(ValueError, match="Empty input"):
             LassoModel().fit(x=X, y=Y)
 
-    def test_non_dataframe_x_raises_typeerror(self, panel):
+    def test_ndarray_x_accepted_for_sklearn_interop(self, panel):
+        # ndarray inputs are accepted (scikit-learn Pipeline/CV pass arrays);
+        # column names are generated and a fit is produced.
+        _, Y = panel
+        X_arr = np.random.default_rng(0).standard_normal((len(Y), 2))
+        model = LassoModel().fit(x=X_arr, y=Y)
+        assert model.coef_ is not None
+        assert model.coef_.shape[1] == 2
+
+    def test_ndarray_y_accepted_for_sklearn_interop(self, panel):
+        X, _ = panel
+        Y_arr = np.random.default_rng(1).standard_normal((len(X), 3))
+        model = LassoModel().fit(x=X, y=Y_arr)
+        assert model.coef_ is not None
+        assert model.coef_.shape[0] == 3
+
+    def test_invalid_type_x_raises_typeerror(self, panel):
         _, Y = panel
         with pytest.raises(TypeError, match="x must be"):
-            LassoModel().fit(x=np.zeros((len(Y), 2)), y=Y)
-
-    def test_non_dataframe_y_raises_typeerror(self, panel):
-        X, _ = panel
-        with pytest.raises(TypeError, match="y must be"):
-            LassoModel().fit(x=X, y=np.zeros((len(X), 2)))
+            LassoModel().fit(x={"not": "an array"}, y=Y)
 
 
 # ═══════════════════════════════════════════════════════════════════════

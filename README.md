@@ -5,7 +5,7 @@ regularisation, hierarchical group LASSO, and sparse group LASSO — via CVXPY.*
 
 [![PyPI](https://img.shields.io/pypi/v/factorlasso.svg)](https://pypi.org/project/factorlasso/)
 [![Python](https://img.shields.io/pypi/pyversions/factorlasso.svg)](https://pypi.org/project/factorlasso/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
 `factorlasso` is a small, dependency-light Python package for fitting sparse
 multi-output linear models
@@ -65,6 +65,11 @@ model.score(X, Y)   # mean R²
 
 The API mirrors scikit-learn: `fit(x, y)`, `predict(x)`, `score(x, y)`,
 `get_params()`, `set_params()`. Fitted attributes carry a trailing underscore.
+`fit`/`predict`/`score` accept NumPy arrays as well as pandas objects, and the
+estimator declares `__sklearn_tags__`, so it composes directly with
+`sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`. A fitted
+model also exposes `summary()` (a text fit report) and `plot_signs()` (a
+heatmap of the derived sign matrix).
 
 ---
 
@@ -177,7 +182,10 @@ The adaptive layer is independent of the threshold gate: cells pinned
 to `β = 0` by the gate continue to be forced to zero by the hard sign
 constraint, with the adaptive weight acting only on the non-pinned
 cells. Default behaviour (`auto_sign_adaptive_weights=False`)
-reproduces v0.3.8 fits bit-for-bit.
+reproduces v0.3.8 fits bit-for-bit on fully observed panels. (On panels
+with leading-`NaN` inception prefixes, v0.4.1 corrects the univariate
+slope and gate `t`-statistic to accumulate only over valid observations;
+see the CHANGELOG. Fully observed panels are unaffected.)
 
 **Group LASSO mode (`l1_weight=0`).** In pure group-LASSO configurations
 where the L1 term is inactive, the adaptive reweighting is routed
@@ -376,7 +384,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The suite currently has 201 tests at 98%+ coverage, including numerical parity
+The suite currently has 252 tests at 98%+ coverage, including numerical parity
 tests against `qis` for the EWMA primitives and against `scikit-learn` for the
 LASSO path.
 
@@ -415,7 +423,7 @@ developed, and the software itself:
              Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
              in {Python}},
   year    = {2026},
-  version = {0.4.0},
+  version = {0.4.2},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```
@@ -435,4 +443,4 @@ covering the v0.4.x line.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+GPL-3.0-or-later — see [`LICENSE`](LICENSE).
