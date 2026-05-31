@@ -115,27 +115,38 @@ def _compute_sign_vector(
         raise ValueError(
             f"x has {T} rows but y has {y_arr.shape[0]} rows"
         )
-    q = y_arr.shape[1]
 
-    # NaN-safety. The univariate slope (x · y) / (x · x) is invariant under
-    # zero-fill of (x, y) at the same positions: a zeroed observation
-    # contributes nothing to either the numerator or the denominator, so
-    # the result equals the slope computed on valid rows only. This matches
-    # the semantic ``get_x_y_np`` already applies in the LassoModel internal
-    # path. Doing it here too makes the function robust for the external
-    # ``derive_sign_constraints`` API where the caller might pass NaN-bearing
-    # arrays directly.
+    # NaN handling. We zero-fill (x, y) for the arithmetic but FIRST record
+    # the per-cell validity mask so every reduction below ranges over genuine
+    # observations only. Zero-filling alone is *not* equivalent to a valid-row
+    # fit for a pooled estimator with heterogeneous inception dates: a missing
+    # y_{tk} contributes 0 to the cross-asset sum (harmless), but it must not
+    # be counted in the slope denominator Σ x_{tj}², the SSR, or the degrees
+    # of freedom. Treating zero-filled cells as real observations deflates the
+    # residual variance and inflates |t| (anticonservative). We therefore
+    # carry the valid mask explicitly and weight every reduction by it.
+    valid_y = ~np.isnan(y_arr)                 # (T, q) genuine response cells
+    valid_x = ~np.isnan(x_arr)                 # (T, M) genuine factor cells
     if np.isnan(x_arr).any():
         x_arr = np.nan_to_num(x_arr, nan=0.0)
     if np.isnan(y_arr).any():
         y_arr = np.nan_to_num(y_arr, nan=0.0)
 
     y_sum = y_arr.sum(axis=1)
+    # Per-response-cell count of valid (row) observations entering each
+    # (factor, response) inner product. A row contributes to factor j and
+    # response k only when both x_{tj} and y_{tk} are present.
     slopes = np.zeros(M, dtype=float)
 
     if clusters is None:
-        numerator = x_arr.T @ y_sum
-        denominator = q * (x_arr ** 2).sum(axis=0)
+        # Pooled denominator Σ_k Σ_t v_{tk} x_{tj}² uses the per-response
+        # valid mask, NOT q · Σ_t x_{tj}². When y is fully observed these
+        # coincide; under leading-NaN they diverge.
+        x2 = x_arr ** 2                         # (T, M)
+        # (M,): Σ_j over rows where x valid, summed across responses where y valid
+        numerator = x_arr.T @ y_sum             # (M,) — missing y already 0
+        # denominator[j] = Σ_k Σ_t (x_valid_{tj} & y_valid_{tk}) x_{tj}²
+        denominator = (x2 * valid_x).T @ valid_y.sum(axis=1)  # (M,)
         safe = denominator > 0
         slopes[safe] = numerator[safe] / denominator[safe]
     else:
@@ -146,8 +157,10 @@ def _compute_sign_vector(
             )
         for c in np.unique(clusters_arr):
             idx = np.where(clusters_arr == c)[0]
-            x_agg = x_arr[:, idx].mean(axis=1)
-            denom = q * float(x_agg @ x_agg)
+            x_agg = x_arr[:, idx].mean(axis=1)          # (T,)
+            x_agg_valid = valid_x[:, idx].all(axis=1)   # (T,) agg defined
+            xa2 = (x_agg ** 2) * x_agg_valid             # (T,)
+            denom = float(xa2 @ valid_y.sum(axis=1))     # Σ_k Σ_t v x_agg²
             if denom > 0:
                 slopes[idx] = float(x_agg @ y_sum) / denom
 
@@ -156,30 +169,34 @@ def _compute_sign_vector(
     # Optional t-stat gating: pin weak-evidence columns to sign=0 (β forced
     # to zero by the solver).
     if auto_sign_threshold_t is not None and auto_sign_threshold_t > 0.0:
-        # Univariate (or cluster-aggregated) t-statistic per column.
-        # No-intercept fit on the demeaned inputs ``get_x_y_np`` produces,
-        # so SE(β_j) = sqrt(σ̂² / (q · x_j'x_j)) with σ̂² = ε̂'ε̂ / df.
-        #
-        # The pooled-OLS SSR has a closed form that avoids materializing
-        # residuals:
-        #   SSR_j = Σ_k ||y_k − β_j x_j||²
-        #         = ||Y||²_F − 2 β_j (x_j' y_sum) + q β_j² (x_j' x_j)
-        #         = ||Y||²_F − q β_j² (x_j' x_j)
-        # using the slope identity x_j' y_sum = β_j · q · (x_j' x_j).
-        # That is vectorisable over j and over clusters and eliminates the
-        # (T, q) allocation per column that the prior implementation made.
-        Y_total_ss = float((y_arr * y_arr).sum())
-        df = max(q * T - q, 1)
+        # No-intercept pooled fit on the demeaned inputs. The SSR has a
+        # closed form that avoids materialising residuals; we evaluate every
+        # reduction over valid (row, response) cells so the variance and dof
+        # reflect the true sample size under heterogeneous inception dates:
+        #   SSR_j = Σ_{k,t∈valid} (y_{tk} − β_j x_{tj})²
+        #         = ‖Y‖²_F,valid − β_j² · D_j,
+        #   D_j = Σ_k Σ_t v_{tk} x_{tj}²  (the same valid denominator above),
+        # using the slope identity x_j' y_sum = β_j · D_j. The degrees of
+        # freedom charge one parameter per response column actually present:
+        #   df_j = n_valid_j − q_eff,  n_valid_j = Σ_k Σ_t (x_valid & y_valid),
+        # with q_eff the number of responses contributing ≥1 valid row.
+        Y_total_ss = float((y_arr * y_arr).sum())       # zero-filled = valid-only
         t_stats = np.zeros(M, dtype=float)
+        n_valid_per_resp = valid_y.sum(axis=0)           # (q,) rows valid per k
+        q_eff = int((n_valid_per_resp > 0).sum())
         if clusters is None:
-            xx = (x_arr * x_arr).sum(axis=0)           # (M,)
-            ssr = Y_total_ss - q * slopes * slopes * xx  # (M,)
+            x2 = x_arr ** 2
+            vy_rowcount = valid_y.sum(axis=1)            # (T,) #valid responses per row
+            D = (x2 * valid_x).T @ vy_rowcount           # (M,) valid denominator
+            # n_valid_j = Σ_t valid_x_{tj} · (#valid responses in row t)
+            n_valid = (valid_x.astype(float).T @ vy_rowcount)  # (M,) valid (t,k) cells
+            df = np.maximum(n_valid - q_eff, 1.0)
+            ssr = Y_total_ss - slopes * slopes * D       # (M,)
             sigma2 = np.maximum(ssr, 0.0) / df
-            denom = q * xx
             with np.errstate(divide="ignore", invalid="ignore"):
                 se = np.where(
-                    (sigma2 > 0) & (denom > 0),
-                    np.sqrt(sigma2 / np.where(denom > 0, denom, 1.0)),
+                    (sigma2 > 0) & (D > 0),
+                    np.sqrt(sigma2 / np.where(D > 0, D, 1.0)),
                     np.inf,
                 )
                 t_stats = np.where(se > 0, slopes / se, 0.0)
@@ -188,14 +205,18 @@ def _compute_sign_vector(
             for c in np.unique(clusters_arr):
                 idx = np.where(clusters_arr == c)[0]
                 x_agg = x_arr[:, idx].mean(axis=1)
-                xx_c = float(x_agg @ x_agg)
-                if xx_c <= 0.0:
+                x_agg_valid = valid_x[:, idx].all(axis=1)
+                xa2 = (x_agg ** 2) * x_agg_valid
+                D_c = float(xa2 @ valid_y.sum(axis=1))
+                if D_c <= 0.0:
                     continue
                 slope_c = float(slopes[idx[0]])
-                ssr_c = Y_total_ss - q * slope_c * slope_c * xx_c
-                sigma2 = max(ssr_c, 0.0) / df
-                denom_c = q * xx_c
-                se_c = np.sqrt(sigma2 / denom_c) if (sigma2 > 0 and denom_c > 0) else np.inf
+                # valid (t,k) cells for this aggregated factor
+                n_valid_c = float((x_agg_valid[:, None] & valid_y).sum())
+                df_c = max(n_valid_c - q_eff, 1.0)
+                ssr_c = Y_total_ss - slope_c * slope_c * D_c
+                sigma2 = max(ssr_c, 0.0) / df_c
+                se_c = np.sqrt(sigma2 / D_c) if (sigma2 > 0 and D_c > 0) else np.inf
                 t_c = slope_c / se_c if se_c > 0 else 0.0
                 t_stats[idx] = t_c
 
@@ -271,33 +292,43 @@ def _compute_sign_matrix_per_response(
     signs : ndarray (N, M) of float in {-1, 0, +1}
     slopes : ndarray (N, M), only when ``return_slopes=True``
     """
-    # NaN safety (same contract as _compute_sign_vector)
+    # NaN handling (same contract as _compute_sign_vector): record validity
+    # masks before zero-filling so the slope denominator, SSR, and dof range
+    # over genuine observations only — never over zero-filled rows.
+    valid_x = ~np.isnan(x_arr)                     # (T, M)
+    valid_y = ~np.isnan(y_arr)                     # (T, N)
     if np.isnan(x_arr).any():
         x_arr = np.nan_to_num(x_arr, nan=0.0)
     if np.isnan(y_arr).any():
         y_arr = np.nan_to_num(y_arr, nan=0.0)
 
-    T = x_arr.shape[0]
-    xx = (x_arr * x_arr).sum(axis=0)               # (M,)
-    yy = (y_arr * y_arr).sum(axis=0)               # (N,)
+    x2 = x_arr * x_arr                             # (T, M)
+    yy = (y_arr * y_arr).sum(axis=0)               # (N,) valid-only (zeros add 0)
     xy = x_arr.T @ y_arr                           # (M, N)
 
-    # β[k, j] = (x_j' y_k) / (x_j' x_j)
-    safe_xx = np.where(xx > 0, xx, 1.0)
-    slopes = (xy / safe_xx[:, None]).T             # (N, M)
-    slopes = np.where(xx[None, :] > 0, slopes, 0.0)
+    # Per-(response k, factor j) valid-row count and denominator. A row t
+    # enters cell (k, j) only when both x_{tj} and y_{tk} are present.
+    # n_valid[k, j] = Σ_t valid_x_{tj} & valid_y_{tk}
+    n_valid = (valid_y.astype(float).T @ valid_x.astype(float))   # (N, M)
+    # denom[k, j] = Σ_t (valid_x_{tj} & valid_y_{tk}) x_{tj}²
+    denom_kj = (valid_y.astype(float).T @ (x2 * valid_x))         # (N, M)
+
+    # β[k, j] = (x_j' y_k) / denom[k, j]  (valid-row denominator)
+    safe = denom_kj > 0
+    slopes = np.zeros((y_arr.shape[1], x_arr.shape[1]), dtype=float)  # (N, M)
+    slopes[safe] = (xy.T)[safe] / denom_kj[safe]
     signs = np.sign(slopes).astype(float)          # (N, M)
 
     if auto_sign_threshold_t is not None and auto_sign_threshold_t > 0.0:
-        # q = 1 per response column ⇒ df = T - 1, denom = x_j' x_j
-        df = max(T - 1, 1)
-        ssr = yy[:, None] - slopes * slopes * xx[None, :]   # (N, M)
+        # df = n_valid − 1 (one slope per (k, j) univariate fit), evaluated
+        # on the valid-row count rather than nominal T.
+        df = np.maximum(n_valid - 1.0, 1.0)
+        ssr = yy[:, None] - slopes * slopes * denom_kj      # (N, M)
         sigma2 = np.maximum(ssr, 0.0) / df
-        denom = xx[None, :]                                 # (1, M)
         with np.errstate(divide="ignore", invalid="ignore"):
             se = np.where(
-                (sigma2 > 0) & (denom > 0),
-                np.sqrt(sigma2 / np.where(denom > 0, denom, 1.0)),
+                (sigma2 > 0) & (denom_kj > 0),
+                np.sqrt(sigma2 / np.where(denom_kj > 0, denom_kj, 1.0)),
                 np.inf,
             )
             t_stats = np.where(se > 0, slopes / se, 0.0)

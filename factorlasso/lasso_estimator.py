@@ -980,24 +980,52 @@ class LassoModel:
 
     @staticmethod
     def _validate_fit_inputs(
-        x: Union[pd.DataFrame, pd.Series],
-        y: Union[pd.DataFrame, pd.Series],
+        x: Union[pd.DataFrame, pd.Series, np.ndarray],
+        y: Union[pd.DataFrame, pd.Series, np.ndarray],
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Coerce Series → DataFrame and validate shapes / index alignment."""
+        """Coerce Series/ndarray → DataFrame and validate shapes / index alignment.
+
+        NumPy arrays are accepted for \\pkg{scikit-learn} interoperability
+        (``Pipeline``, ``GridSearchCV``, ``cross_val_score`` pass ndarrays):
+        a 1-D array becomes a single-column frame, a 2-D array gets generated
+        ``x0, x1, ...`` / ``y0, y1, ...`` column names and a shared
+        ``RangeIndex``. DataFrame inputs are unchanged, so existing callers
+        and the named-index behaviour the rest of the pipeline relies on are
+        unaffected.
+        """
+        if isinstance(x, np.ndarray):
+            x = np.atleast_2d(x)
+            if x.shape[0] == 1 and x.ndim == 2 and x.shape[1] != 1:
+                pass  # already (1, M); keep
+            x = pd.DataFrame(
+                x, columns=[f"x{j}" for j in range(x.shape[1])]
+            )
+        if isinstance(y, np.ndarray):
+            if y.ndim == 1:
+                y = y.reshape(-1, 1)
+            y = pd.DataFrame(
+                y, columns=[f"y{k}" for k in range(y.shape[1])]
+            )
         if isinstance(x, pd.Series):
             x = x.to_frame()
         if isinstance(y, pd.Series):
             y = y.to_frame()
         if not isinstance(x, pd.DataFrame):
             raise TypeError(
-                f"x must be pd.DataFrame or pd.Series, got {type(x).__name__}"
+                f"x must be pd.DataFrame, pd.Series, or np.ndarray, "
+                f"got {type(x).__name__}"
             )
         if not isinstance(y, pd.DataFrame):
             raise TypeError(
-                f"y must be pd.DataFrame or pd.Series, got {type(y).__name__}"
+                f"y must be pd.DataFrame, pd.Series, or np.ndarray, "
+                f"got {type(y).__name__}"
             )
         if len(x) == 0:
             raise ValueError("Empty input: x and y must have at least one row")
+        # ndarray inputs arrive with independent RangeIndexes of equal length;
+        # align y onto x's index so the equality check below passes.
+        if len(x) == len(y) and not x.index.equals(y.index):
+            y = y.set_axis(x.index, axis=0)
         if not x.index.equals(y.index):
             raise ValueError(
                 f"x and y must share the same index: "
@@ -1422,6 +1450,10 @@ class LassoModel:
         """
         if self.coef_ is None:
             raise RuntimeError("Model not fitted. Call fit() first.")
+        # Accept ndarray for sklearn interop: map positionally to the fitted
+        # factor columns (the order fit() saw).
+        if isinstance(x, np.ndarray):
+            x = pd.DataFrame(np.atleast_2d(x), columns=list(self.coef_.columns))
         # Paper: Y_t = α + β X_t.  Row-major equivalent: Y = X @ β' + α
         y_hat = x[self.coef_.columns] @ self.coef_.T
         if self.intercept_ is not None:
@@ -1443,7 +1475,98 @@ class LassoModel:
             Mean R² (higher is better).
         """
         y_hat = self.predict(x)
+        if isinstance(y, np.ndarray):
+            y = pd.DataFrame(
+                np.atleast_2d(y), index=y_hat.index, columns=y_hat.columns
+            )
         ss_res = ((y - y_hat) ** 2).sum(axis=0)
         ss_tot = ((y - y.mean(axis=0)) ** 2).sum(axis=0)
         r2 = 1.0 - ss_res / ss_tot.replace(0, np.nan)
         return float(r2.mean())
+
+    def __sklearn_tags__(self):
+        """Estimator tags for \\pkg{scikit-learn} >= 1.6 interoperability.
+
+        Declares the estimator as a multi-output regressor that tolerates
+        NaN inputs, so that ``Pipeline``, ``GridSearchCV``, and
+        ``cross_val_score`` accept it. Falls back gracefully on older
+        \\pkg{scikit-learn} versions that do not call this hook.
+        """
+        try:
+            from sklearn.utils import Tags, TargetTags, InputTags
+        except Exception:  # pragma: no cover - older sklearn
+            return None
+        return Tags(
+            estimator_type="regressor",
+            target_tags=TargetTags(required=True, multi_output=True),
+            transformer_tags=None,
+            classifier_tags=None,
+            regressor_tags=None,
+            input_tags=InputTags(allow_nan=True),
+        )
+
+    def summary(self) -> str:
+        """Return a human-readable summary of the fitted model.
+
+        Reports the problem dimensions, the active model type, the number of
+        discovered clusters (for the HCGL modes), the active-coefficient
+        count and density, and the mean per-asset R-squared. Raises if the
+        model has not been fitted.
+        """
+        if self.coef_ is None:
+            raise RuntimeError("Model not fitted. Call fit() first.")
+        n, m = self.coef_.shape
+        k_active = int((self.coef_.abs() > 1e-8).sum().sum())
+        lines = [
+            "LassoModel summary",
+            "-" * 40,
+            f"model_type        : {self.model_type.name}",
+            f"responses (N)     : {n}",
+            f"factors (M)       : {m}",
+            f"reg_lambda        : {self.reg_lambda:g}",
+            f"l1_weight (alpha) : {self.l1_weight:g}",
+            f"active coefs      : {k_active} / {n * m} "
+            f"({100.0 * k_active / (n * m):.1f}%)",
+        ]
+        if self.clusters_ is not None:
+            lines.append(f"clusters (HCGL)   : {int(self.clusters_.nunique())}")
+        if self.auto_sign_constraints and self.derived_signs_ is not None:
+            gated = int((self.derived_signs_ == 0).sum().sum())
+            lines.append(f"sign-gated cells  : {gated}")
+        if self.estimation_result_ is not None and getattr(
+            self.estimation_result_, "r2", None
+        ) is not None:
+            try:
+                lines.append(
+                    f"mean R^2          : {float(np.nanmean(self.estimation_result_.r2)):.4f}"
+                )
+            except Exception:  # pragma: no cover
+                pass
+        return "\n".join(lines)
+
+    def plot_signs(self, ax=None):
+        """Plot the derived sign matrix as a heatmap (requires matplotlib).
+
+        Returns the matplotlib ``Axes``. Available only when
+        ``auto_sign_constraints=True`` produced a ``derived_signs_`` matrix.
+        """
+        if self.derived_signs_ is None:
+            raise RuntimeError(
+                "No derived_signs_ to plot. Fit with auto_sign_constraints=True."
+            )
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError as exc:  # pragma: no cover
+            raise ImportError("plot_signs requires matplotlib.") from exc
+        s = self.derived_signs_.values.astype(float)
+        if ax is None:
+            _, ax = plt.subplots(
+                figsize=(max(4, s.shape[1]), max(3, s.shape[0] * 0.12))
+            )
+        ax.imshow(s, aspect="auto", cmap="RdBu", vmin=-1, vmax=1)
+        ax.set_xticks(range(s.shape[1]))
+        ax.set_xticklabels(list(self.derived_signs_.columns), rotation=45,
+                           ha="right", fontsize=8)
+        ax.set_ylabel("assets")
+        ax.set_title("Derived sign matrix (+1 / 0 / -1)")
+        return ax

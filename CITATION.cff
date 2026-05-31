@@ -9,10 +9,10 @@ authors:
   - given-names: Mika
     family-names: Kastenholz
 repository-code: "https://github.com/ArturSepp/factorlasso"
-url: "https://factorlasso.readthedocs.io"
-license: MIT
-version: 0.4.0
-date-released: "2026-05-24"
+url: "https://github.com/ArturSepp/factorlasso"
+license: GPL-3.0-or-later
+version: 0.4.2
+date-released: "2026-05-31"
 keywords:
   - lasso
   - group-lasso
