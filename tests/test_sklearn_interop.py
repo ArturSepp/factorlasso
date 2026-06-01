@@ -28,6 +28,7 @@ def panel():
 
 
 def test_gridsearchcv(panel):
+    pytest.importorskip("sklearn", exc_type=ImportError)
     from sklearn.model_selection import GridSearchCV
 
     X, Y = panel
@@ -41,6 +42,7 @@ def test_gridsearchcv(panel):
 
 
 def test_pipeline_with_ndarray(panel):
+    pytest.importorskip("sklearn", exc_type=ImportError)
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import StandardScaler
 
@@ -54,6 +56,7 @@ def test_pipeline_with_ndarray(panel):
 
 
 def test_cross_val_score(panel):
+    pytest.importorskip("sklearn", exc_type=ImportError)
     from sklearn.model_selection import cross_val_score
 
     X, Y = panel
@@ -82,8 +85,7 @@ def test_summary_before_fit_raises():
 
 
 def test_plot_signs(panel):
-    import matplotlib
-
+    matplotlib = pytest.importorskip("matplotlib", exc_type=ImportError)
     matplotlib.use("Agg")
     X, Y = panel
     model = LassoModel(

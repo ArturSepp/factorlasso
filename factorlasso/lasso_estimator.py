@@ -1493,7 +1493,7 @@ class LassoModel:
         \\pkg{scikit-learn} versions that do not call this hook.
         """
         try:
-            from sklearn.utils import Tags, TargetTags, InputTags
+            from sklearn.utils import InputTags, Tags, TargetTags
         except Exception:  # pragma: no cover - older sklearn
             return None
         return Tags(
