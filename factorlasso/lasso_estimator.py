@@ -76,7 +76,8 @@ class LassoModelType(Enum):
     """Supported LASSO estimation methods."""
     LASSO = 1                   #: Standard L1 LASSO
     GROUP_LASSO = 2             #: Group LASSO with user-defined groups
-    GROUP_LASSO_CLUSTERS = 3    #: HCGL — Group LASSO with hierarchical clustering
+    HIERARCHICAL_CLUSTER_GROUP_LASSO = 3  #: HCGL — row-grouped penalty on discovered clusters
+    CLUSTER_FACTOR_GROUP_LASSO = 4  #: FCGL — cluster-by-factor block penalty
 
 
 @dataclass
@@ -463,6 +464,8 @@ def solve_group_lasso_cvx_problem(
     l1_weight: float = 0.0,
     penalty_weights: Optional[np.ndarray] = None,
     row_weights: Optional[np.ndarray] = None,
+    block_mode: str = "row",
+    col_weights: Optional[np.ndarray] = None,
 ) -> LassoEstimationResult:
     r"""
     Group LASSO multi-output regression via CVXPY.
@@ -501,9 +504,11 @@ def solve_group_lasso_cvx_problem(
     group_penalty : {"normalized", "yuan_lin"}, default "normalized"
         Per-group weighting convention:
 
-        - ``"normalized"``: ``w_g = √(|g|/G)``. Group-count-invariant —
-          keeps the effective regularisation scale stable across
-          problems with different numbers of groups G. This is the
+        - ``"normalized"``: ``w_g = √(|g|/G)``. A heuristic cluster-size
+          scaling that moderates the relative influence of large
+          clusters and adjusts the effective regularisation scale for
+          the data-driven group count G. It is not invariant to
+          arbitrary refinements of the partition. This is the
           package default and the appropriate choice for HCGL, where
           G is data-driven and can vary across estimation dates or
           rolling windows.
@@ -527,6 +532,32 @@ def solve_group_lasso_cvx_problem(
         L1 term shrinks ``β`` toward the prior ``β_0`` elementwise,
         consistent with the group term which also shrinks toward the
         prior.
+    block_mode : {"row", "cluster_factor"}, default "row"
+        Geometry of the group L2 norm. ``"row"`` (HCGL) takes the norm
+        over each asset's M factor loadings, summed across assets; the
+        cluster enters only through the weight ``w_g``, and the programme
+        is block-separable across assets. ``"cluster_factor"`` (FCGL)
+        takes the norm over each cluster-by-factor block,
+
+        .. math::
+
+            (1 - \alpha)\,\lambda \sum_g w_g \sum_{j=1}^{M}
+              \|\beta_{g, j} - \beta_{0, g, j}\|_2,
+
+        where the block collects the loadings of cluster *g*'s assets on
+        factor *j*. In ``"cluster_factor"`` mode the cluster is the group
+        of the norm itself, so a whole cluster-by-factor block enters or
+        leaves the model together; the programme is not block-separable
+        across assets and is solved as one coupled cone programme.
+    penalty_weights : np.ndarray, shape (N, M), optional
+        Per-cell adaptive weights multiplying the L1 term, from the
+        adaptive-reweighting layer. ``None`` applies unit weights.
+    row_weights : np.ndarray, shape (N,), optional
+        Per-asset adaptive weights multiplying each row L2 norm in
+        ``"row"`` mode. ``None`` applies unit weights.
+    col_weights : np.ndarray, shape (G, M), optional
+        Per-(cluster, factor) adaptive weights multiplying each block L2
+        norm in ``"cluster_factor"`` mode. ``None`` applies unit weights.
 
     Returns
     -------
@@ -590,15 +621,40 @@ def solve_group_lasso_cvx_problem(
     masks = [
         np.isclose(group_loadings[:, g], 1.0) for g in range(n_groups)
     ]
+    if block_mode not in ("row", "cluster_factor"):
+        raise ValueError(
+            f"block_mode must be 'row' or 'cluster_factor', got {block_mode!r}"
+        )
     group_terms = []
-    for m in masks:
-        # cvx.norm2(beta[m, :] - prior[m, :], axis=1) is a vector of L2
-        # norms, one per asset in the group. With row_weights, each
-        # element is scaled by its asset-specific weight before summing.
-        norms = cvx.norm2(beta[m, :] - prior[m, :], axis=1)
-        if row_weights is not None:
-            norms = cvx.multiply(row_weights[m], norms)
-        group_terms.append(reg_lambda * _weight(m) * cvx.sum(norms))
+    if block_mode == "row":
+        for m in masks:
+            # cvx.norm2(beta[m, :] - prior[m, :], axis=1) is a vector of L2
+            # norms, one per asset in the group. With row_weights, each
+            # element is scaled by its asset-specific weight before summing.
+            norms = cvx.norm2(beta[m, :] - prior[m, :], axis=1)
+            if row_weights is not None:
+                norms = cvx.multiply(row_weights[m], norms)
+            group_terms.append(reg_lambda * _weight(m) * cvx.sum(norms))
+    else:
+        # cluster_factor: the group of the norm is the cluster x factor
+        # block. For cluster g, cvx.norm2(beta[m, :] - prior[m, :], axis=0)
+        # is a length-M vector of L2 norms, one per factor, taken over the
+        # cluster's member rows. Summing these M norms and scaling by the
+        # cluster weight gives a penalty that selects whole cluster x factor
+        # blocks in or out together. Unlike the row mode this couples assets
+        # within a cluster, so the problem is NOT block-separable across
+        # assets — do not refactor it into per-asset fits.
+        if col_weights is not None:
+            if col_weights.shape != (n_groups, n_x):
+                raise ValueError(
+                    f"col_weights shape {col_weights.shape} != expected "
+                    f"({n_groups}, {n_x})"
+                )
+        for gi, m in enumerate(masks):
+            col_norms = cvx.norm2(beta[m, :] - prior[m, :], axis=0)
+            if col_weights is not None:
+                col_norms = cvx.multiply(col_weights[gi], col_norms)
+            group_terms.append(reg_lambda * _weight(m) * cvx.sum(col_norms))
     group_pen = cvx.sum(group_terms)
 
     # Elementwise L1 penalty (scaled by α). Shrinks toward the same
@@ -681,6 +737,11 @@ class LassoModel:
     Parameters
     ----------
     model_type : LassoModelType, default LASSO
+        Selects the optimisation problem: ``LASSO`` (cellwise L1),
+        ``GROUP_LASSO`` (external group partition), ``HIERARCHICAL_CLUSTER_GROUP_LASSO``
+        (HCGL row-grouped penalty on a discovered partition), or
+        ``CLUSTER_FACTOR_GROUP_LASSO`` (FCGL cluster-by-factor block
+        penalty on the same discovered partition).
     reg_lambda : float, default 1e-5
     span : float, optional
         EWMA span for observation weighting.  Must be ≥ 1 when provided.
@@ -697,11 +758,15 @@ class LassoModel:
         Group labels (required for ``GROUP_LASSO``).
     cutoff_fraction : float, default 0.5
         Fraction of ``max(pdist)`` at which to cut the dendrogram when
-        ``model_type == GROUP_LASSO_CLUSTERS``.  Ignored by other modes.
+        ``model_type == HIERARCHICAL_CLUSTER_GROUP_LASSO`` or
+        ``CLUSTER_FACTOR_GROUP_LASSO`` (both discover clusters the same
+        way).  Ignored by ``LASSO`` and ``GROUP_LASSO``.
         See :func:`factorlasso.compute_clusters_from_corr_matrix`.
     group_penalty : {"normalized", "yuan_lin"}, default "normalized"
         Per-group weighting for the group-LASSO penalty.  ``"normalized"``
-        uses ``√(|g|/G)`` (group-count-invariant) and is the default —
+        uses ``√(|g|/G)``, a heuristic cluster-size scaling that adjusts
+        for the data-driven group count (not invariant to arbitrary
+        partition refinements), and is the default —
         appropriate for HCGL where the number of groups is data-driven.
         ``"yuan_lin"`` uses the classical Yuan–Lin (2006) ``√|g|``.
         Ignored for ``model_type == LASSO``.  See
@@ -715,7 +780,8 @@ class LassoModel:
         group structure as the primary mechanism while allowing
         additional within-group elementwise zeroing for assets whose
         loadings are noisy. Only consumed when ``model_type`` is
-        ``GROUP_LASSO`` or ``GROUP_LASSO_CLUSTERS``; ignored for pure
+        ``GROUP_LASSO``, ``HIERARCHICAL_CLUSTER_GROUP_LASSO``, or
+        ``CLUSTER_FACTOR_GROUP_LASSO``; ignored for pure
         ``LASSO`` since L1 is the only penalty already.
     factors_beta_loading_signs : pd.DataFrame, optional
     factors_beta_prior : pd.DataFrame, optional
@@ -729,8 +795,12 @@ class LassoModel:
           univariate sign derivation; rows of ``derived_signs_`` may differ.
         * ``GROUP_LASSO``: signs pooled within each ``group_data`` group;
           members of a group share their ``derived_signs_`` row.
-        * ``GROUP_LASSO_CLUSTERS``: signs pooled within each HCGL asset
+        * ``HIERARCHICAL_CLUSTER_GROUP_LASSO``: signs pooled within each HCGL asset
           cluster (the same clustering the group solver uses).
+        * ``CLUSTER_FACTOR_GROUP_LASSO``: signs pooled within each HCGL
+          asset cluster, identically to ``HIERARCHICAL_CLUSTER_GROUP_LASSO``; the two
+          modes share the sign derivation and differ only in the group
+          norm of the penalty.
 
         When ``factors_beta_loading_signs`` is *also* supplied, the explicit
         matrix is overlaid on the auto-derived signs per-cell: non-NaN
@@ -840,7 +910,7 @@ class LassoModel:
     # Auto sign-constraint derivation (signs computed inside fit on the
     # solver-ready EWMA-demeaned, NaN-masked arrays). Pooling strategy is
     # determined by ``model_type``:
-    #   * GROUP_LASSO_CLUSTERS → pool within each asset cluster from HCGL
+    #   * HIERARCHICAL_CLUSTER_GROUP_LASSO → pool within each asset cluster from HCGL
     #   * GROUP_LASSO          → pool within each ``group_data`` group
     #   * LASSO / single-col y → per-y-column independent derivation
     auto_sign_constraints: bool = False
@@ -1161,7 +1231,10 @@ class LassoModel:
             pass
         elif self.model_type == LassoModelType.GROUP_LASSO:
             asset_clusters = self.group_data[y.columns]
-        elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
+        elif self.model_type in (
+            LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+            LassoModelType.CLUSTER_FACTOR_GROUP_LASSO,
+        ):
             # Restore NaN before the clustering correlation (see block comment
             # in the solver-dispatch section below for the rationale).
             y_for_corr = np.where(valid_mask > 0, y_np, np.nan)
@@ -1309,13 +1382,15 @@ class LassoModel:
         #   • the L1 term (Zou 2006 adaptive Lasso), when ``l1_weight > 0``;
         #   • the group-L2 term (Wang & Leng 2008 adaptive group lasso),
         #     via row aggregation. This is what gives the adaptive flag
-        #     impact in the production GROUP_LASSO_CLUSTERS config where
+        #     impact in the production HIERARCHICAL_CLUSTER_GROUP_LASSO config where
         #     ``l1_weight = 0`` and the group penalty does all the work.
         penalty_weights_np = None
         row_weights_np = None
+        col_weights_np = None
         if want_adaptive and auto_slopes_np is not None:
             from factorlasso.sign_constraints import (
                 _adaptive_penalty_weights,
+                _aggregate_to_block_weights,
                 _aggregate_to_row_weights,
             )
             penalty_weights_np = _adaptive_penalty_weights(
@@ -1330,6 +1405,15 @@ class LassoModel:
                 signs=auto_signs_np if auto_signs_np is not None
                 else np.sign(auto_slopes_np),
             )
+            if self.model_type == LassoModelType.CLUSTER_FACTOR_GROUP_LASSO:
+                col_weights_np = _aggregate_to_block_weights(
+                    cell_weights=penalty_weights_np,
+                    signs=auto_signs_np if auto_signs_np is not None
+                    else np.sign(auto_slopes_np),
+                    group_loadings=set_group_loadings(
+                        group_data=asset_clusters
+                    ).to_numpy(),
+                )
 
         # ── Solver dispatch (consumes the pre-computed asset_clusters) ──
         if is_lasso_mode:
@@ -1381,7 +1465,7 @@ class LassoModel:
                 row_weights=row_weights_np,
             )
 
-        elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
+        elif self.model_type == LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO:
             gl = set_group_loadings(group_data=asset_clusters)
             result = solve_group_lasso_cvx_problem(
                 x=x_np, y=y_np, group_loadings=gl.to_numpy(),
@@ -1395,6 +1479,27 @@ class LassoModel:
                 l1_weight=self.l1_weight,
                 penalty_weights=penalty_weights_np,
                 row_weights=row_weights_np,
+            )
+        elif self.model_type == LassoModelType.CLUSTER_FACTOR_GROUP_LASSO:
+            # Same HCGL cluster discovery as HIERARCHICAL_CLUSTER_GROUP_LASSO, but the
+            # group penalty is taken over each cluster x factor block
+            # (block_mode="cluster_factor") rather than over each asset row.
+            # The cluster is the group of the L2 norm here, so the problem
+            # is NOT block-separable across assets.
+            gl = set_group_loadings(group_data=asset_clusters)
+            result = solve_group_lasso_cvx_problem(
+                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
+                valid_mask=valid_mask,
+                reg_lambda=self.reg_lambda, span=eff_span,
+                verbose=verbose, solver=self.solver,
+                nonneg=self.nonneg,
+                factors_beta_loading_signs=signs_np,
+                factors_beta_prior=prior_np,
+                group_penalty=self.group_penalty,
+                l1_weight=self.l1_weight,
+                penalty_weights=penalty_weights_np,
+                block_mode="cluster_factor",
+                col_weights=col_weights_np,
             )
         else:
             raise NotImplementedError(f"Unsupported model_type: {self.model_type}")
@@ -1493,7 +1598,7 @@ class LassoModel:
         self.alpha_const_ = alpha_const_ser
         self.estimation_result_ = result
         # asset_clusters is already populated by the upstream dispatch (HCGL
-        # output for GROUP_LASSO_CLUSTERS, group_data for GROUP_LASSO, None
+        # output for HIERARCHICAL_CLUSTER_GROUP_LASSO, group_data for GROUP_LASSO, None
         # for plain LASSO). Filter out cluster labels for ghost assets —
         # assets whose betas were zeroed above because they had fewer than
         # ``warmup_period`` valid observations. Dropping them here keeps

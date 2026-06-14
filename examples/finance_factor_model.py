@@ -67,7 +67,7 @@ def main():
 
     # --- 3. Fit HCGL model ---
     model = LassoModel(
-        model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+        model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-5,
         span=52,
         factors_beta_loading_signs=signs,

@@ -202,7 +202,8 @@ def _compute_sign_vector(
             n_valid = (valid_x.astype(float).T @ vy_rowcount)  # (M,) valid (t,k) cells
             df = np.maximum(n_valid - q_eff, 1.0)
             if valid_x.all():
-                Y_ss = np.full(M, float((y_arr * y_arr).sum()))  # complete factors: bit-identical to prior global
+                # complete factors: bit-identical to prior global
+                Y_ss = np.full(M, float((y_arr * y_arr).sum()))
             else:
                 Y_ss = valid_x.astype(float).T @ y2_rowsum  # (M,) Σ_t v_x·(Σ_k v_y y²)
             ssr = Y_ss - slopes * slopes * D             # (M,)
@@ -689,3 +690,65 @@ def _aggregate_to_row_weights(
     with np.errstate(divide="ignore", invalid="ignore"):
         ms = np.where(n_active > 0, sq_sum / np.where(n_active > 0, n_active, 1.0), 1.0)
     return np.sqrt(ms)
+
+
+def _aggregate_to_block_weights(
+    cell_weights: np.ndarray,
+    signs: np.ndarray,
+    group_loadings: np.ndarray,
+) -> np.ndarray:
+    """
+    Aggregate the ``(N, M)`` cell-level adaptive weights into a per-block
+    weight matrix of shape ``(G, M)`` for the cluster x factor group
+    penalty of ``CLUSTER_FACTOR_GROUP_LASSO``.
+
+    For each cluster ``g`` and factor ``j``, the aggregation is the
+    root-mean-square of the cell weights over the *non-gated* members of
+    that cluster (cells where ``signs[k, j] != 0`` and ``k`` is in
+    cluster ``g``)::
+
+        W_gj = sqrt( mean_{k in g: s_kj != 0} W_kj^2 )
+
+    Rationale mirrors :func:`_aggregate_to_row_weights`, one dimension
+    over: root-mean-square is the L2-natural aggregation to pair with the
+    per-block L2 norm ``W_gj * ||β_{g,j} - β⁰_{g,j}||_2``. For a block
+    whose members all have ``|β̂_uni_kj| = 1`` the aggregation returns
+    ``W_gj = 1`` exactly, preserving the per-cluster ``√(|g|/G)`` scaling
+    without multiplicative drift. Gate-pinned cells (``s_kj = 0``) are
+    excluded; a fully-pinned block falls back to ``W_gj = 1``.
+
+    Parameters
+    ----------
+    cell_weights : ndarray (N, M)
+        Per-cell adaptive weights from ``_adaptive_penalty_weights``.
+    signs : ndarray (N, M) of {-1, 0, +1}
+        Gated sign matrix; cells with ``signs[k, j] == 0`` are excluded.
+    group_loadings : ndarray (N, G)
+        Binary cluster-membership matrix; column ``g`` is 1 for the
+        members of cluster ``g``.
+
+    Returns
+    -------
+    col_weights : ndarray (G, M) of float, with W_gj = 1.0 for any
+                  fully-pinned block.
+    """
+    active = (signs != 0.0).astype(float)              # (N, M)
+    wsq = active * cell_weights * cell_weights         # (N, M)
+    membership = (np.isclose(group_loadings, 1.0)).astype(float)  # (N, G)
+    n_groups = membership.shape[1]
+    n_factors = cell_weights.shape[1]
+    block_w = np.ones((n_groups, n_factors), dtype=float)
+    for g in range(n_groups):
+        m = membership[:, g] > 0.0                     # members of cluster g
+        if not m.any():
+            continue
+        n_active = active[m, :].sum(axis=0)            # (M,)
+        sq_sum = wsq[m, :].sum(axis=0)                 # (M,)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ms = np.where(
+                n_active > 0,
+                sq_sum / np.where(n_active > 0, n_active, 1.0),
+                1.0,
+            )
+        block_w[g, :] = np.sqrt(ms)
+    return block_w

@@ -325,7 +325,7 @@ def test_aggregate_multiple_rows():
 
 
 def test_adaptive_group_lasso_has_impact_in_production_config():
-    """In the production GROUP_LASSO_CLUSTERS config with l1_weight=0,
+    """In the production HIERARCHICAL_CLUSTER_GROUP_LASSO config with l1_weight=0,
     activating auto_sign_adaptive_weights must produce a non-trivial change
     in the fit — otherwise the adaptive layer is a no-op for the very
     pipeline it's most needed in.
@@ -347,14 +347,14 @@ def test_adaptive_group_lasso_has_impact_in_production_config():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         m_off = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-3, span=None,           # production-like reg
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=False,
             # l1_weight defaults to 0 — production setting
         ).fit(x=Xdf, y=Ydf, verbose=False)
         m_on = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-3, span=None,
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=True,
@@ -371,7 +371,7 @@ def test_adaptive_group_lasso_has_impact_in_production_config():
 
 
 def test_adaptive_group_lasso_default_off_backward_compatible():
-    """auto_sign_adaptive_weights=False in GROUP_LASSO_CLUSTERS reproduces
+    """auto_sign_adaptive_weights=False in HIERARCHICAL_CLUSTER_GROUP_LASSO reproduces
     the v0.3.8 baseline bit-for-bit."""
     rng = np.random.default_rng(3)
     T, M, N = 200, 7, 20
@@ -385,12 +385,12 @@ def test_adaptive_group_lasso_default_off_backward_compatible():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         m_default = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-3, span=None,
             auto_sign_constraints=True,
         ).fit(x=Xdf, y=Ydf, verbose=False)
         m_explicit_off = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-3, span=None,
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=False,

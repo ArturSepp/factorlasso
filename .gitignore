@@ -35,11 +35,8 @@ env/
 ENV/
 
 # ─── IDE / editor metadata ──────────────────────────────────────
-# JetBrains (PyCharm, IntelliJ, etc.) — note: just `.idea/`, not `*.idea/`
 .idea/
-# VS Code
 .vscode/
-# Emacs, Vim, Sublime, nano
 *~
 *.swp
 *.swo
@@ -60,24 +57,29 @@ Desktop.ini
 .env.local
 *.local
 
-# ─── papers/jss_2026/ artefacts ─────────────────────────────────
-# Simulation harness outputs (parquet + manifest); regenerable via
-# `python -m papers.jss_2026.simulations.run`.
+# ─── papers/jss_2026/ — regenerable artefacts only ──────────────
+# The paper source, reproduction scripts, embedded figures, and the
+# committed reproduction data inputs (etf_excess_logreturns.csv,
+# futures_risk_factors.csv, riskfree_monthly.csv, etf_universe.csv)
+# ARE tracked. Only regenerable outputs and build artefacts are ignored.
+
+# Simulation-harness outputs (parquet/csv); regenerated via
+# `python -m papers.jss_2026.simulations.run` and the study scripts.
 papers/jss_2026/simulations/results/
+papers/jss_2026/simulations/results_calibrated/
 
-# §6 application data and outputs.
-# Bloomberg holdings are licensed and must not be redistributed;
-# the fetcher scripts encode the regeneration recipe.
-papers/jss_2026/applications/data/
-papers/jss_2026/applications/results/
+# The replication bundle is a build output of make_replication_zip.py.
+papers/jss_2026/factorlasso_jss_replication.zip
 
-# LaTeX build artefacts
+# LaTeX build artefacts (keep article.tex, refs.bib, *.cls, *.bst,
+# jsslogo.jpg, and the committed article.pdf).
 papers/jss_2026/paper/*.aux
 papers/jss_2026/paper/*.bbl
 papers/jss_2026/paper/*.blg
 papers/jss_2026/paper/*.log
 papers/jss_2026/paper/*.out
 papers/jss_2026/paper/*.toc
+papers/jss_2026/paper/*.synctex.gz
 
-papers/
+# Local backup dirs
 factorlasso-backup/

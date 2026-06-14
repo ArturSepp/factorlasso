@@ -1,0 +1,103 @@
+ticker,sub_asset_class,asset_class,note
+SHV,Government Bonds,Bonds,US T-bills
+SHY,Government Bonds,Bonds,US Treasury 1-3y
+IEF,Government Bonds,Bonds,US Treasury 7-10y
+TLT,Government Bonds,Bonds,US Treasury 20y+
+GOVT,Government Bonds,Bonds,US Treasury broad
+VGIT,Government Bonds,Bonds,US Treasury intermediate
+BWX,Government Bonds,Bonds,Intl gov ex-US (USD)
+LQD,Global IG Bonds,Bonds,USD IG corp
+VCIT,Global IG Bonds,Bonds,USD IG corp intermediate
+VCSH,Global IG Bonds,Bonds,USD IG corp short
+USIG,Global IG Bonds,Bonds,USD IG corp broad
+IGIB,Global IG Bonds,Bonds,USD IG corp 5-10y
+VCLT,Global IG Bonds,Bonds,USD IG corp long
+HYG,Global HY Bonds,Bonds,USD high yield
+JNK,Global HY Bonds,Bonds,USD high yield
+SHYG,Global HY Bonds,Bonds,USD high yield short
+ANGL,Global HY Bonds,Bonds,Fallen-angel HY
+SJNK,Global HY Bonds,Bonds,USD high yield short
+EMB,EM Bonds,Bonds,EM USD sovereign
+VWOB,EM Bonds,Bonds,EM USD government
+PCY,EM Bonds,Bonds,EM USD sovereign
+EMLC,EM Bonds,Bonds,EM local currency
+EBND,EM Bonds,Bonds,EM local currency
+EMHY,EM Bonds,Bonds,EM USD high yield
+MBB,Other Fixed Income,Bonds,US MBS
+BKLN,Other Fixed Income,Bonds,Senior bank loans
+FLOT,Other Fixed Income,Bonds,IG floating rate
+CWB,Other Fixed Income,Bonds,Convertibles
+PFF,Other Fixed Income,Bonds,US preferreds
+MUB,Other Fixed Income,Bonds,US municipals
+SPY,North America,Equities,US large cap
+VTI,North America,Equities,US total market
+QQQ,North America,Equities,US Nasdaq-100
+IWM,North America,Equities,US small cap
+DIA,North America,Equities,US Dow 30
+MDY,North America,Equities,US mid cap
+VGK,Europe,Equities,Developed Europe
+EZU,Europe,Equities,Eurozone
+FEZ,Europe,Equities,Euro Stoxx 50
+EWU,Europe,Equities,UK
+EWG,Europe,Equities,Germany
+EWQ,Europe,Equities,France
+EWJ,Japan,Equities,Japan
+DXJ,Japan,Equities,Japan (USD-hedged)
+JPXN,Japan,Equities,Japan JPX-Nikkei 400
+AAXJ,Asia Ex-Japan,Equities,Asia ex-Japan
+AIA,Asia Ex-Japan,Equities,Asia 50
+MCHI,Asia Ex-Japan,Equities,China
+EWY,Asia Ex-Japan,Equities,Korea
+EWT,Asia Ex-Japan,Equities,Taiwan
+INDA,Asia Ex-Japan,Equities,India
+EWZ,EM ex-Asia,Equities,Brazil
+EWW,EM ex-Asia,Equities,Mexico
+EZA,EM ex-Asia,Equities,South Africa
+ILF,EM ex-Asia,Equities,Latin America 40
+TUR,EM ex-Asia,Equities,Turkey
+EPOL,EM ex-Asia,Equities,Poland
+QAI,Hedge Funds,Alternatives,Multi-strategy replication
+HDG,Hedge Funds,Alternatives,HF replication
+MNA,Hedge Funds,Alternatives,Merger arbitrage
+BTAL,Hedge Funds,Alternatives,Anti-beta long/short
+WTMF,Hedge Funds,Alternatives,Managed futures
+PSP,Private Equity,Alternatives,Listed private equity (proxy)
+PEX,Private Equity,Alternatives,Listed private equity (proxy)
+IPO,Private Equity,Alternatives,Recent IPOs (proxy)
+BIZD,Private Debt,Alternatives,BDC income (proxy)
+SRLN,Private Debt,Alternatives,Senior loans (proxy)
+BDCZ,Private Debt,Alternatives,BDC index (proxy)
+DBC,Commodities EX-Precious,Alternatives,Broad commodities
+DBA,Commodities EX-Precious,Alternatives,Agriculture
+DBB,Commodities EX-Precious,Alternatives,Base metals
+DBE,Commodities EX-Precious,Alternatives,Energy
+PDBC,Commodities EX-Precious,Alternatives,Broad commodities (no K-1)
+USO,Commodities EX-Precious,Alternatives,Crude oil
+GLD,Commodities Precious,Alternatives,Gold
+IAU,Commodities Precious,Alternatives,Gold
+SLV,Commodities Precious,Alternatives,Silver
+PPLT,Commodities Precious,Alternatives,Platinum
+PALL,Commodities Precious,Alternatives,Palladium
+VNQ,REITs,Alternatives,US REITs
+IYR,REITs,Alternatives,US real estate
+SCHH,REITs,Alternatives,US REITs
+XLRE,REITs,Alternatives,US real estate sector
+VNQI,REITs,Alternatives,Intl REITs ex-US
+REET,REITs,Alternatives,Global REITs
+UUP,Currencies,Currencies,US Dollar index (bullish)
+FXE,Currencies,Currencies,Euro
+FXY,Currencies,Currencies,Japanese Yen
+FXB,Currencies,Currencies,British Pound
+FXF,Currencies,Currencies,Swiss Franc
+FXA,Currencies,Currencies,Australian Dollar
+FXC,Currencies,Currencies,Canadian Dollar
+HEWJ,Japan,Equities,Japan (USD-hedged)
+XLE,US Sectors,Equities,US Energy sector
+XLB,US Sectors,Equities,US Materials sector
+XLI,US Sectors,Equities,US Industrials sector
+XLY,US Sectors,Equities,US Cons. Discretionary sector
+XLP,US Sectors,Equities,US Cons. Staples sector
+XLV,US Sectors,Equities,US Health Care sector
+XLF,US Sectors,Equities,US Financials sector
+XLK,US Sectors,Equities,US Technology sector
+XLU,US Sectors,Equities,US Utilities sector

@@ -1,0 +1,95 @@
+# factorlasso JSS 2026 — Main simulation study
+#
+# Drives the simulation results for the §5 ablation in the JSS submission.
+# Total cells: 19 regimes × 5 seeds × 6 factorlasso configs × 5 λ values
+#            = 2850 fits
+#
+# Expected wall-clock at N=50 default: ~10-15 minutes on 8 cores.
+# The N=200 regime (moderate_clean_midsnr_N200) dominates: ~3-5 minutes alone.
+#
+# To run::
+#
+#   python -m papers.jss_2026.simulations.run \
+#       --config papers/jss_2026/simulations/study.yaml \
+#       --output papers/jss_2026/simulations/results
+#
+# For a fast smoke test (1 seed, dry-run, etc.)::
+#
+#   python -m papers.jss_2026.simulations.run \
+#       --config papers/jss_2026/simulations/study.yaml \
+#       --output /tmp/smoke --seeds-limit 1
+#   python -m papers.jss_2026.simulations.run \
+#       --config papers/jss_2026/simulations/study.yaml --dry-run
+
+study:
+  name: jss_2026_main
+  description: >
+    Main simulation grid for the JSS submission. Ablates the
+    factorlasso configurations across (sparsity, sign_mix, snr, T, N, K,
+    factor_cov, residual_cov) to demonstrate the cluster-pooled sign
+    derivation mechanism's contribution.
+
+  seeds: [42, 43, 44, 45, 46]
+  lambda_grid: [1.0e-5, 1.0e-4, 1.0e-3, 1.0e-2, 1.0e-1]
+
+  defaults:
+    T: 120
+    N: 50
+    M: 9
+    K: 6
+    rho_beta: 0.8
+    sign_mix: clean
+    sparsity: moderate
+    snr: 0.25
+    factor_cov: block_diag
+    residual_cov: diagonal
+
+  regimes:
+    # ── Core 2×2×2 ablation: snr × sparsity × sign_mix at T=120, N=50, K=6
+    - {id: sparse_clean_lowsnr,        sparsity: sparse,   sign_mix: clean,         snr: 0.10}
+    - {id: sparse_clean_highsnr,       sparsity: sparse,   sign_mix: clean,         snr: 0.50}
+    - {id: sparse_mixed_lowsnr,        sparsity: sparse,   sign_mix: mixed,         snr: 0.10}
+    - {id: sparse_mixed_highsnr,       sparsity: sparse,   sign_mix: mixed,         snr: 0.50}
+    - {id: dense_clean_lowsnr,         sparsity: dense,    sign_mix: clean,         snr: 0.10}
+    - {id: dense_clean_highsnr,        sparsity: dense,    sign_mix: clean,         snr: 0.50}
+    - {id: dense_mixed_lowsnr,         sparsity: dense,    sign_mix: mixed,         snr: 0.10}
+    - {id: dense_mixed_highsnr,        sparsity: dense,    sign_mix: mixed,         snr: 0.50}
+
+    # ── Moderate-sparsity centerpoints (full defaults)
+    - {id: moderate_clean_midsnr,      sparsity: moderate, sign_mix: clean,         snr: 0.25}
+    - {id: moderate_mixed_midsnr,      sparsity: moderate, sign_mix: mixed,         snr: 0.25}
+
+    # ── Idiosyncratic sign_mix — neutral case, method should not hurt
+    - {id: sparse_idio_midsnr,         sparsity: sparse,   sign_mix: idiosyncratic, snr: 0.25}
+    - {id: dense_idio_midsnr,          sparsity: dense,    sign_mix: idiosyncratic, snr: 0.25}
+
+    # ── Vary T at (sparse, clean, lowsnr) — shows the small-T benefit of pooling
+    - {id: sparse_clean_lowsnr_T60,    sparsity: sparse,   sign_mix: clean,         snr: 0.10, T: 60}
+    - {id: sparse_clean_lowsnr_T240,   sparsity: sparse,   sign_mix: clean,         snr: 0.10, T: 240}
+
+    # ── Vary N at center: larger universe exercises HCGL more
+    - {id: moderate_clean_midsnr_N200, sparsity: moderate, sign_mix: clean,         snr: 0.25, N: 200}
+
+    # ── Vary K (true cluster count)
+    - {id: moderate_clean_midsnr_K3,   sparsity: moderate, sign_mix: clean,         snr: 0.25, K: 3}
+    - {id: moderate_clean_midsnr_K12,  sparsity: moderate, sign_mix: clean,         snr: 0.25, K: 12}
+
+    # ── Supplementary: orthogonal factor covariance — simplest case
+    - {id: orthogonal_factors,         sparsity: moderate, sign_mix: clean,         snr: 0.25, factor_cov: orthogonal}
+
+    # ── Supplementary: rank-1 residual factor — robustness to unmodelled structure
+    - {id: rank1_residuals,            sparsity: moderate, sign_mix: clean,         snr: 0.25, residual_cov: rank1_plus_diag}
+
+  estimators:
+    # factorlasso ablation rows (paper §5 Table 5)
+    - factorlasso_lasso
+    - factorlasso_grp_oracle
+    - factorlasso_grp_hcgl
+    - factorlasso_grp_hcgl_sign
+    - factorlasso_grp_hcgl_sign_adapt
+    - factorlasso_sgl_hcgl_sign_adapt
+
+    # External competitors — enable when wired (see estimators.py for instructions):
+    # - sklearn_lasso
+    # - sparsegl_sgl
+    # - adelie_grp

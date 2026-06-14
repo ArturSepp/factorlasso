@@ -32,7 +32,7 @@ return contracts will not happen within the v0.4.x line.
     `best_model_`.
   - Methods: `fit`, `predict`, `score`.
 
-- `LassoModelType` enum: `LASSO`, `GROUP_LASSO`, `GROUP_LASSO_CLUSTERS`.
+- `LassoModelType` enum: `LASSO`, `GROUP_LASSO`, `HIERARCHICAL_CLUSTER_GROUP_LASSO`.
 
 - `LassoEstimationResult` dataclass: `alpha`, `ss_total`, `ss_res`, `r2`.
 

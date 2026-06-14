@@ -33,7 +33,7 @@ def test_gridsearchcv(panel):
 
     X, Y = panel
     gs = GridSearchCV(
-        LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS),
+        LassoModel(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO),
         param_grid={"reg_lambda": [1e-4, 1e-3, 1e-2]},
         cv=3,
     )
@@ -68,14 +68,14 @@ def test_cross_val_score(panel):
 def test_summary(panel):
     X, Y = panel
     model = LassoModel(
-        model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+        model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-3,
         auto_sign_constraints=True,
         auto_sign_adaptive_weights=True,
     ).fit(x=X, y=Y)
     s = model.summary()
     assert "LassoModel summary" in s
-    assert "GROUP_LASSO_CLUSTERS" in s
+    assert "HIERARCHICAL_CLUSTER_GROUP_LASSO" in s
     assert "clusters (HCGL)" in s
 
 
@@ -89,7 +89,7 @@ def test_plot_signs(panel):
     matplotlib.use("Agg")
     X, Y = panel
     model = LassoModel(
-        model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+        model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-3,
         auto_sign_constraints=True,
     ).fit(x=X, y=Y)

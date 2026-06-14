@@ -4,7 +4,12 @@ factorlasso — Sparse factor model estimation with constrained LASSO
 
 Estimate sparse multi-output regression coefficients with sign
 constraints, prior-centered regularisation, and hierarchical group
-structure (HCGL), then assemble consistent factor covariance matrices.
+structure, then assemble consistent factor covariance matrices. The
+group penalty is offered in two modes: a row-grouped penalty
+(``HIERARCHICAL_CLUSTER_GROUP_LASSO``, HCGL) that groups each asset's factor
+loadings, and a cluster-by-factor block penalty
+(``CLUSTER_FACTOR_GROUP_LASSO``, FCGL) that groups the loadings of a
+cluster's assets on each factor.
 
 Quick start
 -----------
@@ -22,6 +27,12 @@ Cross-validated regularisation
 Full pipeline
 -------------
 >>> from factorlasso import LassoModel, CurrentFactorCovarData, VarianceColumns
+
+Citation
+--------
+If you use factorlasso in academic work, please cite the software paper
+and the methodology paper; see ``CITATION.cff`` or the README for the
+BibTeX entries.
 """
 
 from importlib.metadata import PackageNotFoundError

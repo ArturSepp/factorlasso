@@ -283,7 +283,7 @@ def run_local_test(local_test: LocalTests):
         y_returns = y_returns.loc[common_idx]
 
         model = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-5,
             span=52,
             demean=True,
@@ -291,7 +291,7 @@ def run_local_test(local_test: LocalTests):
         )
         model.fit(x=x_returns, y=y_returns, verbose=False)
         print_beta_comparison(true_betas, model.estimated_betas,
-                              title='GROUP_LASSO_CLUSTERS (HCGL)')
+                              title='HIERARCHICAL_CLUSTER_GROUP_LASSO (HCGL)')
 
         print_diagnostics(model.estimation_result_, y_returns.columns)
         print(f"\nDiscovered clusters:\n{model.clusters}")
@@ -556,7 +556,7 @@ def run_local_test(local_test: LocalTests):
         print("PASS: Series x produces identical results to DataFrame x")
 
         # Test HCGL falls back to LASSO for single factor (groups can still be formed on y)
-        model3 = LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+        model3 = LassoModel(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
                             reg_lambda=1e-5, span=52)
         model3.fit(x=x_returns, y=y_returns)
         assert model3.coef_.shape == (n_assets, 1)
@@ -636,7 +636,7 @@ def run_local_test(local_test: LocalTests):
         print("PASS: Single asset with NaN masking")
 
         # Test HCGL fallback for single asset
-        model4 = LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+        model4 = LassoModel(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
                             reg_lambda=1e-5, span=52)
         model4.fit(x=x_returns, y=y_returns)
         assert model4.coef_.shape == (1, n_factors)

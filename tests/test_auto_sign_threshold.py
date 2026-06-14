@@ -182,7 +182,7 @@ def test_master_constraint_overrides_threshold_gate():
 # Cluster-mode threshold behaviour                                       #
 # ---------------------------------------------------------------------- #
 #
-# In cluster modes (``GROUP_LASSO`` and ``GROUP_LASSO_CLUSTERS``), the
+# In cluster modes (``GROUP_LASSO`` and ``HIERARCHICAL_CLUSTER_GROUP_LASSO``), the
 # threshold gate operates on the *cluster-aggregated* t-statistic, not
 # on per-member t-stats. That is the design: every member of a cluster
 # is assumed to share an economic loading, so they share a gating
@@ -328,7 +328,7 @@ def test_cluster_mode_master_constraint_pins_single_member():
 
 
 def test_cluster_mode_hcgl_path_threshold_gates_uniformly():
-    """End-to-end: GROUP_LASSO_CLUSTERS (HCGL) auto-clusters assets, then
+    """End-to-end: HIERARCHICAL_CLUSTER_GROUP_LASSO (HCGL) auto-clusters assets, then
     the threshold gate broadcasts the cluster aggregate's t-stat to every
     member. Verify that members of the same HCGL cluster always share
     their threshold decision (sign coherence)."""
@@ -336,7 +336,7 @@ def test_cluster_mode_hcgl_path_threshold_gates_uniformly():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         m = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-6, span=None,
             auto_sign_constraints=True,
             auto_sign_threshold_t=0.75,

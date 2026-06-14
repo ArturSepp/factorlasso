@@ -148,7 +148,7 @@ class TestLassoBasic:
         """clusters property aliases clusters_."""
         X, Y, _ = factor_data
         model = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-5, span=52,
         )
         model.fit(x=X, y=Y)
@@ -291,7 +291,7 @@ class TestHCGL:
     def test_runs(self, factor_data):
         X, Y, _ = factor_data
         model = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-5, span=52,
         )
         model.fit(x=X, y=Y)
@@ -338,7 +338,7 @@ class TestSingleResponse:
     def test_single_response_hcgl_fallback(self, single_data):
         X, Y, _ = single_data
         model = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-5, span=26,
         )
         model.fit(x=X, y=Y)

@@ -140,11 +140,11 @@ class TestBackwardCompatibility:
         """LassoModel: no kwarg ≡ l1_weight=0.0."""
         X, Y = hcgl_panel
         m_default = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-4, span=60,
         ).fit(x=X, y=Y)
         m_zero = LassoModel(
-            model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+            model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-4, span=60, l1_weight=0.0,
         ).fit(x=X, y=Y)
         delta = (m_default.coef_ - m_zero.coef_).abs().values.max()

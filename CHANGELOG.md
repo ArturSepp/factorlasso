@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.5.4] — 2026-06-14
+
+### Changed (breaking)
+
+- Renamed the `LassoModelType.GROUP_LASSO_CLUSTERS` enum member to
+  `LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO`, matching the HCGL
+  ("Hierarchical Clustering Group LASSO") name used throughout the
+  accompanying paper. The integer value is unchanged (`3`), so any code
+  or serialised configuration that selects the mode by value continues to
+  work. Code that references the member by name must update to
+  `HIERARCHICAL_CLUSTER_GROUP_LASSO`; the old name no longer exists and
+  raises `AttributeError`. No change to the estimator's behaviour or to
+  any numerical output — only the member name changed. Downstream callers
+  (`optimalportfolios`, `rosaa`) and any user scripts must rename the
+  reference.
+
+## [0.5.3] — 2026-06-14
+
+### Changed (non-functional)
+
+- Documentation correction in `cluster_utils.py`: the Ward-linkage step is
+  now described as a stable correlation-clustering heuristic on the
+  correlation dissimilarity `1 - rho`, not as exact Ward variance
+  minimisation in Euclidean space (which would use the chord distance
+  `sqrt(2(1 - rho))`). No change to the clustering computation or to any
+  numerical output — the dissimilarity fed to Ward is unchanged.
+- Docstring wording for `group_penalty="normalized"` corrected: the
+  `sqrt(|g|/G)` weight is a heuristic cluster-size scaling, not invariant to
+  arbitrary partition refinements.
+
+### Fixed (lint, no behaviour change)
+
+- Resolved `ruff` E501 (line length) on the FCGL enum comment and an internal
+  comment, and I001 (import-order) on the adaptive-weights import block in
+  `lasso_estimator.py`. Restores a green CI lint stage. No code logic changed.
+
+## [0.5.2] — 2026-06-14
+
+### Added (non-breaking)
+
+- New `LassoModelType.CLUSTER_FACTOR_GROUP_LASSO` model type. It reuses
+  the HCGL cluster discovery of `GROUP_LASSO_CLUSTERS` but takes the
+  group penalty over each cluster×factor block rather than over each
+  asset row. The cluster is the group of the L2 norm, so whole
+  cluster×factor blocks enter or leave the model together. Unlike the
+  row-grouped mode this couples assets within a cluster, so the problem
+  is **not** block-separable across assets. Adaptive weights for this
+  mode aggregate the per-cell weights to per-(cluster, factor) blocks
+  via the new `_aggregate_to_block_weights` helper. `GROUP_LASSO_CLUSTERS`
+  is unchanged — its row-grouped penalty path is byte-for-byte identical,
+  and the existing solver/group/cluster tests pass.
+- `solve_group_lasso_cvx_problem` gains a `block_mode` parameter
+  (`"row"` default, `"cluster_factor"` opt-in) and an optional
+  `col_weights` argument of shape `(G, M)` for per-block adaptive
+  reweighting.
+
+
+
 ## [0.5.1] — 2026-06-12
 
 Numerical and API correctness release. Three of the six changes alter

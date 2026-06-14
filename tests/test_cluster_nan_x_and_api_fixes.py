@@ -186,7 +186,7 @@ def test_copy_is_unfitted_and_preserves_result_type():
 
 def test_copy_of_unfitted_model_roundtrips_params():
     m1 = LassoModel(
-        model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+        model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-3, cutoff_fraction=0.4,
         auto_sign_constraints=True, auto_sign_threshold_t=1.0,
         l1_weight=0.1,
@@ -283,7 +283,7 @@ def test_span_none_clusters_on_pearson_corr():
     beta = rng.standard_normal((N, M)) * 0.5
     Y = pd.DataFrame(X.values @ beta.T + 0.4 * rng.standard_normal((T, N)),
                      columns=[f"a{k}" for k in range(N)])
-    m = LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+    m = LassoModel(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
                    reg_lambda=1e-4).fit(x=X, y=Y)
     ref, _, _ = compute_clusters_from_corr_matrix(Y.corr())
     # Identical partition (labels may permute; compare co-membership)
@@ -307,7 +307,7 @@ def test_span_set_clusters_on_ewm_corr():
     Y = pd.DataFrame(X.values @ beta.T + 0.4 * rng.standard_normal((T, N)),
                      columns=[f"a{k}" for k in range(N)])
     span = 36
-    m = LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+    m = LassoModel(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
                    reg_lambda=1e-4, span=span).fit(x=X, y=Y)
     _, y_np, mask = get_x_y_np(X, Y, span=span, demean=True)
     y_for_corr = np.where(mask > 0, y_np, np.nan)

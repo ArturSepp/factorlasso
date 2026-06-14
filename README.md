@@ -7,6 +7,12 @@ regularisation, hierarchical group LASSO, and sparse group LASSO — via CVXPY.*
 [![Python](https://img.shields.io/pypi/pyversions/factorlasso.svg)](https://pypi.org/project/factorlasso/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
+**Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Hierarchical
+Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for
+Multi-Asset Factor Models in Python*, submitted to the *Journal of Statistical
+Software*. See [Citation](#citation) for the BibTeX entry. The replication
+material for the paper is in [`papers/jss_2026/`](papers/jss_2026/).
+
 `factorlasso` is a small, dependency-light Python package for fitting sparse
 multi-output linear models
 
@@ -123,7 +129,7 @@ How the pooling is dispatched depends on `model_type`:
 |---|---|
 | `LASSO` (or single-column `y`) | Per-`y`-column independent univariate fit. Rows of `derived_signs_` may differ across responses. |
 | `GROUP_LASSO` | Pool `y` within each `group_data` group. All members of a group share their `derived_signs_` row. |
-| `GROUP_LASSO_CLUSTERS` | Pool `y` within each HCGL asset cluster (the same clustering the solver uses). |
+| `HIERARCHICAL_CLUSTER_GROUP_LASSO` | Pool `y` within each HCGL asset cluster (the same clustering the solver uses). |
 
 **The threshold gate.** `auto_sign_threshold_t` (default `0.75`) is a noise
 floor on the per-column univariate t-statistic. Factors with `|t| <`
@@ -200,7 +206,7 @@ W_k  =  sqrt( mean_{j: s_kj ≠ 0} W_kj² )
 
 and each asset's contribution `‖β_k − β⁰_k‖₂` to the group penalty is
 scaled by `W_k`. This is what gives the adaptive flag actual impact in
-the production `GROUP_LASSO_CLUSTERS` configuration where the L1 term
+the production `HIERARCHICAL_CLUSTER_GROUP_LASSO` configuration where the L1 term
 is zero-weighted. Assets with uniformly strong univariate evidence
 across factors get `W_k → 1` (preserved); assets with uniformly weak
 evidence get `W_k > 1` (shrunk harder toward the prior). Assets with
@@ -272,7 +278,7 @@ the resulting clusters.
 
 ```python
 model = LassoModel(
-    model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+    model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
     reg_lambda=1e-4,
     cutoff_fraction=0.5,   # tune granularity; smaller → tighter clusters
     span=60,               # EWMA span for correlation estimate
@@ -305,7 +311,7 @@ $$
 
 ```python
 model = LassoModel(
-    model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+    model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
     reg_lambda=1e-4,
     cutoff_fraction=0.65,   # coarser clusters
     l1_weight=0.10,         # α — group L2 still primary, L1 corrects within-group
@@ -329,6 +335,50 @@ prior as the group term, so all four features in this section compose: a
 single fit can simultaneously enforce sign constraints, shrink toward a
 prior, group-select via HCGL clusters, and apply within-group elementwise
 sparsity.
+
+### 6. Factor-Clustering Group LASSO (FCGL)
+
+HCGL groups the penalty along the **rows** of the loading matrix: the L2
+norm runs over each asset's factor loadings, and the discovered cluster
+enters only through the per-cluster weight. `factorlasso` also offers the
+complementary grouping, FCGL (`CLUSTER_FACTOR_GROUP_LASSO`), in which the
+L2 norm runs over the **assets of a cluster on each factor**:
+
+$$
+\mathcal{P}(\beta) = (1 - \alpha)\,\lambda \sum_g w_g \sum_{j}
+\,\|\beta_{g, j} - \beta^0_{g, j}\|_2 \;+\; \alpha\,\lambda \, \|\beta - \beta^0\|_1
+$$
+
+where $\beta_{g, j}$ collects the loadings of cluster $g$'s assets on
+factor $j$. In FCGL the cluster is the group of the norm itself, so a
+whole cluster-by-factor block enters or leaves the model together.
+
+```python
+model = LassoModel(
+    model_type=LassoModelType.CLUSTER_FACTOR_GROUP_LASSO,
+    reg_lambda=1e-4,
+    cutoff_fraction=0.5,
+    auto_sign_constraints=True,   # sign derivation is identical to HCGL
+).fit(x=X, y=Y)
+```
+
+The two modes encode different beliefs about where loadings are sparse.
+HCGL treats each asset as the unit and lets loadings vary freely within a
+cluster, which fits a heterogeneous cluster. FCGL shrinks a cluster's
+loadings on a factor jointly toward the prior through the per-block norm,
+which fits a homogeneous cluster: when the shrinkage binds fully the block
+collapses to the prior, and when the cluster carries a strong shared signal
+the block retains loadings away from the prior, shrunk as a group rather
+than equalised. The
+sign derivation and adaptive reweighting are shared; the modes differ only
+in the group norm. FCGL is **not** block-separable across assets (it
+couples a cluster's assets through the per-block norm) and is solved as
+one coupled cone programme. In practice this coupling does not add a
+measurable runtime cost at production scale — FCGL matches HCGL in
+wall-clock to within a couple of percent at N = 500 — because the extra
+cone constraints are of the same order as the row-grouped norm. Neither
+mode dominates in general — the appropriate choice depends on the
+within-cluster homogeneity of the application.
 
 ---
 
@@ -393,11 +443,22 @@ LASSO path.
 
 ## Citation
 
-If you use `factorlasso` in academic work, please cite both the
-methodology paper documenting the framework in which the package was
-developed, and the software itself:
+If you use `factorlasso` in academic work, please cite the software
+paper describing the package (submitted to the *Journal of Statistical
+Software*), the methodology paper documenting the
+framework in which it was developed, and the software itself:
 
 ```bibtex
+@article{SeppKastenholz2026factorlasso,
+  author  = {Sepp, Artur and Kastenholz, Mika},
+  title   = {{factorlasso}: Hierarchical Clustering Group {LASSO} ({HCGL})
+             with Cluster-Pooled Sign Derivation for Multi-Asset Factor
+             Models in {Python}},
+  journal = {Journal of Statistical Software},
+  year    = {2026},
+  note    = {Submitted.}
+}
+
 @article{SeppHansenKastenholz2026MATF,
   author  = {Sepp, Artur and Hansen, Emilie and Kastenholz, Mika},
   title   = {Capital Market Assumptions Using Multi-Asset Tradable Factors:
@@ -424,7 +485,7 @@ developed, and the software itself:
              Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
              in {Python}},
   year    = {2026},
-  version = {0.4.3},
+  version = {0.5.4},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

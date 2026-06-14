@@ -11,7 +11,7 @@ Functions
 ---------
 compute_clusters_from_corr_matrix
     Ward's hierarchical clustering from a correlation matrix. The
-    primitive used by HCGL (``LassoModelType.GROUP_LASSO_CLUSTERS``)
+    primitive used by HCGL (``LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO``)
     but callable independently for any group-discovery workflow.
 
 get_linkage_array
@@ -90,13 +90,20 @@ def compute_clusters_from_corr_matrix(
     Notes
     -----
     The condensed distance vector is built via ``squareform(1 - C)``,
-    which is the correct path from a correlation matrix to the condensed
+    which is the standard correlation-dissimilarity path from a
+    correlation matrix to the condensed
     pairwise-distance vector that ``scipy.cluster.hierarchy.linkage``
     expects. A previous implementation passed ``pdist(1 - corr)``, which
     treated rows of ``(1 - corr)`` as observations in N-dimensional space
     and computed Euclidean distances between those rows — a different
     (non-semantic) metric that conflated correlation structure with
     higher-order geometric relationships.
+
+    Note that ``1 - rho`` is a correlation dissimilarity, not the
+    Euclidean chord distance ``sqrt(2(1 - rho))`` between standardised
+    return vectors. Ward linkage is applied here as a stable
+    correlation-clustering heuristic, not as exact Ward variance
+    minimisation in Euclidean space.
 
     Examples
     --------
@@ -116,8 +123,9 @@ def compute_clusters_from_corr_matrix(
             f"cutoff_fraction must lie in (0, 1], got {cutoff_fraction!r}"
         )
     corr_matrix = corr_matrix.fillna(0.0)
-    # squareform(1 - C) is the correct conversion from a correlation matrix
-    # to scipy's condensed pairwise-distance vector. Clip guards against
+    # squareform(1 - C) converts the correlation matrix to scipy's
+    # condensed pairwise-distance vector (a correlation dissimilarity, not
+    # the Euclidean chord distance). Clip guards against
     # tiny negative values from floating-point noise; fill diagonal with
     # exact zeros on the diagonal as squareform requires.
     dist_square = np.clip(1.0 - corr_matrix.to_numpy(), 0.0, 2.0)

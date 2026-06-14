@@ -510,11 +510,11 @@ def test_auto_sign_constraints_group_lasso_uses_group_data():
 
 
 def test_auto_sign_constraints_group_lasso_clusters_uses_hcgl():
-    """In GROUP_LASSO_CLUSTERS mode signs are pooled within each HCGL cluster
+    """In HIERARCHICAL_CLUSTER_GROUP_LASSO mode signs are pooled within each HCGL cluster
     (the same asset-side clustering the group solver uses)."""
     X, Y, _, _ = _make_factor_data(seed=23, T=300, noise_sigma=0.5)
     model = LassoModel(
-        model_type=LassoModelType.GROUP_LASSO_CLUSTERS, reg_lambda=1e-4,
+        model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO, reg_lambda=1e-4,
         auto_sign_constraints=True,
     ).fit(x=X, y=Y)
 

@@ -1,0 +1,445 @@
+%% =============================================================================
+%% References for factorlasso JSS paper
+%%
+%% Conventions (JSS style guide):
+%%   - Titles in title case
+%%   - Journal titles spelled out, no abbreviations
+%%   - JSS-specific markup (\proglang, \pkg, \code) used where appropriate
+%%   - DOIs included where available
+%%   - Publisher names spelled out (e.g., Springer-Verlag, not Springer)
+%% =============================================================================
+
+
+%% -- Methodology: LASSO genealogy --------------------------------------------
+
+@Article{Tibshirani:1996,
+  author  = {Robert Tibshirani},
+  title   = {Regression Shrinkage and Selection via the {LASSO}},
+  journal = {Journal of the Royal Statistical Society B},
+  year    = {1996},
+  volume  = {58},
+  number  = {1},
+  pages   = {267--288},
+  doi     = {10.1111/j.2517-6161.1996.tb02080.x},
+}
+
+@Article{Yuan+Lin:2006,
+  author  = {Ming Yuan and Yi Lin},
+  title   = {Model Selection and Estimation in Regression with Grouped Variables},
+  journal = {Journal of the Royal Statistical Society B},
+  year    = {2006},
+  volume  = {68},
+  number  = {1},
+  pages   = {49--67},
+  doi     = {10.1111/j.1467-9868.2005.00532.x},
+}
+
+@Article{Zou:2006,
+  author  = {Hui Zou},
+  title   = {The Adaptive {LASSO} and Its Oracle Properties},
+  journal = {Journal of the American Statistical Association},
+  year    = {2006},
+  volume  = {101},
+  number  = {476},
+  pages   = {1418--1429},
+  doi     = {10.1198/016214506000000735},
+}
+
+@Article{Wang+Leng:2008,
+  author  = {Hansheng Wang and Chenlei Leng},
+  title   = {A Note on Adaptive Group {LASSO}},
+  journal = {Computational Statistics \& Data Analysis},
+  year    = {2008},
+  volume  = {52},
+  number  = {12},
+  pages   = {5277--5286},
+  doi     = {10.1016/j.csda.2008.05.006},
+}
+
+@Article{Simon+Friedman+Hastie+Tibshirani:2013,
+  author  = {Noah Simon and Jerome Friedman and Trevor Hastie and Robert Tibshirani},
+  title   = {A Sparse-Group {LASSO}},
+  journal = {Journal of Computational and Graphical Statistics},
+  year    = {2013},
+  volume  = {22},
+  number  = {2},
+  pages   = {231--245},
+  doi     = {10.1080/10618600.2012.681250},
+}
+
+
+
+%% -- Methodology: univariate-guided regression -------------------------------
+
+@Article{Chatterjee+Hastie+Tibshirani:2025,
+  author  = {Sourav Chatterjee and Trevor Hastie and Robert Tibshirani},
+  title   = {Univariate-Guided Sparse Regression},
+  journal = {Harvard Data Science Review},
+  year    = {2025},
+  volume  = {7},
+  number  = {3},
+  doi     = {10.1162/99608f92.c79ff6db},
+}
+
+@Article{Richland+Kiiskinen+Wang+Lu+Narasimhan+Hastie+Rivas+Tibshirani:2025,
+  author  = {Joshua Richland and Tuomo Kiiskinen and William Wang and Sophia Lu
+             and Balasubramanian Narasimhan and Trevor Hastie and Manuel Rivas
+             and Robert Tibshirani},
+  title   = {Univariate-Guided Sparse Regression for Biobank-Scale High-Dimensional
+             Omics Data},
+  journal = {arXiv preprint},
+  year    = {2025},
+  note    = {arXiv:2511.22049},
+  url     = {https://arxiv.org/abs/2511.22049},
+}
+
+
+%% -- Methodology: clustering for regression ----------------------------------
+
+@Article{Bondell+Reich:2008,
+  author  = {Howard D. Bondell and Brian J. Reich},
+  title   = {Simultaneous Regression Shrinkage, Variable Selection, and Supervised
+             Clustering of Predictors with {OSCAR}},
+  journal = {Biometrics},
+  year    = {2008},
+  volume  = {64},
+  number  = {1},
+  pages   = {115--123},
+  doi     = {10.1111/j.1541-0420.2007.00843.x},
+}
+
+@Article{LopezdePrado:2016,
+  author  = {Marcos L\'{o}pez de Prado},
+  title   = {Building Diversified Portfolios That Outperform Out of Sample},
+  journal = {Journal of Portfolio Management},
+  year    = {2016},
+  volume  = {42},
+  number  = {4},
+  pages   = {59--69},
+  doi     = {10.3905/jpm.2016.42.4.059},
+}
+
+
+%% -- Software: Python ecosystem and CVXPY ------------------------------------
+
+@Article{Pedregosa+etal:2011,
+  author  = {Fabian Pedregosa and Ga\"el Varoquaux and Alexandre Gramfort and
+             Vincent Michel and Bertrand Thirion and Olivier Grisel and
+             Mathieu Blondel and Peter Prettenhofer and Ron Weiss and
+             Vincent Dubourg and Jake Vanderplas and Alexandre Passos and
+             David Cournapeau and Matthieu Brucher and Matthieu Perrot and
+             \'{E}douard Duchesnay},
+  title   = {\pkg{scikit-learn}: Machine Learning in \proglang{Python}},
+  journal = {Journal of Machine Learning Research},
+  year    = {2011},
+  volume  = {12},
+  pages   = {2825--2830},
+  url     = {https://jmlr.org/papers/v12/pedregosa11a.html}
+}
+
+@Article{Diamond+Boyd:2016,
+  author  = {Steven Diamond and Stephen Boyd},
+  title   = {\pkg{CVXPY}: A \proglang{Python}-Embedded Modeling Language for Convex Optimization},
+  journal = {Journal of Machine Learning Research},
+  year    = {2016},
+  volume  = {17},
+  number  = {83},
+  pages   = {1--5},
+  url     = {https://jmlr.org/papers/v17/15-408.html}
+}
+
+@Article{Fu+Narasimhan+Boyd:2020,
+  author  = {Anqi Fu and Balasubramanian Narasimhan and Stephen Boyd},
+  title   = {\pkg{CVXR}: An \proglang{R} Package for Disciplined Convex Optimization},
+  journal = {Journal of Statistical Software},
+  year    = {2020},
+  volume  = {94},
+  number  = {14},
+  pages   = {1--34},
+  doi     = {10.18637/jss.v094.i14},
+}
+
+@InProceedings{Grant+Boyd+Ye:2006,
+  author    = {Michael Grant and Stephen Boyd and Yinyu Ye},
+  title     = {Disciplined Convex Programming},
+  booktitle = {Global Optimization: From Theory to Implementation},
+  editor    = {Leo Liberti and Nelson Maculan},
+  publisher = {Springer-Verlag},
+  address   = {New York},
+  year      = {2006},
+  pages     = {155--210},
+  doi       = {10.1007/0-387-30528-9_7},
+}
+
+@Article{Goulart+Chen:2024,
+  author  = {Paul J. Goulart and Yuwen Chen},
+  title   = {\pkg{Clarabel}: An Interior-Point Solver for Convex Conic Programs},
+  journal = {arXiv preprint},
+  year    = {2024},
+  note    = {arXiv:2405.12762},
+  url     = {https://arxiv.org/abs/2405.12762},
+}
+
+
+%% -- Software: sparse-regression packages compared ---------------------------
+
+@Article{Liang+Cohen+SolonHeinsfeld+Pestilli+McDonald:2024,
+  author  = {Liang, Xiaoxuan and Cohen, Aaron and S{\'o}lon Heinsfeld, Anibal and
+             Pestilli, Franco and McDonald, Daniel J.},
+  title   = {\pkg{sparsegl}: An \proglang{R} Package for Estimating Sparse Group {LASSO}},
+  journal = {Journal of Statistical Software},
+  year    = {2024},
+  volume  = {110},
+  number  = {6},
+  pages   = {1--23},
+  doi     = {10.18637/jss.v110.i06},
+}
+
+@Article{Yang+Zou:2015,
+  author  = {Yi Yang and Hui Zou},
+  title   = {A Fast Unified Algorithm for Solving Group-{LASSO} Penalized Learning Problems},
+  journal = {Statistics and Computing},
+  year    = {2015},
+  volume  = {25},
+  number  = {6},
+  pages   = {1129--1141},
+  doi     = {10.1007/s11222-014-9498-5},
+}
+
+
+@Article{Yang+Hastie:2024,
+  author  = {James Yang and Trevor Hastie},
+  title   = {A Fast and Scalable Pathwise-Solver for Group {LASSO} and
+             Elastic Net Penalized Regression via Block-Coordinate Descent},
+  journal = {arXiv preprint},
+  year    = {2024},
+  note    = {arXiv:2405.08631},
+  url     = {https://arxiv.org/abs/2405.08631},
+}
+
+@Article{Mendez-Civieta+Aguilera-Morillo+Lillo:2021,
+  author  = {\'Alvaro M\'endez-Civieta and M. Carmen Aguilera-Morillo
+             and Rosa E. Lillo},
+  title   = {Adaptive Sparse Group {LASSO} in Quantile Regression},
+  journal = {Advances in Data Analysis and Classification},
+  year    = {2021},
+  volume  = {15},
+  pages   = {547--573},
+  doi     = {10.1007/s11634-020-00413-8},
+}
+
+
+@InProceedings{Bertrand+etal:2022,
+  author    = {Quentin Bertrand and Quentin Klopfenstein and Pierre-Antoine Bannier
+               and Gauthier Gidel and Mathurin Massias},
+  title     = {Beyond {L1}: Faster and Better Sparse Models with \pkg{skglm}},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {35},
+  year      = {2022},
+  url       = {https://github.com/scikit-learn-contrib/skglm},
+}
+
+
+%% -- factorlasso and the methodology framework -------------------------------
+
+@Unpublished{Sepp+Hansen+Kastenholz:2026MATF,
+  author  = {Artur Sepp and Emilie Hansen and Mika Kastenholz},
+  title   = {Capital Market Assumptions Using Multi-Asset Tradable Factors:
+             The {MATF-CMA} Framework},
+  year    = {2026},
+  note    = {Working paper, under review at the \emph{Journal of Portfolio Management}},
+}
+
+@Article{Sepp+Ossa+Kastenholz:2026,
+  author  = {Artur Sepp and Ivan Ossa and Mika Kastenholz},
+  title   = {Robust Optimization of Strategic and Tactical Asset Allocation
+             for Multi-Asset Portfolios},
+  journal = {Journal of Portfolio Management},
+  year    = {2026},
+  volume  = {52},
+  number  = {4},
+  pages   = {86--120},
+  url     = {https://eprints.pm-research.com/17511/143431/index.html},
+}
+
+@Manual{factorlasso,
+  title  = {\pkg{factorlasso}: Hierarchical Clustering Group {LASSO} ({HCGL})
+            with Cluster-Pooled Sign Derivation for Multi-Asset Factor Models
+            in \proglang{Python}},
+  author = {Artur Sepp and Mika Kastenholz},
+  year   = {2026},
+  note   = {\proglang{Python} package version~0.5.0},
+  url    = {https://github.com/ArturSepp/factorlasso},
+}
+
+%% -- Scientific Python stack and solvers --------------------------------------
+
+@Article{Harris+etal:2020,
+  author  = {Harris, Charles R. and Millman, K. Jarrod and {van der Walt}, Stefan J. and
+             Gommers, Ralf and Virtanen, Pauli and Cournapeau, David and others},
+  title   = {Array Programming with \pkg{NumPy}},
+  journal = {Nature},
+  year    = {2020},
+  volume  = {585},
+  number  = {7825},
+  pages   = {357--362},
+  doi     = {10.1038/s41586-020-2649-2},
+}
+
+@Article{Virtanen+etal:2020,
+  author  = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and
+             Haberland, Matt and Reddy, Tyler and Cournapeau, David and others},
+  title   = {\pkg{SciPy}~1.0: Fundamental Algorithms for Scientific Computing in \proglang{Python}},
+  journal = {Nature Methods},
+  year    = {2020},
+  volume  = {17},
+  number  = {3},
+  pages   = {261--272},
+  doi     = {10.1038/s41592-019-0686-2},
+}
+
+@InProceedings{McKinney:2010,
+  author    = {McKinney, Wes},
+  title     = {Data Structures for Statistical Computing in \proglang{Python}},
+  booktitle = {Proceedings of the 9th \proglang{Python} in Science Conference},
+  year      = {2010},
+  pages     = {56--61},
+  doi       = {10.25080/Majora-92bf1922-00a},
+}
+
+@Article{Hunter:2007,
+  author  = {Hunter, John D.},
+  title   = {\pkg{matplotlib}: A {2D} Graphics Environment},
+  journal = {Computing in Science \& Engineering},
+  year    = {2007},
+  volume  = {9},
+  number  = {3},
+  pages   = {90--95},
+  doi     = {10.1109/MCSE.2007.55},
+}
+
+@Manual{joblib,
+  author = {{Joblib Development Team}},
+  title  = {\pkg{joblib}: Running \proglang{Python} Functions as Pipeline Jobs},
+  year   = {2025},
+  url    = {https://joblib.readthedocs.io/},
+}
+
+@Manual{yfinance,
+  author = {Aroussi, Ran},
+  title  = {\pkg{yfinance}: Download Market Data from {Yahoo! Finance}'s {API}},
+  year   = {2025},
+  url    = {https://github.com/ranaroussi/yfinance},
+}
+
+
+
+%% -- Clustering stability and replicability -----------------------------------
+
+@Article{vonLuxburg:2010,
+  author  = {von Luxburg, Ulrike},
+  title   = {Clustering Stability: An Overview},
+  journal = {Foundations and Trends in Machine Learning},
+  year    = {2010},
+  volume  = {2},
+  number  = {3},
+  pages   = {235--274},
+  doi     = {10.1561/2200000008},
+}
+
+
+@Misc{Sorooshyari+Rivas+Tibshirani:2026,
+  author       = {Sorooshyari, Siamak K. and Rivas, Manuel A. and Tibshirani, Robert},
+  title        = {{ERICA}: Quantifying Replicability of Cluster Analysis},
+  year         = {2026},
+  howpublished = {arXiv:2606.00302},
+  note         = {Preprint},
+  doi          = {10.48550/arXiv.2606.00302},
+}
+
+@Article{Vattikuti+Lee+Chang+Hsu+Chow:2014,
+  author  = {Shashaank Vattikuti and James J. Lee and Christopher C. Chang
+             and Stephen D. H. Hsu and Carson C. Chow},
+  title   = {Applying Compressed Sensing to Genome-Wide Association Studies},
+  journal = {GigaScience},
+  year    = {2014},
+  volume  = {3},
+  number  = {1},
+  pages   = {10},
+  doi     = {10.1186/2047-217X-3-10},
+}
+
+@Software{sepp2024optimalportfolios,
+  author = {Artur Sepp},
+  title  = {\pkg{OptimalPortfolios}: Implementation of Optimisation Analytics
+            for Constructing and Backtesting Optimal Portfolios in
+            \proglang{Python}},
+  year   = {2024},
+  url    = {https://github.com/ArturSepp/OptimalPortfolios},
+}
+
+@Article{Black+Litterman:1992,
+  author  = {Fischer Black and Robert Litterman},
+  title   = {Global Portfolio Optimization},
+  journal = {Financial Analysts Journal},
+  year    = {1992},
+  volume  = {48},
+  number  = {5},
+  pages   = {28--43},
+  doi     = {10.2469/faj.v48.n5.28},
+}
+
+@Article{Ledoit+Wolf:2004,
+  author  = {Olivier Ledoit and Michael Wolf},
+  title   = {A Well-Conditioned Estimator for Large-Dimensional Covariance Matrices},
+  journal = {Journal of Multivariate Analysis},
+  year    = {2004},
+  volume  = {88},
+  number  = {2},
+  pages   = {365--411},
+  doi     = {10.1016/S0047-259X(03)00096-4},
+}
+
+@Article{Rosenberg+McKibben:1973,
+  author  = {Rosenberg, Barr and McKibben, Walt},
+  title   = {The Prediction of Systematic and Specific Risk in Common Stocks},
+  journal = {Journal of Financial and Quantitative Analysis},
+  year    = {1973},
+  volume  = {8},
+  number  = {2},
+  pages   = {317--333},
+  doi     = {10.2307/2330027},
+}
+
+@Article{Connor:1995,
+  author  = {Connor, Gregory},
+  title   = {The Three Types of Factor Models: A Comparison of Their Explanatory Power},
+  journal = {Financial Analysts Journal},
+  year    = {1995},
+  volume  = {51},
+  number  = {3},
+  pages   = {42--46},
+  doi     = {10.2469/faj.v51.n3.1904},
+}
+
+@Article{Zakamulin:2015,
+  author  = {Zakamulin, Valeriy},
+  title   = {A Test of Covariance-Matrix Forecasting Methods},
+  journal = {The Journal of Portfolio Management},
+  year    = {2015},
+  volume  = {41},
+  number  = {3},
+  pages   = {97--108},
+  doi     = {10.3905/jpm.2015.41.3.097},
+}
+
+@Article{Engle:2002,
+  author  = {Engle, Robert},
+  title   = {Dynamic Conditional Correlation: A Simple Class of Multivariate Generalized Autoregressive Conditional Heteroskedasticity Models},
+  journal = {Journal of Business \& Economic Statistics},
+  year    = {2002},
+  volume  = {20},
+  number  = {3},
+  pages   = {339--350},
+  doi     = {10.1198/073500102288618487},
+}

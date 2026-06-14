@@ -11,14 +11,15 @@ authors:
 repository-code: "https://github.com/ArturSepp/factorlasso"
 url: "https://github.com/ArturSepp/factorlasso"
 license: GPL-3.0-or-later
-version: 0.4.3
-date-released: "2026-05-31"
+version: 0.5.4
+date-released: "2026-06-14"
 keywords:
   - lasso
   - group-lasso
   - sparse-group-lasso
   - adaptive-lasso
   - hcgl
+  - fcgl
   - factor-model
   - sparse-regression
   - sign-constraints
@@ -31,15 +32,25 @@ preferred-citation:
   authors:
     - given-names: Artur
       family-names: Sepp
-    - given-names: Emilie
-      family-names: Hansen
     - given-names: Mika
       family-names: Kastenholz
-  title: "Capital Market Assumptions Using Multi-Asset Tradable Factors: The MATF-CMA Framework"
-  journal: "Journal of Portfolio Management"
+  title: "factorlasso: Hierarchical Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for Multi-Asset Factor Models in Python"
+  journal: "Journal of Statistical Software"
   year: 2026
-  notes: "Methodology paper documenting the framework in which factorlasso is deployed; forthcoming."
+  notes: "Software paper describing the package; submitted."
 references:
+  - type: article
+    authors:
+      - given-names: Artur
+        family-names: Sepp
+      - given-names: Emilie
+        family-names: Hansen
+      - given-names: Mika
+        family-names: Kastenholz
+    title: "Capital Market Assumptions Using Multi-Asset Tradable Factors: The MATF-CMA Framework"
+    journal: "Journal of Portfolio Management"
+    year: 2026
+    notes: "Methodology paper documenting the framework in which factorlasso is deployed; forthcoming."
   - type: article
     authors:
       - given-names: Artur

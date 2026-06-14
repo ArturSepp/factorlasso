@@ -70,7 +70,7 @@ def main():
 
     # --- 3. Estimate with HCGL (auto-discovers gene modules) ---
     model = LassoModel(
-        model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+        model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-4,
         span=None,  # no EWMA for cross-sectional data
         demean=True,
