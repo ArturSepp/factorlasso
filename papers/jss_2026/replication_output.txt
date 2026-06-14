@@ -1,22 +1,22 @@
-factorlasso JSS replication -- mode=full -- started 2026-06-13 20:46:19
+factorlasso JSS replication -- mode=full -- started 2026-06-14 19:41:11
 
 ========================================================================
 # Stage 1/5: synthetic simulation study
 # $ C:\Python\FactorLasso312\Scripts\python.exe -m papers.jss_2026.simulations.run --output C:\Users\artur\OneDrive\analytics\my_github\FactorLasso\papers\jss_2026\simulations\results
 ========================================================================
 [Parallel(n_jobs=-1)]: Using backend LokyBackend with 20 concurrent workers.
-[Parallel(n_jobs=-1)]: Done   32 out of 2850 | elapsed:    3.2s
-[Parallel(n_jobs=-1)]: Done  122 out of 2850 | elapsed:    4.0s
-[Parallel(n_jobs=-1)]: Done  248 out of 2850 | elapsed:    5.0s
-[Parallel(n_jobs=-1)]: Done  410 out of 2850 | elapsed:    6.6s
-[Parallel(n_jobs=-1)]: Done  608 out of 2850 | elapsed:    8.4s
-[Parallel(n_jobs=-1)]: Done  842 out of 2850 | elapsed:   10.7s
-[Parallel(n_jobs=-1)]: Done 1112 out of 2850 | elapsed:   13.1s
-[Parallel(n_jobs=-1)]: Done 1418 out of 2850 | elapsed:   16.2s
-[Parallel(n_jobs=-1)]: Done 1760 out of 2850 | elapsed:   19.7s
-[Parallel(n_jobs=-1)]: Done 2355 out of 2850 | elapsed:   39.0s
-[Parallel(n_jobs=-1)]: Done 2772 out of 2850 | elapsed:   42.9s
-[Parallel(n_jobs=-1)]: Done 2850 out of 2850 | elapsed:   43.6s finished
+[Parallel(n_jobs=-1)]: Done   32 out of 2850 | elapsed:    2.4s
+[Parallel(n_jobs=-1)]: Done  122 out of 2850 | elapsed:    3.3s
+[Parallel(n_jobs=-1)]: Done  248 out of 2850 | elapsed:    4.4s
+[Parallel(n_jobs=-1)]: Done  410 out of 2850 | elapsed:    5.8s
+[Parallel(n_jobs=-1)]: Done  608 out of 2850 | elapsed:    7.5s
+[Parallel(n_jobs=-1)]: Done  842 out of 2850 | elapsed:    9.6s
+[Parallel(n_jobs=-1)]: Done 1112 out of 2850 | elapsed:   12.3s
+[Parallel(n_jobs=-1)]: Done 1418 out of 2850 | elapsed:   15.3s
+[Parallel(n_jobs=-1)]: Done 1760 out of 2850 | elapsed:   18.6s
+[Parallel(n_jobs=-1)]: Done 2298 out of 2850 | elapsed:   38.6s
+[Parallel(n_jobs=-1)]: Done 2712 out of 2850 | elapsed:   42.6s
+[Parallel(n_jobs=-1)]: Done 2850 out of 2850 | elapsed:   43.9s finished
 Study:          jss_2026_main
 Regimes:        19
 Seeds:          5  [42, 43, 44, 45, 46]
@@ -29,11 +29,11 @@ Estimators:     6
                   factorlasso_grp_hcgl_sign_adapt           wired
                   factorlasso_sgl_hcgl_sign_adapt           wired
 Total cells:    2850
-factorlasso:    v0.5.1
+factorlasso:    v0.5.4
 
 Running 2850 fits on n_jobs=-1...
 
-Done. Wall clock: 43.7s
+Done. Wall clock: 44.0s
   ok:               2850
   failed:           0
   not_implemented:  0
@@ -41,7 +41,7 @@ Output: C:\Users\artur\OneDrive\analytics\my_github\FactorLasso\papers\jss_2026\
   long table:    results_long.parquet
   oracle-λ table: results_oracle_lambda.parquet
   manifest:      manifest.json
-[Stage 1/5: synthetic simulation study] exit=0 elapsed=46.7s
+[Stage 1/5: synthetic simulation study] exit=0 elapsed=47.2s
 
 ========================================================================
 # Stage 2/5: Table 2 and Figures 1-4
@@ -62,7 +62,7 @@ SGL+SIGN+ADAPT          0.704      0.905        0.346      0.685              0.
 [fig4] wrote fig4_lambda_selection.png
 
 Done. Artefacts written to C:\Users\artur\OneDrive\analytics\my_github\FactorLasso\papers\jss_2026\paper\figures
-[Stage 2/5: Table 2 and Figures 1-4] exit=0 elapsed=2.2s
+[Stage 2/5: Table 2 and Figures 1-4] exit=0 elapsed=1.9s
 
 ========================================================================
 # Stage 3/5: ETF calibrated competitor study
@@ -76,37 +76,41 @@ ran seeds 101–115; raw CSV now holds seeds/T = {60: 15, 112: 15, 240: 15}
 method                    betaMSE   suppF1  signAgr    oosR2   ARIsac    ARIac  crRecov   eqLeak   riskSh   rpRMSE   covErr    rt(s)
 ------------------------------------------------------------------------------------------------------------------------------------
 OLS                         1.285    0.657    0.847    0.627     --      --     0.348    0.003    0.096    0.012    0.194    0.001
-sklearn Lasso               0.316    0.653    0.525    0.618     --      --     0.002    0.091    0.413    0.008    0.190    0.026
-skglm GroupLasso            0.389    0.655    0.901    0.494     --      --     0.034   -0.017    0.336    0.011    0.310    0.050
-asgl SGL                    0.378    0.665    0.881    0.597     --      --     0.059    0.029    0.324    0.009    0.210    1.134
+sklearn Lasso               0.316    0.653    0.525    0.618     --      --     0.002    0.091    0.413    0.008    0.190    0.027
+skglm GroupLasso            0.389    0.655    0.901    0.494     --      --     0.034   -0.017    0.336    0.011    0.310    0.053
+asgl SGL                    0.378    0.665    0.881    0.597     --      --     0.059    0.029    0.324    0.009    0.210    0.842
 FL LASSO                    0.323    0.595    0.441    0.580     --      --     0.000    0.070    0.416    0.009    0.234    0.057
-FL HCGL                     0.426    0.638    0.851    0.501    0.195    0.223    0.028   -0.032    0.337    0.012    0.334    0.065
+FL HCGL                     0.426    0.638    0.851    0.501    0.195    0.223    0.028   -0.032    0.337    0.012    0.334    0.066
 FL HCGL+sign                0.319    0.674    0.835    0.609    0.195    0.223    0.060    0.020    0.320    0.009    0.209    0.097
-FL HCGL+sign+adapt          0.334    0.674    0.829    0.612    0.195    0.223    0.059    0.024    0.323    0.009    0.197    0.099
-FL SGL+sign+adapt           0.329    0.681    0.814    0.612    0.195    0.223    0.061    0.026    0.322    0.009    0.199    0.100
-FL oracle (clusters)        0.389    0.657    0.904    0.506    1.000    0.225    0.038   -0.011    0.333    0.011    0.298    0.071
+FL HCGL+sign+adapt          0.334    0.674    0.829    0.612    0.195    0.223    0.059    0.024    0.323    0.009    0.197    0.107
+FL FCGL+sign+adapt          0.312    0.697    0.717    0.647    0.195    0.223    0.109    0.059    0.282    0.008    0.184    0.106
+FL SGL+sign+adapt           0.329    0.681    0.814    0.612    0.195    0.223    0.061    0.026    0.322    0.009    0.199    0.101
+FL oracle (clusters)        0.389    0.657    0.904    0.506    1.000    0.225    0.038   -0.011    0.333    0.011    0.298    0.074
 FL ORACLE+sign+adapt        0.358    0.673    0.831    0.579    1.000    0.225    0.054    0.020    0.325    0.009    0.203    0.108
-FL HCGL+PRIOR               0.316    0.666    0.817    0.605    0.195    0.223    0.313   -0.040    0.208    0.009    0.206    0.095
-FL HCGL+SIGN+PRIOR          0.293    0.721    0.838    0.626    0.195    0.223    0.317   -0.028    0.162    0.009    0.186    0.096
+FL HCGL+PRIOR               0.316    0.666    0.817    0.605    0.195    0.223    0.313   -0.040    0.208    0.009    0.206    0.097
+FL HCGL+SIGN+PRIOR          0.293    0.721    0.838    0.626    0.195    0.223    0.317   -0.028    0.162    0.009    0.186    0.099
+FL FCGL+SIGN+PRIOR          0.287    0.727    0.723    0.647    0.195    0.223    0.308    0.008    0.078    0.008    0.183    0.098
 FL ORACLE+SIGN+PRIOR        0.322    0.715    0.840    0.580    1.000    0.225    0.314   -0.039    0.206    0.009    0.202    0.106
 
 === T=60, selector=bic ===
 method                    betaMSE   suppF1  signAgr    oosR2   ARIsac    ARIac  crRecov   eqLeak   riskSh   rpRMSE   covErr    rt(s)
 ------------------------------------------------------------------------------------------------------------------------------------
 OLS                         1.285    0.657    0.847    0.627     --      --     0.348    0.003    0.096    0.012    0.194    0.001
-sklearn Lasso               0.372    0.559    0.405    0.529     --      --     0.000    0.043    0.417    0.010    0.283    0.025
-skglm GroupLasso            1.023    0.044    0.057   -0.004     --      --     0.022   -0.097    0.089    0.040    0.945    0.580
-asgl SGL                    0.957    0.132    0.176    0.089     --      --     0.032   -0.074    0.226    0.036    0.833    1.148
-FL LASSO                    0.336    0.578    0.424    0.562     --      --     0.000    0.061    0.419    0.009    0.252    0.056
-FL HCGL                     0.994    0.299    0.250    0.067    0.195    0.223    0.046   -0.090    0.098    0.036    0.881    0.066
-FL HCGL+sign                0.504    0.717    0.783    0.651    0.195    0.223    0.315   -0.009    0.095    0.009    0.183    0.127
-FL HCGL+sign+adapt          0.504    0.716    0.783    0.651    0.195    0.223    0.315   -0.009    0.095    0.009    0.183    0.124
-FL SGL+sign+adapt           0.504    0.716    0.782    0.651    0.195    0.223    0.315   -0.009    0.095    0.009    0.183    0.137
-FL oracle (clusters)        0.849    0.583    0.638    0.339    1.000    0.225    0.112   -0.068    0.110    0.020    0.555    0.072
-FL ORACLE+sign+adapt        0.507    0.718    0.778    0.642    1.000    0.225    0.315   -0.009    0.096    0.009    0.188    0.127
-FL HCGL+PRIOR               0.503    0.717    0.783    0.651    0.195    0.223    0.316   -0.009    0.093    0.009    0.183    0.123
-FL HCGL+SIGN+PRIOR          0.473    0.746    0.790    0.653    0.195    0.223    0.325   -0.005    0.090    0.009    0.182    0.126
-FL ORACLE+SIGN+PRIOR        0.487    0.747    0.788    0.643    1.000    0.225    0.325   -0.005    0.090    0.009    0.189    0.136
+sklearn Lasso               0.372    0.559    0.405    0.529     --      --     0.000    0.043    0.417    0.010    0.283    0.026
+skglm GroupLasso            1.023    0.044    0.057   -0.004     --      --     0.022   -0.097    0.089    0.040    0.945    0.606
+asgl SGL                    0.957    0.132    0.176    0.089     --      --     0.032   -0.074    0.226    0.036    0.833    0.852
+FL LASSO                    0.336    0.578    0.424    0.562     --      --     0.000    0.061    0.419    0.009    0.252    0.057
+FL HCGL                     0.994    0.299    0.250    0.067    0.195    0.223    0.046   -0.090    0.098    0.036    0.881    0.067
+FL HCGL+sign                0.504    0.717    0.783    0.651    0.195    0.223    0.315   -0.009    0.095    0.009    0.183    0.125
+FL HCGL+sign+adapt          0.504    0.716    0.783    0.651    0.195    0.223    0.315   -0.009    0.095    0.009    0.183    0.126
+FL FCGL+sign+adapt          0.449    0.514    0.366    0.543    0.195    0.223    0.004    0.062    0.411    0.011    0.387    0.083
+FL SGL+sign+adapt           0.504    0.716    0.782    0.651    0.195    0.223    0.315   -0.009    0.095    0.009    0.183    0.140
+FL oracle (clusters)        0.849    0.583    0.638    0.339    1.000    0.225    0.112   -0.068    0.110    0.020    0.555    0.074
+FL ORACLE+sign+adapt        0.507    0.718    0.778    0.642    1.000    0.225    0.315   -0.009    0.096    0.009    0.188    0.128
+FL HCGL+PRIOR               0.503    0.717    0.783    0.651    0.195    0.223    0.316   -0.009    0.093    0.009    0.183    0.132
+FL HCGL+SIGN+PRIOR          0.473    0.746    0.790    0.653    0.195    0.223    0.325   -0.005    0.090    0.009    0.182    0.132
+FL FCGL+SIGN+PRIOR          0.422    0.551    0.399    0.554    0.195    0.223    0.295   -0.003    0.138    0.011    0.387    0.089
+FL ORACLE+SIGN+PRIOR        0.487    0.747    0.788    0.643    1.000    0.225    0.325   -0.005    0.090    0.009    0.189    0.143
 
 === T=112, selector=oracle ===
 method                    betaMSE   suppF1  signAgr    oosR2   ARIsac    ARIac  crRecov   eqLeak   riskSh   rpRMSE   covErr    rt(s)
@@ -114,17 +118,19 @@ method                    betaMSE   suppF1  signAgr    oosR2   ARIsac    ARIac  
 OLS                         0.620    0.657    0.891    0.672     --      --     0.350    0.002    0.073    0.009    0.123    0.002
 sklearn Lasso               0.216    0.677    0.544    0.642     --      --     0.009    0.089    0.406    0.007    0.166    0.026
 skglm GroupLasso            0.268    0.657    0.923    0.651     --      --     0.078    0.039    0.307    0.007    0.152    0.058
-asgl SGL                    0.242    0.670    0.906    0.639     --      --     0.064    0.036    0.320    0.007    0.169    1.186
-FL LASSO                    0.219    0.724    0.652    0.663     --      --     0.036    0.090    0.374    0.007    0.137    0.110
-FL HCGL                     0.300    0.656    0.914    0.592    0.198    0.249    0.046   -0.000    0.327    0.009    0.236    0.111
-FL HCGL+sign                0.214    0.681    0.844    0.666    0.198    0.249    0.084    0.040    0.302    0.007    0.133    0.175
-FL HCGL+sign+adapt          0.224    0.689    0.843    0.662    0.198    0.249    0.089    0.036    0.295    0.007    0.137    0.180
-FL SGL+sign+adapt           0.218    0.698    0.834    0.659    0.198    0.249    0.088    0.036    0.294    0.007    0.141    0.212
-FL oracle (clusters)        0.266    0.657    0.922    0.651    1.000    0.225    0.080    0.040    0.305    0.007    0.151    0.116
-FL ORACLE+sign+adapt        0.236    0.694    0.839    0.658    1.000    0.225    0.105    0.041    0.281    0.006    0.135    0.192
-FL HCGL+PRIOR               0.208    0.685    0.844    0.662    0.198    0.249    0.318   -0.020    0.127    0.007    0.140    0.178
-FL HCGL+SIGN+PRIOR          0.185    0.731    0.848    0.663    0.198    0.249    0.319   -0.018    0.127    0.007    0.140    0.179
-FL ORACLE+SIGN+PRIOR        0.204    0.736    0.844    0.659    1.000    0.225    0.322   -0.010    0.102    0.006    0.137    0.195
+asgl SGL                    0.242    0.670    0.906    0.639     --      --     0.064    0.036    0.320    0.007    0.169    0.830
+FL LASSO                    0.219    0.724    0.652    0.663     --      --     0.036    0.090    0.374    0.007    0.137    0.106
+FL HCGL                     0.300    0.656    0.914    0.592    0.198    0.249    0.046   -0.000    0.327    0.009    0.236    0.108
+FL HCGL+sign                0.214    0.681    0.844    0.666    0.198    0.249    0.084    0.040    0.302    0.007    0.133    0.168
+FL HCGL+sign+adapt          0.224    0.689    0.843    0.662    0.198    0.249    0.089    0.036    0.295    0.007    0.137    0.169
+FL FCGL+sign+adapt          0.188    0.733    0.808    0.681    0.198    0.249    0.151    0.050    0.233    0.006    0.120    0.197
+FL SGL+sign+adapt           0.218    0.698    0.834    0.659    0.198    0.249    0.088    0.036    0.294    0.007    0.141    0.206
+FL oracle (clusters)        0.266    0.657    0.922    0.651    1.000    0.225    0.080    0.040    0.305    0.007    0.151    0.112
+FL ORACLE+sign+adapt        0.236    0.694    0.839    0.658    1.000    0.225    0.105    0.041    0.281    0.006    0.135    0.186
+FL HCGL+PRIOR               0.208    0.685    0.844    0.662    0.198    0.249    0.318   -0.020    0.127    0.007    0.140    0.171
+FL HCGL+SIGN+PRIOR          0.185    0.731    0.848    0.663    0.198    0.249    0.319   -0.018    0.127    0.007    0.140    0.170
+FL FCGL+SIGN+PRIOR          0.161    0.773    0.811    0.683    0.198    0.249    0.309    0.010    0.071    0.006    0.119    0.172
+FL ORACLE+SIGN+PRIOR        0.204    0.736    0.844    0.659    1.000    0.225    0.322   -0.010    0.102    0.006    0.137    0.182
 
 === T=112, selector=bic ===
 method                    betaMSE   suppF1  signAgr    oosR2   ARIsac    ARIac  crRecov   eqLeak   riskSh   rpRMSE   covErr    rt(s)
@@ -132,57 +138,63 @@ method                    betaMSE   suppF1  signAgr    oosR2   ARIsac    ARIac  
 OLS                         0.620    0.657    0.891    0.672     --      --     0.350    0.002    0.073    0.009    0.123    0.002
 sklearn Lasso               0.226    0.659    0.515    0.631     --      --     0.001    0.086    0.415    0.007    0.179    0.026
 skglm GroupLasso            0.620    0.657    0.891    0.672     --      --     0.350    0.002    0.073    0.009    0.123    0.072
-asgl SGL                    0.355    0.667    0.902    0.673     --      --     0.129    0.046    0.258    0.007    0.124    1.182
-FL LASSO                    0.278    0.605    0.445    0.600     --      --     0.000    0.068    0.416    0.007    0.228    0.109
-FL HCGL                     0.620    0.657    0.891    0.672    0.198    0.249    0.350    0.002    0.073    0.009    0.123    0.145
-FL HCGL+sign                0.269    0.731    0.815    0.681    0.198    0.249    0.314   -0.004    0.077    0.007    0.119    0.223
-FL HCGL+sign+adapt          0.270    0.731    0.814    0.681    0.198    0.249    0.319   -0.006    0.074    0.007    0.119    0.227
-FL SGL+sign+adapt           0.270    0.731    0.814    0.681    0.198    0.249    0.319   -0.006    0.074    0.007    0.119    0.276
-FL oracle (clusters)        0.620    0.657    0.891    0.672    1.000    0.225    0.350    0.002    0.073    0.009    0.123    0.123
-FL ORACLE+sign+adapt        0.274    0.735    0.813    0.672    1.000    0.225    0.319   -0.006    0.074    0.007    0.130    0.229
-FL HCGL+PRIOR               0.270    0.731    0.814    0.681    0.198    0.249    0.319   -0.006    0.074    0.007    0.119    0.219
-FL HCGL+SIGN+PRIOR          0.241    0.762    0.820    0.683    0.198    0.249    0.327   -0.004    0.069    0.007    0.118    0.215
-FL ORACLE+SIGN+PRIOR        0.254    0.764    0.820    0.673    1.000    0.225    0.327   -0.004    0.069    0.006    0.130    0.228
+asgl SGL                    0.355    0.667    0.902    0.673     --      --     0.129    0.046    0.258    0.007    0.124    0.828
+FL LASSO                    0.278    0.605    0.445    0.600     --      --     0.000    0.068    0.416    0.007    0.228    0.105
+FL HCGL                     0.620    0.657    0.891    0.672    0.198    0.249    0.350    0.002    0.073    0.009    0.123    0.125
+FL HCGL+sign                0.269    0.731    0.815    0.681    0.198    0.249    0.314   -0.004    0.077    0.007    0.119    0.214
+FL HCGL+sign+adapt          0.270    0.731    0.814    0.681    0.198    0.249    0.319   -0.006    0.074    0.007    0.119    0.213
+FL FCGL+sign+adapt          0.399    0.532    0.390    0.574    0.198    0.249    0.004    0.068    0.410    0.009    0.358    0.142
+FL SGL+sign+adapt           0.270    0.731    0.814    0.681    0.198    0.249    0.319   -0.006    0.074    0.007    0.119    0.263
+FL oracle (clusters)        0.620    0.657    0.891    0.672    1.000    0.225    0.350    0.002    0.073    0.009    0.123    0.119
+FL ORACLE+sign+adapt        0.274    0.735    0.813    0.672    1.000    0.225    0.319   -0.006    0.074    0.007    0.130    0.217
+FL HCGL+PRIOR               0.270    0.731    0.814    0.681    0.198    0.249    0.319   -0.006    0.074    0.007    0.119    0.210
+FL HCGL+SIGN+PRIOR          0.241    0.762    0.820    0.683    0.198    0.249    0.327   -0.004    0.069    0.007    0.118    0.207
+FL FCGL+SIGN+PRIOR          0.359    0.575    0.433    0.589    0.198    0.249    0.295    0.001    0.128    0.009    0.343    0.142
+FL ORACLE+SIGN+PRIOR        0.254    0.764    0.820    0.673    1.000    0.225    0.327   -0.004    0.069    0.006    0.130    0.218
 
 === T=240, selector=oracle ===
 method                    betaMSE   suppF1  signAgr    oosR2   ARIsac    ARIac  crRecov   eqLeak   riskSh   rpRMSE   covErr    rt(s)
 ------------------------------------------------------------------------------------------------------------------------------------
-OLS                         0.278    0.657    0.920    0.687     --      --     0.353    0.002    0.046    0.006    0.093    0.003
-sklearn Lasso               0.133    0.766    0.725    0.681     --      --     0.125    0.069    0.267    0.005    0.098    0.027
+OLS                         0.278    0.657    0.920    0.687     --      --     0.353    0.002    0.046    0.006    0.093    0.002
+sklearn Lasso               0.133    0.766    0.725    0.681     --      --     0.125    0.069    0.267    0.005    0.098    0.026
 skglm GroupLasso            0.168    0.657    0.949    0.665     --      --     0.086    0.044    0.300    0.005    0.122    0.060
-asgl SGL                    0.168    0.672    0.930    0.671     --      --     0.110    0.044    0.276    0.005    0.115    1.272
-FL LASSO                    0.134    0.754    0.689    0.673     --      --     0.065    0.084    0.340    0.005    0.109    0.295
-FL HCGL                     0.176    0.657    0.947    0.669    0.207    0.325    0.079    0.043    0.307    0.005    0.123    0.300
-FL HCGL+sign                0.126    0.708    0.860    0.688    0.207    0.325    0.184    0.032    0.197    0.005    0.091    0.474
-FL HCGL+sign+adapt          0.129    0.709    0.860    0.687    0.207    0.325    0.187    0.031    0.193    0.005    0.091    0.473
-FL SGL+sign+adapt           0.127    0.719    0.855    0.687    0.207    0.325    0.174    0.035    0.206    0.005    0.092    0.500
-FL oracle (clusters)        0.166    0.657    0.948    0.666    1.000    0.225    0.088    0.044    0.298    0.005    0.122    0.329
-FL ORACLE+sign+adapt        0.145    0.708    0.853    0.678    1.000    0.225    0.205    0.027    0.173    0.005    0.106    0.501
-FL HCGL+PRIOR               0.119    0.701    0.861    0.686    0.207    0.325    0.323   -0.005    0.074    0.005    0.094    0.485
-FL HCGL+SIGN+PRIOR          0.110    0.742    0.865    0.686    0.207    0.325    0.326   -0.002    0.073    0.005    0.094    0.480
-FL ORACLE+SIGN+PRIOR        0.127    0.743    0.859    0.675    1.000    0.225    0.326   -0.002    0.073    0.005    0.109    0.516
+asgl SGL                    0.168    0.672    0.930    0.671     --      --     0.110    0.044    0.276    0.005    0.115    0.910
+FL LASSO                    0.134    0.754    0.689    0.673     --      --     0.065    0.084    0.340    0.005    0.109    0.279
+FL HCGL                     0.176    0.657    0.947    0.669    0.207    0.325    0.079    0.043    0.307    0.005    0.123    0.289
+FL HCGL+sign                0.126    0.708    0.860    0.688    0.207    0.325    0.184    0.032    0.197    0.005    0.091    0.449
+FL HCGL+sign+adapt          0.129    0.709    0.860    0.687    0.207    0.325    0.187    0.031    0.193    0.005    0.091    0.445
+FL FCGL+sign+adapt          0.111    0.737    0.844    0.689    0.207    0.325    0.216    0.031    0.158    0.004    0.091    0.492
+FL SGL+sign+adapt           0.127    0.719    0.855    0.687    0.207    0.325    0.174    0.035    0.206    0.005    0.092    0.479
+FL oracle (clusters)        0.166    0.657    0.948    0.666    1.000    0.225    0.088    0.044    0.298    0.005    0.122    0.318
+FL ORACLE+sign+adapt        0.145    0.708    0.853    0.678    1.000    0.225    0.205    0.027    0.173    0.005    0.106    0.473
+FL HCGL+PRIOR               0.119    0.701    0.861    0.686    0.207    0.325    0.323   -0.005    0.074    0.005    0.094    0.451
+FL HCGL+SIGN+PRIOR          0.110    0.742    0.865    0.686    0.207    0.325    0.326   -0.002    0.073    0.005    0.094    0.451
+FL FCGL+SIGN+PRIOR          0.098    0.771    0.836    0.689    0.207    0.325    0.313    0.009    0.064    0.004    0.093    0.454
+FL ORACLE+SIGN+PRIOR        0.127    0.743    0.859    0.675    1.000    0.225    0.326   -0.002    0.073    0.005    0.109    0.492
 
 === T=240, selector=bic ===
 method                    betaMSE   suppF1  signAgr    oosR2   ARIsac    ARIac  crRecov   eqLeak   riskSh   rpRMSE   covErr    rt(s)
 ------------------------------------------------------------------------------------------------------------------------------------
-OLS                         0.278    0.657    0.920    0.687     --      --     0.353    0.002    0.046    0.006    0.093    0.003
-sklearn Lasso               0.185    0.681    0.531    0.641     --      --     0.000    0.092    0.416    0.005    0.154    0.027
-skglm GroupLasso            0.278    0.657    0.920    0.687     --      --     0.353    0.002    0.046    0.006    0.093    0.072
-asgl SGL                    0.183    0.671    0.932    0.683     --      --     0.150    0.044    0.235    0.005    0.096    1.302
-FL LASSO                    0.166    0.714    0.600    0.654     --      --     0.020    0.089    0.393    0.005    0.138    0.294
-FL HCGL                     0.278    0.657    0.920    0.687    0.207    0.325    0.353    0.002    0.046    0.006    0.093    0.370
-FL HCGL+sign                0.136    0.745    0.844    0.690    0.207    0.325    0.331   -0.005    0.052    0.005    0.091    0.601
-FL HCGL+sign+adapt          0.136    0.746    0.844    0.690    0.207    0.325    0.331   -0.005    0.052    0.005    0.091    0.580
-FL SGL+sign+adapt           0.136    0.745    0.844    0.690    0.207    0.325    0.331   -0.005    0.052    0.005    0.091    0.637
-FL oracle (clusters)        0.278    0.657    0.920    0.687    1.000    0.225    0.353    0.002    0.046    0.006    0.093    0.358
-FL ORACLE+sign+adapt        0.150    0.744    0.838    0.680    1.000    0.225    0.331   -0.005    0.052    0.005    0.106    0.635
-FL HCGL+PRIOR               0.136    0.746    0.843    0.690    0.207    0.325    0.331   -0.005    0.052    0.005    0.091    0.603
-FL HCGL+SIGN+PRIOR          0.127    0.773    0.849    0.690    0.207    0.325    0.336   -0.003    0.049    0.005    0.091    0.606
-FL ORACLE+SIGN+PRIOR        0.143    0.771    0.844    0.681    1.000    0.225    0.336   -0.003    0.049    0.005    0.107    0.634
+OLS                         0.278    0.657    0.920    0.687     --      --     0.353    0.002    0.046    0.006    0.093    0.002
+sklearn Lasso               0.185    0.681    0.531    0.641     --      --     0.000    0.092    0.416    0.005    0.154    0.026
+skglm GroupLasso            0.278    0.657    0.920    0.687     --      --     0.353    0.002    0.046    0.006    0.093    0.070
+asgl SGL                    0.183    0.671    0.932    0.683     --      --     0.150    0.044    0.235    0.005    0.096    0.914
+FL LASSO                    0.166    0.714    0.600    0.654     --      --     0.020    0.089    0.393    0.005    0.138    0.279
+FL HCGL                     0.278    0.657    0.920    0.687    0.207    0.325    0.353    0.002    0.046    0.006    0.093    0.352
+FL HCGL+sign                0.136    0.745    0.844    0.690    0.207    0.325    0.331   -0.005    0.052    0.005    0.091    0.589
+FL HCGL+sign+adapt          0.136    0.746    0.844    0.690    0.207    0.325    0.331   -0.005    0.052    0.005    0.091    0.558
+FL FCGL+sign+adapt          0.249    0.673    0.587    0.642    0.207    0.325    0.002    0.096    0.414    0.006    0.171    0.417
+FL SGL+sign+adapt           0.136    0.745    0.844    0.690    0.207    0.325    0.331   -0.005    0.052    0.005    0.091    0.610
+FL oracle (clusters)        0.278    0.657    0.920    0.687    1.000    0.225    0.353    0.002    0.046    0.006    0.093    0.341
+FL ORACLE+sign+adapt        0.150    0.744    0.838    0.680    1.000    0.225    0.331   -0.005    0.052    0.005    0.106    0.596
+FL HCGL+PRIOR               0.136    0.746    0.843    0.690    0.207    0.325    0.331   -0.005    0.052    0.005    0.091    0.574
+FL HCGL+SIGN+PRIOR          0.127    0.773    0.849    0.690    0.207    0.325    0.336   -0.003    0.049    0.005    0.091    0.566
+FL FCGL+SIGN+PRIOR          0.202    0.725    0.639    0.656    0.207    0.325    0.294    0.019    0.097    0.006    0.159    0.422
+FL ORACLE+SIGN+PRIOR        0.143    0.771    0.844    0.681    1.000    0.225    0.336   -0.003    0.049    0.005    0.107    0.608
 [warn] oracle-λ at grid edge for ['asgl_sgl', 'factorlasso_econ_oracle_sign_prior', 'factorlasso_econ_prior', 'factorlasso_econ_sign_prior', 'factorlasso_grp_hcgl', 'factorlasso_grp_hcgl_sign', 'factorlasso_grp_hcgl_sign_adapt', 'factorlasso_grp_oracle', 'factorlasso_grp_oracle_sign_adapt', 'factorlasso_sgl_hcgl_sign_adapt', 'skglm_grouplasso']
 raw -> C:\Users\artur\OneDrive\analytics\my_github\FactorLasso\papers\jss_2026\simulations\results_calibrated\etf_competitor_study_raw.csv
 summary -> C:\Users\artur\OneDrive\analytics\my_github\FactorLasso\papers\jss_2026\simulations\results_calibrated\etf_competitor_study_summary.csv
-[Stage 3/5: ETF calibrated competitor study] exit=0 elapsed=2334.6s
+[Stage 3/5: ETF calibrated competitor study] exit=0 elapsed=2381.1s
 
 ========================================================================
 # Stage 4/5: ETF competitor figures
@@ -191,7 +203,7 @@ summary -> C:\Users\artur\OneDrive\analytics\my_github\FactorLasso\papers\jss_20
 headline T=112; sample sizes [60, 112, 240]; selectors ['bic', 'oracle']
 wrote: etf_study_selector_contrast, etf_study_oracle_metrics, etf_study_t_robustness ({pdf,png})
   -> C:\Users\artur\OneDrive\analytics\my_github\FactorLasso\papers\jss_2026\paper\figures
-[Stage 4/5: ETF competitor figures] exit=0 elapsed=3.6s
+[Stage 4/5: ETF competitor figures] exit=0 elapsed=3.8s
 
 ========================================================================
 # Stage 5/5: ETF empirical credit application
@@ -210,7 +222,7 @@ HCGL+SIGN+PRIOR       0.321    0.062   -0.014    0.113    0.199
 
 figures -> C:\Users\artur\OneDrive\analytics\my_github\FactorLasso\papers\jss_2026\paper\figures
 tables  -> C:\Users\artur\OneDrive\analytics\my_github\FactorLasso\papers\jss_2026\simulations\results_calibrated
-[Stage 5/5: ETF empirical credit application] exit=0 elapsed=99.0s
+[Stage 5/5: ETF empirical credit application] exit=0 elapsed=97.7s
 
 ========================================================================
 # Reproducibility summary
@@ -227,7 +239,7 @@ Reproduced:
 ========================================================================
 platform : Windows-11-10.0.26200-SP0
 python   : 3.12.7 (CPython)
-factorlasso : 0.5.1
+factorlasso : 0.5.4
 numpy       : 1.26.4
 pandas      : 3.0.1
 scipy       : 1.17.1
@@ -240,4 +252,4 @@ skglm       : 0.5
 adelie      : 1.1.52
 yfinance    : not installed
 
-Replication complete in 2488.9s (41.5 min).
+Replication complete in 2534.2s (42.2 min).
