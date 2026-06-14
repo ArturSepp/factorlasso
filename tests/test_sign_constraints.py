@@ -19,7 +19,6 @@ from factorlasso import (
     validate_cluster_signs,
 )
 
-
 # ───────────────────────────────────────────────────────────────────────
 # Fixtures
 # ───────────────────────────────────────────────────────────────────────
@@ -43,7 +42,7 @@ def _make_factor_data(seed: int, T: int = 400, k_per_cluster: int = 5,
     f1 = rng.standard_normal(T)
     f2 = rng.standard_normal(T)
     f3 = rng.standard_normal(T)
-    
+
     cols, cluster_ids, names = [], [], []
     for fi, f in enumerate([f1, f2, f3]):
         for k in range(k_per_cluster):

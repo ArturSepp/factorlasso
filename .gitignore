@@ -78,3 +78,6 @@ papers/jss_2026/paper/*.blg
 papers/jss_2026/paper/*.log
 papers/jss_2026/paper/*.out
 papers/jss_2026/paper/*.toc
+
+papers/
+factorlasso-backup/

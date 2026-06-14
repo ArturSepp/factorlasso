@@ -7,6 +7,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.5.1] — 2026-06-12
+
+Numerical and API correctness release. Three of the six changes alter
+numbers; each was checkpointed explicitly before shipping.
+
+### Fixed (numerical — checkpointed)
+
+- **`LassoModel.predict` now adds the economic intercept `alpha_const_`**
+  instead of the demeaned-residual diagnostic `intercept_`, restoring the
+  documented `Ŷ = α + βX` contract for `demean=True` fits. Previously
+  predictions omitted the response means, and `score()` — hence
+  `LassoModelCV` and scikit-learn `GridSearchCV`/`cross_val_score` —
+  understated R² for any response with a non-zero mean. With
+  `demean=False` the fit is through-origin and no constant is added
+  (previously the residual-mean diagnostic was added). `intercept_`
+  itself is unchanged.
+- **`get_x_y_np` demeans on NaN-preserved arrays** (zero-fill moved after
+  the demean step). Previously `fillna(0.0)` ran first, so an asset with
+  valid fraction `f` was demeaned by the diluted mean `f·μ` instead of
+  `μ`, injecting a constant offset `(1 − f)·μ` into the solver response
+  on its valid window — a second-order bias on β and a first-order
+  deflation of the residual-variance and R² diagnostics. `np.nanmean`
+  (span=None) and the NaN-aware `compute_ewm` recursion (EWMA path) now
+  compute the means over valid observations only. No effect on fully
+  observed panels (bit-identical).
+- **`derive_sign_constraints` cluster mode masks the slope numerator by
+  `x_agg_valid`**, matching the denominator. Previously, rows where some
+  cluster members were missing entered the numerator with a biased
+  zero-filled aggregate while being excluded from the denominator,
+  inflating the cluster-pooled slope (observed ~40% on a
+  half-missing-member panel) and breaking the closed-form SSR identity
+  behind the t-gate. Only the public regressor-cluster mode with
+  NaN-bearing `x` was affected; the `LassoModel.fit` auto-sign path
+  (asset-cluster pooling) never hits this branch.
+
+### Fixed (API)
+
+- 1-D `np.ndarray` `x` passed to `fit` is now interpreted as one
+  regressor of length T (mirroring 1-D `y` and `pd.Series` handling).
+  Previously `np.atleast_2d` produced a `(1, T)` row and `fit` failed
+  with a misleading index-alignment error.
+- `LassoModel.copy()` builds a fresh, unfitted estimator from
+  `get_params()` (scikit-learn `clone` semantics). Previously it
+  round-tripped through `dataclasses.asdict`, carrying stale fitted
+  state into the copy and corrupting the nested `LassoEstimationResult`
+  into a plain `dict`.
+
+### Changed (JSS simulation harness)
+
+- The calibrated benchmark (paper §6.5) and the empirical ETF
+  application (§7) now run the **production configuration** of the
+  MATF-CMA deployment, set a priori rather than tuned:
+  `cutoff_fraction=0.40`, gate `auto_sign_threshold_t=1.0`, adaptive
+  reweighting with `auto_sign_adaptive_floor=0.5`, plus the public
+  sub-asset-class sign overlay in the empirical section. The synthetic
+  ablation (§6.1–6.4) stays at package defaults (the "package
+  profile"). The production EWMA span is excluded throughout the
+  article: the simulation DGP is stationary (time-decayed weights are
+  pure efficiency loss there), and the empirical section runs the same
+  uniform-weight convention for consistency. This replaces the former
+  DGP-grid-searched `cutoff_fraction=0.50` in §6.5.
+- `metrics.sign_agreement_rate` thresholds `beta_hat` at the activity
+  tolerance before taking signs. Interior-point coefficients at
+  ±O(1e-10) carried platform-dependent noise signs that moved the metric
+  by O(1e-3) between otherwise-identical runs (observed: 0.915 Windows
+  vs 0.913 Linux on one estimator). Near-zero estimates on true-support
+  cells now deterministically count as misses. Headline-ablation sign
+  rates move down by 0.011–0.069; all other metrics bit-identical.
+- Stale `test_matf_calibrated_raises_not_implemented` replaced with a
+  smoke test of the implemented calibrated-DGP path.
+- Committed `simulations/results/` artifacts replaced with the full
+  5-seed grid (2,850/2,850 cells ok) so the shipped files back the
+  published headline table directly; previously a 1-seed quick run was
+  committed.
+
+### Added
+
+- Regression tests: cluster-mode NaN-in-x slope and gate, valid-window
+  demeaning, economic-intercept prediction, through-origin
+  `demean=False` prediction, 1-D `x` handling, `copy()` semantics
+  (`tests/test_cluster_nan_x_and_api_fixes.py`).
+
+### Fixed (numerical — checkpointed)
+
+- **With `span=None`, HCGL clustering now computes the sample Pearson
+  correlation** (pairwise-complete over valid observations), matching
+  both the documented contract of the JSS paper §2.3 and the uniform
+  loss weighting. Previously the call routed through
+  `compute_ewm_covar`, whose `ewm_lambda = 0.94` default (effective
+  span ≈ 32 observations, the RiskMetrics daily convention) silently
+  applied — so a uniform-weight fit clustered on a trailing-window
+  correlation (adjusted Rand index ≈ 0.40 against the Pearson
+  partition on a T=120 panel). With a span set, the EWMA(span)
+  correlation is used as before. Production always passes a span and
+  is unaffected. `compute_ewm_covar` itself is unchanged (qis parity).
+
+
+
 ## [Unreleased] — Roadmap
 
 - JSS submission (Q3 2026): cluster-pooled sign-derivation paper.
@@ -30,6 +128,114 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   group so the fallback chain has alternates available. Without
   these, only CLARABEL is tried and cells with CLARABEL-specific
   numerical issues fail.
+
+
+## [0.5.0] — 2026-06-06
+
+### Changed — breaking, numerical (in-sample diagnostics only)
+
+- In-sample diagnostics (`estimation_result_.alpha`, `ss_res`, `ss_total`,
+  `r2`, and the `intercept_` alias / `summary()` mean R²) are now computed
+  in the **nominal-span EWMA norm** (per-observation weight `lambda^k`,
+  matching the solver's error norm). Previously these statistics reused the
+  sqrt-decay solver weights *linearly*, which placed them at an effective
+  span of ~`2*span` (e.g., a span-36 fit reported a ~72-span alpha).
+  Solver loss, estimated betas (`coef_`), the economic intercept
+  (`alpha_const_`), CV model selection (`LassoModel.score` /
+  `LassoCV`), and production CMA alphas (`estimate_alpha`) are unchanged.
+  `span=None` fits are unaffected (uniform weights are idempotent under
+  squaring). The numerical delta is documented by the frozen fixture in
+  `tests/test_diagnostic_norm.py::test_snapshot_delta_v050`.
+
+### Added
+
+- `tests/test_diagnostic_norm.py`: error-norm identity (solver loss is the
+  nominal-span EWMA norm), diagnostic-norm equivalence against the
+  `pandas.ewm(span, adjust=True)` convention, Kish-ESS check
+  (ESS = span post-fix; the sqrt-linear reuse gives `(1+sqrt(lambda))/(1-sqrt(lambda)) ≈ 2*span`,
+  kept as a regression guard), and the v0.4.x → v0.5.0 snapshot delta.
+- Design rule documented in `_compute_solver_weights` /
+  `_compute_solver_diagnostics`: solver weights are sqrt-decay row scalings
+  and may only enter quadratic forms; any linear-EWMA statistic must use
+  `weights**2`.
+
+### Fixed — sign-gate SSR over-count under NaN factor columns
+
+- The closed-form residual sum-of-squares used by the noise-floor t-gate
+  (`_compute_sign_vector` and `_compute_sign_matrix_per_response` in
+  `sign_constraints.py`) summed the response variation over a single global
+  (or per-response) `Σ y²` that was not restricted to the rows where each
+  factor is observed, while the slope denominator `D_j` and the degrees of
+  freedom were already masked by `valid_x`. For a factor column carrying NaN
+  (e.g. a later-inception factor series), the three terms in
+  `SSR_j = ‖Y‖²_F − β_j² D_j` ranged over different row sets, over-counting
+  `SSR_j`, inflating `σ²`, shrinking `|t_j|`, and over-conservatively gating
+  that factor's sign constraint to zero. The fix masks the response
+  sum-of-squares per factor by `valid_x`, matching `D_j` and `df_j`.
+- Impact is confined to panels with NaN in factor columns. When every factor
+  is fully observed the computation takes a fast path that is bit-identical to
+  the prior code, so no published result, table, figure, or the §3.6 usage
+  example changes. The bug never crashed, never flipped a derived sign, and
+  never affected the fitted slopes (only the gate decision).
+- Regression coverage in `tests/test_nan_valid_row_invariance.py`: per-response
+  and cluster-pooled gates under NaN-in-X are checked against an honest
+  drop-NaN reference and against the pre-fix global-`Σ y²` gate, so the tests
+  fail on the old behaviour. Full suite 260 passing.
+
+## [0.4.3] — 2026-06-02
+
+**Documentation, citation, and JSS-manuscript consistency pass (no
+functional code changes).**
+
+### Fixed
+
+- Adaptive-penalty-weight attribution corrected throughout (docstring of
+  `sign_constraints._adaptive_penalty_weights`, the parameter-group
+  comment in `lasso_estimator.py`, and `README.md`). The magnitude-aware
+  penalty weight follows Zou (2006); it is distinct from the
+  univariate-guided *sign* constraint of Richland et al. (2025) eq. (3.3),
+  which is applied separately via the sign matrix. Earlier comments
+  conflated the weight formula with eq. (3.3).
+- `README.md` removed a dangling reference to a
+  `factorlasso_sign_constraints_note.tex` technical note that is not part
+  of the distribution; the derivation it pointed to lives in the JSS
+  article appendix.
+- `README.md` citation block and `CITATION.cff` version bumped to 0.4.3.
+- JSS manuscript (`papers/jss_2026/paper/`): the §5.3 core-grid
+  sparse-low-SNR figures in the prose (β-MSE 0.49 vs. 0.95, a 48 %
+  reduction) and the matching summary sentence corrected to agree with
+  the regenerated Figure 2 and the simulation parquet; the reproduction
+  appendix's idiosyncratic-regime coherence gain corrected to 0.16;
+  §5.2 coherence range stated as "approximately 0.70 (0.695 to 0.708)";
+  a garbled sentence in the introduction reworded; package-version
+  strings in Table 1's caption and the Computational Details section
+  bumped to 0.4.3.
+- JSS bibliography (`refs.bib`): the MATF-CMA self-citation changed from
+  `@Article ... note = {Forthcoming}` to `@Unpublished ... "Working
+  paper, under review at the Journal of Portfolio Management"`; the
+  `factorlasso` package self-citation version note bumped to 0.4.3.
+- `papers/jss_2026/simulations/study.yaml` header comment: stale
+  `python -m simulations.run` invocation paths corrected to
+  `python -m papers.jss_2026.simulations.run`.
+
+### Changed
+
+- Simulation reference grid (`papers/jss_2026/simulations/results/`)
+  regenerated under 0.4.3 and merged from five single-seed runs
+  (seeds 42–46). The merged grid is numerically identical to the 0.4.1
+  reference (max absolute deviation 0 across every metric and cell),
+  confirming the 0.4.1→0.4.3 changes are documentation-only; the
+  `manifest.json` now records `factorlasso_version = 0.4.3`. The §5
+  figures and Table 2 regenerate byte-identical from the refreshed
+  parquet.
+
+### Internal
+
+- `tests/` and `papers/` brought to a clean `ruff` pass (import order,
+  unused imports, f-strings without placeholders, over-length lines, and
+  two semicolon-joined statements in the application plotting script).
+  The package source (`factorlasso/`) was already clean. Test count and
+  behaviour unchanged (252 tests, 243 pass / 9 skip).
 
 
 ## [0.4.2] — 2026-05-31

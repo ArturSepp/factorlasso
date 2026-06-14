@@ -175,8 +175,9 @@ penalty and can take larger multivariate coefficients; weak-evidence
 factors get a heavier penalty and are pushed harder toward the prior.
 This is the Zou (2006) adaptive Lasso oracle property: the penalty
 becomes magnitude-aware without being a thresholding operator. The
-formulation matches Richland et al. (2025) eq. (3.3); see the technical
-note `factorlasso_sign_constraints_note.tex` for the derivation.
+univariate-guided *sign* constraint of Richland et al. (2025) eq. (3.3)
+is a separate mechanism, applied via the sign matrix above; here the
+univariate slope supplies only the magnitude-aware penalty weight.
 
 The adaptive layer is independent of the threshold gate: cells pinned
 to `β = 0` by the gate continue to be forced to zero by the hard sign
@@ -423,7 +424,7 @@ developed, and the software itself:
              Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
              in {Python}},
   year    = {2026},
-  version = {0.4.2},
+  version = {0.4.3},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

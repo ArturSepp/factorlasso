@@ -159,10 +159,17 @@ def _compute_sign_vector(
             idx = np.where(clusters_arr == c)[0]
             x_agg = x_arr[:, idx].mean(axis=1)          # (T,)
             x_agg_valid = valid_x[:, idx].all(axis=1)   # (T,) agg defined
+            # The aggregated regressor is defined only on rows where EVERY
+            # cluster member is observed; on other rows the zero-filled mean
+            # is a biased (shrunken) value. Numerator and denominator must
+            # range over the SAME valid rows — masking only the denominator
+            # (the pre-fix behaviour) inflates the slope whenever cluster
+            # members carry heterogeneous NaN patterns.
+            x_agg_m = x_agg * x_agg_valid                # (T,) masked agg
             xa2 = (x_agg ** 2) * x_agg_valid             # (T,)
             denom = float(xa2 @ valid_y.sum(axis=1))     # Σ_k Σ_t v x_agg²
             if denom > 0:
-                slopes[idx] = float(x_agg @ y_sum) / denom
+                slopes[idx] = float(x_agg_m @ y_sum) / denom
 
     sign_vec = np.sign(slopes).astype(float)
 
@@ -173,14 +180,17 @@ def _compute_sign_vector(
         # closed form that avoids materialising residuals; we evaluate every
         # reduction over valid (row, response) cells so the variance and dof
         # reflect the true sample size under heterogeneous inception dates:
-        #   SSR_j = Σ_{k,t∈valid} (y_{tk} − β_j x_{tj})²
-        #         = ‖Y‖²_F,valid − β_j² · D_j,
+        #   SSR_j = Σ_{k,t: x_j and y_k valid} (y_{tk} − β_j x_{tj})²
+        #         = ‖Y‖²_{F,(j)} − β_j² · D_j,   (‖Y‖²_{F,(j)} over x_j-valid rows)
         #   D_j = Σ_k Σ_t v_{tk} x_{tj}²  (the same valid denominator above),
         # using the slope identity x_j' y_sum = β_j · D_j. The degrees of
         # freedom charge one parameter per response column actually present:
         #   df_j = n_valid_j − q_eff,  n_valid_j = Σ_k Σ_t (x_valid & y_valid),
         # with q_eff the number of responses contributing ≥1 valid row.
-        Y_total_ss = float((y_arr * y_arr).sum())       # zero-filled = valid-only
+        # The per-factor SS must be masked by valid_x exactly as D_j and df_j are;
+        # a single global Σ y² over-counts rows where factor j is missing. The two
+        # coincide when every factor is fully observed (the fast path below).
+        y2_rowsum = (y_arr * y_arr).sum(axis=1)          # (T,) Σ_k v_{tk} y_{tk}²
         t_stats = np.zeros(M, dtype=float)
         n_valid_per_resp = valid_y.sum(axis=0)           # (q,) rows valid per k
         q_eff = int((n_valid_per_resp > 0).sum())
@@ -191,7 +201,11 @@ def _compute_sign_vector(
             # n_valid_j = Σ_t valid_x_{tj} · (#valid responses in row t)
             n_valid = (valid_x.astype(float).T @ vy_rowcount)  # (M,) valid (t,k) cells
             df = np.maximum(n_valid - q_eff, 1.0)
-            ssr = Y_total_ss - slopes * slopes * D       # (M,)
+            if valid_x.all():
+                Y_ss = np.full(M, float((y_arr * y_arr).sum()))  # complete factors: bit-identical to prior global
+            else:
+                Y_ss = valid_x.astype(float).T @ y2_rowsum  # (M,) Σ_t v_x·(Σ_k v_y y²)
+            ssr = Y_ss - slopes * slopes * D             # (M,)
             sigma2 = np.maximum(ssr, 0.0) / df
             with np.errstate(divide="ignore", invalid="ignore"):
                 se = np.where(
@@ -214,7 +228,8 @@ def _compute_sign_vector(
                 # valid (t,k) cells for this aggregated factor
                 n_valid_c = float((x_agg_valid[:, None] & valid_y).sum())
                 df_c = max(n_valid_c - q_eff, 1.0)
-                ssr_c = Y_total_ss - slope_c * slope_c * D_c
+                Y_ss_c = float(x_agg_valid.astype(float) @ y2_rowsum)  # x_agg-valid rows
+                ssr_c = Y_ss_c - slope_c * slope_c * D_c
                 sigma2 = max(ssr_c, 0.0) / df_c
                 se_c = np.sqrt(sigma2 / D_c) if (sigma2 > 0 and D_c > 0) else np.inf
                 t_c = slope_c / se_c if se_c > 0 else 0.0
@@ -303,7 +318,7 @@ def _compute_sign_matrix_per_response(
         y_arr = np.nan_to_num(y_arr, nan=0.0)
 
     x2 = x_arr * x_arr                             # (T, M)
-    yy = (y_arr * y_arr).sum(axis=0)               # (N,) valid-only (zeros add 0)
+    y2 = y_arr * y_arr                             # (T, N) zero-filled y adds 0
     xy = x_arr.T @ y_arr                           # (M, N)
 
     # Per-(response k, factor j) valid-row count and denominator. A row t
@@ -323,7 +338,15 @@ def _compute_sign_matrix_per_response(
         # df = n_valid − 1 (one slope per (k, j) univariate fit), evaluated
         # on the valid-row count rather than nominal T.
         df = np.maximum(n_valid - 1.0, 1.0)
-        ssr = yy[:, None] - slopes * slopes * denom_kj      # (N, M)
+        # Y-SS per (response k, factor j) over rows where x_j is observed, matching
+        # the valid_x masking on denom_kj and n_valid. A per-response Σ_t y²
+        # (independent of j) over-counts when factor j carries NaN rows; the two
+        # are equal only when every factor is fully observed (the fast path).
+        if valid_x.all():
+            yss = (y2.sum(axis=0))[:, None]                 # (N,1) complete-factor fast path
+        else:
+            yss = y2.T @ valid_x.astype(float)              # (N,M) Σ_t v_x v_y y²
+        ssr = yss - slopes * slopes * denom_kj              # (N, M)
         sigma2 = np.maximum(ssr, 0.0) / df
         with np.errstate(divide="ignore", invalid="ignore"):
             se = np.where(
@@ -562,8 +585,13 @@ def _adaptive_penalty_weights(
     floor: float = 1e-3,
 ) -> np.ndarray:
     """
-    Derive adaptive L1 penalty weights from univariate slopes, following
-    Zou (2006) and the formulation in Richland et al. (2025) eq. (3.3).
+    Derive adaptive L1 penalty weights from univariate slope magnitudes,
+    following the Zou (2006) adaptive-LASSO construction. The weight is a
+    function of the univariate slope *magnitude* and is therefore distinct
+    from the univariate-guided *sign* constraint of Richland et al. (2025)
+    eq. (3.3) — that constraint fixes ``sign(β)`` and is applied separately
+    via the sign matrix; this function supplies only the magnitude-aware
+    penalty multiplier.
 
     For each cell (k, j), the adaptive penalty weight is
 

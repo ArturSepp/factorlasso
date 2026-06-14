@@ -182,7 +182,8 @@ def run_local_test(local_test: LocalTests):
         # Verify estimation_result_ fields have correct shape (N x M) = (6 x 3)
         r = model.estimation_result_
         n_assets, n_factors = 6, 3
-        assert r.estimated_beta.shape == (n_assets, n_factors), f"beta shape: {r.estimated_beta.shape}"
+        assert r.estimated_beta.shape == (n_assets, n_factors), \
+            f"beta shape: {r.estimated_beta.shape}"
         assert r.alpha.shape == (n_assets,), f"alpha shape: {r.alpha.shape}"
         assert r.r2.shape == (n_assets,), f"r2 shape: {r.r2.shape}"
         assert r.ss_total.shape == (n_assets,), f"ss_total shape: {r.ss_total.shape}"
@@ -190,8 +191,10 @@ def run_local_test(local_test: LocalTests):
         print("\nPASS: estimation_result_ shape checks")
 
         # Verify estimated_betas DataFrame orientation
-        assert list(model.estimated_betas.index) == list(y_returns.columns), "index should be assets"
-        assert list(model.estimated_betas.columns) == list(x_returns.columns), "columns should be factors"
+        assert list(model.estimated_betas.index) == list(y_returns.columns), \
+            "index should be assets"
+        assert list(model.estimated_betas.columns) == list(x_returns.columns), \
+            "columns should be factors"
         print("PASS: estimated_betas DataFrame orientation (index=assets, columns=factors)")
 
     elif local_test == LocalTests.LASSO_WITH_NANS:
@@ -287,7 +290,8 @@ def run_local_test(local_test: LocalTests):
             warmup_period=12
         )
         model.fit(x=x_returns, y=y_returns, verbose=False)
-        print_beta_comparison(true_betas, model.estimated_betas, title='GROUP_LASSO_CLUSTERS (HCGL)')
+        print_beta_comparison(true_betas, model.estimated_betas,
+                              title='GROUP_LASSO_CLUSTERS (HCGL)')
 
         print_diagnostics(model.estimation_result_, y_returns.columns)
         print(f"\nDiscovered clusters:\n{model.clusters}")
@@ -453,7 +457,8 @@ def run_local_test(local_test: LocalTests):
             span=52,
         )
         assert isinstance(result1, LassoEstimationResult), "Should return LassoEstimationResult"
-        assert result1.estimated_beta.shape == (n, m), f"beta shape should be ({n},{m}), got {result1.estimated_beta.shape}"
+        assert result1.estimated_beta.shape == (n, m), \
+            f"beta shape should be ({n},{m}), got {result1.estimated_beta.shape}"
         print("\nLASSO (valid_mask=None):")
         print(f"  Estimated betas (N x M):\n{result1.estimated_beta.round(3)}")
         print(f"  R²:    {result1.r2.round(3)}")
@@ -531,8 +536,10 @@ def run_local_test(local_test: LocalTests):
         model.fit(x=x_returns, y=y_returns)
         print_beta_comparison(true_betas, model.estimated_betas, title='DataFrame x (1 col)')
 
-        assert model.coef_.shape == (n_assets, 1), f"Expected ({n_assets}, 1), got {model.coef_.shape}"
-        assert model.intercept_.shape == (n_assets,), f"Expected ({n_assets},), got {model.intercept_.shape}"
+        assert model.coef_.shape == (n_assets, 1), \
+            f"Expected ({n_assets}, 1), got {model.coef_.shape}"
+        assert model.intercept_.shape == (n_assets,), \
+            f"Expected ({n_assets},), got {model.intercept_.shape}"
         print(f"\npredict shape: {model.predict(x_returns).shape}")
         print(f"score: {model.score(x_returns, y_returns):.4f}")
         assert model.score(x_returns, y_returns) > 0.5
@@ -549,7 +556,8 @@ def run_local_test(local_test: LocalTests):
         print("PASS: Series x produces identical results to DataFrame x")
 
         # Test HCGL falls back to LASSO for single factor (groups can still be formed on y)
-        model3 = LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS, reg_lambda=1e-5, span=52)
+        model3 = LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+                            reg_lambda=1e-5, span=52)
         model3.fit(x=x_returns, y=y_returns)
         assert model3.coef_.shape == (n_assets, 1)
         print("PASS: HCGL with single factor")
@@ -597,7 +605,8 @@ def run_local_test(local_test: LocalTests):
         print_beta_comparison(true_betas, model.estimated_betas, title='DataFrame y (1 col)')
 
         r = model.estimation_result_
-        assert model.coef_.shape == (1, n_factors), f"Expected (1, {n_factors}), got {model.coef_.shape}"
+        assert model.coef_.shape == (1, n_factors), \
+            f"Expected (1, {n_factors}), got {model.coef_.shape}"
         assert model.intercept_.shape == (1,), f"Expected (1,), got {model.intercept_.shape}"
         assert r.alpha.shape == (1,), f"Expected alpha shape (1,), got {r.alpha.shape}"
         assert r.r2.shape == (1,), f"Expected r2 shape (1,), got {r.r2.shape}"
@@ -627,7 +636,8 @@ def run_local_test(local_test: LocalTests):
         print("PASS: Single asset with NaN masking")
 
         # Test HCGL fallback for single asset
-        model4 = LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS, reg_lambda=1e-5, span=52)
+        model4 = LassoModel(model_type=LassoModelType.GROUP_LASSO_CLUSTERS,
+                            reg_lambda=1e-5, span=52)
         model4.fit(x=x_returns, y=y_returns)
         assert model4.coef_.shape == (1, n_factors)
         print("PASS: HCGL fallback for single asset")

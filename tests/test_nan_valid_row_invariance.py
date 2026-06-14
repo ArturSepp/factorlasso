@@ -132,3 +132,163 @@ def test_cluster_pooled_slope_matches_drop_nan_union():
     honest = num / den
     # All factors in one cluster share the aggregated slope.
     np.testing.assert_allclose(slopes, np.full(M, honest), atol=1e-10)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# NaN in X (factor columns): the closed-form SSR must mask the response
+# sum-of-squares by valid_x, exactly as the denominator and dof are masked.
+#
+# Regression for the bug where the SSR used a per-response (or global) Σ_t y²
+# not restricted to rows where the factor is observed. Under a NaN-bearing
+# factor this over-counts SSR_j, inflates σ², shrinks |t|, and over-gates that
+# factor's sign constraint. The slope path was never affected; only the gate.
+# Each test builds a scenario in which the over-count flips a gate decision and
+# asserts (a) the fixed code matches the honest drop-NaN gate, and (b) that
+# honest gate differs from the pre-fix global-Σy² gate, so the test cannot pass
+# on buggy code.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def _honest_per_response_xy(x_arr, y_arr, tau):
+    """Drop-NaN per-(k, j) univariate gate, masking by BOTH x_j and y_k."""
+    N = y_arr.shape[1]
+    M = x_arr.shape[1]
+    slopes = np.zeros((N, M))
+    signs = np.zeros((N, M))
+    for k in range(N):
+        for j in range(M):
+            m = (~np.isnan(x_arr[:, j])) & (~np.isnan(y_arr[:, k]))
+            if m.sum() == 0:
+                continue
+            xj, yk = x_arr[m, j], y_arr[m, k]
+            xx = float((xj * xj).sum())
+            if xx <= 0:
+                continue
+            b = float(xj @ yk) / xx
+            slopes[k, j] = b
+            df = max(int(m.sum()) - 1, 1)
+            ssr = float((yk * yk).sum()) - b * b * xx
+            se = np.sqrt(max(ssr, 0.0) / df / xx)
+            t = b / se if se > 0 else 0.0
+            signs[k, j] = 0.0 if abs(t) < tau else np.sign(b)
+    return slopes, signs
+
+
+def _buggy_per_response_signs(x_arr, y_arr, tau):
+    """Pre-fix gate: per-response Σ_t y² over y-valid rows, NOT x_j-restricted."""
+    N = y_arr.shape[1]
+    M = x_arr.shape[1]
+    signs = np.zeros((N, M))
+    for k in range(N):
+        yk_all = y_arr[~np.isnan(y_arr[:, k]), k]
+        yy = float((yk_all * yk_all).sum())
+        for j in range(M):
+            m = (~np.isnan(x_arr[:, j])) & (~np.isnan(y_arr[:, k]))
+            if m.sum() == 0:
+                continue
+            xj, yk = x_arr[m, j], y_arr[m, k]
+            xx = float((xj * xj).sum())
+            if xx <= 0:
+                continue
+            b = float(xj @ yk) / xx
+            df = max(int(m.sum()) - 1, 1)
+            ssr = yy - b * b * xx          # BUG: global per-response Σ y²
+            se = np.sqrt(max(ssr, 0.0) / df / xx)
+            t = b / se if se > 0 else 0.0
+            signs[k, j] = 0.0 if abs(t) < tau else np.sign(b)
+    return signs
+
+
+def _pooled_gate(x_arr, y_arr, tau, buggy):
+    """Drop-NaN cluster-pooled gate; buggy=True uses the global Σy² over-count."""
+    M = x_arr.shape[1]
+    N = y_arr.shape[1]
+    q_eff = int((np.sum(~np.isnan(y_arr), axis=0) > 0).sum())
+    yss_global = 0.0
+    for k in range(N):
+        yk = y_arr[~np.isnan(y_arr[:, k]), k]
+        yss_global += float((yk * yk).sum())
+    slopes = np.zeros(M)
+    signs = np.zeros(M)
+    for j in range(M):
+        vx = ~np.isnan(x_arr[:, j])
+        num = den = yss = 0.0
+        nval = 0
+        for k in range(N):
+            m = vx & (~np.isnan(y_arr[:, k]))
+            xj, yk = x_arr[m, j], y_arr[m, k]
+            num += float(xj @ yk)
+            den += float((xj * xj).sum())
+            yss += float((yk * yk).sum())
+            nval += int(m.sum())
+        if den <= 0:
+            continue
+        b = num / den
+        slopes[j] = b
+        df = max(nval - q_eff, 1)
+        ssr = (yss_global if buggy else yss) - b * b * den
+        se = np.sqrt(max(ssr, 0.0) / df / den)
+        t = b / se if se > 0 else 0.0
+        signs[j] = 0.0 if abs(t) < tau else np.sign(b)
+    return slopes, signs
+
+
+def test_per_response_gate_matches_drop_nan_with_nan_in_x():
+    # Factor 0 is NaN on the first 30 rows, which also carry very-large-variance
+    # y; the pre-fix global Σ y² inflates SSR_0 and (wrongly) gates factor 0.
+    rng = np.random.default_rng(7)
+    T, N, M = 60, 5, 3
+    X = rng.standard_normal((T, M))
+    beta = np.tile(np.array([0.9, 0.0, 0.6]), (N, 1))
+    Y = X @ beta.T + 0.25 * rng.standard_normal((T, N))
+    Y[:30, :] += 15.0 * rng.standard_normal((30, N))    # large early variance
+    X[:30, 0] = np.nan                                 # factor 0 late inception
+
+    tau = 0.75
+    signs, slopes = _compute_sign_matrix_per_response(
+        X, Y, auto_sign_threshold_t=tau, return_slopes=True
+    )
+    h_slopes, h_signs = _honest_per_response_xy(X, Y, tau)
+    buggy = _buggy_per_response_signs(X, Y, tau)
+
+    np.testing.assert_allclose(slopes, h_slopes, atol=1e-10)
+    np.testing.assert_array_equal(signs, h_signs)
+    assert not np.array_equal(h_signs, buggy)          # scenario triggers the bug
+    assert (signs[:, 0] != 0).any()                    # corrected gate keeps factor 0
+
+
+def test_cluster_pooled_gate_matches_drop_nan_with_nan_in_x():
+    rng = np.random.default_rng(11)
+    T, q, M = 60, 4, 3
+    X = rng.standard_normal((T, M))
+    beta = np.tile(np.array([0.9, 0.0, 0.6]), (q, 1))
+    Y = X @ beta.T + 0.25 * rng.standard_normal((T, q))
+    Y[:30, :] += 15.0 * rng.standard_normal((30, q))
+    X[:30, 0] = np.nan
+
+    tau = 0.75
+    sign_vec, slopes = _compute_sign_vector(
+        x_arr=X, y_arr=Y, clusters=None, master_constraints=None,
+        auto_sign_threshold_t=tau,
+    )
+    h_slopes, h_signs = _pooled_gate(X, Y, tau, buggy=False)
+    _, buggy_signs = _pooled_gate(X, Y, tau, buggy=True)
+
+    np.testing.assert_allclose(slopes, h_slopes, atol=1e-10)
+    np.testing.assert_array_equal(sign_vec, h_signs)
+    assert not np.array_equal(h_signs, buggy_signs)    # scenario triggers the bug
+    assert sign_vec[0] != 0                            # corrected gate keeps factor 0
+
+
+def test_full_data_ssr_unchanged_by_valid_x_mask():
+    # With every factor fully observed the per-factor mask is a no-op: the
+    # complete-X fast path must reproduce the honest global-Σy² gate exactly.
+    rng = np.random.default_rng(3)
+    T, N, M = 90, 8, 4
+    X = rng.standard_normal((T, M))
+    beta = rng.standard_normal((N, M)) * 0.5
+    Y = X @ beta.T + 0.4 * rng.standard_normal((T, N))
+    tau = 0.75
+    signs = _compute_sign_matrix_per_response(X, Y, auto_sign_threshold_t=tau)
+    _, h_signs = _honest_per_response_xy(X, Y, tau)
+    np.testing.assert_array_equal(signs, h_signs)

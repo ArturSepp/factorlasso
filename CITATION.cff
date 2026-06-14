@@ -11,7 +11,7 @@ authors:
 repository-code: "https://github.com/ArturSepp/factorlasso"
 url: "https://github.com/ArturSepp/factorlasso"
 license: GPL-3.0-or-later
-version: 0.4.2
+version: 0.4.3
 date-released: "2026-05-31"
 keywords:
   - lasso

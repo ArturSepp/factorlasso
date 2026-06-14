@@ -48,7 +48,7 @@ with grouped variables", *J. R. Statist. Soc. B*, 68(1), 49–67.
 from __future__ import annotations
 
 import warnings
-from dataclasses import asdict, dataclass, fields
+from dataclasses import dataclass, fields
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -99,7 +99,10 @@ class LassoEstimationResult:
             ``y_demeaned ≈ X_demeaned · β``       (no intercept term)
 
         and ``alpha`` here is computed *post-hoc* as the weighted mean of the
-        residuals on the demeaned data.  In particular:
+        residuals on the demeaned data, in the nominal-span EWMA norm
+        (per-observation weight ``lambda^k``, the same norm as the solver
+        loss; before v0.5.0 this diagnostic was inadvertently computed at an
+        effective span of ``≈ 2·span``).  In particular:
 
         * If ``span is None`` (sample-mean demeaning), this quantity is
           identically zero by the OLS first-order condition.
@@ -111,9 +114,11 @@ class LassoEstimationResult:
         backward compatibility; the **economic intercept** of the regression
         in original units is available separately as ``model.alpha_const_``.
     ss_total : np.ndarray, shape (N,)
-        EWMA-weighted total variance per response variable.
+        EWMA-weighted total variance per response variable
+        (nominal-span norm).
     ss_res : np.ndarray, shape (N,)
-        EWMA-weighted residual variance per response variable.
+        EWMA-weighted residual variance per response variable
+        (nominal-span norm).
     r2 : np.ndarray, shape (N,)
         R-squared per response variable.
     """
@@ -137,15 +142,25 @@ def _compute_solver_diagnostics(
     """In-sample fit diagnostics from solver weights.
 
     The returned ``alpha`` is the EWMA-weighted mean of residuals on the
-    demeaned data the solver received. It is **not** the regression
+    demeaned data the solver received, computed in the **nominal-span EWMA
+    norm** (per-observation weight ``lambda^k``) — the same norm as the
+    solver's error term. It is **not** the regression
     intercept in original units; see the docstring of
     :class:`LassoEstimationResult` for the distinction. The economic
     intercept of ``y = α + Xβ + ε`` is computed in
     :meth:`LassoModel.fit` from the sample means of the original (pre-
     demean) ``y`` and ``X``, and is exposed as ``model.alpha_const_``.
+
+    Solver ``weights`` carry ``sqrt(lambda)`` decay by construction (they
+    are squared inside the quadratic loss), so any *linear* EWMA statistic
+    here must use ``weights**2``. Reusing the sqrt-decay weights linearly
+    silently doubles the effective span of the statistic (a linear EWMA
+    with decay ``lambda^(1/2)`` has effective span ``≈ 2·span``); this was
+    the behaviour of versions before 0.5.0.
     """
-    col_sums = np.sum(weights, axis=0)
-    norm_w = np.divide(weights, col_sums, out=np.zeros_like(weights),
+    w_sq = np.square(weights)
+    col_sums = np.sum(w_sq, axis=0)
+    norm_w = np.divide(w_sq, col_sums, out=np.zeros_like(w_sq),
                        where=col_sums != 0)
 
     residuals = y - x @ estimated_beta.T
@@ -162,7 +177,14 @@ def _compute_solver_diagnostics(
 def _compute_solver_weights(
     t: int, n_y: int, span: Optional[float], valid_mask: np.ndarray
 ) -> np.ndarray:
-    """Observation weights: EWMA decay × validity mask."""
+    """Observation weights: EWMA decay × validity mask.
+
+    The returned weights carry ``sqrt(lambda)`` decay: the quadratic solver
+    loss squares them, so the loss norm is the nominal-span EWMA. Design
+    rule: these are sqrt-decay row scalings and may only enter quadratic
+    forms; any linear-EWMA statistic must use ``weights**2`` (see
+    :func:`_compute_solver_diagnostics`).
+    """
     if span is not None:
         w = compute_expanding_power(
             n=t,
@@ -275,19 +297,39 @@ def get_x_y_np(
     if np.any(x_all_nan):
         nan_mask_y[x_all_nan, :] = True
 
-    x_np = x.fillna(0.0).to_numpy()
-    y_np = y.fillna(0.0).to_numpy()
+    # Demean on NaN-PRESERVED arrays, zero-fill afterwards. Versions before
+    # 0.5.1 zero-filled first, so the per-column mean was diluted by the
+    # zero-filled cells: an asset with valid fraction f was demeaned by
+    # f·μ instead of μ, injecting a constant offset (1 − f)·μ into the
+    # solver response on its valid window. The offset biased β at second
+    # order (the demeaned X is not orthogonal to a constant on the valid
+    # sub-window) and deflated the residual-variance and R² diagnostics at
+    # first order. Computing the mean on NaN-preserved data removes the
+    # dilution: ``np.nanmean`` ranges over valid observations only, and
+    # ``compute_ewm`` runs its NaN-aware recursion (leading-NaN start from
+    # the first observation, FFILL through mid-stream gaps). Cells that are
+    # missing in the input are zero-filled AFTER demeaning — equivalent to
+    # "at the running mean" rather than "a zero return below it" — and are
+    # excluded from the loss by the validity mask in either case.
+    x_np = x.to_numpy(dtype=float)
+    y_np = y.to_numpy(dtype=float)
 
     if demean:
         if span is None:
-            x_np = x_np - np.nanmean(x_np, axis=0)
-            y_np = y_np - np.nanmean(y_np, axis=0)
+            with warnings.catch_warnings():
+                # all-NaN columns produce a harmless 'Mean of empty slice'
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                x_np = x_np - np.nanmean(x_np, axis=0)
+                y_np = y_np - np.nanmean(y_np, axis=0)
         else:
             x_np = x_np - compute_ewm(x_np, span=span)
             y_np = y_np - compute_ewm(y_np, span=span)
             x_np = x_np[1:, :]
             y_np = y_np[1:, :]
             nan_mask_y = nan_mask_y[1:, :]
+
+    x_np = np.nan_to_num(x_np, nan=0.0)
+    y_np = np.nan_to_num(y_np, nan=0.0)
 
     return x_np, y_np, (~nan_mask_y).astype(float)
 
@@ -731,7 +773,9 @@ class LassoModel:
 
         Preserved under this name for back-compatibility with code that
         read ``model.intercept_`` in pre-0.3.4 versions. New code should
-        use ``alpha_const_`` for the economic intercept.
+        use ``alpha_const_`` for the economic intercept. Since v0.5.0 this
+        diagnostic is computed in the nominal-span EWMA norm; v0.4.x and
+        earlier used an effective span of ``≈ 2·span``.
     estimation_result_ : LassoEstimationResult
         Full diagnostics (alpha, ss_total, ss_res, r2).
     clusters_ : pd.Series or None
@@ -816,7 +860,7 @@ class LassoModel:
     # Only effective when ``auto_sign_constraints=True``.
     auto_sign_threshold_t: Optional[float] = 0.75
 
-    # ── Adaptive penalty weights (Zou 2006; Richland et al. 2025 eq. 3.3) ──
+    # ── Adaptive penalty weights (Zou 2006 adaptive LASSO) ──
     # When True and auto_sign_constraints=True, the L1 penalty becomes
     # weighted: each |β_kj| is scaled by 1 / max(|β̂_uni_kj|, floor)^gamma,
     # where β̂_uni is the pooled univariate slope (same quantity that
@@ -994,9 +1038,13 @@ class LassoModel:
         unaffected.
         """
         if isinstance(x, np.ndarray):
-            x = np.atleast_2d(x)
-            if x.shape[0] == 1 and x.ndim == 2 and x.shape[1] != 1:
-                pass  # already (1, M); keep
+            # A 1-D array of length T is one regressor observed T times —
+            # mirror the y handling and the pd.Series-x convention. The
+            # previous ``np.atleast_2d`` turned shape (T,) into a (1, T)
+            # row (one observation, T features) and fit() then failed on
+            # index alignment with a misleading error message.
+            if x.ndim == 1:
+                x = x.reshape(-1, 1)
             x = pd.DataFrame(
                 x, columns=[f"x{j}" for j in range(x.shape[1])]
             )
@@ -1034,11 +1082,25 @@ class LassoModel:
         return x, y
 
     def copy(self, kwargs: Optional[Dict] = None) -> LassoModel:
-        """Create a copy, optionally overriding parameters."""
-        this = asdict(self).copy()
+        """Create a fresh, unfitted copy, optionally overriding parameters.
+
+        Only constructor hyperparameters are carried over (the same set
+        that :meth:`get_params` returns). Fitted state (``coef_``,
+        ``estimation_result_``, ...) is **not** copied: the copy is a new
+        estimator specification, not a snapshot of a fit. This matches
+        \\pkg{scikit-learn}'s ``clone`` semantics.
+
+        The previous implementation round-tripped the model through
+        ``dataclasses.asdict``, which (a) carried stale fitted state into
+        the copy, so a copy with a new ``reg_lambda`` still "looked
+        fitted" with coefficients from the old one, and (b) recursively
+        converted the nested :class:`LassoEstimationResult` dataclass
+        into a plain ``dict``, corrupting the attribute's type.
+        """
+        params = self.get_params()
         if kwargs is not None:
-            this.update(kwargs)
-        return LassoModel(**this)
+            params.update(kwargs)
+        return LassoModel(**params)
 
     def fit(
         self,
@@ -1100,13 +1162,30 @@ class LassoModel:
         elif self.model_type == LassoModelType.GROUP_LASSO:
             asset_clusters = self.group_data[y.columns]
         elif self.model_type == LassoModelType.GROUP_LASSO_CLUSTERS:
-            # Restore NaN before EWMA correlation (see block comment in the
-            # solver-dispatch section below for the rationale).
+            # Restore NaN before the clustering correlation (see block comment
+            # in the solver-dispatch section below for the rationale).
             y_for_corr = np.where(valid_mask > 0, y_np, np.nan)
-            corr = compute_ewm_covar(
-                a=y_for_corr, span=eff_span, is_corr=True,
-            )
-            corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
+            # The clustering correlation uses the SAME observation weighting
+            # as the solver loss: sample Pearson correlation (pairwise-
+            # complete over valid observations) when ``span=None``, the
+            # EWMA(span) correlation when a span is set. Versions before
+            # 0.5.1 always routed through ``compute_ewm_covar``, whose
+            # ``ewm_lambda = 0.94`` default (an effective span of ~32
+            # observations, the RiskMetrics daily convention) silently
+            # applied when ``span=None`` — so a uniform-weight fit clustered
+            # on a trailing-window correlation, contradicting both the
+            # documented contract (Pearson ``corr(Y)``) and the loss
+            # weighting. Correlation is invariant to centring, so computing
+            # it on the demeaned panel is equivalent to the raw panel.
+            if eff_span is None:
+                corr_df = pd.DataFrame(
+                    y_for_corr, columns=y.columns,
+                ).corr()
+            else:
+                corr = compute_ewm_covar(
+                    a=y_for_corr, span=eff_span, is_corr=True,
+                )
+                corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
             asset_clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
                 corr_df, cutoff_fraction=self.cutoff_fraction,
             )
@@ -1434,10 +1513,22 @@ class LassoModel:
 
     def predict(self, x: pd.DataFrame) -> pd.DataFrame:
         """
-        Predict response values.
+        Predict response values in original units.
 
-        Paper convention: Ŷ_t = α + β X_t.
-        Code (row-major): Ŷ = X @ β' + α.
+        Paper convention: Ŷ_t = α + β X_t, with α the **economic
+        intercept** ``alpha_const_`` (the constant reconstructed from the
+        same weighted means that produced β). Code (row-major):
+        Ŷ = X @ β' + α.
+
+        Versions before 0.5.1 added ``intercept_`` here — the EWMA-weighted
+        residual mean on the *demeaned* data, which is identically zero for
+        ``span=None`` and a finite-sample leftover otherwise. Predictions
+        therefore omitted the asset means, and ``score()`` (used by
+        :class:`LassoModelCV` and \\pkg{scikit-learn} model selection)
+        understated R² for any response with a non-zero mean.
+
+        When the model was fitted with ``demean=False``, the user asked for
+        a through-origin fit and no constant is added: Ŷ = X @ β'.
 
         Parameters
         ----------
@@ -1456,8 +1547,8 @@ class LassoModel:
             x = pd.DataFrame(np.atleast_2d(x), columns=list(self.coef_.columns))
         # Paper: Y_t = α + β X_t.  Row-major equivalent: Y = X @ β' + α
         y_hat = x[self.coef_.columns] @ self.coef_.T
-        if self.intercept_ is not None:
-            y_hat = y_hat + self.intercept_.values
+        if self.demean and self.alpha_const_ is not None:
+            y_hat = y_hat + self.alpha_const_.values
         return y_hat
 
     def score(self, x: pd.DataFrame, y: pd.DataFrame) -> float:
