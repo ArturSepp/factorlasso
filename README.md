@@ -1,7 +1,9 @@
 # factorlasso
 
 **Sparse multi-output regression with sign constraints, prior-centered
-regularisation, hierarchical group LASSO, and sparse group LASSO — via CVXPY.**
+regularisation, and two complementary cluster-grouped penalties —
+Hierarchical Clustering Group LASSO (HCGL) and Factor-Clustering Group
+LASSO (FCGL) — via CVXPY.**
 
 [![PyPI](https://img.shields.io/pypi/v/factorlasso.svg)](https://pypi.org/project/factorlasso/)
 [![Python](https://img.shields.io/pypi/pyversions/factorlasso.svg)](https://pypi.org/project/factorlasso/)
@@ -10,7 +12,8 @@ regularisation, hierarchical group LASSO, and sparse group LASSO — via CVXPY.*
 **Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Hierarchical
 Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for
 Multi-Asset Factor Models in Python*, submitted to the *Journal of Statistical
-Software*. See [Citation](#citation) for the BibTeX entry. The replication
+Software*. The manuscript is available [here](papers/jss_2026/paper/article.pdf).
+See [Citation](#citation) for the BibTeX entry. The replication
 material for the paper is in [`papers/jss_2026/`](papers/jss_2026/).
 
 `factorlasso` is a small, dependency-light Python package for fitting sparse
@@ -20,15 +23,27 @@ $$
 Y = X\beta^\top + \varepsilon,
 \qquad \beta \in \mathbb{R}^{N \times M}
 $$
+with L1 and L2 penalties along with sign constraints on factor loadings.
 
-when four things matter:
+It targets the financial data and regime where standard sparse-regression tools quietly
+misattribute risk: short samples, strongly correlated factors, and a known
+group structure or inferred cluster structure. On a multi-asset benchmark it matches scikit-learn, skglm,
+and asgl on generic accuracy while recovering a collinear credit factor that
+every one of them shrinks to zero (see [Empirical
+illustration](#empirical-illustration)).
+
+`factorlasso` is useful when four things matter:
 
 - Some coefficients **must be zero, non-negative, or non-positive**, possibly by
   asset, by factor, or both.
 - You have a **prior** β₀ and want to penalise `‖β − β₀‖`, not `‖β‖`.
 - You want **structured sparsity** — groups of responses entering or leaving
   the model together — where the groups are either user-supplied or discovered
-  by hierarchical clustering of the response correlation matrix (HCGL).
+  by hierarchical clustering of the response correlation matrix. Two grouping
+  geometries are offered: **HCGL** (Hierarchical Clustering Group LASSO), which
+  groups the penalty over each asset's factor loadings, and **FCGL**
+  (Factor-Clustering Group LASSO), which groups it over a cluster's assets on
+  each factor.
 - You want to combine **group-level selection with within-group elementwise
   sparsity** via a tunable mix of group L2 and L1 penalties (Sparse Group
   LASSO).
@@ -61,7 +76,7 @@ T, M, N = 200, 4, 10
 X = pd.DataFrame(rng.standard_normal((T, M)), columns=[f"f{i}" for i in range(M)])
 Y = pd.DataFrame(rng.standard_normal((T, N)), columns=[f"y{i}" for i in range(N)])
 
-model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-3).fit(x=X, y=Y)
+model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5).fit(x=X, y=Y)
 
 model.coef_         # (N, M) estimated β
 model.intercept_    # (N,) estimated α
@@ -76,6 +91,39 @@ estimator declares `__sklearn_tags__`, so it composes directly with
 `sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`. A fitted
 model also exposes `summary()` (a text fit report) and `plot_signs()` (a
 heatmap of the derived sign matrix).
+
+---
+
+## Motivation
+
+Factor models are central to quantitative finance, underpinning the
+commercial risk systems in industry use (among others, MSCI Barra, Axioma,
+and Bloomberg's multi-asset-class models). These systems decompose asset
+returns into a few common factors and an idiosyncratic residual
+(Rosenberg and McKibben 1973; Connor 1995). Practitioners who build
+factor-risk and capital-market-assumption systems must estimate the loadings
+of *N* asset returns on *M* tradable factors over a sample of length *T*,
+and they need software that produces loadings stable enough to feed a
+portfolio optimiser. In financial applications the estimation regime is
+adverse on four counts. First, the sample is short by statistical standards,
+because most core cross-asset indices and funds launched in the late 2000s
+and 2010s, giving 5 to 25 years of data. Second, the factors are often
+strongly correlated, so the design carries severe multicollinearity. Third,
+the cross-section is moderate (*N* ∈ [50, 200] at the multi-asset-class
+level). Fourth, the true coefficient matrix β ∈ ℝ^(N×M) exhibits a cluster
+structure that the practitioner does not know a priori, and traditional
+provider-based asset classifications are a weak proxy for the interdependence
+of assets. The cluster structure matters: assets in the same economic group
+(regional equity, investment-grade credit, hedge funds, and so on) typically
+share signs on the dominant factors, and an estimator that exploits this
+structure can outperform one that treats each asset independently.
+
+`factorlasso` is the estimation engine behind a multi-asset capital market
+assumptions and allocation framework. The loadings it produces feed the ROSAA framework for robust strategic and tactical
+asset allocation (Sepp, Ossa and Kastenholz 2026) and the
+MATF-CMA framework for capital market assumptions (Sepp, Hansen and
+Kastenholz 2026). Both papers are listed
+under [Citation](#citation).
 
 ---
 
@@ -95,7 +143,7 @@ signs.loc["y0", "f1"] = 0      # β[y0, f1] == 0
 signs.loc["y1", "f0"] = -1     # β[y1, f0] ≤ 0
 
 model = LassoModel(
-    reg_lambda=1e-3,
+    reg_lambda=1e-5,
     factors_beta_loading_signs=signs,
 ).fit(x=X, y=Y)
 ```
@@ -114,7 +162,7 @@ derivation under `LassoModelCV`).
 
 ```python
 model = LassoModel(
-    reg_lambda=1e-3,
+    reg_lambda=1e-5,
     auto_sign_constraints=True,    # derive signs from univariate slopes
     auto_sign_threshold_t=0.75,    # noise floor (default 0.75)
 ).fit(x=X, y=Y)
@@ -130,6 +178,7 @@ How the pooling is dispatched depends on `model_type`:
 | `LASSO` (or single-column `y`) | Per-`y`-column independent univariate fit. Rows of `derived_signs_` may differ across responses. |
 | `GROUP_LASSO` | Pool `y` within each `group_data` group. All members of a group share their `derived_signs_` row. |
 | `HIERARCHICAL_CLUSTER_GROUP_LASSO` | Pool `y` within each HCGL asset cluster (the same clustering the solver uses). |
+| `FACTOR_CLUSTER_GROUP_LASSO` | Pool `y` within each FCGL asset cluster — sign derivation is identical to HCGL; the modes differ only in the group norm of the penalty. |
 
 **The threshold gate.** `auto_sign_threshold_t` (default `0.75`) is a noise
 floor on the per-column univariate t-statistic. Factors with `|t| <`
@@ -161,7 +210,7 @@ the inverse univariate-slope magnitude:
 
 ```python
 model = LassoModel(
-    reg_lambda=1e-3,
+    reg_lambda=1e-5,
     auto_sign_constraints=True,
     auto_sign_adaptive_weights=True,   # opt in to magnitude-aware L1
     auto_sign_adaptive_gamma=1.0,      # Zou (2006) exponent γ
@@ -264,7 +313,7 @@ prior = 0.5 * np.sign(X.corrwith(Y["y0"]).to_numpy())
 # ... build an (N, M) DataFrame `prior_df` with that structure ...
 
 model = LassoModel(
-    reg_lambda=1e-3,
+    reg_lambda=1e-5,
     factors_beta_prior=prior_df,
 ).fit(x=X, y=Y)
 ```
@@ -279,7 +328,7 @@ the resulting clusters.
 ```python
 model = LassoModel(
     model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-    reg_lambda=1e-4,
+    reg_lambda=1e-5,
     cutoff_fraction=0.5,   # tune granularity; smaller → tighter clusters
     span=60,               # EWMA span for correlation estimate
 ).fit(x=X, y=Y)
@@ -312,7 +361,7 @@ $$
 ```python
 model = LassoModel(
     model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-    reg_lambda=1e-4,
+    reg_lambda=1e-5,
     cutoff_fraction=0.65,   # coarser clusters
     l1_weight=0.10,         # α — group L2 still primary, L1 corrects within-group
 ).fit(x=X, y=Y)
@@ -341,7 +390,7 @@ sparsity.
 HCGL groups the penalty along the **rows** of the loading matrix: the L2
 norm runs over each asset's factor loadings, and the discovered cluster
 enters only through the per-cluster weight. `factorlasso` also offers the
-complementary grouping, FCGL (`CLUSTER_FACTOR_GROUP_LASSO`), in which the
+complementary grouping, FCGL (`FACTOR_CLUSTER_GROUP_LASSO`), in which the
 L2 norm runs over the **assets of a cluster on each factor**:
 
 $$
@@ -355,8 +404,8 @@ whole cluster-by-factor block enters or leaves the model together.
 
 ```python
 model = LassoModel(
-    model_type=LassoModelType.CLUSTER_FACTOR_GROUP_LASSO,
-    reg_lambda=1e-4,
+    model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+    reg_lambda=1e-5,
     cutoff_fraction=0.5,
     auto_sign_constraints=True,   # sign derivation is identical to HCGL
 ).fit(x=X, y=Y)
@@ -397,19 +446,81 @@ within-cluster homogeneity of the application.
 
 **Reach for something else when:**
 
-- Your problem is single-output elastic-net at large scale — `scikit-learn`,
-  `celer`, or `skglm` will be faster and have years of battle-testing.
-- You need fixed-group group LASSO at very large scale — `group-lasso` or
-  `asgl` are the standard tools.
-- You need sparse group LASSO at large α (close to 1.0) or at very large
-  scale — specialised solvers like `asgl` or `SGL` handle proximal-operator
-  acceleration that the CVXPY formulation here does not. This package's
-  sparse group LASSO is intended for moderate α ∈ [0, 0.3] where the group
-  structure remains primary.
 - You need non-linear models, random effects, or GLM link functions.
 
-A feature-by-feature comparison matrix is in
+### Feature comparison
+
+The table below compares `factorlasso` against six sparse-regression packages
+in the Python and R ecosystems. A checkmark indicates that the feature is
+provided natively; a dash indicates that it is absent or must be implemented
+externally by the practitioner. `sklearn` refers specifically to the `Lasso`
+class.
+
+| Feature | sklearn | gglasso | sparsegl | asgl | celer | adelie | factorlasso |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Multi-response interface (*N* × *M* in one fit) | – | – | – | – | – | ✓ | ✓ |
+| ℓ₁ penalty (LASSO) | ✓ | – | ✓ | ✓ | ✓ | – | ✓ |
+| Group ℓ₂ penalty (group LASSO) | – | ✓ | ✓ | ✓ | – | ✓ | ✓ |
+| Sparse-group mixing (α ∈ [0, 1]) | – | – | ✓ | ✓ | – | – | ✓ |
+| HCGL cluster discovery (clusters found internally) | – | – | – | – | – | – | ✓ |
+| Cluster-by-factor block penalty (FCGL) | – | – | – | – | – | – | ✓ |
+| Sign constraints at cell level | – | – | – | – | – | – | ✓ |
+| Noise-floor *t*-statistic gate | – | – | – | – | – | – | ✓ |
+| Adaptive penalty reweighting | – | – | – | ✓ | – | – | ✓ |
+| Prior-centred shrinkage (β⁰ ≠ 0) | – | – | – | – | – | – | ✓ |
+| EWMA observation weighting | – | – | – | – | – | – | ✓ |
+| NaN-tolerant API | – | – | – | – | – | – | ✓ |
+| Factor covariance assembly | – | – | – | – | – | – | ✓ |
+| Implementation language | Python | R | R | Python | Python | Python | Python |
+
+A more detailed feature-by-feature comparison is in
 [`COMPARISON.md`](COMPARISON.md).
+
+---
+
+## Empirical illustration
+
+The figure below is from the accompanying paper. It shows the mean Credit
+loading of seventeen investment-grade, high-yield, and emerging-market bond
+ETFs as a function of regularisation strength, on a 2017–2026 excess-return
+panel where the Credit and Equity factors are 0.84 correlated.
+
+![Credit attribution versus regularisation strength](papers/jss_2026/paper/figures/etf_credit_beta_vs_lambda.png)
+
+These instruments are, by construction, credit exposures. Under that
+collinearity an unconstrained sparse or group penalty (red) shrinks the
+weakly identified Credit loading to zero and books the exposure as Equity
+instead — a misattribution that no choice of penalty strength repairs. The
+prior-centred HCGL estimator (green) holds the loading at its economic prior.
+The prior-centred FCGL estimator (blue) retains more credit attribution under
+shrinkage, because its cluster-by-factor penalty keeps the high-signal
+high-yield and emerging-market sleeves above the prior rather than pulling
+every sleeve to it.
+
+The benefit for this class of factor model is concrete. A capital market
+assumptions engine, or any system that decomposes portfolio risk by factor,
+needs the credit risk to stay on the credit factor. `factorlasso` provides
+the three mechanisms that hold the attribution in place where an
+off-the-shelf LASSO cannot: cell-level sign constraints that forbid the sign
+flip into Equity, prior-centred shrinkage that pulls a weakly identified
+loading toward an economic target rather than toward zero, and the
+cluster-grouped penalties that share signal across economically similar
+assets. The loadings stay interpretable and stable enough to feed a portfolio
+optimiser, which is the property a deployed factor-risk system requires and an
+unconstrained penalty does not deliver.
+
+The paper quantifies this on a calibrated 102-asset universe with known true
+loadings. On generic metrics — support recovery, out-of-sample R², systematic
+covariance error — `factorlasso` is statistically indistinguishable from
+scikit-learn, skglm, and asgl, so **the structural machinery costs nothing in
+ordinary accuracy.** But under the 0.84 credit–equity collinearity the universe
+carries, every competing package and every unconstrained configuration shrinks
+the weakly identified credit loading toward zero and books it as equity. The
+sign- and prior-constrained configuration alone recovers it: **a mean Credit
+loading of 0.32 against a true 0.36, versus at most 0.08 for the competing
+packages.** The combination is the point — a prior alone can be re-centred
+around any package, but no surveyed package expresses a prior *jointly* with
+cell-level sign constraints and internally discovered clusters.
 
 ---
 
@@ -435,7 +546,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The suite currently has 252 tests at 98%+ coverage, including numerical parity
+The suite currently has 273 tests at 98%+ coverage, including numerical parity
 tests against `qis` for the EWMA primitives and against `scikit-learn` for the
 LASSO path.
 
@@ -485,7 +596,7 @@ framework in which it was developed, and the software itself:
              Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
              in {Python}},
   year    = {2026},
-  version = {0.5.4},
+  version = {0.5.5},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

@@ -700,7 +700,7 @@ def _aggregate_to_block_weights(
     """
     Aggregate the ``(N, M)`` cell-level adaptive weights into a per-block
     weight matrix of shape ``(G, M)`` for the cluster x factor group
-    penalty of ``CLUSTER_FACTOR_GROUP_LASSO``.
+    penalty of ``FACTOR_CLUSTER_GROUP_LASSO``.
 
     For each cluster ``g`` and factor ``j``, the aggregation is the
     root-mean-square of the cell weights over the *non-gated* members of

@@ -137,7 +137,7 @@ def fit_for(name, d, with_prior=False):
     if name == "row":
         return make_econ_fit(dict(model_type=MT.HIERARCHICAL_CLUSTER_GROUP_LASSO, **base))
     if name == "cluster_factor":
-        return make_econ_fit(dict(model_type=MT.CLUSTER_FACTOR_GROUP_LASSO, **base))
+        return make_econ_fit(dict(model_type=MT.FACTOR_CLUSTER_GROUP_LASSO, **base))
     if name == "sklearn_lasso":
         return ESTIMATORS["sklearn_lasso"]
     raise ValueError(name)

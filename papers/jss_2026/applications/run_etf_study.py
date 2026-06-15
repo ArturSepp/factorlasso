@@ -164,7 +164,7 @@ def empirical(X, Y, uni, sign, prior, figdir: Path, outdir: Path):
     curve = []
     kw = dict(PROD_FL, model_type=MT.HIERARCHICAL_CLUSTER_GROUP_LASSO,
               factors_beta_loading_signs=sign)
-    kw_fcgl = dict(PROD_FL, model_type=MT.CLUSTER_FACTOR_GROUP_LASSO,
+    kw_fcgl = dict(PROD_FL, model_type=MT.FACTOR_CLUSTER_GROUP_LASSO,
                    factors_beta_loading_signs=sign)
     for lam in path:
         b0 = LassoModel(reg_lambda=float(lam), **kw).fit(x=X, y=Y).coef_.reindex(index=tickers, columns=FACT)

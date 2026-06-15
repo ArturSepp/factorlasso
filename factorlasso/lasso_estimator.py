@@ -77,7 +77,7 @@ class LassoModelType(Enum):
     LASSO = 1                   #: Standard L1 LASSO
     GROUP_LASSO = 2             #: Group LASSO with user-defined groups
     HIERARCHICAL_CLUSTER_GROUP_LASSO = 3  #: HCGL — row-grouped penalty on discovered clusters
-    CLUSTER_FACTOR_GROUP_LASSO = 4  #: FCGL — cluster-by-factor block penalty
+    FACTOR_CLUSTER_GROUP_LASSO = 4  #: FCGL — cluster-by-factor block penalty
 
 
 @dataclass
@@ -740,7 +740,7 @@ class LassoModel:
         Selects the optimisation problem: ``LASSO`` (cellwise L1),
         ``GROUP_LASSO`` (external group partition), ``HIERARCHICAL_CLUSTER_GROUP_LASSO``
         (HCGL row-grouped penalty on a discovered partition), or
-        ``CLUSTER_FACTOR_GROUP_LASSO`` (FCGL cluster-by-factor block
+        ``FACTOR_CLUSTER_GROUP_LASSO`` (FCGL cluster-by-factor block
         penalty on the same discovered partition).
     reg_lambda : float, default 1e-5
     span : float, optional
@@ -759,7 +759,7 @@ class LassoModel:
     cutoff_fraction : float, default 0.5
         Fraction of ``max(pdist)`` at which to cut the dendrogram when
         ``model_type == HIERARCHICAL_CLUSTER_GROUP_LASSO`` or
-        ``CLUSTER_FACTOR_GROUP_LASSO`` (both discover clusters the same
+        ``FACTOR_CLUSTER_GROUP_LASSO`` (both discover clusters the same
         way).  Ignored by ``LASSO`` and ``GROUP_LASSO``.
         See :func:`factorlasso.compute_clusters_from_corr_matrix`.
     group_penalty : {"normalized", "yuan_lin"}, default "normalized"
@@ -781,7 +781,7 @@ class LassoModel:
         additional within-group elementwise zeroing for assets whose
         loadings are noisy. Only consumed when ``model_type`` is
         ``GROUP_LASSO``, ``HIERARCHICAL_CLUSTER_GROUP_LASSO``, or
-        ``CLUSTER_FACTOR_GROUP_LASSO``; ignored for pure
+        ``FACTOR_CLUSTER_GROUP_LASSO``; ignored for pure
         ``LASSO`` since L1 is the only penalty already.
     factors_beta_loading_signs : pd.DataFrame, optional
     factors_beta_prior : pd.DataFrame, optional
@@ -797,7 +797,7 @@ class LassoModel:
           members of a group share their ``derived_signs_`` row.
         * ``HIERARCHICAL_CLUSTER_GROUP_LASSO``: signs pooled within each HCGL asset
           cluster (the same clustering the group solver uses).
-        * ``CLUSTER_FACTOR_GROUP_LASSO``: signs pooled within each HCGL
+        * ``FACTOR_CLUSTER_GROUP_LASSO``: signs pooled within each HCGL
           asset cluster, identically to ``HIERARCHICAL_CLUSTER_GROUP_LASSO``; the two
           modes share the sign derivation and differ only in the group
           norm of the penalty.
@@ -1233,7 +1233,7 @@ class LassoModel:
             asset_clusters = self.group_data[y.columns]
         elif self.model_type in (
             LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-            LassoModelType.CLUSTER_FACTOR_GROUP_LASSO,
+            LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
         ):
             # Restore NaN before the clustering correlation (see block comment
             # in the solver-dispatch section below for the rationale).
@@ -1405,7 +1405,7 @@ class LassoModel:
                 signs=auto_signs_np if auto_signs_np is not None
                 else np.sign(auto_slopes_np),
             )
-            if self.model_type == LassoModelType.CLUSTER_FACTOR_GROUP_LASSO:
+            if self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO:
                 col_weights_np = _aggregate_to_block_weights(
                     cell_weights=penalty_weights_np,
                     signs=auto_signs_np if auto_signs_np is not None
@@ -1480,7 +1480,7 @@ class LassoModel:
                 penalty_weights=penalty_weights_np,
                 row_weights=row_weights_np,
             )
-        elif self.model_type == LassoModelType.CLUSTER_FACTOR_GROUP_LASSO:
+        elif self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO:
             # Same HCGL cluster discovery as HIERARCHICAL_CLUSTER_GROUP_LASSO, but the
             # group penalty is taken over each cluster x factor block
             # (block_mode="cluster_factor") rather than over each asset row.

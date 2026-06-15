@@ -7,7 +7,7 @@ key HCGL configurations it runs a matched pair that is identical except for the
 group-penalty mode:
 
     HIERARCHICAL_CLUSTER_GROUP_LASSO       (row)            vs
-    CLUSTER_FACTOR_GROUP_LASSO (cluster x factor)
+    FACTOR_CLUSTER_GROUP_LASSO (cluster x factor)
 
 so any difference in the reported metrics is attributable to the penalty
 geometry alone, on the same 102-asset / 9-factor calibrated structure and the
@@ -60,7 +60,7 @@ PAIRS = [
 
 MODES = [
     ("row", MT.HIERARCHICAL_CLUSTER_GROUP_LASSO),
-    ("cluster_factor", MT.CLUSTER_FACTOR_GROUP_LASSO),
+    ("cluster_factor", MT.FACTOR_CLUSTER_GROUP_LASSO),
 ]
 
 # Metrics worth showing for the comparison (subset of the table's columns most

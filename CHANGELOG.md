@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.5.5] — 2026-06-15
+
+### Changed (breaking)
+
+- Renamed the `LassoModelType.CLUSTER_FACTOR_GROUP_LASSO` enum member to
+  `LassoModelType.FACTOR_CLUSTER_GROUP_LASSO`, for consistency with
+  `HIERARCHICAL_CLUSTER_GROUP_LASSO` (both now end in `_CLUSTER_GROUP_LASSO`)
+  and so the member initials match the FCGL ("Factor-Clustering Group LASSO")
+  acronym used in the paper and documentation. The integer value is unchanged
+  (`4`), so code or serialised configuration that selects the mode by value
+  continues to work. Code that references the member by name must update to
+  `FACTOR_CLUSTER_GROUP_LASSO`; the old name no longer exists and raises
+  `AttributeError`. No change to behaviour or to any numerical output — only
+  the member name changed.
+
 ## [0.5.4] — 2026-06-14
 
 ### Changed (breaking)

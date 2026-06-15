@@ -188,7 +188,7 @@ def get_fit(name, d):
     if name == "factorlasso_fcgl_sign_adapt":
         # FCGL twin of HCGL+sign+adapt: identical config, cluster-by-factor
         # block penalty instead of the per-row penalty.
-        return make_econ_fit(dict(model_type=MT.CLUSTER_FACTOR_GROUP_LASSO,
+        return make_econ_fit(dict(model_type=MT.FACTOR_CLUSTER_GROUP_LASSO,
                                   cutoff_fraction=PROD_CUTOFF, **PROD_SIGN, **PROD_ADAPT))
     if name == "factorlasso_sgl_hcgl_sign_adapt":
         return make_econ_fit(dict(base, l1_weight=0.1, **PROD_SIGN, **PROD_ADAPT))
@@ -210,7 +210,7 @@ def get_fit(name, d):
     if name == "factorlasso_fcgl_sign_prior":
         # FCGL twin of HCGL+SIGN+PRIOR (the deployed configuration): identical
         # sign+prior config, cluster-by-factor block penalty.
-        return make_econ_fit(dict(model_type=MT.CLUSTER_FACTOR_GROUP_LASSO,
+        return make_econ_fit(dict(model_type=MT.FACTOR_CLUSTER_GROUP_LASSO,
                                   cutoff_fraction=PROD_CUTOFF, **PROD_SIGN, **PROD_ADAPT,
                                   factors_beta_loading_signs=d["sign"],
                                   factors_beta_prior=d["prior"]))

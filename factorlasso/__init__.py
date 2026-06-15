@@ -8,7 +8,7 @@ structure, then assemble consistent factor covariance matrices. The
 group penalty is offered in two modes: a row-grouped penalty
 (``HIERARCHICAL_CLUSTER_GROUP_LASSO``, HCGL) that groups each asset's factor
 loadings, and a cluster-by-factor block penalty
-(``CLUSTER_FACTOR_GROUP_LASSO``, FCGL) that groups the loadings of a
+(``FACTOR_CLUSTER_GROUP_LASSO``, FCGL) that groups the loadings of a
 cluster's assets on each factor.
 
 Quick start

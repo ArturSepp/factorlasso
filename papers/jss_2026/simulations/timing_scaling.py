@@ -84,7 +84,7 @@ def get_fit(name):
     if name == "fl_hcgl_sign_adapt":
         return _fl_fit(dict(PROD))
     if name == "fl_fcgl_sign_adapt":
-        return _fl_fit(dict(PROD, model_type=MT.CLUSTER_FACTOR_GROUP_LASSO))
+        return _fl_fit(dict(PROD, model_type=MT.FACTOR_CLUSTER_GROUP_LASSO))
     if name == "fl_sgl_sign_adapt":
         return _fl_fit(dict(PROD, l1_weight=0.1))
     return _competitor_fit(name)

@@ -520,7 +520,7 @@ of a cluster on one factor. We call the first mode
 hierarchical-clustering group LASSO (HCGL,
 \code{HIERARCHICAL_CLUSTER_GROUP_LASSO}) and the second
 factor-clustering group LASSO (FCGL,
-\code{CLUSTER_FACTOR_GROUP_LASSO}). The FCGL group penalty replaces the
+\code{FACTOR_CLUSTER_GROUP_LASSO}). The FCGL group penalty replaces the
 per-row norm with a per-block norm over each cluster-by-factor block,
 %
 \begin{equation} \label{eq:fcgl}
@@ -772,7 +772,7 @@ asset-class taxonomy.
 \item \code{LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO} solves the group-penalised
 problem with the partition discovered internally by HCGL on
 $\operatorname{corr}(\bm{Y})$, as described in Section~\ref{sec:hcgl}.
-\item \code{LassoModelType.CLUSTER_FACTOR_GROUP_LASSO} solves the FCGL
+\item \code{LassoModelType.FACTOR_CLUSTER_GROUP_LASSO} solves the FCGL
 problem of Equation~\ref{eq:fcgl} on the same discovered partition,
 grouping the penalty over each cluster-by-factor block rather than over
 each asset row.
@@ -2124,7 +2124,7 @@ steps.
 \section*{Computational details}
 
 The results in this paper were obtained using \proglang{Python}~3.12.7
-on Windows~11 with the \pkg{factorlasso}~0.5.3 package,
+on Windows~11 with the \pkg{factorlasso}~0.5.5 package,
 \pkg{CVXPY}~1.7 \citep{Diamond+Boyd:2016} with the CLARABEL solver,
 \pkg{NumPy}~1.26 \citep{Harris+etal:2020},
 \pkg{pandas}~3.0 \citep{McKinney:2010}, \pkg{SciPy}
