@@ -23,6 +23,7 @@ $$
 Y = X\beta^\top + \varepsilon,
 \qquad \beta \in \mathbb{R}^{N \times M}
 $$
+
 with L1 and L2 penalties along with sign constraints on factor loadings.
 
 It targets the financial data and regime where standard sparse-regression tools quietly
