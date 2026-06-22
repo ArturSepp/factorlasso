@@ -41,6 +41,7 @@ from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as spc
+from scipy.spatial.distance import squareform
 
 # ═══════════════════════════════════════════════════════════════════════
 # Clustering from correlation
@@ -153,7 +154,7 @@ def compute_clusters_from_corr_matrix(
     # exact zeros on the diagonal as squareform requires.
     dist_square = np.clip(1.0 - corr_matrix.to_numpy(), 0.0, 2.0)
     np.fill_diagonal(dist_square, 0.0)
-    pdist = spc.distance.squareform(dist_square, checks=False)
+    pdist = squareform(dist_square, checks=False)
     linkage = spc.linkage(pdist, method=linkage_method)
     cutoff = cutoff_fraction * np.max(pdist)
     idx = spc.fcluster(linkage, cutoff, 'distance')
