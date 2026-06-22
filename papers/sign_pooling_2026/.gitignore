@@ -1,0 +1,15 @@
+# LaTeX build artifacts
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.spl
+paper/*.synctex.gz
+paper/*.abs
+paper/article.pdf
+# regenerated raster previews (the paper uses the .pdf figures)
+paper/*.png
+# python
+**/__pycache__/
+*.pyc

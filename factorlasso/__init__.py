@@ -62,8 +62,11 @@ from factorlasso.lasso_estimator import (
     LassoModel,
     LassoModelType,
     get_x_y_np,
+    solve_cooperative_group_lasso_cvx_problem,
     solve_group_lasso_cvx_problem,
+    solve_group_lasso_path,
     solve_lasso_cvx_problem,
+    solve_unilasso_cvx_problem,
 )
 from factorlasso.sign_constraints import (
     derive_sign_constraints,
@@ -83,6 +86,9 @@ __all__ = [
     "LassoEstimationResult",
     "solve_lasso_cvx_problem",
     "solve_group_lasso_cvx_problem",
+    "solve_group_lasso_path",
+    "solve_cooperative_group_lasso_cvx_problem",
+    "solve_unilasso_cvx_problem",
     "get_x_y_np",
     # Factor covariance assembly
     "CurrentFactorCovarData",

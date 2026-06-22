@@ -17,37 +17,37 @@
 \And Mika A. Kastenholz\\LGT Bank}
 \Plainauthor{Artur Sepp, Mika A. Kastenholz}
 
-\title{\pkg{factorlasso}: Hierarchical Clustering Group LASSO (HCGL)
-with Cluster-Pooled Sign Derivation for Multi-Asset Factor
-Models in \proglang{Python}}
-\Plaintitle{factorlasso: Hierarchical Clustering Group LASSO (HCGL)
-with Cluster-Pooled Sign Derivation for Multi-Asset Factor
-Models in Python}
-\Shorttitle{\pkg{factorlasso}: HCGL Factor Models in \proglang{Python}}
+\title{\pkg{factorlasso}: Sparse Multi-Output Regression with
+Cluster-Grouped Sign Constraints in \proglang{Python}}
+\Plaintitle{factorlasso: Sparse Multi-Output Regression with
+Cluster-Grouped Sign Constraints in Python}
+\Shorttitle{\pkg{factorlasso}: Sparse Multi-Output Regression in \proglang{Python}}
 
 \Abstract{
-Multi-asset factor models must be estimated from short samples at low
-signal-to-noise, where the interpretability of the loadings depends on
-cluster structure, on economically sensible loading signs, and on
-loading magnitudes. To our knowledge, no surveyed sparse-regression package combines internal cluster discovery, cell-level sign constraints, and
-prior-centred shrinkage. For portfolio optimisation and risk
-decomposition, practitioners must assemble these components by
-hand and can break the alpha-beta consistency that capital market
-assumptions (CMAs) require. The \pkg{factorlasso} \proglang{Python} package
-supplies the combination through a \pkg{scikit-learn}-style
-\code{fit}/\code{predict} interface built on \pkg{CVXPY}, in which
-clusters are discovered from the response correlation matrix, a
-closed-form residual sum-of-squares identity vectorises a noise-floor
-$t$~statistic gate, and the resulting sign matrix constrains a
-prior-centred sparse-group LASSO with adaptive penalty reweighting. On
-a data-generating process calibrated to a publicly reproducible
-$102$-asset multi-asset exchange-traded-fund universe with known true
-loadings, three competing \proglang{Python} packages
-match \pkg{factorlasso} on $\beta$-MSE and out-of-sample fit. Yet only its sign- and
-prior-constrained configuration recovers the collinear credit factor
-that zero-centred shrinkage pushes into equity. The package ships a
-reproducible simulation and application harness and is available
-from the Python Package Index under the GNU General Public License.
+Many regression problems require a coefficient matrix that maps a set of
+predictors to several related responses, where the responses fall into
+groups that share the sign of their loadings, the sample is short, and the
+predictors are correlated. Multi-asset factor modelling in finance is a
+leading instance. The \pkg{factorlasso} \proglang{Python} package fits such
+models through a \pkg{scikit-learn}-style \code{fit}/\code{predict}
+interface built on \pkg{CVXPY}. It implements a family of sparse estimators,
+the LASSO, the group LASSO, the sparse group LASSO, adaptive weighting,
+univariate-guided regression, and the cooperative LASSO, as configurations
+of one objective, and adds three capabilities that, to our knowledge, no
+surveyed package combines: cluster structure obtained from the response
+correlation matrix, cell-level sign constraints derived from a
+cluster-pooled univariate slope and gated by a noise-floor $t$~statistic,
+and prior-centred shrinkage toward a non-zero baseline. The gated
+cluster-pooled sign mechanism and its consistency theory are developed in a
+companion methodology paper. On a data-generating process calibrated to a
+publicly reproducible $102$-asset multi-asset exchange-traded-fund universe
+with known true loadings, three competing \proglang{Python} packages match
+\pkg{factorlasso} on coefficient error and out-of-sample fit, yet only its
+sign- and prior-constrained configuration keeps the collinear credit
+factor on a correctly signed, non-zero loading, where zero-centred
+shrinkage collapses it into equity. The package ships a
+reproducible simulation and application harness and is available from the
+Python Package Index under the GNU General Public License.
 }
 
 \Keywords{sparse regression, group LASSO, sign constraints,
@@ -77,29 +77,31 @@ E-mail: \email{mika.kastenholz@lgt.com}
 
 \section[Introduction]{Introduction} \label{sec:intro}
 
-Factor models are central to quantitative finance, underpinning the
-commercial risk systems in industry use (among others, MSCI Barra,
-Axioma, and Bloomberg's multi-asset-class models). These systems
-decompose asset returns into a few common factors and an idiosyncratic
-residual \citep{Rosenberg+McKibben:1973, Connor:1995}. Practitioners who
-build factor-risk and capital-market-assumption systems must estimate the
-loadings of $N$ asset returns on $M$ tradable factors over a sample of
-length $T$, and they need software that produces loadings stable enough
-to feed a portfolio optimiser. In financial applications the estimation
-regime is adverse on four counts. First, the sample is short by
-statistical standards, because most core cross-asset indices and funds
-launched in the late 2000s and 2010s, giving 5 to 25 years of data.
-Second, the factors are often strongly correlated, so the design carries
-severe multicollinearity. Third, the cross-section is moderate
+Multi-output sparse regression estimates a coefficient matrix
+$\bm{\beta} \in \mathbb{R}^{N \times M}$ that maps $M$ predictors to $N$
+related responses. In many applications the responses fall into groups
+whose members share the sign of their loading on a common predictor, the
+sample length $T$ is short relative to the number of parameters, and the
+predictors are correlated. An estimator that exploits the shared group
+structure and the known signs can outperform one that treats each response
+independently. A leading instance is the multi-asset factor model in
+quantitative finance, which underpins the commercial risk systems in
+industry use, among others MSCI Barra, Axioma, and Bloomberg's
+multi-asset-class models. These systems decompose asset returns into a few
+common factors and an idiosyncratic residual
+\citep{Rosenberg+McKibben:1973, Connor:1995}. There the responses are the
+$N$ asset returns, the predictors are $M$ tradable factors, and the sample
+is $T$ periods, and the estimation regime is adverse on four counts. First,
+the sample is short by statistical standards, because most core cross-asset
+indices and funds launched in the late 2000s and 2010s, giving 5 to 25 years
+of data. Second, the factors are often strongly correlated, so the design
+carries severe multicollinearity. Third, the cross-section is moderate
 ($N \in [50, 200]$ at the multi-asset-class level). Fourth, the true
-coefficient matrix $\bm{\beta} \in \mathbb{R}^{N \times M}$ exhibits a
-cluster structure that the practitioner does not know a priori, and
-traditional provider-based asset classifications are a weak proxy for
-the interdependence of assets. The cluster structure matters: assets in
-the same economic group (regional equity, investment-grade credit,
-hedge funds, and so on) typically share signs on the dominant factors,
-and an estimator that exploits this structure can outperform one that
-treats each asset independently.
+coefficient matrix exhibits a cluster structure that the practitioner does
+not know a priori, and traditional provider-based asset classifications are
+a weak proxy for the interdependence of assets. Assets in the same economic
+group, such as regional equity, investment-grade credit, or hedge funds,
+typically share signs on the dominant factors.
 
 
 Sparse regression has a long history of methodology and software for
@@ -130,7 +132,9 @@ however, is not available as a single coherent software artifact. In
 the \proglang{Python} ecosystem, \pkg{scikit-learn}'s \code{Lasso}
 class \citep{Pedregosa+etal:2011} handles the basic single-response
 LASSO with no group structure and no multi-response capability. The
-\pkg{group-lasso}, \pkg{asgl}, and \pkg{celer} packages handle group
+\pkg{group-lasso}, \pkg{asgl}
+\citep{Mendez-Civieta+Aguilera-Morillo+Lillo:2021}, and \pkg{celer}
+\citep{Massias+Gramfort+Salmon:2018} packages handle group
 LASSO with externally specified groups but do not perform cluster
 discovery and do not implement sign constraints at the cell level. The
 \pkg{adelie} package \citep{Yang+Hastie:2024} provides a fast
@@ -165,7 +169,7 @@ computed against the cluster-mean response and broadcast to every
 cluster member as a hard sign constraint, gated by a noise-floor
 $t$~statistic that pins weak-evidence cells to zero. A closed-form
 residual sum-of-squares (SSR) identity vectorises the gate across
-factors (Appendix~\ref{app:ssr}).
+factors \citep{Sepp+Kastenholz:2026sign}.
 \item Adaptive penalty reweighting following \cite{Zou:2006} and
 \cite{Wang+Leng:2008}, routed through both the $\ell_1$ and group $\ell_2$ paths
 and driven by the same pooled slope that produces the sign matrix.
@@ -176,16 +180,19 @@ $\beta$ matrix used in the conditional mean is reused in the implied
 covariance, producing alpha-beta consistency by construction (\cite{Sepp+Hansen+Kastenholz:2026MATF}).
 \end{enumerate}
 
-The contribution that gives \pkg{factorlasso} its name is the cluster
-layer driving the sign-derivation pooling and the cluster-size penalty
-weights. This shared layer is what differentiates the package from a configurable
-sparse-group LASSO solver such as \pkg{asgl} or \pkg{sparsegl}: the
-clusters are not external inputs but discovered from the data, and the
-same partition feeds the sign-derivation pooling, the cluster-size
-penalty weights, and the row-aggregation for adaptive reweighting. The
-convex programme itself uses a row-grouped $\ell_{2,1}$ penalty; the
-cluster enters it only through the per-cluster weight, not as the
-grouping unit of the norm.
+The cluster layer that drives the sign-derivation pooling and the
+cluster-size penalty weights differentiates the package from a configurable
+sparse-group LASSO solver such as \pkg{asgl} or \pkg{sparsegl}. The clusters
+are not external inputs but discovered from the data, and the same partition
+feeds the sign-derivation pooling, the cluster-size penalty weights, and the
+row-aggregation for adaptive reweighting. The gated cluster-pooled
+sign-derivation mechanism is developed, and its consistency studied, in the
+companion methodology paper \citep{Sepp+Kastenholz:2026sign}. This paper
+presents the software, the implementation of that mechanism together with
+the family of established estimators above, behind one interface. The convex
+programme itself uses a row-grouped $\ell_{2,1}$ penalty, and the cluster
+enters it only through the per-cluster weight, not as the grouping unit of
+the norm.
 
 The package is built on \pkg{CVXPY} \citep{Diamond+Boyd:2016}, using the modelling layer to express the sign constraints, prior centring, adaptive weights, and mixed-norm penalties as a single disciplined convex programme. This modelling language is widely used in convex-optimisation research and
 itself published in this journal as \pkg{CVXR} \citep{Fu+Narasimhan+Boyd:2020}. When CVXPY
@@ -209,11 +216,12 @@ allocation in \cite{Sepp+Hansen+Kastenholz:2026MATF}.
 
 
 The remainder of the paper is organised as follows.
-Section~\ref{sec:methods} develops the methodology: the multi-response
-factor model, the cluster-pooled sign derivation with its noise-floor
-gate, and the adaptive reweighting and prior-centring layers, with the
-closed-form SSR derivation and the sign-consistency proof sketch
-deferred to Appendices~\ref{app:ssr} and~\ref{app:theory}.
+Section~\ref{sec:methods} describes the methodology that the software
+implements: the multi-response factor model, the cluster-pooled sign
+derivation with its noise-floor gate, and the adaptive reweighting and
+prior-centring layers. The derivation of the SSR identity and the
+sign-consistency theory are developed in the companion methodology paper
+\citep{Sepp+Kastenholz:2026sign}.
 Section~\ref{sec:software} documents the \pkg{factorlasso} software
 architecture, the core \code{LassoModel} estimator and its parameters,
 \pkg{scikit-learn} interoperability, and the in-repository simulation
@@ -223,7 +231,8 @@ summarises a simulation study in two parts: a synthetic ablation
 isolating where the cluster-pooled sign mechanism delivers gains, and a
 benchmark on a data-generating process calibrated to a multi-asset ETF
 universe, with the true loadings known, that pits the package against
-\pkg{scikit-learn}, \pkg{asgl}, and \pkg{skglm}. The full
+\pkg{scikit-learn}, \pkg{asgl}, and \pkg{skglm}
+\citep{Bertrand+etal:2022}. The full
 regime grid is reproduced by the scripts of Appendix~\ref{app:reproduction}.
 Section~\ref{sec:application-etf} applies the package to that $102$-fund
 multi-asset universe for capital-market-assumption estimation.
@@ -234,26 +243,29 @@ Section~\ref{sec:summary} concludes.
 
 \section{Methodology} \label{sec:methods}
 
-This section develops the cluster-pooled sign-derivation mechanism that
-distinguishes \pkg{factorlasso} from the existing sparse-regression
-ecosystem. Section~\ref{sec:setup} fixes notation for the multi-response
+This section describes the methodology that the software implements,
+including the cluster-pooled sign-derivation mechanism that distinguishes
+\pkg{factorlasso} from the existing sparse-regression ecosystem. That
+mechanism is developed in the companion methodology paper
+\citep{Sepp+Kastenholz:2026sign}. Section~\ref{sec:setup} fixes notation for the multi-response
 factor model. Section~\ref{sec:univ-slope} presents the pooled
 univariate slope, the closed-form SSR identity that vectorises the
-noise-floor $t$~statistic gate (full derivation in
-Appendix~\ref{app:ssr}), and the gate itself. Section~\ref{sec:hcgl} describes the hierarchical clustering layer whose discovered
+noise-floor $t$~statistic gate (derived in
+\citet{Sepp+Kastenholz:2026sign}), and the gate itself. Section~\ref{sec:hcgl} describes the hierarchical clustering layer whose discovered
 clusters drive the sign-derivation pooling, the adaptive-weight aggregation,
 and the cluster-size multipliers in the group penalty, which the package
 offers in a row-grouped and a cluster-by-factor form.
 
 Section~\ref{sec:sgl-sign} states the sign-constrained sparse group
-LASSO problem that the package's CVXPY backend solves. Section~\ref{sec:adaptive}
-adds the Zou--Wang--Leng adaptive penalty reweighting, routed through
-both the $\ell_1$ and group $\ell_2$ paths. Section~\ref{sec:prior} covers
-prior-centred regularisation. Section~\ref{sec:overlay} documents the
-overlay rule by which a practitioner-supplied sign matrix combines with
-the data-derived signs. Appendix~\ref{app:theory} sketches the
-heuristic asymptotic argument for the mechanism under stylised
-conditions and gives a proof sketch.
+LASSO problem that the package's CVXPY backend solves.
+Section~\ref{sec:reg-options} covers the regularisation options the
+package layers on that problem: the Zou--Wang--Leng adaptive penalty
+reweighting routed through both the $\ell_1$ and group $\ell_2$ paths,
+prior-centred shrinkage toward a non-zero baseline, and the overlay rule
+by which a practitioner-supplied sign matrix combines with the
+data-derived signs. The companion methodology paper \citep{Sepp+Kastenholz:2026sign} gives the
+heuristic asymptotic argument for the mechanism under stylised conditions
+and the support-sign-consistency statement with its proof sketch.
 
 
 \subsection[Multi-response factor model setup]{Multi-response factor model setup} \label{sec:setup}
@@ -374,8 +386,8 @@ N\, \hat{\beta}_j^{\,2}\, \bigl(\bm{x}_j^\top \bm{x}_j\bigr),
 %
 which follows from the slope-defining identity
 $\bm{x}_j^\top \bm{y}_{\mathrm{sum}} = N\, \hat{\beta}_j (\bm{x}_j^\top \bm{x}_j)$
-(derivation, the missing-observation accounting, and the cluster-pooled
-variant in Appendix~\ref{app:ssr}). Equation~\ref{eq:ssr} is
+(the derivation, the missing-observation accounting, and the cluster-pooled
+variant are given in \citealt{Sepp+Kastenholz:2026sign}). Equation~\ref{eq:ssr} is
 vectorisable over $j$ in one matrix product, so the entire $(N, M)$
 sign matrix is computed in a single \proglang{Python} call. The
 empirical speedup over a residual-materialisation baseline is one to
@@ -384,7 +396,7 @@ estimation (benchmark in \code{benchmarks/ssr_speedup.py}). The pooled
 variance, standard error, and $t$~statistic $t_j$ follow in closed form
 from $\mathrm{SSR}_j$, and the cluster-pooled $t_{j, \mathcal{C}}$
 substitutes $|\mathcal{C}|$ for $N$ and restricts the Frobenius norm to
-the cluster columns (Appendix~\ref{app:ssr}). The gated sign
+the cluster columns \citep{Sepp+Kastenholz:2026sign}. The gated sign
 matrix consumed by the multivariate solver is
 %
 \begin{equation} \label{eq:gate}
@@ -407,7 +419,7 @@ $|t_{j, \mathcal{C}}| < \tau$ it sets $s_{kj} = 0$ for every member
 $k \in \mathcal{C}$, forcing $\beta_{kj} = 0$ for the whole cluster on
 factor $j$ and preserving within-cluster sign coherence as a strict
 invariant. When strong prior economic evidence is available, the
-practitioner overlay of Section~\ref{sec:overlay} can pierce a cluster
+practitioner overlay of Section~\ref{sec:reg-options} can pierce a cluster
 decision at the per-cell level.
 
 
@@ -502,7 +514,7 @@ and $\alpha = 1$ recovers pure LASSO at the cell level). The group penalty has a
 a per-asset \(\ell_2\) norm on the loading vector
 \(\beta_{k,\cdot}\in\mathbb R^M\), summed across assets and scaled by a
 cluster-size multiplier. The mathematical groups selected by the norm are
-the asset rows; the HCGL partition enters through the common multiplier
+the asset rows. The HCGL partition enters through the common multiplier
 applied to rows in the same cluster, and through the sign-derivation and
 adaptive-weighting steps. The normalised multiplier
 \(\sqrt{|C_g|/G}\) is a heuristic cluster-size scaling used to moderate
@@ -557,7 +569,7 @@ second-order cone programme solvable by CLARABEL, ECOS, or SCS via
 CVXPY's standard cone-solver interface.
 
 The sign matrix $\bm{S}$ and the adaptive weights of
-Section~\ref{sec:adaptive} are computed before the cone solve. Once
+Section~\ref{sec:reg-options} are computed before the cone solve. Once
 they are fixed, every term in Equation~\ref{eq:sgl-sign} decomposes
 across the asset index $k$: the weighted fit is a sum of per-response
 squared errors, the group penalty is a sum of per-row $\ell_2$ norms scaled
@@ -577,43 +589,36 @@ decompose into per-asset fits and is solved as one coupled cone
 programme.
 
 
-\subsection[Adaptive penalty reweighting]{Adaptive penalty reweighting} \label{sec:adaptive}
+\subsection[Regularisation options and overlays]{Regularisation options and overlays} \label{sec:reg-options}
 
-When the practitioner sets \code{auto_sign_adaptive_weights = True},
-the penalty terms in Equation~\ref{eq:sgl-sign} are replaced by
-magnitude-aware reweighted versions. The per-cell weight matrix follows
-\cite{Zou:2006}:
+\paragraph{Adaptive penalty reweighting.}
+When the practitioner sets \code{auto_sign_adaptive_weights = True}, the
+penalty terms in Equation~\ref{eq:sgl-sign} are reweighted by univariate
+magnitude. The per-cell weight follows \cite{Zou:2006},
 %
 \begin{equation} \label{eq:adapt-cell}
 W_{kj} \;=\; \frac{1}
 {\max\bigl(|\hat{\beta}_{j, \mathcal{C}(k)}|,\, \varepsilon\bigr)^{\gamma}},
 \end{equation}
 %
-where $\hat{\beta}_{j, \mathcal{C}(k)}$ is the cluster-pooled slope
-from Equation~\ref{eq:slope-cluster}, $\gamma$ is the Zou exponent
-(default $\gamma = 1$, parameter \code{auto_sign_adaptive_gamma}), and
-$\varepsilon > 0$ is a stabiliser (default $\varepsilon = 10^{-3}$,
-parameter \code{auto_sign_adaptive_floor}) preventing weight explosion
-on near-zero slopes. Cells where the sign gate of
-Equation~\ref{eq:gate} has set $s_{kj} = 0$ receive the placeholder
-$W_{kj} = 1$. The hard sign constraint forces $\beta_{kj} = 0$
-regardless, so the penalty contribution at those cells is identically
-zero. These cell weights enter the optimisation problem along two distinct
-routes, both controlled by the same boolean flag.
-
-The first route is the cellwise $\ell_1$ path, active when the sparse-group
-mixing weight $\alpha$ in Equation~\ref{eq:sgl-sign} is non-zero. The $\ell_1$
-term is replaced by a Zou-reweighted variant
+where $\hat{\beta}_{j, \mathcal{C}(k)}$ is the cluster-pooled slope of
+Equation~\ref{eq:slope-cluster}, $\gamma$ is the Zou exponent (default
+$1$, \code{auto_sign_adaptive_gamma}), and $\varepsilon > 0$ is a
+stabiliser (default $10^{-3}$, \code{auto_sign_adaptive_floor}) that
+prevents weight explosion on near-zero slopes. Gated cells
+($s_{kj} = 0$) take $W_{kj} = 1$, and the hard sign constraint forces
+$\beta_{kj} = 0$ there regardless. The weights enter along two routes.
+The cellwise $\ell_1$ path, active when the mixing weight $\alpha$ is
+non-zero, replaces the $\ell_1$ term by
 %
 \begin{equation} \label{eq:adapt-l1}
 \lambda\, \alpha \sum_{k, j} W_{kj}\, \bigl| \beta_{kj} - \beta^{0}_{kj} \bigr|.
 \end{equation}
-
-The second route is the group $\ell_2$ path, which is the route that
-activates in the pure-group-LASSO production configuration where the
-$\ell_1$ mixing weight is zero. Following the adaptive group LASSO of
-\cite{Wang+Leng:2008}, the per-cell weights are aggregated per-asset by
-root-mean-square over the non-pinned factors,
+%
+The group $\ell_2$ path, the one active in the pure-group-LASSO
+production configuration, aggregates the cell weights per asset by
+root-mean-square over the non-pinned factors, following the adaptive
+group LASSO of \cite{Wang+Leng:2008},
 %
 \begin{equation} \label{eq:adapt-row}
 W_k \;=\; \sqrt{\frac{1}{|\mathcal{J}_k|} \sum_{j \in \mathcal{J}_k} W_{kj}^{\,2}},
@@ -621,8 +626,8 @@ W_k \;=\; \sqrt{\frac{1}{|\mathcal{J}_k|} \sum_{j \in \mathcal{J}_k} W_{kj}^{\,2
 \mathcal{J}_k \;=\; \{\, j : s_{kj} \neq 0 \,\},
 \end{equation}
 %
-and each asset's contribution to the group penalty is scaled by its
-row weight:
+and scales each asset's contribution to the group penalty by its row
+weight,
 %
 \begin{equation} \label{eq:adapt-group}
 \lambda\, (1 - \alpha) \sum_{g = 1}^{G} \sqrt{|\mathcal{C}_g| / G}
@@ -630,108 +635,81 @@ row weight:
 \bigl\| \bm{\beta}_{k, \cdot} - \bm{\beta}^{0}_{k, \cdot} \bigr\|_2.
 \end{equation}
 %
-The root-mean-square aggregation is the $\ell_2$-natural counterpart to the
-$\ell_2$ norm in the group penalty: for an asset with
-$|\hat{\beta}_{j, \mathcal{C}}| = 1$ uniformly across its non-pinned
-factors, Equation~\ref{eq:adapt-row} gives $W_k = 1$ exactly,
-preserving the existing per-cluster scaling
-$\sqrt{|\mathcal{C}_g| / G}$. Assets with
-all cells pinned by the gate (the degenerate
-$\mathcal{J}_k = \emptyset$ case) fall back to $W_k = 1$.
+The root-mean-square aggregation keeps $W_k = 1$ when an asset's
+non-pinned slopes are unit magnitude, preserving the per-cluster scaling
+$\sqrt{|\mathcal{C}_g| / G}$, and assets with every cell gated fall back
+to $W_k = 1$. Strong-evidence factors then receive a lighter penalty and
+weak-evidence factors a heavier one, a continuous complement to the
+binary gate of Section~\ref{sec:univ-slope}. The default \code{False}
+preserves the uniform penalty of Equation~\ref{eq:sgl-sign}.
 
-The default \code{auto_sign_adaptive_weights = False} preserves the
-uniform-penalty formulation of Equation~\ref{eq:sgl-sign}. The
-reweighting is independent of the threshold gate of
-Section~\ref{sec:univ-slope} and composes naturally with it:
-strong-evidence factors (large $|\hat{\beta}_{j, \mathcal{C}}|$)
-receive a lighter penalty and can take larger multivariate
-coefficients without artificial shrinkage. Weak-evidence factors
-receive a heavier penalty and are pushed harder toward the prior. The
-reweighting is continuous and magnitude-aware where the threshold gate
-is binary. The two mechanisms address complementary aspects of the
-same noise-versus-signal trade-off.
-
-
-\subsection[Prior-centred regularisation]{Prior-centred regularisation} \label{sec:prior}
-
-The penalty terms in Equations~\ref{eq:sgl-sign}, \ref{eq:adapt-l1},
-and \ref{eq:adapt-group} are written as shrinkage toward an optional
-prior loading matrix $\bm{\beta}^{0} \in \mathbb{R}^{N \times M}$. When $\bm{\beta}^{0} = \bm{0}$ (the default,
-when the \code{factors_beta_prior} argument is left unset) the
-formulation reduces to the standard zero-centred sparse group LASSO. When \(\beta^0\) is populated with economically
-motivated values, the penalty shrinks the fit toward those values rather
-than toward zero. As \(\lambda\to0\), the estimator approaches the
-constrained weighted least-squares solution; as \(\lambda\) increases, the
-solution is pulled toward the feasible part of \(\beta^0\). The cellwise
-\(\ell_1\) path has the usual Laplace-prior interpretation, while the
-unsquared row \(\ell_2\) path corresponds to a group-Laplace prior centred
-at \(\beta^0\). 
-
-Prior-centred shrinkage toward $\bm{\beta}^0 \neq \bm{0}$ is the
+\paragraph{Prior-centred shrinkage.}
+The penalty terms in Equations~\ref{eq:sgl-sign}, \ref{eq:adapt-l1}, and
+\ref{eq:adapt-group} shrink toward an optional prior loading matrix
+$\bm{\beta}^{0} \in \mathbb{R}^{N \times M}$. With $\bm{\beta}^{0} =
+\bm{0}$ (the default, \code{factors_beta_prior} unset) the formulation is
+the standard zero-centred sparse group LASSO. With $\bm{\beta}^0$
+populated it pulls the fit toward those values, the
 maximum-a-posteriori estimator under a Laplace prior centred at
-$\bm{\beta}^0$. In portfolio optimisation, it is the
-estimation analogue of the idea at the centre of the Black--Litterman
-model \citep{Black+Litterman:1992}: blend an economically motivated
-target with the information in the data rather than estimate from the
-data alone. Black--Litterman blends a prior on expected returns with
-market-implied equilibrium returns. \pkg{factorlasso} blends a prior on
-factor \emph{loadings} with the sample fit, at the cell level and
-subject to sign constraints. The covariance assembly of
-Section~\ref{sec:factor-covar}, $\bm{\beta} \bm{\Sigma}_F
-\bm{\beta}^\top + \bm{D}$, is a structured shrinkage estimator of the
-asset covariance in the tradition of \cite{Ledoit+Wolf:2004}: the
-factor structure plays the role of the shrinkage target and the
-diagonal residual term the role of the sample-driven component. The
-contribution of \pkg{factorlasso} is not the prior-shrinkage idea,
-which is standard, but the cell-level combination of a non-zero prior
-with hard sign constraints and cluster-pooled sign derivation inside
-one estimator (Section~\ref{sec:comparison}).
+$\bm{\beta}^0$. This is the loadings-level analogue of the
+Black--Litterman idea \citep{Black+Litterman:1992} of blending an
+economically motivated target with the data, and the paired covariance
+assembly $\bm{\beta} \bm{\Sigma}_F \bm{\beta}^\top + \bm{D}$
+(Section~\ref{sec:factor-covar}) is a structured shrinkage estimator in
+the tradition of \cite{Ledoit+Wolf:2004}. The contribution is not the
+prior-shrinkage idea, which is standard, but its cell-level combination
+with hard sign constraints and cluster-pooled sign derivation in one
+estimator (Section~\ref{sec:comparison}). This is the mechanism by which
+the MATF-CMA framework of \cite{Sepp+Hansen+Kastenholz:2026MATF} injects
+a positive credit-beta prior for high-yield assets whose sample
+correlation with the credit factor sits below the noise floor. Sign
+constraints take precedence: if a prior $\beta^{0}_{kj}$ opposes the
+derived sign $s_{kj}$, the constraint set blocks the pull and the
+optimiser settles at $\hat{\beta}_{kj} = 0$.
 
-This is the mechanism by which the Multi-Asset Tradable Factors (MATF)-CMA framework of
-\cite{Sepp+Hansen+Kastenholz:2026MATF} injects non-zero structural
-priors for asset classes whose factor exposures are known a priori
-but would otherwise be eliminated by the $\ell_1$ or group $\ell_2$ penalty (e.g., a
-positive credit-beta prior for high-yield assets even when sample
-correlation with the credit factor is below the noise floor). Sign
-constraints take precedence over prior pulls: if a prior
-$\beta^{0}_{kj}$ has sign opposite to the derived $s_{kj}$, the
-constraint set blocks the optimiser from moving $\hat{\beta}_{kj}$
-toward $\beta^{0}_{kj}$. When the data term does not pull the
-coefficient into the interior of the permitted half-space, the
-optimiser settles at $\hat{\beta}_{kj} = 0$, the boundary of the
-constraint set.
+The prior is centred inside the convex programme, not applied as a
+preprocessing step. At the cell level the penalty $\|\bm{\beta} - \bm{\beta}^0\|_1$
+makes the fit equivalent to re-centring the response by $\bm{X}\bm{\beta}^{0\top}$,
+fitting a zero-centred LASSO, and adding $\bm{\beta}^0$ back. The two agree to
+$2 \times 10^{-5}$ on the calibrated DGP, with and without sign constraints.
+Cluster discovery breaks the equivalence. Re-centring the response changes its
+correlation matrix, and hence the Ward partition: the adjusted Rand index
+against the partition from $\bm{Y}$ is $0.61$. The cluster-pooled sign
+derivation and the adaptive weights then act on a different grouping, so the
+fitted loadings diverge by up to $0.17$. Centring the penalty inside the
+programme keeps the partition tied to the observed response.
 
-
-\subsection[Overlay with practitioner-supplied signs]{Overlay with practitioner-supplied signs} \label{sec:overlay}
-
+\paragraph{Practitioner sign overlay.}
 When the practitioner supplies an explicit per-cell sign matrix
-$\bm{S}^{\mathrm{exp}} \in \{-1, 0, +1, \mathrm{NaN}\}^{N \times M}$
-via the \code{factors_beta_loading_signs} argument alongside
-\code{auto_sign_constraints = True}, the final sign matrix consumed by
-the solver combines the two by NaN-overlay:
+$\bm{S}^{\mathrm{exp}} \in \{-1, 0, +1, \mathrm{NaN}\}^{N \times M}$ via
+\code{factors_beta_loading_signs} alongside
+\code{auto_sign_constraints = True}, the final sign matrix combines the
+two by NaN-overlay,
 %
 \begin{equation} \label{eq:overlay}
 s_{kj} \;=\;
 \begin{cases}
 	S^{\mathrm{exp}}_{kj}, & S^{\mathrm{exp}}_{kj} \neq \mathrm{NaN}, \\
 	\text{data-derived from Equation~\ref{eq:gate}},
-	& \text{otherwise.}
+	& \text{otherwise,}
 \end{cases}
 \end{equation}
 %
-The practitioner override always wins. This overlay is the mechanism by which
-the structural sign matrix of \cite{Sepp+Hansen+Kastenholz:2026MATF}
-(their Equation~13) is enforced: private equity loadings are forced to
-zero for traditional asset classes, rates volatility loadings are
-constrained non-positive for corporate credit assets, and the remaining
-cells inherit data-derived signs from the auto-derivation pass. This
-preserves the asset-class economic identity that pure marginal
-correlation cannot identify while delegating the within-class
-differentiation to the data.
+so the practitioner override always wins. This enforces the structural
+sign matrix of \cite{Sepp+Hansen+Kastenholz:2026MATF} (their
+Equation~13): private equity loadings forced to zero for traditional
+asset classes, rates volatility constrained non-positive for corporate
+credit, and the remaining cells left to the data-derived pass. A
+heuristic asymptotic argument for the mechanism, with the formal
+support-sign-consistency statement and a proof sketch, is given in the
+companion methodology paper \citep{Sepp+Kastenholz:2026sign}.
 
-A heuristic asymptotic argument for the mechanism, with the formal
-support-sign-consistency statement and a proof sketch, is given in
-Appendix~\ref{app:theory}.
+The constraints compose in a fixed precedence. An explicit practitioner sign in
+$\bm{S}^{\mathrm{exp}}$ overrides the data-derived sign of
+Equation~\ref{eq:gate}. The resulting sign then overrides the prior, so a prior
+that opposes a binding sign is held at zero rather than pulling the loading
+across it. The warmup rule zeros any asset with fewer than \code{warmup_period}
+valid observations, independent of the sign and prior layers.
 
 
 %% -- Software -----------------------------------------------------------------
@@ -758,17 +736,26 @@ documented in Appendix~\ref{app:reproduction}.
 
 The estimator is constructed by passing hyperparameters to
 \code{LassoModel(...)} and fitted by calling \code{.fit(x, y)} on factor
-and asset return panels. Three \code{model_type} values select the
-underlying optimisation problem:
+and asset return panels. Seven \code{model_type} values select the underlying optimisation
+problem, in the order of the \code{LassoModelType} enumeration:
 
 \begin{itemize}
 \item \code{LassoModelType.LASSO} solves the cellwise
 $\ell_1$-penalised problem with no group structure. This mode is the
 baseline used for ablation comparisons in Section~\ref{sec:simulation}.
+\item \code{LassoModelType.UNILASSO} fits the two-stage
+univariate-guided regression of \cite{Chatterjee+Hastie+Tibshirani:2025}
+per response, with no grouping. The first stage fits the univariate slope
+of the response on each factor, and the second stage combines the
+univariate fits with a non-negative coefficient on each, so the final
+loading keeps the sign of its univariate slope. This mode ignores
+\code{group_data} and \code{cutoff_fraction}.
 \item \code{LassoModelType.GROUP_LASSO} solves the group-penalised
 problem with an externally supplied partition via the
 \code{group_data} argument. The partition is typically a known
-asset-class taxonomy.
+asset-class taxonomy. Setting \code{l1_weight} to a value in $(0, 1]$
+adds the cellwise $\ell_1$ term, recovering the sparse group LASSO of
+\cite{Simon+Friedman+Hastie+Tibshirani:2013}.
 \item \code{LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO} solves the group-penalised
 problem with the partition discovered internally by HCGL on
 $\operatorname{corr}(\bm{Y})$, as described in Section~\ref{sec:hcgl}.
@@ -776,7 +763,26 @@ $\operatorname{corr}(\bm{Y})$, as described in Section~\ref{sec:hcgl}.
 problem of Equation~\ref{eq:fcgl} on the same discovered partition,
 grouping the penalty over each cluster-by-factor block rather than over
 each asset row.
+\item \code{LassoModelType.COOPERATIVE_GROUP_LASSO} solves the
+cooperative-LASSO problem of \cite{Chiquet+Grandvalet+Charbonnier:2012}
+on an externally supplied partition. The cooperative penalty splits each
+coefficient into a non-negative and a non-positive part and penalises the
+two parts as separate groups, so the members of a group tend to load on a
+factor with a common sign while the data can still overrule it. This is a
+soft sign-coherence alternative to the hard pooled sign of the gate.
+\item \code{LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO} applies the
+same cooperative penalty on the HCGL-discovered partition rather than an
+externally supplied one.
 \end{itemize}
+
+These modes are configurations of one multi-response objective rather than
+separate solvers. The LASSO, the group LASSO, the sparse group LASSO, the
+univariate-guided UniLasso, and the cooperative LASSO are each recovered by
+the appropriate setting, so a single estimator spans methods that are
+otherwise distributed across separate packages. The cluster-pooled sign
+derivation and its noise-floor gate (Section~\ref{sec:auto-sign-params})
+are an additional layer that the grouped modes can switch on through the
+\code{auto_sign_*} parameters.
 
 Beyond the model-type selector, the constructor takes parameters
 across five categories: regularisation strength and mixing
@@ -808,6 +814,8 @@ summarises the constructor parameters and their default values.
 	\code{auto_sign_adaptive_weights} & \code{False} & Enable adaptive penalty reweighting \\
 	\code{auto_sign_adaptive_gamma} & $1$ & Adaptive weight exponent $\gamma$ \\
 	\code{auto_sign_adaptive_floor} & $10^{-3}$ & Stabiliser $\varepsilon$ in Equation~\ref{eq:adapt-cell} \\
+	\code{unilasso_loo} & \code{True} & Leave-one-out stage-1 fits in \code{UNILASSO} \\
+	\code{unilasso_non_negative} & \code{True} & Stage-2 $\theta \ge 0$ in \code{UNILASSO} \\
 	\code{span} & \code{None} & EWMA span for observation weights \\
 	\code{span_freq_dict} & \code{None} & Per-frequency span override \\
 	\code{warmup_period} & $12$ & Minimum valid observations per asset; loadings of shorter-history assets are set to zero \\
@@ -864,13 +872,13 @@ Section~\ref{sec:methods}, and the parameters are designed to compose:
 turning on \code{auto_sign_constraints} alone gives the noise-floor
 gated sign mechanism of Section~\ref{sec:univ-slope}. Additionally
 turning on \code{auto_sign_adaptive_weights} adds the
-Zou--Wang--Leng reweighting of Section~\ref{sec:adaptive}.
+Zou--Wang--Leng reweighting of Section~\ref{sec:reg-options}.
 
 \code{auto_sign_constraints} (boolean, default \code{False}) is the
 master switch. When set to \code{True}, \code{LassoModel.fit} computes
 the pooled univariate slope from Equation~\ref{eq:slope-cluster} on
 the cluster-sum response for each cluster, computes the closed-form
-$t$~statistic from Equations~\ref{eq:ssr} and \ref{eq:tstat}, applies
+$t$~statistic from the SSR identity of Equation~\ref{eq:ssr}, applies
 the noise-floor gate from Equation~\ref{eq:gate}, and broadcasts the
 resulting cluster-level sign decision to every cluster member. The
 sign matrix produced by the pass is enforced as a hard convex
@@ -896,7 +904,7 @@ eligible.
 
 \code{auto_sign_adaptive_weights} (boolean, default \code{False})
 activates the Zou--Wang--Leng adaptive reweighting of
-Section~\ref{sec:adaptive}. The same boolean controls both the
+Section~\ref{sec:reg-options}. The same boolean controls both the
 cellwise $\ell_1$ path (Equation~\ref{eq:adapt-l1}) and the group $\ell_2$ path
 (Equation~\ref{eq:adapt-group}). Which one is dominant depends on the
 value of \code{l1_weight}. The default \code{False} preserves the
@@ -956,14 +964,27 @@ interior-point solver shipped with CVXPY by default. When CLARABEL
 encounters numerical pathologies on a specific problem instance (rare
 in practice but observed in our simulation grid in roughly one in
 several thousand fits, exclusively on the orthogonal factor regime),
-the installed package raises the CVXPY solver error to the caller
-rather than silently masking it. The caller then retries with a
-different solver through the \code{solver} argument (CVXPY exposes
-ECOS and SCS among others). The package itself runs no automatic
-fallback chain. The simulation harness wraps the fit to retry with
-ECOS and then SCS, to keep the study grid 100 percent complete, and
-logs the solver used per cell so that any non-CLARABEL fit can be
-audited.
+the installed package surfaces the CVXPY solver error to the caller by
+default rather than silently masking it. Two remedies are available. The
+caller can retry with a different solver through the \code{solver}
+argument (CVXPY exposes ECOS and SCS among others). Alternatively, setting
+\code{solver_fallbacks} to an ordered list of solver names turns on an
+opt-in retry chain: a fit that fails with the primary solver is retried
+with each fallback in turn, and the error is raised only if every solver
+fails. The default leaves the chain off, so the single-solver behaviour is
+unchanged. The simulation harness sets \code{solver_fallbacks} to ECOS and
+then SCS to keep the study grid 100 percent complete, and logs the solver
+used per cell so that any non-CLARABEL fit can be audited.
+
+Although the row-grouped programme is block-separable across assets once
+the sign matrix and penalty weights are fixed, the package assembles and
+solves it as a single object rather than as $N$ independent per-asset
+programmes. Constructing and canonicalising one programme of $N$ blocks is
+faster than constructing $N$ small programmes, because the per-problem
+build and canonicalisation overhead dominates the conic solve at
+$M \approx 10$; the EWMA observation weights further couple the per-asset
+losses, so the per-asset canonical forms cannot be shared across a
+$\lambda$-path either. A per-asset decomposition was implemented and benchmarked: at $N = 100$, $M \approx 10$ it runs about six times slower than the single object on one core, because the per-problem build and canonicalisation overhead dominates the small conic solve. Only an idealised eight-core parallelisation of the per-asset loop brings it level with the single-object solve, so the single object is retained.
 
 
 \subsection[Factor covariance assembly]{Factor covariance assembly} \label{sec:factor-covar}
@@ -1087,7 +1108,7 @@ reg_lambda        : 0.001
 l1_weight (alpha) : 0
 active coefs      : 346 / 450 (76.9%)
 clusters (HCGL)   : 12
-sign-gated cells  : 37
+sign-gated cells  : 34
 mean R^2          : 0.8498
 \end{CodeOutput}
 \end{CodeChunk}
@@ -1116,21 +1137,48 @@ be selected by cross-validation without any wrapper code:
 %
 The same protocol allows the estimator to be used inside a
 \code{sklearn.pipeline.Pipeline} (e.g., preceded by a scaler) and scored
-with \code{cross_val_score}. Each grid point and cross-validation fold
-is an independent convex solve, so the cost of the search is the product
-of the fold count and the grid size with the per-fit time of
-Table~\ref{tab:timing}. The package does not warm-start across
-$\lambda$: CVXPY rebuilds and re-solves each problem from scratch, so a
-dense fold-by-grid search multiplies the per-fit seconds directly. For
-the panel sizes of multi-asset CMA estimation the total stays in
-seconds, but a large grid on a wide universe is best parallelised across
-the \code{GridSearchCV} \code{n_jobs} workers.
+with \code{cross_val_score}. Each grid point and cross-validation fold driven through
+\code{GridSearchCV} is an independent convex solve, so the cost of an
+\pkg{scikit-learn}-style search is the product of the fold count and the
+grid size with the per-fit time of Table~\ref{tab:timing}. For selecting
+\code{reg_lambda} over a grid the package additionally exposes
+\code{solve_group_lasso_path} (and \code{LassoModelCV} with
+\code{use_lambda_path=True}), which solves the group-LASSO family over the
+whole grid from one disciplined-parametrised programme: the conic form is
+canonicalised once and reused with a warm start at each $\lambda$, measured
+at about $1.5\times$ faster than re-solving per grid point at $N=100$,
+$M=9$ over a fifteen-point grid. The \pkg{scikit-learn} search path, by
+contrast, rebuilds each problem from scratch, so a dense fold-by-grid
+\code{GridSearchCV} multiplies the per-fit seconds directly and is best
+parallelised across the \code{n_jobs} workers. For the panel sizes of
+multi-asset CMA estimation the total stays in seconds.
 The \code{score} method returns the mean
 per-asset $R^2$, the \pkg{scikit-learn} regression-scoring convention.
-The fitted sign matrix can be inspected visually with
-\code{model.plot_signs()}, which renders the
-$\{-1, 0, +1\}$ matrix as a heatmap.
+The fitted sign matrix can be inspected visually with \code{plot_signs},
+which renders the $\{-1, 0, +1\}$ matrix as a heatmap on the supplied
+axes:
+%
+\begin{CodeChunk}
+\begin{CodeInput}
+>>> import matplotlib.pyplot as plt
+>>> fig, ax = plt.subplots(figsize=(5, 4))
+>>> model.plot_signs(ax=ax)
+\end{CodeInput}
+\end{CodeChunk}
+%
+Figure~\ref{fig:usage-signs} shows the result for the synthetic fit above.
 
+\begin{figure}[t!]
+\centering
+\includegraphics[width=0.6\textwidth]{figures/usage_signs_heatmap}
+\caption{\label{fig:usage-signs} Gated sign matrix abstains on 34 of 450
+cells. The figure renders \protect\code{derived\_signs\_} for the synthetic HCGL
+fit of Section~\ref{sec:usage-example} through \protect\code{plot\_signs}. Each row is
+one of the $N = 50$ responses and each column one of the $M = 9$ factors.
+Blue cells carry a $+1$ sign constraint and red cells a $-1$ constraint.
+The $34$ white cells are the entries that the noise-floor gate pins to
+zero. Data: synthetic panel, generator seed $0$.}
+\end{figure}
 
 %% -- Comparison ---------------------------------------------------------------
 
@@ -1141,25 +1189,26 @@ sparse-regression packages spanning the \proglang{Python} and
 \proglang{R} ecosystems: \pkg{scikit-learn}'s \code{Lasso} class
 \citep{Pedregosa+etal:2011}, \pkg{gglasso} \citep{Yang+Zou:2015},
 \pkg{sparsegl} \citep{Liang+Cohen+SolonHeinsfeld+Pestilli+McDonald:2024}, \pkg{asgl}
-\citep{Mendez-Civieta+Aguilera-Morillo+Lillo:2021}, \pkg{celer},
+\citep{Mendez-Civieta+Aguilera-Morillo+Lillo:2021}, \pkg{celer}
+\citep{Massias+Gramfort+Salmon:2018},
 and \pkg{adelie}
-\citep{Yang+Hastie:2024}. The comparison is on thirteen feature
+\citep{Yang+Hastie:2024}. The comparison is on fifteen feature
 dimensions covering both algorithmic capabilities and the software
 conveniences that matter for multi-asset factor estimation in practice.
 
 Table~\ref{tab:comparison} reports the comparison. The dimensions are
 ordered roughly by ascending specificity to the multi-asset factor
-model setting. Rows 1--4 cover regularisation primitives common to
-most LASSO-family software. Rows 5--7 cover the HCGL cluster
-discovery, cluster-pooled sign derivation, and noise-floor gate that
-are the methodological contributions of Section~\ref{sec:methods}.
-Row 8 covers the adaptive reweighting of \cite{Zou:2006} and
+model setting. Rows 1--6 cover regularisation primitives and
+penalty-family variants common to LASSO-family software, including the
+univariate-guided UniLasso of \cite{Chatterjee+Hastie+Tibshirani:2025}
+and the cooperative LASSO of \cite{Chiquet+Grandvalet+Charbonnier:2012}.
+Rows 7--10 cover the HCGL cluster discovery, the cluster-by-factor block
+penalty, the cell-level sign constraints, and the noise-floor gate. Row 11
+covers the adaptive reweighting of \cite{Zou:2006} and
 \cite{Wang+Leng:2008} routed through both the $\ell_1$ and group $\ell_2$ paths.
-Rows 9--13 cover the software conveniences (prior centring,
-observation weighting, NaN tolerance, factor covariance assembly, and
-the reproducible simulation harness shipped with the package)
-that a deployed pipeline and the replication of this study
-require.
+Rows 12--15 cover the software conveniences (prior centring, observation
+weighting, NaN tolerance, and factor covariance assembly) that a deployed
+pipeline and the replication of this study require.
 
 \begin{table}[ht]
 \centering
@@ -1173,6 +1222,8 @@ require.
 	$\ell_1$ penalty (LASSO) & \checkmark & -- & \checkmark & \checkmark & \checkmark & -- & \checkmark \\
 	Group $\ell_2$ penalty (group LASSO) & -- & \checkmark & \checkmark & \checkmark & -- & \checkmark & \checkmark \\
 	Sparse-group mixing ($\alpha \in [0, 1]$) & -- & -- & \checkmark & \checkmark & -- & -- & \checkmark \\
+	Univariate-guided fit (UniLasso) & -- & -- & -- & -- & -- & -- & \checkmark \\
+	Cooperative sign-coherent groups & -- & -- & -- & -- & -- & -- & \checkmark \\
 	HCGL cluster discovery (clusters found internally) & -- & -- & -- & -- & -- & -- & \checkmark \\
 	Cluster-by-factor block penalty (FCGL) & -- & -- & -- & -- & -- & -- & \checkmark \\
 	Sign constraints at cell level & -- & -- & -- & -- & -- & -- & \checkmark \\
@@ -1197,15 +1248,11 @@ require.
 	multi-response factor model fit of \pkg{factorlasso}. This feature
 	table and the empirical benchmark of
 	Section~\ref{sec:sim-calibrated} cover different package sets by
-	design. The benchmark runs \pkg{scikit-learn}, \pkg{skglm}, and
-	\pkg{asgl} as per-asset estimators with OLS as the unregularised
-	reference: the comparators that are installable in one
+	design. The benchmark runs \pkg{scikit-learn}, \pkg{skglm}, \pkg{asgl}, and \pkg{adelie} as per-asset estimators with OLS as the unregularised reference: the comparators that are installable in one
 	\proglang{Python} environment and that map onto the per-asset fit
 	the benchmark contrasts against. \pkg{skglm} is the benchmarked
 	group-LASSO comparator and is omitted from this capability table
-	only to keep the columns to the canonical six; \pkg{celer},
-	\pkg{gglasso}, and \pkg{adelie} are shown here for capability
-	coverage but are not run, and the \proglang{R}-only \pkg{sparsegl}
+	only to keep the columns to the canonical six, while \pkg{celer} and \pkg{gglasso} are shown here for capability coverage but are not run, and the \proglang{R}-only \pkg{sparsegl}
 	is a registered stub whose cross-language bridge is deferred to
 	future work, so it is not part of the benchmark.}
 \end{table}
@@ -1257,12 +1304,29 @@ sparse regression of \cite{Chatterjee+Hastie+Tibshirani:2025}, which
 operates on a single response and does not address the noise-floor
 problem at all. The closed-form SSR identity of Equation~\ref{eq:ssr}
 that drives the gate, and the cluster aggregation of
-Equation~\ref{eq:slope-cluster}, are both novel to \pkg{factorlasso}.
+Equation~\ref{eq:slope-cluster}, are developed in the companion
+methodology paper \citep{Sepp+Kastenholz:2026sign}.
 These mechanisms produce the within-cluster
 sign coherence that an unconstrained group LASSO does not, with
 empirical evidence in Section~\ref{sec:simulation} that the coherence
 rises from approximately $0.36$ to $0.81$ when the mechanism is
 engaged on cleanly-signed cluster data.
+
+\paragraph{Univariate-guided and cooperative modes.}
+Two of the published methods that \pkg{factorlasso} offers as
+configurations bear directly on sign handling. The univariate-guided
+UniLasso of \cite{Chatterjee+Hastie+Tibshirani:2025} keeps each loading on
+the sign of its univariate slope unconditionally, with no noise-floor test,
+and fits each response separately. The cooperative LASSO of
+\cite{Chiquet+Grandvalet+Charbonnier:2012} encourages the members of a group
+to share a sign through a split positive-negative penalty, a soft coherence
+the data can overrule. The gated cluster-pooled mechanism of this package
+differs from both: it pools the sign evidence across cluster members,
+applies the noise-floor gate so that weak-evidence cells abstain rather than
+inherit a sign, and then enforces the surviving signs as hard constraints.
+Offering all three behind one interface lets a practitioner move between
+unconditional, soft, and gated sign handling without changing the estimation
+framework.
 
 \paragraph{Prior-centred regularisation.}
 Shrinkage toward a non-zero prior $\bm{\beta}^0$ is absent from every
@@ -1301,7 +1365,7 @@ audit trail.
 \bigskip
 
 The combinatorial pattern in Table~\ref{tab:comparison} is the point.
-No single column covers all thirteen rows. The closest in coverage are
+No single column covers all fifteen rows. The closest in coverage are
 \pkg{sparsegl} (covering rows 1--4 with the inclusion of group LASSO
 and sparse-group mixing) and \pkg{asgl} (covering rows 1--4 and 8
 with the addition of adaptive reweighting), but both require external
@@ -1491,35 +1555,22 @@ $F_1$ from $0.59$ to $0.70$.
 
 \subsection[Where the mechanism wins]{Where the mechanism wins} \label{sec:sim-core}
 
-Figure~\ref{fig:core-grid} reports normalised $\beta$-MSE across the core
-$2 \times 2 \times 2$ ablation (sparse/dense $\times$ low/high-SNR
-$\times$ clean/mixed. The idiosyncratic regime is excluded as out of
-scope. The gain is regime-dependent: the sign mechanism helps most
+The core $2 \times 2 \times 2$ ablation crosses sparsity (sparse/dense),
+signal-to-noise (low/high), and sign coherence (clean/mixed), with the
+idiosyncratic regime excluded as out of scope. Normalised $\beta$-MSE
+across these cells is regime-dependent: the sign mechanism helps most
 when the truth is sparse and the signal is weak, adds modest overhead
 when the signal is strong and sparse, and adds bias when the truth is
 dense and the signal strong (the standard sparsity-method failure mode).
 In the most favourable panel (sparse + low-SNR, clean signs)
 \code{SGL+SIGN+ADAPT} reaches $\beta$-MSE $0.54$ against \code{GRP-HCGL}'s
-$0.97$, a reduction of roughly forty-four percent against that baseline;
-in the dense + high-SNR panel the unconstrained estimators win. The
+$0.97$, a reduction of roughly forty-four percent against that baseline.
+In the dense + high-SNR panel the unconstrained estimators win. The
 regime where the mechanism operates most usefully is precisely the
 sparse-to-moderate, low-SNR, short-sample regime that multi-asset capital
 market assumption (CMA) estimation occupies. The advantage is largest at
 $T = 60$ and persists in attenuated form to $T = 240$, as the $T$ slices
 of the calibrated benchmark (Table~\ref{tab:competitor}) confirm.
-
-\begin{figure}[t!]
-\centering
-\includegraphics[width=0.95\textwidth]{figures/fig2_beta_mse_core_grid}
-\caption{\label{fig:core-grid} Normalised $\beta$-MSE across the core
-	$2 \times 2 \times 2$ ablation, mean over five seeds at oracle-selected
-	$\lambda$. Each panel fixes one (sparsity, SNR) combination, where SNR
-	is the fraction of asset-return variance the factor model explains.
-	Within each,
-	green bars are the clean sign-mix and orange bars the mixed sign-mix (clean: within-cluster signs agree; mixed: a subset flipped). The
-	sign-derivation estimators win most decisively in the sparse + low-SNR
-	panel (top-left), the regime multi-asset CMA estimation occupies.}
-\end{figure}
 
 The complementary safety property is that the mechanism does not fabricate
 structure absent from the data. In the idiosyncratic regime, where every
@@ -1571,15 +1622,11 @@ This subsection asks the complementary question a practitioner cares
 about: on a data-generating process calibrated to a real multi-asset
 universe, with the true loadings known, does the full \pkg{factorlasso}
 stack (including the economic prior) improve on the competing
-sparse-regression packages? We calibrate the DGP to the publicly
-reproducible $102$-asset ETF universe of
-Section~\ref{sec:application-etf}: $N = 102$ funds spanning eighteen
-sub-asset classes (bonds across government, investment-grade,
-high-yield and emerging-market issuers, regional and sector equities,
-hedge funds, private equity and debt, commodities, real estate, and
-currencies) loaded on the $M = 9$ macro factors of the MATF-CMA factor
-framework (equity, rates, credit, carry, inflation, commodities,
-private equity, rates volatility, and a zero-premium dollar factor).
+sparse-regression packages? We calibrate the DGP to the publicly reproducible $102$-asset ETF
+universe of Section~\ref{sec:application-etf}, $N = 102$ funds across
+eighteen sub-asset classes loaded on the $M = 9$ macro factors of the
+MATF-CMA framework, enumerated in full in
+Section~\ref{sec:application-etf-data}.
 
 Each fund's true loading vector starts from the published
 sub-asset-class loading profile that the fund proxies
@@ -1602,10 +1649,9 @@ sub-asset classes. Each replication draws a training window and an
 equal-length test window. The base sample is $T = 112$ months, with
 $T \in \{60, 240\}$ as the small- and large-sample stress points.
 
-The roster pairs four competitors against the sign-and-prior
+The roster pairs five competitors against the sign-and-prior
 configuration. The competitors are ordinary least squares,
-\pkg{scikit-learn}'s per-asset \code{Lasso}, \pkg{skglm}'s group LASSO,
-and \pkg{asgl}'s sparse group LASSO,
+\pkg{scikit-learn}'s per-asset \code{Lasso}, \pkg{skglm}'s group LASSO, \pkg{asgl}'s sparse group LASSO, and \pkg{adelie}'s group LASSO,
 each applied per asset on the same coefficient geometry. They run
 against the \pkg{factorlasso} ladder of Section~\ref{sec:sim-design} and two
 economically-constrained configurations the competitors cannot express:
@@ -1641,6 +1687,7 @@ covariance $\hat{\bm{\beta}} \bm{\Sigma}_F \hat{\bm{\beta}}^\top$.
 	\pkg{scikit-learn} \code{Lasso}  & 0.216 & 0.677 & 0.544 & 0.642 & 0.009 & 0.406 & 0.166 \\
 	\pkg{skglm} group LASSO          & 0.268 & 0.657 & \textbf{0.923} & 0.651 & 0.078 & 0.307 & 0.152 \\
 	\pkg{asgl} SGL                   & 0.242 & 0.670 & 0.906 & 0.639 & 0.064 & 0.320 & 0.169 \\
+	\pkg{adelie} group LASSO         & 0.276 & 0.657 & 0.922 & 0.642 & 0.078 & 0.306 & 0.163 \\
 	\code{FL LASSO}                  & 0.219 & 0.724 & 0.652 & 0.663 & 0.036 & 0.374 & 0.137 \\
 	\code{FL HCGL+SIGN+ADAPT}        & 0.224 & 0.689 & 0.843 & 0.662 & 0.089 & 0.295 & 0.137 \\
 	\code{FL FCGL+SIGN+ADAPT}        & 0.188 & 0.733 & 0.808 & 0.681 & 0.151 & 0.233 & 0.120 \\
@@ -1752,8 +1799,8 @@ alternative ground truth centred on per-asset OLS loadings, under which
 the ordering on support recovery reverses, confirming that neither mode
 dominates across data-generating assumptions.
 
-Figure~\ref{fig:etf-selector} contrasts the two $\lambda$-selectors and
-sharpens the point under a feasible criterion. Because the empirical
+The two $\lambda$-selectors sharpen the contrast under a feasible
+criterion. Because the empirical
 loadings are dense, BIC (which trades fit against parameter count)
 finds no sparsity to reward and selects its least-regularised grid
 point, at which \pkg{skglm} and unconstrained
@@ -1787,86 +1834,47 @@ risk-on high-yield with equities), so the discovered partition is an
 economic correlation grouping, not a recovery of the sub-asset names,
 which is the property the downstream pooling actually requires. A prior
 set near the calibration truth recovering that truth is weak evidence
-on its own. Section~\ref{sec:prior-sensitivity} therefore stress-tests
-the prior away from the truth, sweeping the credit prior across a wide
-band and into the wrong sign, and reports how credit recovery,
-$\beta$-MSE, and covariance error degrade as the prior is
-mis-specified.
+on its own. A misspecification sweep that scales the credit prior across
+a wide band and into the wrong sign leaves $\beta$-MSE within $0.19$ to
+$0.21$ and covariance error flat at $0.13$ throughout. The sign
+constraint of Equation~\ref{eq:sgl-sign-constraint} holds a wrong-signed
+prior near zero ($0.04$) rather than letting it drive the loading
+negative, so the prior is bounded-harmless when it is wrong.
+Figure~\ref{fig:prior-sweep} plots the sweep, with the recovered loading
+rising through the truth on the left and the bounded error on the right.
 
-\begin{figure}[!htbp]
+\begin{figure}[ht]
 \centering
-\includegraphics[width=\textwidth]{figures/etf_study_selector_contrast}
-\caption{\label{fig:etf-selector} Calibrated multi-asset benchmark,
-	$T = 112$: normalised $\beta$-MSE (left) and recovered Credit loading
-	(right) by estimator under oracle-$\lambda$ (solid) and feasible BIC
-	(hatched). The dotted line marks the OLS $\beta$-MSE and the dashed line the
-	true Credit loading $0.36$. Among the regularised estimators, only the economic prior (green)
-	recovers the full credit loading at the $\beta$-MSE-optimal (oracle)
-	operating point. Under BIC the unconstrained group-LASSO estimators
-	revert to the high-variance OLS fit ($\beta$-MSE $0.62$) while the sign,
-	adaptive (blue) and prior (green) \pkg{factorlasso} configurations retain
-	a regularised fit.}
+\includegraphics[width=\textwidth]{figures/prior_sensitivity_sweep}
+\caption{\label{fig:prior-sweep} Prior misspecification sweep on the calibrated
+$102$-asset ETF DGP at oracle-selected $\lambda$, $T = 112$, mean over fifteen
+seeds with $\pm$ one standard-error bands. The credit prior mean $\beta^{0}$ is
+scaled from the wrong sign (shaded) through the production value to twice the
+truth. Left: the recovered credit loading rises monotonically with the prior
+and crosses the calibration truth of $0.36$. Right: $\beta$-MSE and the
+systematic-covariance error stay bounded across the whole band, so a
+misspecified prior does not degrade the fit.}
 \end{figure}
 
+The gate threshold $\tau$ is likewise not a fragile choice.
+Figure~\ref{fig:tau-sweep} sweeps it from $0$ to $3$ on the same DGP with the
+production configuration otherwise fixed: support $F_1$, sign agreement, and
+$\beta$-MSE are flat to within sampling error while the abstention rate rises
+monotonically, so the production $\tau = 1.0$ sits on a plateau rather than a
+knife-edge.
 
-\subsection[Prior sensitivity]{Prior sensitivity} \label{sec:prior-sensitivity}
-
-The credit-recovery result of Section~\ref{sec:sim-calibrated} uses a
-prior centred near the calibration truth, so it must be read against
-the deployment failure mode that matters: a mis-specified prior. We
-scale the credit-prior block of the \code{FL HCGL+SIGN+PRIOR}
-configuration by a multiplier $m$ across a wide band, holding the DGP,
-the fit configuration, and the sign overlay fixed, and re-run the
-oracle-$\lambda$ benchmark at $T = 112$. The baseline credit prior is
-$(\mathrm{IG}, \mathrm{HY}, \mathrm{EM}) = (0.20, 0.40, 0.30)$; $m = 1$
-is the configuration of Section~\ref{sec:sim-calibrated}, $m = 0$ drops
-the credit prior, and $m < 0$ supplies an economically wrong-signed
-prior. Table~\ref{tab:prior-sensitivity} reports the result.
-
-\begin{table}[ht]
+\begin{figure}[ht]
 \centering
-\begin{tabular}{rrrrr}
-	\hline
-	$m$ & prior credit & credit recovery & $\beta$-MSE & cov.\ error \\
-	\hline
-	$-1.00$ & $-0.29$ & $0.04$ & $0.21$ & $0.13$ \\
-	$-0.50$ & $-0.15$ & $0.02$ & $0.21$ & $0.13$ \\
-	$+0.00$ & $+0.00$ & $0.09$ & $0.20$ & $0.13$ \\
-	$+0.50$ & $+0.15$ & $0.20$ & $0.19$ & $0.13$ \\
-	$+0.75$ & $+0.22$ & $0.26$ & $0.19$ & $0.13$ \\
-	$+1.00$ & $+0.29$ & $0.32$ & $0.19$ & $0.14$ \\
-	$+1.50$ & $+0.44$ & $0.44$ & $0.19$ & $0.13$ \\
-	$+2.00$ & $+0.59$ & $0.57$ & $0.20$ & $0.13$ \\
-	\hline
-\end{tabular}
-\caption{\label{tab:prior-sensitivity} Prior misspecification:
-	credit recovery tracks the prior, but $\beta$-MSE and covariance
-	error are bounded across the full sweep, including a wrong-signed
-	prior. Credit-prior block scaled by $m$ ($m = 1$ is the baseline
-	configuration), \code{FL HCGL+SIGN+PRIOR} at oracle-$\lambda$,
-	$T = 112$, mean over fifteen seeds. The true mean credit loading on
-	the credit-bearing funds is $0.36$. Produced by
-	\code{applications/prior\_sensitivity\_study.py}.}
-\end{table}
-
-Two patterns matter. Credit recovery moves with the prior, near-linearly
-from $0.09$ at $m = 0$ to $0.57$ at $m = 2$, which confirms that the
-prior, not the sign or adaptive machinery, drives the credit-attribution
-result. But $\beta$-MSE stays in a narrow band ($0.19$ to $0.21$) and
-covariance error is flat ($0.13$) across the entire sweep, including the
-wrong-signed priors at $m < 0$. The sign constraints and the data term
-bound how far a bad prior can move the fit: a wrong-signed credit prior
-($m = -1$) is held near zero ($0.04$) rather than driven negative,
-because the sign constraint of
-Equation~\ref{eq:sgl-sign-constraint} blocks the wrong-signed pull. The
-prior is thus a deliberate-use tool that helps when it is correct and is
-bounded-harmless on $\beta$-MSE and covariance error when it is wrong,
-rather than a free parameter that silently determines the fit. The
-practitioner who supplies a prior on a well-identified loading would
-bias it (Section~\ref{sec:prior}); the value of the mechanism is
-confined to the weakly-identified, sign-known cells for which it is
-designed.
-
+\includegraphics[width=\textwidth]{figures/tau_sweep}
+\caption{\label{fig:tau-sweep} Gate-threshold sensitivity on the calibrated
+$102$-asset ETF DGP, $T = 112$, mean over ten seeds with $\pm$ one
+standard-error bands. The deployed HCGL+SIGN+PRIOR configuration is held fixed
+and only the noise-floor threshold $\tau$ is swept; the oracle $\lambda$ is
+selected once per seed at $\tau = 1.0$. Left: support $F_1$ and sign agreement
+are flat across the range. Right: $\beta$-MSE stays within $0.184$ to $0.189$
+while the abstention rate, the fraction of cells the gate leaves unconstrained,
+rises monotonically. The production $\tau = 1.0$ sits on a plateau.}
+\end{figure}
 
 %% -- Application: multi-asset CMA ---------------------------------------------
 
@@ -1940,22 +1948,19 @@ configuration, and the prior-centred FCGL configuration, with the
 unregularised ordinary-least-squares estimate as reference.
 
 The ordinary-least-squares mean Credit loading is $0.82$. As the penalty
-strengthens, the shrink-to-zero estimator drives it to zero. Under the
-$0.84$ credit--equity collinearity the credit loading is the
-weakly-identified direction, so the group penalty removes it and
-reassigns the exposure to the equity factor (whose mean loading on these
-funds rises from approximately zero to $0.11$ at the moderate penalty
-of Table~\ref{tab:etf-credit}). The prior-centred
-estimator instead holds the loading at its economic prior (a
-sleeve-weighted target of $0.29$) across the entire path. The
+strengthens, the shrink-to-zero estimator drives it to zero and reassigns
+the exposure to equity (whose mean loading on these funds rises from
+approximately zero to $0.11$ at a moderate penalty), the
+misattribution the calibrated benchmark
+of Section~\ref{sec:sim-calibrated} diagnoses against ground truth. The
+prior-centred estimator instead holds the loading at its economic prior
+(a sleeve-weighted target of $0.29$) across the entire path. The
 prior-centred FCGL estimator retains more credit attribution than this
 under shrinkage: its cluster-by-factor penalty shrinks each sleeve's
 deviation from the prior as a block, so the high-signal high-yield and
-emerging-market sleeves stay above the prior (the FCGL column of
-Table~\ref{tab:etf-credit}) while the low-signal investment-grade sleeve
-settles at it. The per-fund
-picture (Table~\ref{tab:etf-credit}) is the same at a moderate penalty:
-the Credit loading of HYG collapses from $0.85$ to $0.04$ while the prior
+emerging-market sleeves stay above the prior while the low-signal
+investment-grade sleeve settles at it. The per-fund picture is the same
+at a moderate penalty: the Credit loading of HYG collapses from $0.85$ to $0.04$ while the prior
 holds it at $0.41$. EMB collapses from $1.16$ to $0.08$ against a
 prior-held $0.35$, and LQD from $0.60$ to $0.04$ against $0.22$.
 
@@ -1975,34 +1980,6 @@ prior-held $0.35$, and LQD from $0.60$ to $0.04$ against $0.22$.
 	unregularised OLS mean Credit loading, $0.82$.}
 \end{figure}
 
-\begin{table}[ht]
-\centering
-\begin{tabular}{llrrrrrrr}
-	\hline
-	& & \multicolumn{4}{c}{Credit $\beta$} & \multicolumn{3}{c}{Equity $\beta$} \\
-	ETF & Sleeve & OLS & shrink & prior & FCGL & OLS & shrink & prior \\
-	\hline
-	LQD  & IG & 0.60 & 0.04 & 0.22 & 0.20 & \phantom{-}0.01 & 0.10 & 0.06 \\
-	USIG & IG & 0.53 & 0.02 & 0.20 & 0.20 & -0.01 & 0.05 & 0.01 \\
-	HYG  & HY & 0.85 & 0.04 & 0.41 & 0.61 & \phantom{-}0.01 & 0.10 & 0.01 \\
-	JNK  & HY & 0.90 & 0.05 & 0.41 & 0.64 & \phantom{-}0.01 & 0.11 & 0.03 \\
-	EMB  & EM & 1.16 & 0.08 & 0.35 & 0.92 & -0.05 & 0.17 & 0.11 \\
-	PCY  & EM & 1.44 & 0.14 & 0.40 & 1.13 & -0.03 & 0.27 & 0.21 \\
-	\hline
-\end{tabular}
-\caption{\label{tab:etf-credit} Per-fund Credit and Equity loadings for
-	representative IG/HY/EM bond ETFs, at a moderate penalty
-	($\lambda / \lambda_{\max} = 0.02$): unregularised OLS, HCGL
-	shrink-to-zero, the HCGL prior-centred configuration, and the FCGL
-	prior-centred configuration (Credit $\beta$ only). Shrink-to-zero
-	collapses the credit loading and raises the equity loading to absorb it.
-	The HCGL prior holds the credit loading near its sleeve prior. The FCGL
-	prior shrinks the cluster's credit loadings toward the prior as a block:
-	the low-signal IG sleeve collapses to the prior ($0.20$), while the
-	HY and EM sleeves, whose credit signal is strong, retain loadings above
-	the prior.}
-\end{table}
-
 This is the simulation result of Section~\ref{sec:sim-calibrated} in
 market data, and it carries the same reading. There is no ground-truth
 loading to recover here, but the behaviour is unambiguous: an
@@ -2018,113 +1995,95 @@ by factor, the economic prior is what holds the attribution in place.
 \section{Summary and discussion} \label{sec:summary}
 
 The \pkg{factorlasso} package supplies a sparse multi-response factor
-model estimator with a cluster-pooled sign-derivation layer not
-available in any single existing package. The methodology of
-Section~\ref{sec:methods} combines four ingredients that no published
-software combines: hierarchical clustering group LASSO discovery of
-asset clusters, cluster-pooled univariate slopes filtered by a
-closed-form noise-floor $t$~statistic, the derived sign matrix enforced
-as hard convex constraints inside a CVXPY-formulated sparse group LASSO,
-and Zou--Wang--Leng adaptive penalty reweighting on both the $\ell_1$
-and group $\ell_2$ paths. The package is deployed in a multi-asset allocation
-framework \citep{Sepp+Ossa+Kastenholz:2026}, supporting quarterly capital market
-assumption estimation \citep{Sepp+Hansen+Kastenholz:2026MATF}.
+model estimator with a cluster-pooled sign-derivation layer no single
+existing package provides. The methodology of Section~\ref{sec:methods}
+combines four ingredients not found together in published software:
+hierarchical clustering group LASSO discovery of asset clusters,
+cluster-pooled univariate slopes filtered by a closed-form noise-floor
+$t$~statistic, the derived sign matrix enforced as hard convex
+constraints inside a CVXPY sparse group LASSO, and Zou--Wang--Leng
+adaptive reweighting on both penalty paths. The package is deployed in a
+multi-asset allocation framework \citep{Sepp+Ossa+Kastenholz:2026} for
+quarterly capital market assumption estimation
+\citep{Sepp+Hansen+Kastenholz:2026MATF}.
 
 The simulation study of Section~\ref{sec:simulation} reports three
-empirical findings. First, the cluster-pooled sign mechanism delivers
-the within-cluster sign coherence it is designed to deliver: from
-approximately $0.36$ on the unconstrained baselines to approximately
-$0.81$ when the mechanism engages on cleanly-signed cluster data.
-Second, the accuracy gain is concentrated in the
-small-sample, low-SNR, sparse-loadings regime that multi-asset capital
-market assumption estimation occupies: in the most favourable panel
-the reduction in normalised $\bm{\beta}$-MSE against the unconstrained
-group LASSO is roughly forty-four percent
-(Figure~\ref{fig:core-grid}), and the margin over plain LASSO is
-regime-specific rather than uniform. Third, the mechanism is
-self-aware: on the idiosyncratic regime where the
-within-cluster sign assumption is broken by construction, the output
-coherence falls to approximately $0.17$ rather than a fabricated value,
-so the mechanism abstains when the data do not support it.
+findings. The cluster-pooled sign mechanism delivers the within-cluster
+sign coherence it targets, from approximately $0.36$ on the
+unconstrained baselines to approximately $0.81$ on cleanly-signed
+cluster data. The accuracy gain concentrates in the small-sample,
+low-SNR, sparse-loadings regime that capital market assumption
+estimation occupies: in the most favourable panel the reduction in
+normalised $\bm{\beta}$-MSE against the unconstrained group LASSO is
+roughly forty-four percent, with the margin
+over plain LASSO regime-specific rather than uniform. And the mechanism
+is self-aware: on the idiosyncratic regime where the within-cluster sign
+assumption is broken by construction, output coherence falls to
+approximately $0.17$ rather than a fabricated value, so the mechanism
+abstains when the data do not support it.
 
-The calibrated multi-asset benchmark of
-Section~\ref{sec:sim-calibrated} adds two findings the synthetic
-ablation cannot reach. On a data-generating process matched to the
-$102$-fund ETF universe, with the true loadings known,
-\pkg{factorlasso}'s sign-constrained and adaptive configurations match or edge
-\pkg{scikit-learn}, \pkg{skglm}, and \pkg{asgl} on support
-recovery, out-of-sample $R^2$, and systematic-covariance error, so the
-structural machinery costs nothing in generic accuracy. But under the $0.84$ credit--equity
-collinearity the universe carries, every competing package and every
-unconstrained \pkg{factorlasso} configuration shrinks the
-weakly-identified credit loading toward zero and absorbs the exposure
-into equity. The sign- and prior-constrained configuration alone
-recovers it ($0.32$ against a true $0.36$, versus at most $0.08$ for the
-competing packages), cutting the credit risk-share error to well under
-half of the group-LASSO competitors'. The capability
-gap is the integrated estimator: a prior alone can be re-centred around
-any package, but not jointly with cell-level sign constraints. Under a feasible BIC the contrast sharpens: on the
-dense true loadings of the calibrated DGP the unconstrained group-LASSO estimators revert
-exactly to ordinary least squares (BIC finds no sparsity to reward)
-while only \pkg{factorlasso}'s sign-, adaptive-, and prior-constrained
-configurations reach a stably regularised fit. The same pattern appears
-directly in market data in the ETF application of
-Section~\ref{sec:application-etf}.
+The calibrated multi-asset benchmark of Section~\ref{sec:sim-calibrated}
+adds what the synthetic ablation cannot reach. On a data-generating
+process matched to the $102$-fund ETF universe with the true loadings
+known, \pkg{factorlasso}'s constrained configurations match
+\pkg{scikit-learn}, \pkg{skglm}, and \pkg{asgl} on support recovery,
+out-of-sample $R^2$, and systematic-covariance error, so the structural
+machinery costs nothing in generic accuracy. But under the $0.84$
+credit--equity collinearity the universe carries, every competing
+package and every unconstrained configuration shrinks the
+weakly-identified credit loading toward zero and absorbs it into equity,
+while the sign- and prior-constrained configuration alone recovers it
+($0.32$ against a true $0.36$, versus at most $0.08$ for the
+competitors). The capability gap is the integrated estimator: a prior
+can be re-centred around any package, but not jointly with cell-level
+sign constraints. The same pattern appears directly in the market-data
+application of Section~\ref{sec:application-etf}.
 
 \paragraph{Practical recommendations.}
-As Section~\ref{sec:sim-discussion} shows, the full
-\code{SGL+SIGN+ADAPT} configuration (sparse group LASSO with sign
-constraints and adaptive reweighting) is the default in the
+The full \code{SGL+SIGN+ADAPT} configuration is the default in the
 financial-panel regime of short samples, sparse loadings, and low
-signal-to-noise ratios. The operational rule is selector-based: where
-density and signal strength are not known a priori, fit with and without
-the gate and disable it (\code{auto_sign_constraints = False}) when a
-selector prefers the unconstrained fit. The mechanism's safety property
-makes this low-risk, since on data without within-cluster sign coherence
-the derived constraints are near-trivial and the fit tracks the
-unconstrained baseline.
+signal-to-noise (Section~\ref{sec:sim-discussion}). The operational rule
+is selector-based: where density and signal strength are not known a
+priori, fit with and without the gate and disable it
+(\code{auto_sign_constraints = False}) when a selector prefers the
+unconstrained fit. The safety property makes this low-risk, since on
+data without within-cluster sign coherence the derived constraints are
+near-trivial and the fit tracks the unconstrained baseline.
 
 \paragraph{Limitations.}
-Three limitations of the present work merit mention. The
-noise-floor threshold is held at its package default $\tau = 0.75$
-across the synthetic ablation regimes of
-Section~\ref{sec:simulation}, while the calibrated benchmark and
-application run the stricter deployed value $\tau = 1.0$. A theoretically
-optimal $\tau$ would be sample-size and signal-to-noise dependent,
-and a sample-adaptive variant of the gate is worth exploring. The
-HCGL clustering recovers the true partition only weakly
-(Section~\ref{sec:sim-discussion}), so replicability under resampling
-rather than agreement with a ground-truth partition is the criterion
-to assess in deployment. Finally, the economic-attribution result of
-Section~\ref{sec:sim-calibrated} depends on a supplied prior: where the
-constrained loading is genuinely weakly identified (as the credit
-factor is under high credit--equity collinearity) the prior performs
-necessary structural work, but a prior imposed on a well-identified
-loading would bias it, so the mechanism is a deliberate-use tool rather
-than an always-on default.
+The noise-floor threshold is held at its default $\tau = 0.75$ across the
+synthetic ablation while the calibrated benchmark and application run the
+deployed $\tau = 1.0$; a theoretically optimal $\tau$ is sample-size and
+signal-to-noise dependent, and a sample-adaptive gate is worth exploring.
+The HCGL clustering recovers the true partition only weakly
+(Section~\ref{sec:sim-discussion}), so replicability under resampling,
+not agreement with a ground-truth partition, is the deployment criterion.
+And the credit-attribution result depends on a supplied prior: where the
+loading is genuinely weakly identified the prior performs necessary
+structural work, but a prior imposed on a well-identified loading would
+bias it, so the mechanism is a deliberate-use tool rather than an
+always-on default.
 
 \paragraph{Future directions.}
-Several extensions are tracked in the package roadmap. The calibrated
-benchmark of Section~\ref{sec:sim-calibrated} wires \pkg{scikit-learn},
-\pkg{asgl}, and \pkg{skglm} into the harness as per-asset
-estimators. The remaining comparator, the \proglang{R}-only
-\pkg{sparsegl}, is registered as a stub and would complete the horse
-race of Table~\ref{tab:comparison} once a cross-language bridge is
-added. The
-sign-consistency result of Appendix~\ref{app:theory} specialises standard
-adaptive group LASSO arguments \citep{Wang+Leng:2008} to the
-multi-response setting with sign constraints. Completing the
-distributional oracle statement (Conjecture~1) and
-relaxing the within-cluster sign coherence condition on HCGL recovery to
-a partial-coherence condition with explicit error rates are natural next
-steps. 
+The calibrated benchmark wires \pkg{scikit-learn}, \pkg{asgl}, and
+\pkg{skglm} into the harness as per-asset estimators; the
+\proglang{R}-only \pkg{sparsegl} is registered as a stub and would
+complete the comparison of Table~\ref{tab:comparison} once a
+cross-language bridge is added. On the theory side, the companion
+methodology paper \citep{Sepp+Kastenholz:2026sign} specialises adaptive
+group LASSO arguments \citep{Wang+Leng:2008} to the multi-response
+sign-constrained setting. Completing the distributional oracle statement
+and relaxing the within-cluster coherence condition on HCGL recovery to a
+partial-coherence condition with explicit error rates are natural next
+steps.
+
 
 %% -- Computational details ----------------------------------------------------
 
 \section*{Computational details}
 
 The results in this paper were obtained using \proglang{Python}~3.12.7
-on Windows~11 with the \pkg{factorlasso}~0.5.5 package,
+on Windows~11 with the \pkg{factorlasso}~0.7.0 package,
 \pkg{CVXPY}~1.7 \citep{Diamond+Boyd:2016} with the CLARABEL solver,
 \pkg{NumPy}~1.26 \citep{Harris+etal:2020},
 \pkg{pandas}~3.0 \citep{McKinney:2010}, \pkg{SciPy}
@@ -2135,6 +2094,17 @@ on Ubuntu Linux with \pkg{CVXPY}~1.9, \pkg{NumPy}~2.4, and
 \pkg{pandas}~3.0, and every reported metric agrees across the two
 platforms to within $10^{-11}$ — identical at the displayed
 precision.
+
+The package ships a test suite of $305$ tests covering the estimator family,
+the sign-derivation gate, the solver paths, and the reproducibility receipts. A
+regression oracle pins the \code{fit} outputs byte-identical across $23$
+scenarios, so a refactor cannot silently move a number. Mode-validation tests
+reconcile the package against reference implementations: the LASSO mode
+reproduces \pkg{scikit-learn}'s \code{Lasso} to $5 \times 10^{-9}$ under the
+matched penalty convention, once the $1/T$ versus $1/(2n)$ squared-error scaling
+and the intercept handling are aligned. The suite runs in continuous
+integration on every commit.
+
 \pkg{factorlasso} and its dependencies are available from PyPI at
 \url{https://pypi.org/project/factorlasso/}. Source code, tests,
 simulation harness, and replication materials are at
@@ -2162,326 +2132,17 @@ errors are the author's own.
 
 \begin{appendix}
 
-\section{The closed-form SSR identity} \label{app:ssr}
-
-This appendix derives the closed-form residual sum-of-squares identity of
-Equation~\ref{eq:ssr}, gives the full $t$~statistic, and states the
-missing-observation accounting that the estimator uses on panels with
-heterogeneous inception dates.
-
-\paragraph{Derivation.}
-For factor $j$, the pooled no-intercept slope $\hat{\beta}_j$ of
-Equation~\ref{eq:slope-pooled} satisfies the first-order condition
-$\bm{x}_j^\top \bm{y}_{\mathrm{sum}} = N\, \hat{\beta}_j\, (\bm{x}_j^\top \bm{x}_j)$.
-The pooled residual sum of squares aggregates the squared residuals of
-the $N$ per-asset fits at the common slope $\hat{\beta}_j$,
-%
-\begin{align}
-	\mathrm{SSR}_j
-	&= \sum_{k=1}^{N} \bigl\| \bm{y}_k - \hat{\beta}_j\, \bm{x}_j \bigr\|_2^2
-	= \sum_{k=1}^{N} \Bigl( \|\bm{y}_k\|_2^2
-	- 2\, \hat{\beta}_j\, \bm{x}_j^\top \bm{y}_k
-	+ \hat{\beta}_j^{\,2}\, \bm{x}_j^\top \bm{x}_j \Bigr) \notag \\
-	&= \|\bm{Y}\|_F^2
-	- 2\, \hat{\beta}_j\, \bm{x}_j^\top \bm{y}_{\mathrm{sum}}
-	+ N\, \hat{\beta}_j^{\,2}\, \bm{x}_j^\top \bm{x}_j , \label{eq:ssr-expand}
-\end{align}
-%
-using $\sum_k \|\bm{y}_k\|_2^2 = \|\bm{Y}\|_F^2$ and
-$\sum_k \bm{x}_j^\top \bm{y}_k = \bm{x}_j^\top \bm{y}_{\mathrm{sum}}$.
-Substituting the first-order condition
-$\bm{x}_j^\top \bm{y}_{\mathrm{sum}} = N\, \hat{\beta}_j (\bm{x}_j^\top \bm{x}_j)$
-into the middle term collapses Equation~\ref{eq:ssr-expand} to
-Equation~\ref{eq:ssr},
-$\mathrm{SSR}_j = \|\bm{Y}\|_F^2 - N\, \hat{\beta}_j^{\,2} (\bm{x}_j^\top \bm{x}_j)$.
-The right-hand side requires only $\|\bm{Y}\|_F^2$ (computed once),
-the per-factor inner product $\bm{x}_j^\top \bm{x}_j$, and the slope, so
-the full $(N, M)$ statistic is one matrix product rather than a loop that
-materialises the $T \times N$ residual matrix per factor.
-
-\paragraph{Variance, standard error, and $t$~statistic.}
-The pooled variance estimator, standard error, and $t$~statistic are
-%
-\begin{equation} \label{eq:tstat}
-	\hat{\sigma}_j^{\,2} = \frac{\mathrm{SSR}_j}{N\, T - N},
-	\qquad
-	\widehat{\mathrm{SE}}\bigl(\hat{\beta}_j\bigr) =
-	\sqrt{\frac{\hat{\sigma}_j^{\,2}}{N\, \bm{x}_j^\top \bm{x}_j}},
-	\qquad
-	t_j = \frac{\hat{\beta}_j}{\widehat{\mathrm{SE}}\bigl(\hat{\beta}_j\bigr)}.
-\end{equation}
-%
-The cluster-pooled variant $t_{j, \mathcal{C}}$ used in the gate of
-Equation~\ref{eq:gate} substitutes $|\mathcal{C}|$ for $N$ throughout
-Equation~\ref{eq:tstat} and restricts the Frobenius norm to the cluster
-columns, $\sum_{k \in \mathcal{C}} \|\bm{y}_k\|_2^2$.
-
-\paragraph{Missing observations.}
-Asset panels typically carry leading-\code{NaN} prefixes from
-heterogeneous inception dates and occasional mid-stream \code{NaN} from
-data-quality flags. The estimator records the per-cell validity masks
-on entry and zero-fills for the arithmetic: $v_{tk} \in \{0, 1\}$ flags
-an observed $y_{tk}$ and $u_{tj} \in \{0, 1\}$ flags an observed
-$x_{tj}$. A
-zeroed entry contributes nothing to the slope numerator
-$\bm{x}_j^\top \bm{y}_{\mathrm{sum}}$ or to $\|\bm{Y}\|_F^2$. The slope
-denominator, the SSR, and the degrees of freedom are accumulated only
-over valid $(t, k)$ cells of factor $j$: the pooled denominator is
-$\sum_{k}\sum_{t} v_{tk}\, u_{tj}\, x_{tj}^2$ rather than
-$N\, \bm{x}_j^\top \bm{x}_j$, and the degrees of freedom use the
-valid-observation count
-$n_{\mathrm{valid},j} = \sum_{k}\sum_{t} v_{tk}\, u_{tj}$ in place of
-$N\,T$. With
-this accounting the slope and $t$~statistic equal those of the
-no-intercept OLS fit restricted to the valid rows, and reduce exactly to
-Equation~\ref{eq:tstat} when the panel is fully observed. The
-degrees-of-freedom convention $n_{\mathrm{valid},j} - q_{\mathrm{eff}}$
-charges one parameter per pooled response column that contributes at
-least one valid observation ($q_{\mathrm{eff}} = N$ in the fully observed
-case, giving $N\,T - N$). Alternative conventions shift $|t|$ by
-$O(1/T)$ and do not alter gate decisions at the default $\tau$.
-
-
-\section{Theoretical detail} \label{app:theory}
-
-This appendix states the support-sign consistency property of the
-cluster-pooled sign-derivation mechanism and gives a proof sketch. The sign
-matrix is derived identically under HCGL and FCGL, which gate the same
-cluster-pooled slope at the same threshold and differ only in the group
-norm of the penalty, so the argument applies to both modes. The argument
-specialises the adaptive group LASSO oracle results of
-\cite{Wang+Leng:2008} to the multi-response setting with hard sign
-constraints derived from the cluster-pooled univariate slope. The
-sign-consistency statement on the true support (Proposition~1) is established at
-the level of rigour of a software-paper appendix. The oracle distributional
-statement that would accompany a full theorem (asymptotic normality on the
-true support with OLS-equivalent covariance) is recorded as
-Conjecture~1 and discussed but not proved here. The appendix is a
-heuristic justification under stylised conditions, not a claimed
-guarantee for the deployment regime: condition (A6) below requires
-the marginal cluster-pooled slope to agree in sign with the partial
-true loading, and this is exactly what high cross-factor
-collinearity breaks. Under the $0.84$ credit--equity collinearity of
-the application the asymptotic argument is therefore not claimed to
-hold, and the evidence for the mechanism in that regime is the
-simulation of Section~\ref{sec:simulation} and the prior-sensitivity
-study of Section~\ref{sec:prior-sensitivity}, not Proposition~1.
-
-Throughout this appendix we adopt the notation of
-Section~\ref{sec:methods}. Let $\bm{\beta}_{\mathrm{true}} \in \mathbb{R}^{N \times M}$
-denote the true loading matrix in the data-generating model
-$\bm{Y} = \bm{X}\, \bm{\beta}_{\mathrm{true}}^\top + \bm{\varepsilon}$,
-and let $\bm{S}_{\mathrm{true}} \in \{-1, 0, +1\}^{N \times M}$ be the
-matrix of true signs, with $S_{\mathrm{true}, kj} = 0$ where
-$\beta_{\mathrm{true}, kj} = 0$. Let $\hat{\bm{S}}_T$ denote the
-derived sign matrix produced by the noise-floor-gated cluster-pooled
-mechanism of Equations~\ref{eq:slope-cluster}--\ref{eq:gate} at sample
-size $T$, and let $\hat{\bm{\beta}}_T$ denote the
-\code{SGL+SIGN+ADAPT} estimator of Equation~\ref{eq:sgl-sign}
-constrained by $\hat{\bm{S}}_T$ and reweighted by
-Equations~\ref{eq:adapt-cell}--\ref{eq:adapt-group}.
-
-\paragraph{Regularity conditions.}
-\begin{description}
-	\item[(A1) Sub-Gaussian noise.] The residual matrix
-	$\bm{\varepsilon}$ has independent rows with mean zero and finite
-	variance, and each entry $\varepsilon_{tk}$ is sub-Gaussian with
-	proxy variance bounded above by a fixed constant $\sigma^2_{\max}$.
-	\item[(A2) Factor regularity.] The factor design matrix $\bm{X}$
-	satisfies the usual moment conditions
-	$T^{-1}\, \bm{X}^\top \bm{X} \to \bm{\Sigma}_F$ as $T \to \infty$
-	with $\bm{\Sigma}_F$ positive definite, and the columns of $\bm{X}$
-	are bounded in probability.
-	\item[(A3) Cluster sign coherence.] The HCGL partition recovered from
-	$\operatorname{corr}(\bm{Y})$ is consistent with the true
-	within-cluster sign structure in the following sense: for every
-	$(j, \hat{\mathcal{C}})$ pair where $\hat{\mathcal{C}}$ is a
-	cluster discovered by HCGL on the sample $(\bm{X}, \bm{Y})$, the
-	signs $\{S_{\mathrm{true}, kj} : k \in \hat{\mathcal{C}}, S_{\mathrm{true}, kj} \neq 0\}$
-	share a single value. This condition is weaker than perfect
-	cluster recovery: the discovered partition does not need to match
-	the true cluster identity, only to respect the true sign structure.
-	\item[(A4) Separation.] There exists a positive constant $c^\star$
-	such that, for every cluster $\mathcal{C}$ and every factor $j$
-	with $\beta_{\mathrm{true}, kj} \neq 0$ for some $k \in \mathcal{C}$,
-	the cluster-pooled population slope
-	$\beta_{j, \mathcal{C}}^{\mathrm{pop}}$ satisfies
-	$|\beta_{j, \mathcal{C}}^{\mathrm{pop}}| / \operatorname{SE}_T(\beta_{j, \mathcal{C}}^{\mathrm{pop}}) \to \infty$
-	at rate at least $\sqrt{T}$ as $T \to \infty$, with margin
-	$|\beta_{j, \mathcal{C}}^{\mathrm{pop}}| / \operatorname{SE}_T \geq \tau + c^\star$
-	for all sufficiently large $T$.
-	\item[(A5) Penalty rate.] The regularisation strength satisfies
-	$\lambda_T \to 0$ and $\sqrt{T}\, \lambda_T \to \infty$ as
-	$T \to \infty$. The adaptive exponent is $\gamma > 0$.
-	\item[(A6) Marginal sign agreement on the support.] For every
-	discovered cluster $\hat{\mathcal{C}}$ and every factor $j$ with
-	$S_{\mathrm{true}, kj} \neq 0$ for some $k \in \hat{\mathcal{C}}$,
-	the population cluster-pooled slope satisfies
-	$\operatorname{sign}\bigl(\beta_{j, \hat{\mathcal{C}}}^{\mathrm{pop}}\bigr)
-	= S_{\mathrm{true}, kj}$ for every such $k$. The condition is
-	substantive because the pooled slope is a \emph{marginal}
-	quantity: with correlated factors,
-	$\beta_{j, \mathcal{C}}^{\mathrm{pop}} \propto
-	\sum_{l} \bigl(\sum_{k \in \mathcal{C}} \beta_{\mathrm{true}, kl}\bigr)
-	\bm{\Sigma}_{F, jl}$, so cross-factor leakage can flip the
-	marginal sign away from the \emph{partial} sign that
-	$\bm{S}_{\mathrm{true}}$ encodes. (A6) holds when the factors are
-	uncorrelated, and more generally when the cross-factor leakage
-	term does not dominate the own-factor term. The mixed and
-	idiosyncratic sign-mix regimes of Section~\ref{sec:simulation}
-	probe exactly the violations of (A3) and (A6).
-\end{description}
-
-\paragraph{Statement.}
-Define the support-sign event
-%
-\begin{equation} \label{eq:thm-sign}
-	\mathcal{H}_T \;=\;
-	\Bigl\{\, \hat{S}_{T, kj} = S_{\mathrm{true}, kj}
-	\;\;\text{for all $(k, j)$ with}\;\; S_{\mathrm{true}, kj} \neq 0 \,\Bigr\},
-\end{equation}
-%
-the event that the gate neither pins a true-support cell to zero nor
-assigns it the wrong half-space.
-\begin{description}
-	\item[Proposition 1 (support-sign and support consistency).]
-	Under conditions (A1)--(A6),
-	$\Pr(\mathcal{H}_T) \to 1$ as $T \to \infty$,
-	and, conditional on this event, the constrained adaptive sparse group
-	LASSO estimator $\hat{\bm{\beta}}_T$ recovers the true support:
-	$\Pr\!\bigl(\operatorname{supp}(\hat{\bm{\beta}}_T) = \operatorname{supp}(\bm{\beta}_{\mathrm{true}})\bigr) \to 1$.
-	\item[Remark (truly-zero cells and the fixed threshold).]
-	Proposition~1 deliberately does not claim
-	$\Pr(\hat{\bm{S}}_T = \bm{S}_{\mathrm{true}}) \to 1$. At a fixed
-	threshold $\tau$, that stronger claim is false. On a cell where
-	the population pooled slope is exactly zero, the gate
-	$t$~statistic is asymptotically standard normal, so the gate
-	retains the cell with limiting probability
-	$2\Phi(-\tau) \approx 0.45$ at the default $\tau = 0.75$. On a
-	cell where the partial coefficient is zero but the marginal
-	pooled slope is not (cross-factor leakage), the gate retains the
-	cell with probability tending to one. Both outcomes leave support
-	recovery to the penalty. The retained constraint is a
-	one-sided half-space whose boundary contains zero, so it never
-	excludes the value $\hat{\beta}_{kj} = 0$ that the adaptive
-	penalty drives the cell toward. A binding half-space on a
-	truly-zero cell clips the unconstrained estimate's sampling noise on
-	one side, a bounded bias of order the cell's standard error rather
-	than a sign error. Exact
-	recovery of $\bm{S}_{\mathrm{true}}$ would additionally require
-	a diverging threshold, $\tau_T \to \infty$ with
-	$\tau_T = o(\sqrt{T})$, together with zero marginal leakage on
-	the off-support cells. The implementation keeps the fixed
-	finite-sample default and treats the gate as a screen, not as a
-	model-selection oracle.
-	\item[Conjecture 1 (oracle distribution).]
-	Under the same conditions, the restriction of
-	$\sqrt{T}\, (\hat{\bm{\beta}}_T - \bm{\beta}_{\mathrm{true}})$
-	to the true support $\operatorname{supp}(\bm{\beta}_{\mathrm{true}})$
-	converges in distribution to a centred Gaussian with the same
-	asymptotic covariance as the OLS estimator restricted to the true
-	support. Establishing this requires verifying that the row-aggregated
-	adaptive weights of Equation~\ref{eq:adapt-row} inherit the
-	divergence-on-zeros and boundedness-on-support rates of the
-	\cite{Wang+Leng:2008} argument in the multi-response, sign-constrained
-	setting. We do not prove it here.
-\end{description}
-
-\paragraph{Proof sketch.}
-The argument proceeds in four steps that mirror the layered architecture
-of the mechanism. Steps~1--3 establish $\Pr(\mathcal{H}_T) \to 1$.
-Step~4 sketches the conditional support
-recovery and isolates what remains open for the distributional
-Conjecture~1.
-
-\emph{Step 1 (slope consistency).} Under conditions (A1)--(A2), the
-cluster-pooled univariate slope $\hat{\beta}_{j, \mathcal{C}}$ of
-Equation~\ref{eq:slope-cluster} satisfies
-$\hat{\beta}_{j, \mathcal{C}} \to \beta_{j, \mathcal{C}}^{\mathrm{pop}}$
-in probability as $T \to \infty$ for every cluster $\mathcal{C}$ and
-factor $j$. This convergence is a direct application of the law of large numbers
-to the no-intercept OLS estimator, using the sub-Gaussian tail bound
-on $\bm{\varepsilon}$ to control the deviation rate.
-
-\emph{Step 2 (no gating on the support).} The closed-form SSR identity of
-Equation~\ref{eq:ssr} produces a consistent variance estimator
-$\hat{\sigma}_j^2 \to \sigma_{j, \mathrm{pop}}^2$ in probability. For
-every $(j, \mathcal{C})$ pair on the support, the separation
-condition (A4) then gives
-$|t_{j, \mathcal{C}}| \to \infty$ in probability at rate $\sqrt{T}$,
-so $\Pr\bigl(|t_{j, \mathcal{C}}| \geq \tau\bigr) \to 1$ and the
-probability that the gate pins any true-support cell to zero
-vanishes. The step makes no claim about off-support cells. At a
-fixed $\tau$ the gate retains an off-support cell with
-non-vanishing probability (see the Remark above), and the argument
-does not need it to abstain.
-
-\emph{Step 3 (correct signs on the support).} Steps 1 and 2 imply
-that for every cluster $\hat{\mathcal{C}}$ discovered by HCGL and
-every support factor $j$, the derived sign
-$\operatorname{sign}(\hat{\beta}_{j, \hat{\mathcal{C}}})$ converges
-in probability to
-$\operatorname{sign}(\beta_{j, \hat{\mathcal{C}}}^{\mathrm{pop}})$.
-The marginal sign agreement condition (A6) equates this population
-sign with the common true entry $S_{\mathrm{true}, kj}$, which is
-single-valued within the cluster by the coherence condition (A3).
-The broadcasted sign therefore matches $S_{\mathrm{true}, kj}$ for
-every $k \in \hat{\mathcal{C}}$ on the support, and
-$\Pr(\mathcal{H}_T) \to 1$ follows from a union bound over the
-finitely many $(j, \mathcal{C})$ pairs.
-
-\emph{Step 4 (constrained adaptive support recovery).} Condition on
-the event $\mathcal{H}_T$, which has probability tending to one by
-Step~3. On this event, every true-support cell carries its correct
-half-space constraint, and the support-restricted estimator is
-consistent by standard arguments, so the constraint is inactive in
-the limit and the estimator coincides with the unconstrained
-adaptive group LASSO on the support. Off-support cells carry either
-a zero-pin (which enforces the truth directly) or a one-sided
-half-space containing zero (which cannot exclude the target value
-and can bind only by pushing the estimate toward zero). Under
-condition (A5), the adaptive reweighting
-of Equation~\ref{eq:adapt-cell} with $\gamma > 0$ produces weights
-that diverge on truly-zero cells and remain bounded on truly-nonzero
-cells, which yields
-support recovery by the standard adaptive-penalty
-argument. This establishes the support-recovery claim
-of Proposition~1. The further distributional claim of
-Conjecture~1 would require verifying that the
-row-aggregated adaptive weights of Equation~\ref{eq:adapt-row} (an
-RMS aggregation across the non-pinned factors of an asset, not a single
-per-coefficient weight as in the original \cite{Wang+Leng:2008} setup)
-inherit the rate conditions their central-limit argument needs in the
-multi-response, sign-constrained problem. We leave this to future work.
-
-The first three steps together establish the support-sign consistency
-and, with Step~4, the support-recovery statement of
-Proposition~1.
-
-\paragraph{Remarks.}
-The cluster sign coherence condition (A3) and the marginal sign
-agreement condition (A6) are the substantive
-sufficient conditions for the proof. (A3) is weaker than
-the perfect-cluster-recovery condition that would require
-$\hat{\mathcal{C}}_g = \mathcal{C}_g^\star$ for every cluster. It
-permits HCGL to discover a partition that differs from the true
-clusters at the identity level, as long as the discovered clusters
-respect the within-cluster sign structure. (A6) is the price of
-deriving signs from marginal rather than partial evidence, and it is
-the condition a practitioner should question first on universes with
-strong cross-factor correlation of opposing signs. The simulation evidence
-of Section~\ref{sec:sim-discussion} shows that HCGL satisfies the
-coherence condition reliably even when the adjusted Rand index against
-the true clusters is moderate.
-
-
 \section[Reproducing the simulation study]{Reproducing the simulation study}
 \label{app:reproduction}
 
 This appendix gives step-by-step instructions for reproducing the full
 study from a fresh \proglang{Python} environment.
 The replication materials ship with the \pkg{factorlasso} source
-distribution under the \code{papers/jss\_2026/simulations/} directory.
+distribution under the \code{papers/jss\_2026/simulations/} directory. We
+pin the package versions used for the reported results in
+\code{papers/jss\_2026/requirements.txt}. After installing the package from
+the repository root with \code{pip install -e .}, install the pinned
+dependencies with \code{pip install -r papers/jss\_2026/requirements.txt}.
 
 
 
@@ -2505,12 +2166,10 @@ python papers/jss_2026/replicate.py --full
 The default quick mode runs one seed of the simulation grid and reduced
 seed counts for the calibrated benchmark, completing within a few
 minutes on a regular workstation. Quick mode reproduces the deterministic outputs
-exactly: the usage-example outputs of Section~\ref{sec:usage-example}, the
-empirical application table (Table~\ref{tab:etf-credit}), and the
-credit-path figure. The Monte Carlo outputs (Table~\ref{tab:headline-ablation},
-Table~\ref{tab:competitor}, Figure~\ref{fig:core-grid}, and
-Figure~\ref{fig:etf-selector}) emerge in shape and qualitative pattern
-with wider Monte Carlo error. The
+exactly: the usage-example outputs of Section~\ref{sec:usage-example} and the
+credit-path figure of Section~\ref{sec:application-etf-credit}. The Monte Carlo outputs (Table~\ref{tab:headline-ablation},
+Table~\ref{tab:competitor}) emerge in shape and qualitative pattern with
+wider Monte Carlo error. The
 \code{--full} mode runs the full seed counts and reproduces every
 reported number exactly. The remaining paragraphs document the
 individual stages for readers who wish to run them separately.

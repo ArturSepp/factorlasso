@@ -1,10 +1,10 @@
 # factorlasso JSS 2026 — Main simulation study
 #
 # Drives the simulation results for the §5 ablation in the JSS submission.
-# Total cells: 19 regimes × 5 seeds × 6 factorlasso configs × 5 λ values
-#            = 2850 fits
+# Total cells: 19 regimes × 5 seeds × 9 factorlasso configs × 5 λ values
+#            = 4275 fits
 #
-# Expected wall-clock at N=50 default: ~10-15 minutes on 8 cores.
+# Expected wall-clock at N=50 default: ~15-25 minutes on 8 cores.
 # The N=200 regime (moderate_clean_midsnr_N200) dominates: ~3-5 minutes alone.
 #
 # To run::
@@ -88,6 +88,12 @@ study:
     - factorlasso_grp_hcgl_sign
     - factorlasso_grp_hcgl_sign_adapt
     - factorlasso_sgl_hcgl_sign_adapt
+
+    # additional factorlasso family members (not part of the Table 2 ablation;
+    # exercised here so the certifying run covers every documented mode)
+    - factorlasso_unilasso
+    - factorlasso_coop_oracle
+    - factorlasso_coop_hcgl
 
     # External competitors — enable when wired (see estimators.py for instructions):
     # - sklearn_lasso

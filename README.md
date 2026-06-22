@@ -1,9 +1,9 @@
 # factorlasso
 
 **Sparse multi-output regression with sign constraints, prior-centered
-regularisation, and two complementary cluster-grouped penalties —
-Hierarchical Clustering Group LASSO (HCGL) and Factor-Clustering Group
-LASSO (FCGL) — via CVXPY.**
+regularisation, and a family of grouped and cooperative penalties —
+Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering Group LASSO
+(FCGL), UniLasso, and cooperative LASSO — via CVXPY.**
 
 [![PyPI](https://img.shields.io/pypi/v/factorlasso.svg)](https://pypi.org/project/factorlasso/)
 [![Python](https://img.shields.io/pypi/pyversions/factorlasso.svg)](https://pypi.org/project/factorlasso/)
@@ -48,6 +48,9 @@ illustration](#empirical-illustration)).
 - You want to combine **group-level selection with within-group elementwise
   sparsity** via a tunable mix of group L2 and L1 penalties (Sparse Group
   LASSO).
+- You want the **sign coherence within a group to be soft**, so the data can
+  overrule it, through the cooperative LASSO, or a **per-response
+  univariate-guided** estimator that needs no grouping, through UniLasso.
 
 It is written in pure numpy/pandas/scipy/cvxpy. No numba, no custom
 coordinate descent. The solver is CVXPY (default `CLARABEL`), so problem
@@ -180,6 +183,9 @@ How the pooling is dispatched depends on `model_type`:
 | `GROUP_LASSO` | Pool `y` within each `group_data` group. All members of a group share their `derived_signs_` row. |
 | `HIERARCHICAL_CLUSTER_GROUP_LASSO` | Pool `y` within each HCGL asset cluster (the same clustering the solver uses). |
 | `FACTOR_CLUSTER_GROUP_LASSO` | Pool `y` within each FCGL asset cluster — sign derivation is identical to HCGL; the modes differ only in the group norm of the penalty. |
+| `UNILASSO` | Per-`y`-column, like `LASSO`, with no grouping. The sign is handled by the stage-2 non-negativity, not by gated derivation. |
+| `COOPERATIVE_GROUP_LASSO` | No hard sign is derived or imposed. The cooperative penalty couples the positive and negative parts of each `group_data` group, so members tend to share a sign while the data can overrule it. |
+| `COOPERATIVE_CLUSTER_GROUP_LASSO` | As above, on the discovered clusters rather than `group_data`. |
 
 **The threshold gate.** `auto_sign_threshold_t` (default `0.75`) is a noise
 floor on the per-column univariate t-statistic. Factors with `|t| <`
@@ -429,6 +435,60 @@ wall-clock to within a couple of percent at N = 500 — because the extra
 cone constraints are of the same order as the row-grouped norm. Neither
 mode dominates in general — the appropriate choice depends on the
 within-cluster homogeneity of the application.
+
+### 7. UniLasso (per-response univariate-guided)
+
+UniLasso fits each response in two stages and uses no grouping. Stage one runs
+a univariate regression of the response on each factor separately. Stage two
+combines those univariate fits with a non-negative coefficient on each, so the
+final loading keeps the sign of its univariate slope. The estimator follows
+Chatterjee, Hastie, and Tibshirani (2025).
+
+```python
+model = LassoModel(
+    model_type=LassoModelType.UNILASSO,
+    reg_lambda=1e-3,
+    unilasso_loo=True,            # leave-one-out (prevalidated) stage-1 fits
+    unilasso_non_negative=True,   # theta >= 0 in stage 2, so signs follow the univariate slope
+).fit(x=X, y=Y)
+```
+
+UniLasso ignores `group_data` and `cutoff_fraction`, since it neither groups nor
+clusters. It suits the case where a univariate sign is trustworthy per response
+and no cluster structure is assumed. The trade-off is that it cannot borrow
+strength across related responses, so a group method recovers more when the
+responses share structure and the per-response sample is small.
+
+### 8. Cooperative LASSO (soft within-group sign coherence)
+
+The cluster methods above impose a hard pooled sign through the gate. The
+cooperative LASSO of Chiquet, Grandvalet, and Charbonnier (2012) instead
+encourages the members of a group to share a sign without forcing it. It splits
+each coefficient into a positive and a negative part and penalises the two parts
+as separate groups, so a group tends to load on a factor with one sign while the
+data can still overrule it.
+
+```python
+# external groups
+model = LassoModel(
+    model_type=LassoModelType.COOPERATIVE_GROUP_LASSO,
+    reg_lambda=1e-3,
+    group_data=group_data,
+).fit(x=X, y=Y)
+
+# discovered clusters
+model = LassoModel(
+    model_type=LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
+    reg_lambda=1e-3,
+    cutoff_fraction=0.5,
+).fit(x=X, y=Y)
+```
+
+The cooperative modes never gate and never set a hard sign constraint, so
+`auto_sign_constraints` does not apply. They suit the case where a group's sign
+is a soft prior rather than a known fact. On correlated factors a soft penalty
+recovers more of the signs at lower coefficient error than a hard constraint, at
+the cost of a higher sign-flip rate when the leakage is strong.
 
 ---
 

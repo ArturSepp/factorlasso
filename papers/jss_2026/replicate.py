@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
 replicate.py -- single standalone replication script for the JSS article
-"factorlasso: Hierarchical Clustering Group LASSO (HCGL) with Cluster-Pooled
-Sign Derivation for Multi-Asset Factor Models in Python".
+"factorlasso: Sparse Multi-Output Regression with Cluster-Grouped Sign
+Constraints in Python".
 
 This is the JSS-recommended single entry point. It regenerates every computed
 exhibit in the manuscript and writes a captured output log with a session-

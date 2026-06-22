@@ -53,10 +53,22 @@ import scipy.cluster.hierarchy as spc
 # granularity can override via ``cutoff_fraction``.
 DEFAULT_CUTOFF_FRACTION: float = 0.5
 
+# Agglomerative linkage method passed to ``scipy.cluster.hierarchy.linkage``.
+# Ward is the package default and the setting used throughout the MATF-CMA
+# pipeline.  The Euclidean-oriented methods (``ward``, ``centroid``,
+# ``median``) are applied here to a correlation dissimilarity as stable
+# clustering heuristics, not as exact variance minimisation in Euclidean
+# space (see the Notes of ``compute_clusters_from_corr_matrix``).
+DEFAULT_LINKAGE_METHOD: str = 'ward'
+VALID_LINKAGE_METHODS: Tuple[str, ...] = (
+    'single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward',
+)
+
 
 def compute_clusters_from_corr_matrix(
     corr_matrix: pd.DataFrame,
     cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION,
+    linkage_method: str = DEFAULT_LINKAGE_METHOD,
 ) -> Tuple[pd.Series, np.ndarray, float]:
     """
     Hierarchical clustering from a correlation matrix (Ward's method).
@@ -76,6 +88,12 @@ def compute_clusters_from_corr_matrix(
         default ``0.5`` is the canonical setting used throughout the
         MATF-CMA pipeline and typically yields ~15–25 clusters on a
         150-asset multi-asset universe.
+    linkage_method : str, default 'ward'
+        Agglomerative linkage method passed to
+        ``scipy.cluster.hierarchy.linkage``.  One of ``'single'``,
+        ``'complete'``, ``'average'``, ``'weighted'``, ``'centroid'``,
+        ``'median'``, or ``'ward'``.  The default ``'ward'`` reproduces the
+        prior behaviour exactly.
 
     Returns
     -------
@@ -122,6 +140,11 @@ def compute_clusters_from_corr_matrix(
         raise ValueError(
             f"cutoff_fraction must lie in (0, 1], got {cutoff_fraction!r}"
         )
+    if linkage_method not in VALID_LINKAGE_METHODS:
+        raise ValueError(
+            f"linkage_method must be one of {VALID_LINKAGE_METHODS}, "
+            f"got {linkage_method!r}"
+        )
     corr_matrix = corr_matrix.fillna(0.0)
     # squareform(1 - C) converts the correlation matrix to scipy's
     # condensed pairwise-distance vector (a correlation dissimilarity, not
@@ -131,7 +154,7 @@ def compute_clusters_from_corr_matrix(
     dist_square = np.clip(1.0 - corr_matrix.to_numpy(), 0.0, 2.0)
     np.fill_diagonal(dist_square, 0.0)
     pdist = spc.distance.squareform(dist_square, checks=False)
-    linkage = spc.linkage(pdist, method='ward')
+    linkage = spc.linkage(pdist, method=linkage_method)
     cutoff = cutoff_fraction * np.max(pdist)
     idx = spc.fcluster(linkage, cutoff, 'distance')
     clusters = pd.Series(idx, index=corr_matrix.columns)

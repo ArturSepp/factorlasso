@@ -1,0 +1,42 @@
+# requirements.txt
+# Pinned dependencies for reproducing the JSS article
+#   "factorlasso: Sparse Multi-Output Regression with Cluster-Grouped Sign
+#    Constraints in Python"
+# and its in-repository simulation and application harness (papers/jss_2026/).
+#
+# These pins record the environment used to verify factorlasso 0.6.0 and the
+# updated harness (Python 3.12). The manuscript's reported numbers were produced
+# under the environment captured in
+#   papers/jss_2026/simulations/results/manifest.json
+# (the reproducibility receipt the harness writes on every run). For the
+# camera-ready, regenerate this file with `pip freeze` from the final 0.6.0
+# `--full` certifying run so the pins, the manifest, and the reported figures
+# all originate from a single environment.
+#
+# Install the package itself from the repository root first:
+#   pip install -e .
+# then the pinned runtime and harness dependencies:
+#   pip install -r papers/jss_2026/requirements.txt
+
+# -- core (published wheel) --
+numpy==2.4.4
+pandas==3.0.2
+scipy==1.17.1
+cvxpy==1.9.1
+clarabel==0.11.1
+
+# -- analysis and the worked examples --
+scikit-learn==1.8.0
+matplotlib==3.10.8
+
+# -- simulation harness (papers/jss_2026/simulations) --
+pyyaml==6.0.3
+joblib==1.5.3
+pyarrow==24.0.0
+scs==3.2.11
+ecos==2.0.14
+
+# -- optional --
+# adelie is required only to run the adelie_grp comparator in the harness.
+# It is lazy-imported, so every other estimator runs without it.
+#   pip install adelie

@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [Unreleased]
+
+### Added
+
+- `LassoModelType.UNILASSO`: a per-response univariate-guided estimator
+  following Chatterjee, Hastie, and Tibshirani (2025). Stage one fits each
+  factor univariately; stage two combines the univariate fits with non-negative
+  weights, so each loading keeps its univariate sign. Two parameters control it:
+  `unilasso_loo` (leave-one-out stage-1 fits, default `True`) and
+  `unilasso_non_negative` (theta >= 0 in stage 2, default `True`). The mode uses
+  no grouping and ignores `group_data` and `cutoff_fraction`.
+- `LassoModelType.COOPERATIVE_GROUP_LASSO` and
+  `LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO`: the cooperative LASSO of
+  Chiquet, Grandvalet, and Charbonnier (2012). The penalty splits each
+  coefficient into positive and negative parts and penalises the two parts as
+  separate groups, which encourages a soft within-group sign coherence the data
+  can overrule. The first mode reads an external `group_data` partition; the
+  second discovers clusters the same way as HCGL and FCGL via `cutoff_fraction`.
+  Neither mode gates and neither sets a hard sign constraint.
+- Public solvers `solve_unilasso_cvx_problem` and
+  `solve_cooperative_group_lasso_cvx_problem`, exported from the package root.
+
+### Changed (breaking)
+
+- Renumbered the integer values of `LassoModelType` to insert `UNILASSO = 2`.
+  The new ordering is `LASSO = 1`, `UNILASSO = 2`, `GROUP_LASSO = 3`,
+  `HIERARCHICAL_CLUSTER_GROUP_LASSO = 4`, `FACTOR_CLUSTER_GROUP_LASSO = 5`,
+  `COOPERATIVE_GROUP_LASSO = 6`, and `COOPERATIVE_CLUSTER_GROUP_LASSO = 7`. The
+  values of `GROUP_LASSO`, `HIERARCHICAL_CLUSTER_GROUP_LASSO`, and
+  `FACTOR_CLUSTER_GROUP_LASSO` therefore changed. Code that selects a mode by
+  name is unaffected. Code or serialised configuration that selects a mode by
+  integer value must update. No change to behaviour or to any numerical output.
+
+### Notes
+
+- Sparse Group LASSO remains a configuration of `GROUP_LASSO` through
+  `l1_weight > 0` (Simon et al. 2013), not a separate enum member.
+
 ## [0.5.5] — 2026-06-15
 
 ### Changed (breaking)

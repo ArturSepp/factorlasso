@@ -50,7 +50,7 @@ from __future__ import annotations
 import warnings
 from dataclasses import dataclass, fields
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import cvxpy as cvx
 import numpy as np
@@ -58,6 +58,8 @@ import pandas as pd
 
 from factorlasso.cluster_utils import (
     DEFAULT_CUTOFF_FRACTION,
+    DEFAULT_LINKAGE_METHOD,
+    VALID_LINKAGE_METHODS,
     compute_clusters_from_corr_matrix,
 )
 from factorlasso.ewm_utils import (
@@ -74,10 +76,17 @@ from factorlasso.ewm_utils import (
 
 class LassoModelType(Enum):
     """Supported LASSO estimation methods."""
+    # univariate estimators (no grouping, no clustering)
     LASSO = 1                   #: Standard L1 LASSO
-    GROUP_LASSO = 2             #: Group LASSO with user-defined groups
-    HIERARCHICAL_CLUSTER_GROUP_LASSO = 3  #: HCGL — row-grouped penalty on discovered clusters
-    FACTOR_CLUSTER_GROUP_LASSO = 4  #: FCGL — cluster-by-factor block penalty
+    UNILASSO = 2                #: UniLasso — per-response univariate-guided
+    # group estimator (user-defined partition)
+    GROUP_LASSO = 3             #: Group LASSO with user-defined groups
+    # cluster-based, discovered partition (HCGL / FCGL)
+    HIERARCHICAL_CLUSTER_GROUP_LASSO = 4  #: HCGL — row-grouped penalty on discovered clusters
+    FACTOR_CLUSTER_GROUP_LASSO = 5  #: FCGL — cluster-by-factor block penalty
+    # cooperative (soft within-block sign coherence)
+    COOPERATIVE_GROUP_LASSO = 6  #: coop-LASSO on user groups
+    COOPERATIVE_CLUSTER_GROUP_LASSO = 7  #: coop-LASSO on discovered clusters
 
 
 @dataclass
@@ -339,6 +348,61 @@ def get_x_y_np(
 # Solvers
 # ═══════════════════════════════════════════════════════════════════════
 
+def _solve_with_fallback(problem: cvx.Problem,
+                         solver: str,
+                         solver_fallbacks: Optional[Sequence[str]] = None,
+                         verbose: bool = False,
+                         warm_start: bool = False) -> None:
+    """solve ``problem`` with ``solver``, optionally retrying with each solver
+    in ``solver_fallbacks`` when the primary solver raises or returns a
+    non-optimal status.
+
+    With ``solver_fallbacks=None`` (the default) the primary solver is invoked
+    exactly once and any exception propagates, so behaviour is identical to a
+    direct ``problem.solve`` call and the caller's downstream
+    ``beta.value is None`` handling is unchanged. A non-empty
+    ``solver_fallbacks`` activates the retry chain, letting production callers
+    prefer graceful degradation over a hard failure on a single solver.
+
+    Parameters
+    ----------
+    problem : cvxpy.Problem
+        the already-constructed convex program.
+    solver : str
+        primary solver name, e.g. ``'CLARABEL'``.
+    solver_fallbacks : sequence of str, optional
+        ordered fallback solver names, tried only if the primary fails.
+    verbose : bool, default False
+    warm_start : bool, default False
+
+    Raises
+    ------
+    cvxpy.error.SolverError
+        only when ``solver_fallbacks`` is non-empty and the primary solver and
+        every fallback fail to reach an optimal status.
+    """
+    if not solver_fallbacks:
+        if warm_start:
+            problem.solve(verbose=verbose, solver=solver, warm_start=True)
+        else:
+            problem.solve(verbose=verbose, solver=solver)
+        return
+    chain = [solver, *solver_fallbacks]
+    last_error: Optional[Exception] = None
+    for name in chain:
+        try:
+            problem.solve(verbose=verbose, solver=name, warm_start=warm_start)
+        except Exception as error:  # retry on any solver failure
+            last_error = error
+            continue
+        if problem.status in (cvx.OPTIMAL, cvx.OPTIMAL_INACCURATE):
+            return
+    raise cvx.error.SolverError(
+        f"factorlasso: all solvers failed (tried {chain}); last status "
+        f"{problem.status!r}, last error {last_error!r}"
+    )
+
+
 def solve_lasso_cvx_problem(
     x: np.ndarray,
     y: np.ndarray,
@@ -347,6 +411,7 @@ def solve_lasso_cvx_problem(
     span: Optional[float] = None,
     verbose: bool = False,
     solver: str = 'CLARABEL',
+    solver_fallbacks: Optional[Sequence[str]] = None,
     nonneg: bool = False,
     factors_beta_loading_signs: Optional[np.ndarray] = None,
     factors_beta_prior: Optional[np.ndarray] = None,
@@ -433,7 +498,7 @@ def solve_lasso_cvx_problem(
         + l1_term
     )
     problem = cvx.Problem(objective, constraints) if constraints else cvx.Problem(objective)
-    problem.solve(verbose=verbose, solver=solver)
+    _solve_with_fallback(problem, solver, solver_fallbacks, verbose=verbose)
 
     if beta.value is None:
         warnings.warn("lasso problem not solved")
@@ -448,120 +513,40 @@ def solve_lasso_cvx_problem(
     )
 
 
-def solve_group_lasso_cvx_problem(
+def _build_group_lasso_problem(
     x: np.ndarray,
     y: np.ndarray,
     group_loadings: np.ndarray,
-    valid_mask: Optional[np.ndarray] = None,
-    reg_lambda: float = 1e-8,
-    span: Optional[float] = None,
-    nonneg: bool = False,
-    verbose: bool = False,
-    solver: str = 'CLARABEL',
-    factors_beta_loading_signs: Optional[np.ndarray] = None,
-    factors_beta_prior: Optional[np.ndarray] = None,
-    group_penalty: str = "normalized",
-    l1_weight: float = 0.0,
-    penalty_weights: Optional[np.ndarray] = None,
-    row_weights: Optional[np.ndarray] = None,
-    block_mode: str = "row",
-    col_weights: Optional[np.ndarray] = None,
-) -> LassoEstimationResult:
-    r"""
-    Group LASSO multi-output regression via CVXPY.
+    reg_lambda: Union[float, cvx.Parameter],
+    *,
+    valid_mask: Optional[np.ndarray],
+    span: Optional[float],
+    nonneg: bool,
+    factors_beta_loading_signs: Optional[np.ndarray],
+    factors_beta_prior: Optional[np.ndarray],
+    group_penalty: str,
+    l1_weight: float,
+    penalty_weights: Optional[np.ndarray],
+    row_weights: Optional[np.ndarray],
+    block_mode: str,
+    col_weights: Optional[np.ndarray],
+) -> Optional[Tuple[cvx.Problem, cvx.Variable, np.ndarray, np.ndarray]]:
+    """assemble the sparse group-LASSO CVXPY problem.
 
-    Minimises
-
-    .. math::
-
-        \frac{1}{T}\|W \odot (X\beta^\top - Y)\|_F^2
-        + (1 - \alpha)\,\lambda \sum_g w_g \sum_{i \in g}
-          \|\beta_{i,:} - \beta_{0,i,:}\|_2
-        + \alpha\,\lambda \,\|\beta - \beta_0\|_1
-
-    where *g* indexes groups of response variables (rows of β) and the
-    per-group weight ``w_g`` is set by ``group_penalty`` (see below).
-    The inner sum of the group term is the ``L_{2,1}`` norm of the group
-    submatrix — each response's loading vector is shrunk by an L2 norm,
-    and block sparsity is driven across responses within a group. The
-    optional L1 term drives elementwise sparsity on top, zeroing
-    individual assets whose loadings are noisy even within an "active"
-    group — the Simon–Friedman–Hastie–Tibshirani (2013) Sparse Group
-    LASSO formulation.
-
-    At ``l1_weight=0.0`` (default) the problem reduces to the previous
-    pure group LASSO and is numerically identical to v0.3.1.
-
-    Parameters
-    ----------
-    x : np.ndarray, shape (T, M)
-    y : np.ndarray, shape (T, N)
-    group_loadings : np.ndarray, shape (N, G)
-        Binary group membership matrix.
-    valid_mask, reg_lambda, span, nonneg, verbose, solver,
-    factors_beta_loading_signs, factors_beta_prior
-        See :func:`solve_lasso_cvx_problem`.
-    group_penalty : {"normalized", "yuan_lin"}, default "normalized"
-        Per-group weighting convention:
-
-        - ``"normalized"``: ``w_g = √(|g|/G)``. A heuristic cluster-size
-          scaling that moderates the relative influence of large
-          clusters and adjusts the effective regularisation scale for
-          the data-driven group count G. It is not invariant to
-          arbitrary refinements of the partition. This is the
-          package default and the appropriate choice for HCGL, where
-          G is data-driven and can vary across estimation dates or
-          rolling windows.
-        - ``"yuan_lin"``: ``w_g = √|g|``. Classical Yuan–Lin (2006)
-          weighting. Opt in when the number of groups is fixed by the
-          problem specification (not data-driven) and you want the
-          textbook convention.
-
-        The two conventions are related by a constant factor √G, so
-        results under ``"yuan_lin"`` at regularisation ``λ`` match
-        results under ``"normalized"`` at regularisation ``λ·√G``.
-    l1_weight : float, default 0.0
-        Sparse Group LASSO mixing parameter ``α ∈ [0, 1]``. Weight on
-        the elementwise L1 penalty term; ``(1 - α)`` weights the group
-        L2 term. Set ``α = 0`` (default) for pure group LASSO —
-        backward compatible with v0.3.1. Set ``α = 1`` for pure LASSO
-        (no group structure). Typical research values are ``α ∈
-        [0.05, 0.20]``: preserve group structure as the primary
-        selection mechanism while allowing additional within-group
-        elementwise zeroing for assets whose loadings are noisy. The
-        L1 term shrinks ``β`` toward the prior ``β_0`` elementwise,
-        consistent with the group term which also shrinks toward the
-        prior.
-    block_mode : {"row", "cluster_factor"}, default "row"
-        Geometry of the group L2 norm. ``"row"`` (HCGL) takes the norm
-        over each asset's M factor loadings, summed across assets; the
-        cluster enters only through the weight ``w_g``, and the programme
-        is block-separable across assets. ``"cluster_factor"`` (FCGL)
-        takes the norm over each cluster-by-factor block,
-
-        .. math::
-
-            (1 - \alpha)\,\lambda \sum_g w_g \sum_{j=1}^{M}
-              \|\beta_{g, j} - \beta_{0, g, j}\|_2,
-
-        where the block collects the loadings of cluster *g*'s assets on
-        factor *j*. In ``"cluster_factor"`` mode the cluster is the group
-        of the norm itself, so a whole cluster-by-factor block enters or
-        leaves the model together; the programme is not block-separable
-        across assets and is solved as one coupled cone programme.
-    penalty_weights : np.ndarray, shape (N, M), optional
-        Per-cell adaptive weights multiplying the L1 term, from the
-        adaptive-reweighting layer. ``None`` applies unit weights.
-    row_weights : np.ndarray, shape (N,), optional
-        Per-asset adaptive weights multiplying each row L2 norm in
-        ``"row"`` mode. ``None`` applies unit weights.
-    col_weights : np.ndarray, shape (G, M), optional
-        Per-(cluster, factor) adaptive weights multiplying each block L2
-        norm in ``"cluster_factor"`` mode. ``None`` applies unit weights.
+    Shared by :func:`solve_group_lasso_cvx_problem` (a single
+    ``reg_lambda``) and :func:`solve_group_lasso_path` (``reg_lambda`` a
+    ``cvxpy.Parameter`` swept over a grid). ``reg_lambda`` enters only the
+    penalty terms, so a non-negative parameter keeps the programme
+    DPP-compliant and CVXPY reuses the canonical form across solves. The
+    construction is otherwise identical for the float and parameter cases.
 
     Returns
     -------
-    LassoEstimationResult
+    (problem, beta, weights, y) : Tuple or None
+        The assembled problem, the loading variable, the observation
+        weights, and the NaN-filled response matrix used for fit
+        diagnostics. ``None`` signals ``t < 5``; the caller then returns a
+        NaN result.
     """
     _validate_span(span)
     if group_penalty not in ("normalized", "yuan_lin"):
@@ -584,7 +569,7 @@ def solve_group_lasso_cvx_problem(
         y, valid_mask = _derive_valid_mask_from_y(y)
     if t < 5:
         warnings.warn(f"insufficient observations for group lasso: t={t}")
-        return _nan_result(n_y, n_x)
+        return None
 
     # Variable and constraints
     if factors_beta_loading_signs is not None:
@@ -679,14 +664,150 @@ def solve_group_lasso_cvx_problem(
 
     problem = cvx.Problem(cvx.Minimize(fit + penalty), constraints) \
         if constraints else cvx.Problem(cvx.Minimize(fit + penalty))
-    problem.solve(verbose=verbose, solver=solver)
+    return problem, beta, weights, y
+
+
+def solve_group_lasso_cvx_problem(
+    x: np.ndarray,
+    y: np.ndarray,
+    group_loadings: np.ndarray,
+    valid_mask: Optional[np.ndarray] = None,
+    reg_lambda: float = 1e-8,
+    span: Optional[float] = None,
+    nonneg: bool = False,
+    verbose: bool = False,
+    solver: str = 'CLARABEL',
+    solver_fallbacks: Optional[Sequence[str]] = None,
+    factors_beta_loading_signs: Optional[np.ndarray] = None,
+    factors_beta_prior: Optional[np.ndarray] = None,
+    group_penalty: str = "normalized",
+    l1_weight: float = 0.0,
+    penalty_weights: Optional[np.ndarray] = None,
+    row_weights: Optional[np.ndarray] = None,
+    block_mode: str = "row",
+    col_weights: Optional[np.ndarray] = None,
+) -> LassoEstimationResult:
+    r"""
+    Group LASSO multi-output regression via CVXPY.
+
+    Minimises
+
+    .. math::
+
+        \frac{1}{T}\|W \odot (X\beta^\top - Y)\|_F^2
+        + (1 - \alpha)\,\lambda \sum_g w_g \sum_{i \in g}
+          \|\beta_{i,:} - \beta_{0,i,:}\|_2
+        + \alpha\,\lambda \,\|\beta - \beta_0\|_1
+
+    where *g* indexes groups of response variables (rows of β) and the
+    per-group weight ``w_g`` is set by ``group_penalty`` (see below).
+    The inner sum of the group term is the ``L_{2,1}`` norm of the group
+    submatrix — each response's loading vector is shrunk by an L2 norm,
+    and block sparsity is driven across responses within a group. The
+    optional L1 term drives elementwise sparsity on top, zeroing
+    individual assets whose loadings are noisy even within an "active"
+    group — the Simon–Friedman–Hastie–Tibshirani (2013) Sparse Group
+    LASSO formulation.
+
+    At ``l1_weight=0.0`` (default) the problem reduces to the previous
+    pure group LASSO and is numerically identical to v0.3.1.
+
+    For a grid of ``reg_lambda`` values with every other argument held
+    fixed, :func:`solve_group_lasso_path` assembles the problem once with
+    ``reg_lambda`` as a ``cvxpy.Parameter`` and reuses the canonical form
+    across the grid, which is faster than calling this function per grid
+    point.
+
+    Parameters
+    ----------
+    x : np.ndarray, shape (T, M)
+    y : np.ndarray, shape (T, N)
+    group_loadings : np.ndarray, shape (N, G)
+        Binary group membership matrix.
+    valid_mask, reg_lambda, span, nonneg, verbose, solver,
+    factors_beta_loading_signs, factors_beta_prior
+        See :func:`solve_lasso_cvx_problem`.
+    group_penalty : {"normalized", "yuan_lin"}, default "normalized"
+        Per-group weighting convention:
+
+        - ``"normalized"``: ``w_g = √(|g|/G)``. A heuristic cluster-size
+          scaling that moderates the relative influence of large
+          clusters and adjusts the effective regularisation scale for
+          the data-driven group count G. It is not invariant to
+          arbitrary refinements of the partition. This is the
+          package default and the appropriate choice for HCGL, where
+          G is data-driven and can vary across estimation dates or
+          rolling windows.
+        - ``"yuan_lin"``: ``w_g = √|g|``. Classical Yuan–Lin (2006)
+          weighting. Opt in when the number of groups is fixed by the
+          problem specification (not data-driven) and you want the
+          textbook convention.
+
+        The two conventions are related by a constant factor √G, so
+        results under ``"yuan_lin"`` at regularisation ``λ`` match
+        results under ``"normalized"`` at regularisation ``λ·√G``.
+    l1_weight : float, default 0.0
+        Sparse Group LASSO mixing parameter ``α ∈ [0, 1]``. Weight on
+        the elementwise L1 penalty term; ``(1 - α)`` weights the group
+        L2 term. Set ``α = 0`` (default) for pure group LASSO —
+        backward compatible with v0.3.1. Set ``α = 1`` for pure LASSO
+        (no group structure). Typical research values are ``α ∈
+        [0.05, 0.20]``: preserve group structure as the primary
+        selection mechanism while allowing additional within-group
+        elementwise zeroing for assets whose loadings are noisy. The
+        L1 term shrinks ``β`` toward the prior ``β_0`` elementwise,
+        consistent with the group term which also shrinks toward the
+        prior.
+    block_mode : {"row", "cluster_factor"}, default "row"
+        Geometry of the group L2 norm. ``"row"`` (HCGL) takes the norm
+        over each asset's M factor loadings, summed across assets; the
+        cluster enters only through the weight ``w_g``, and the programme
+        is block-separable across assets. ``"cluster_factor"`` (FCGL)
+        takes the norm over each cluster-by-factor block,
+
+        .. math::
+
+            (1 - \alpha)\,\lambda \sum_g w_g \sum_{j=1}^{M}
+              \|\beta_{g, j} - \beta_{0, g, j}\|_2,
+
+        where the block collects the loadings of cluster *g*'s assets on
+        factor *j*. In ``"cluster_factor"`` mode the cluster is the group
+        of the norm itself, so a whole cluster-by-factor block enters or
+        leaves the model together; the programme is not block-separable
+        across assets and is solved as one coupled cone programme.
+    penalty_weights : np.ndarray, shape (N, M), optional
+        Per-cell adaptive weights multiplying the L1 term, from the
+        adaptive-reweighting layer. ``None`` applies unit weights.
+    row_weights : np.ndarray, shape (N,), optional
+        Per-asset adaptive weights multiplying each row L2 norm in
+        ``"row"`` mode. ``None`` applies unit weights.
+    col_weights : np.ndarray, shape (G, M), optional
+        Per-(cluster, factor) adaptive weights multiplying each block L2
+        norm in ``"cluster_factor"`` mode. ``None`` applies unit weights.
+
+    Returns
+    -------
+    LassoEstimationResult
+    """
+    built = _build_group_lasso_problem(
+        x, y, group_loadings, reg_lambda,
+        valid_mask=valid_mask, span=span, nonneg=nonneg,
+        factors_beta_loading_signs=factors_beta_loading_signs,
+        factors_beta_prior=factors_beta_prior, group_penalty=group_penalty,
+        l1_weight=l1_weight, penalty_weights=penalty_weights,
+        row_weights=row_weights, block_mode=block_mode, col_weights=col_weights,
+    )
+    if built is None:
+        return _nan_result(y.shape[1], x.shape[1])
+    problem, beta, weights, y_used = built
+    _solve_with_fallback(problem, solver, solver_fallbacks, verbose=verbose)
 
     if beta.value is None:
         warnings.warn("group lasso problem not solved")
-        return _nan_result(n_y, n_x)
+        return _nan_result(y.shape[1], x.shape[1])
 
     alpha, ss_total, ss_res, r2 = _compute_solver_diagnostics(
-        x, y, beta.value, weights
+        x, y_used, beta.value, weights
     )
     return LassoEstimationResult(
         estimated_beta=beta.value, alpha=alpha,
@@ -694,9 +815,143 @@ def solve_group_lasso_cvx_problem(
     )
 
 
+def solve_group_lasso_path(
+    x: np.ndarray,
+    y: np.ndarray,
+    group_loadings: np.ndarray,
+    reg_lambdas: Sequence[float],
+    valid_mask: Optional[np.ndarray] = None,
+    span: Optional[float] = None,
+    nonneg: bool = False,
+    verbose: bool = False,
+    solver: str = 'CLARABEL',
+    solver_fallbacks: Optional[Sequence[str]] = None,
+    factors_beta_loading_signs: Optional[np.ndarray] = None,
+    factors_beta_prior: Optional[np.ndarray] = None,
+    group_penalty: str = "normalized",
+    l1_weight: float = 0.0,
+    penalty_weights: Optional[np.ndarray] = None,
+    row_weights: Optional[np.ndarray] = None,
+    block_mode: str = "row",
+    col_weights: Optional[np.ndarray] = None,
+) -> List[LassoEstimationResult]:
+    r"""Group-LASSO over a regularisation path, reusing one canonical form.
+
+    Solves :func:`solve_group_lasso_cvx_problem` at each value in
+    ``reg_lambdas`` while every other argument is held fixed. The penalty
+    weight ``reg_lambda`` is supplied to CVXPY as a
+    ``cvxpy.Parameter(nonneg=True)``, so the disciplined-parametrised
+    programme is canonicalised once and the compiled conic form is reused
+    on every solve (a warm start of the problem structure, not of the
+    solver iterate). Recompilation, which is otherwise repeated per grid
+    point, is paid a single time.
+
+    Use this for any workflow that solves the same panel over a grid of
+    ``reg_lambda`` with the sign matrix and the adaptive weights fixed:
+    cross-validated or BIC-based ``reg_lambda`` selection, rolling
+    backtests that re-select ``reg_lambda`` per date, regularisation-path
+    figures, and threshold or cutoff sensitivity sweeps whose inner loop
+    is over ``reg_lambda``. For a single ``reg_lambda`` there is no benefit
+    over one :func:`solve_group_lasso_cvx_problem` call. The speed-up is
+    bounded by the share of per-solve time spent in canonicalisation
+    rather than in the solver itself.
+
+    The sign matrix, the prior, and the adaptive weights must not depend on
+    ``reg_lambda`` (they do not in this package: signs and weights are
+    derived from univariate slopes, which are ``reg_lambda``-independent).
+    The path covers the group-LASSO family (group LASSO, HCGL via
+    ``block_mode="row"``, FCGL via ``block_mode="cluster_factor"``, the
+    sparse-group L1 term, sign constraints, the prior, and adaptive
+    reweighting). The cooperative and UniLasso estimators have their own
+    solvers and are not handled here.
+
+    Parameters
+    ----------
+    reg_lambdas : sequence of float
+        Non-negative regularisation weights to solve, in any order. The
+        returned list is aligned with this sequence.
+    x, y, group_loadings, valid_mask, span, nonneg, verbose, solver,
+    factors_beta_loading_signs, factors_beta_prior, group_penalty,
+    l1_weight, penalty_weights, row_weights, block_mode, col_weights
+        As in :func:`solve_group_lasso_cvx_problem`.
+
+    Returns
+    -------
+    list of LassoEstimationResult
+        One result per entry in ``reg_lambdas``, in the same order. Each is
+        identical, to solver tolerance, to the result of calling
+        :func:`solve_group_lasso_cvx_problem` with that ``reg_lambda``.
+
+    Raises
+    ------
+    ValueError
+        If ``reg_lambdas`` is empty or contains a negative value.
+    """
+    lambdas = [float(lv) for lv in reg_lambdas]
+    if len(lambdas) == 0:
+        raise ValueError("reg_lambdas must be non-empty")
+    if min(lambdas) < 0.0:
+        raise ValueError(
+            f"reg_lambdas must be non-negative, got min {min(lambdas)!r}"
+        )
+
+    n_y, n_x = y.shape[1], x.shape[1]
+    reg_lambda = cvx.Parameter(nonneg=True)
+    built = _build_group_lasso_problem(
+        x, y, group_loadings, reg_lambda,
+        valid_mask=valid_mask, span=span, nonneg=nonneg,
+        factors_beta_loading_signs=factors_beta_loading_signs,
+        factors_beta_prior=factors_beta_prior, group_penalty=group_penalty,
+        l1_weight=l1_weight, penalty_weights=penalty_weights,
+        row_weights=row_weights, block_mode=block_mode, col_weights=col_weights,
+    )
+    if built is None:
+        return [_nan_result(n_y, n_x) for _ in lambdas]
+    problem, beta, weights, y_used = built
+
+    if not problem.is_dcp(dpp=True):
+        warnings.warn(
+            "group lasso path problem is not DPP; the canonical form will be "
+            "rebuilt on each solve and the warm-start speed-up is lost"
+        )
+
+    results: List[LassoEstimationResult] = []
+    for lv in lambdas:
+        reg_lambda.value = lv
+        _solve_with_fallback(problem, solver, solver_fallbacks, verbose=verbose, warm_start=True)
+        if beta.value is None:
+            warnings.warn(
+                f"group lasso path problem not solved at reg_lambda={lv!r}"
+            )
+            results.append(_nan_result(n_y, n_x))
+            continue
+        alpha, ss_total, ss_res, r2 = _compute_solver_diagnostics(
+            x, y_used, beta.value, weights
+        )
+        results.append(LassoEstimationResult(
+            estimated_beta=beta.value.copy(), alpha=alpha,
+            ss_total=ss_total, ss_res=ss_res, r2=r2,
+        ))
+    return results
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # High-level model class
 # ═══════════════════════════════════════════════════════════════════════
+
+@dataclass(frozen=True)
+class _PreparedFit:
+    """reg_lambda-independent solver inputs derived once by ``_prepare_fit``."""
+    asset_clusters: Optional[pd.Series]
+    linkage: Optional[Any]
+    cutoff: Optional[float]
+    is_lasso_mode: bool
+    signs_np: Optional[np.ndarray]
+    prior_np: Optional[np.ndarray]
+    penalty_weights_np: Optional[np.ndarray]
+    row_weights_np: Optional[np.ndarray]
+    col_weights_np: Optional[np.ndarray]
+
 
 @dataclass
 class LassoModel:
@@ -738,10 +993,18 @@ class LassoModel:
     ----------
     model_type : LassoModelType, default LASSO
         Selects the optimisation problem: ``LASSO`` (cellwise L1),
-        ``GROUP_LASSO`` (external group partition), ``HIERARCHICAL_CLUSTER_GROUP_LASSO``
-        (HCGL row-grouped penalty on a discovered partition), or
-        ``FACTOR_CLUSTER_GROUP_LASSO`` (FCGL cluster-by-factor block
-        penalty on the same discovered partition).
+        ``UNILASSO`` (per-response two-stage univariate-guided regression,
+        no grouping), ``GROUP_LASSO`` (external group partition),
+        ``HIERARCHICAL_CLUSTER_GROUP_LASSO`` (HCGL row-grouped penalty on a
+        discovered partition), ``FACTOR_CLUSTER_GROUP_LASSO`` (FCGL
+        cluster-by-factor block penalty on the same discovered partition),
+        ``COOPERATIVE_GROUP_LASSO`` (cooperative-LASSO on an external
+        partition, soft within-block sign coherence), or
+        ``COOPERATIVE_CLUSTER_GROUP_LASSO`` (cooperative-LASSO on the
+        discovered partition).  The cluster modes (HCGL, FCGL, cooperative-
+        cluster) impose a hard pooled sign only when
+        ``auto_sign_constraints=True``; the cooperative modes encourage sign
+        coherence softly and never gate.
     reg_lambda : float, default 1e-5
     span : float, optional
         EWMA span for observation weighting.  Must be ≥ 1 when provided.
@@ -755,13 +1018,22 @@ class LassoModel:
         but not consumed by :meth:`fit`; the caller selects the right
         span when it slices per frequency.
     group_data : pd.Series, optional
-        Group labels (required for ``GROUP_LASSO``).
+        Group labels (required for ``GROUP_LASSO`` and
+        ``COOPERATIVE_GROUP_LASSO``).
     cutoff_fraction : float, default 0.5
         Fraction of ``max(pdist)`` at which to cut the dendrogram when
-        ``model_type == HIERARCHICAL_CLUSTER_GROUP_LASSO`` or
-        ``FACTOR_CLUSTER_GROUP_LASSO`` (both discover clusters the same
-        way).  Ignored by ``LASSO`` and ``GROUP_LASSO``.
+        ``model_type`` is ``HIERARCHICAL_CLUSTER_GROUP_LASSO``,
+        ``FACTOR_CLUSTER_GROUP_LASSO``, or
+        ``COOPERATIVE_CLUSTER_GROUP_LASSO`` (all discover clusters the same
+        way).  Ignored by ``LASSO``, ``UNILASSO``, ``GROUP_LASSO``, and
+        ``COOPERATIVE_GROUP_LASSO``.
         See :func:`factorlasso.compute_clusters_from_corr_matrix`.
+    linkage_method : str, default 'ward'
+        Agglomerative linkage method for the cluster-discovery step, one of
+        ``'single'``, ``'complete'``, ``'average'``, ``'weighted'``,
+        ``'centroid'``, ``'median'``, or ``'ward'``.  Used only by the
+        cluster-discovery modes and ignored otherwise.  The default
+        ``'ward'`` reproduces the prior behaviour.
     group_penalty : {"normalized", "yuan_lin"}, default "normalized"
         Per-group weighting for the group-LASSO penalty.  ``"normalized"``
         uses ``√(|g|/G)``, a heuristic cluster-size scaling that adjusts
@@ -899,10 +1171,12 @@ class LassoModel:
     span: Optional[float] = None
     span_freq_dict: Optional[Dict[str, float]] = None
     cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION
+    linkage_method: str = DEFAULT_LINKAGE_METHOD
     group_penalty: str = "normalized"
     l1_weight: float = 0.0
     demean: bool = True
     solver: str = 'CLARABEL'
+    solver_fallbacks: Optional[Sequence[str]] = None
     warmup_period: Optional[int] = 12
     nonneg: bool = False
     factors_beta_loading_signs: Optional[pd.DataFrame] = None
@@ -950,6 +1224,13 @@ class LassoModel:
     # Stabiliser preventing weight explosion on near-zero slopes:
     # |β̂_uni| is clipped at this floor before inversion.
     auto_sign_adaptive_floor: float = 1e-3
+    # ── UniLasso (model_type=UNILASSO) ──
+    # loo: use leave-one-out (prevalidated) univariate fits in stage 2
+    # (the published UniLasso); False uses in-sample univariate fits.
+    unilasso_loo: bool = True
+    # non_negative: theta >= 0 in stage 2, so the final coefficient
+    # inherits the univariate sign (UniLasso's sign-preservation).
+    unilasso_non_negative: bool = True
 
     # ── Fitted state (set by fit(), trailing underscore) ──────────────
     x_: Optional[pd.DataFrame] = None
@@ -966,15 +1247,24 @@ class LassoModel:
     derived_signs_: Optional[pd.DataFrame] = None
 
     def __post_init__(self):
-        if self.model_type == LassoModelType.GROUP_LASSO and self.group_data is None:
+        if self.model_type in (
+            LassoModelType.GROUP_LASSO,
+            LassoModelType.COOPERATIVE_GROUP_LASSO,
+        ) and self.group_data is None:
             raise ValueError(
-                "group_data must be provided for model_type=GROUP_LASSO"
+                "group_data must be provided for model_type="
+                f"{self.model_type.name}"
             )
         _validate_span(self.span)
         if not (0.0 < self.cutoff_fraction <= 1.0):
             raise ValueError(
                 f"cutoff_fraction must lie in (0, 1], "
                 f"got {self.cutoff_fraction!r}"
+            )
+        if self.linkage_method not in VALID_LINKAGE_METHODS:
+            raise ValueError(
+                f"linkage_method must be one of {VALID_LINKAGE_METHODS}, "
+                f"got {self.linkage_method!r}"
             )
         if self.group_penalty not in ("normalized", "yuan_lin"):
             raise ValueError(
@@ -1214,6 +1504,160 @@ class LassoModel:
             x=x, y=y, span=eff_span, demean=self.demean
         )
 
+        prep = self._prepare_fit(
+            x=x, y=y, x_np=x_np, y_np=y_np,
+            valid_mask=valid_mask, eff_span=eff_span,
+        )
+        asset_clusters = prep.asset_clusters
+        linkage = prep.linkage
+        cutoff = prep.cutoff
+        is_lasso_mode = prep.is_lasso_mode
+        signs_np = prep.signs_np
+        prior_np = prep.prior_np
+        penalty_weights_np = prep.penalty_weights_np
+        row_weights_np = prep.row_weights_np
+        col_weights_np = prep.col_weights_np
+
+        # ── Solver dispatch (consumes the pre-computed asset_clusters) ──
+        if is_lasso_mode:
+            result = solve_lasso_cvx_problem(
+                x=x_np, y=y_np, valid_mask=valid_mask,
+                reg_lambda=self.reg_lambda, span=eff_span,
+                verbose=verbose, solver=self.solver,
+                solver_fallbacks=self.solver_fallbacks,
+                nonneg=self.nonneg,
+                factors_beta_loading_signs=signs_np,
+                factors_beta_prior=prior_np,
+                penalty_weights=penalty_weights_np,
+            )
+
+        elif self.model_type == LassoModelType.GROUP_LASSO:
+            # Restore NaN positions before computing the EWMA correlation for
+            # clustering. ``get_x_y_np`` zero-fills NaN in y_np so the CVXPY
+            # quadratic-loss solvers can process a finite array (the weights
+            # matrix ``valid_mask`` separately zeros out those observations in
+            # the loss). But ``compute_ewm_covar`` interprets every finite row
+            # as a legitimate observation — a zero-filled row enters the
+            # correlation recursion as a "zero return" observation rather than
+            # as "no observation", which systematically shrinks the estimated
+            # correlations of assets with longer leading-NaN prefixes toward
+            # zero. That shrinkage then propagates into Ward linkage distances,
+            # dendrogram cuts, and group-lasso β estimates, producing results
+            # that depend on how much pre-history each asset carries rather
+            # than on economic correlation structure.
+            #
+            # Passing NaN through lets compute_ewm_covar's NaN-aware recursion
+            # (NanBackfill.FFILL on non-finite outer products) handle leading
+            # and mid-stream missing observations correctly: the correlation
+            # for each asset is estimated only over its valid window, and the
+            # zero-variance guard on the diagonal still protects against
+            # degenerate columns. See CHANGELOG entry for 2026-04-16 commit
+            # 937ba7c "align ewma with qis" for compute_ewm_covar's current
+            # NaN-handling contract.
+            gl = set_group_loadings(group_data=asset_clusters)
+            result = solve_group_lasso_cvx_problem(
+                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
+                valid_mask=valid_mask,
+                reg_lambda=self.reg_lambda, span=eff_span,
+                verbose=verbose, solver=self.solver,
+                solver_fallbacks=self.solver_fallbacks,
+                nonneg=self.nonneg,
+                factors_beta_loading_signs=signs_np,
+                factors_beta_prior=prior_np,
+                group_penalty=self.group_penalty,
+                l1_weight=self.l1_weight,
+                penalty_weights=penalty_weights_np,
+                row_weights=row_weights_np,
+            )
+
+        elif self.model_type == LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO:
+            gl = set_group_loadings(group_data=asset_clusters)
+            result = solve_group_lasso_cvx_problem(
+                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
+                valid_mask=valid_mask,
+                reg_lambda=self.reg_lambda, span=eff_span,
+                verbose=verbose, solver=self.solver,
+                solver_fallbacks=self.solver_fallbacks,
+                nonneg=self.nonneg,
+                factors_beta_loading_signs=signs_np,
+                factors_beta_prior=prior_np,
+                group_penalty=self.group_penalty,
+                l1_weight=self.l1_weight,
+                penalty_weights=penalty_weights_np,
+                row_weights=row_weights_np,
+            )
+        elif self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO:
+            # Same HCGL cluster discovery as HIERARCHICAL_CLUSTER_GROUP_LASSO, but the
+            # group penalty is taken over each cluster x factor block
+            # (block_mode="cluster_factor") rather than over each asset row.
+            # The cluster is the group of the L2 norm here, so the problem
+            # is NOT block-separable across assets.
+            gl = set_group_loadings(group_data=asset_clusters)
+            result = solve_group_lasso_cvx_problem(
+                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
+                valid_mask=valid_mask,
+                reg_lambda=self.reg_lambda, span=eff_span,
+                verbose=verbose, solver=self.solver,
+                solver_fallbacks=self.solver_fallbacks,
+                nonneg=self.nonneg,
+                factors_beta_loading_signs=signs_np,
+                factors_beta_prior=prior_np,
+                group_penalty=self.group_penalty,
+                l1_weight=self.l1_weight,
+                penalty_weights=penalty_weights_np,
+                block_mode="cluster_factor",
+                col_weights=col_weights_np,
+            )
+        elif self.model_type in (
+            LassoModelType.COOPERATIVE_GROUP_LASSO,
+            LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
+        ):
+            gl = set_group_loadings(group_data=asset_clusters)
+            result = solve_cooperative_group_lasso_cvx_problem(
+                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
+                valid_mask=valid_mask,
+                reg_lambda=self.reg_lambda, span=eff_span,
+                verbose=verbose, solver=self.solver,
+                solver_fallbacks=self.solver_fallbacks,
+                factors_beta_prior=prior_np,
+                group_penalty=self.group_penalty,
+                l1_weight=self.l1_weight,
+            )
+        elif self.model_type == LassoModelType.UNILASSO:
+            result = solve_unilasso_cvx_problem(
+                x=x_np, y=y_np, valid_mask=valid_mask,
+                reg_lambda=self.reg_lambda, span=eff_span,
+                verbose=verbose, solver=self.solver,
+                solver_fallbacks=self.solver_fallbacks,
+                loo=self.unilasso_loo,
+                non_negative=self.unilasso_non_negative,
+            )
+        else:
+            raise NotImplementedError(f"Unsupported model_type: {self.model_type}")
+
+        self._finalize_fit(
+            result=result, x=x, y=y, valid_mask=valid_mask, eff_span=eff_span,
+            asset_clusters=asset_clusters, linkage=linkage, cutoff=cutoff,
+        )
+        return self
+
+    def _prepare_fit(
+        self,
+        x: pd.DataFrame,
+        y: pd.DataFrame,
+        x_np: np.ndarray,
+        y_np: np.ndarray,
+        valid_mask: np.ndarray,
+        eff_span: Optional[float],
+    ) -> "_PreparedFit":
+        """derive the reg_lambda-independent solver inputs.
+
+        Clustering, the sign matrix, the prior, and the adaptive penalty
+        weights do not depend on ``reg_lambda``. Extracted verbatim from
+        ``fit`` so a regularisation path derives them once and reuses them
+        across the grid. Sets ``self.derived_signs_`` as the in-line code
+        did.
+        """
         # ── Asset-side clustering (length N), computed once and shared by
         #    both the auto-sign derivation block and the solver dispatch.
         #    None for plain LASSO / single-column y; pd.Series indexed by
@@ -1223,17 +1667,29 @@ class LassoModel:
         linkage = None
         cutoff = None
         is_lasso_mode = (
-            self.model_type == LassoModelType.LASSO or y_np.shape[1] == 1
+            self.model_type == LassoModelType.LASSO
+            or (
+                y_np.shape[1] == 1
+                and self.model_type in (
+                    LassoModelType.GROUP_LASSO,
+                    LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+                    LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+                )
+            )
         )
 
         if is_lasso_mode:
             # asset_clusters stays None → per-y-column sign derivation below
             pass
-        elif self.model_type == LassoModelType.GROUP_LASSO:
+        elif self.model_type in (
+            LassoModelType.GROUP_LASSO,
+            LassoModelType.COOPERATIVE_GROUP_LASSO,
+        ):
             asset_clusters = self.group_data[y.columns]
         elif self.model_type in (
             LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+            LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
         ):
             # Restore NaN before the clustering correlation (see block comment
             # in the solver-dispatch section below for the rationale).
@@ -1261,6 +1717,7 @@ class LassoModel:
                 corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
             asset_clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
                 corr_df, cutoff_fraction=self.cutoff_fraction,
+                linkage_method=self.linkage_method,
             )
 
         # ── Sign-constraint assembly ─────────────────────────────────
@@ -1415,95 +1872,31 @@ class LassoModel:
                     ).to_numpy(),
                 )
 
-        # ── Solver dispatch (consumes the pre-computed asset_clusters) ──
-        if is_lasso_mode:
-            result = solve_lasso_cvx_problem(
-                x=x_np, y=y_np, valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                nonneg=self.nonneg,
-                factors_beta_loading_signs=signs_np,
-                factors_beta_prior=prior_np,
-                penalty_weights=penalty_weights_np,
-            )
+        return _PreparedFit(
+            asset_clusters=asset_clusters, linkage=linkage, cutoff=cutoff,
+            is_lasso_mode=is_lasso_mode, signs_np=signs_np, prior_np=prior_np,
+            penalty_weights_np=penalty_weights_np,
+            row_weights_np=row_weights_np, col_weights_np=col_weights_np,
+        )
 
-        elif self.model_type == LassoModelType.GROUP_LASSO:
-            # Restore NaN positions before computing the EWMA correlation for
-            # clustering. ``get_x_y_np`` zero-fills NaN in y_np so the CVXPY
-            # quadratic-loss solvers can process a finite array (the weights
-            # matrix ``valid_mask`` separately zeros out those observations in
-            # the loss). But ``compute_ewm_covar`` interprets every finite row
-            # as a legitimate observation — a zero-filled row enters the
-            # correlation recursion as a "zero return" observation rather than
-            # as "no observation", which systematically shrinks the estimated
-            # correlations of assets with longer leading-NaN prefixes toward
-            # zero. That shrinkage then propagates into Ward linkage distances,
-            # dendrogram cuts, and group-lasso β estimates, producing results
-            # that depend on how much pre-history each asset carries rather
-            # than on economic correlation structure.
-            #
-            # Passing NaN through lets compute_ewm_covar's NaN-aware recursion
-            # (NanBackfill.FFILL on non-finite outer products) handle leading
-            # and mid-stream missing observations correctly: the correlation
-            # for each asset is estimated only over its valid window, and the
-            # zero-variance guard on the diagonal still protects against
-            # degenerate columns. See CHANGELOG entry for 2026-04-16 commit
-            # 937ba7c "align ewma with qis" for compute_ewm_covar's current
-            # NaN-handling contract.
-            gl = set_group_loadings(group_data=asset_clusters)
-            result = solve_group_lasso_cvx_problem(
-                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
-                valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                nonneg=self.nonneg,
-                factors_beta_loading_signs=signs_np,
-                factors_beta_prior=prior_np,
-                group_penalty=self.group_penalty,
-                l1_weight=self.l1_weight,
-                penalty_weights=penalty_weights_np,
-                row_weights=row_weights_np,
-            )
+    def _finalize_fit(
+        self,
+        result: LassoEstimationResult,
+        x: pd.DataFrame,
+        y: pd.DataFrame,
+        valid_mask: np.ndarray,
+        eff_span: Optional[float],
+        asset_clusters: Optional[pd.Series],
+        linkage,
+        cutoff,
+    ) -> None:
+        """store fitted state from a solver result.
 
-        elif self.model_type == LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO:
-            gl = set_group_loadings(group_data=asset_clusters)
-            result = solve_group_lasso_cvx_problem(
-                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
-                valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                nonneg=self.nonneg,
-                factors_beta_loading_signs=signs_np,
-                factors_beta_prior=prior_np,
-                group_penalty=self.group_penalty,
-                l1_weight=self.l1_weight,
-                penalty_weights=penalty_weights_np,
-                row_weights=row_weights_np,
-            )
-        elif self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO:
-            # Same HCGL cluster discovery as HIERARCHICAL_CLUSTER_GROUP_LASSO, but the
-            # group penalty is taken over each cluster x factor block
-            # (block_mode="cluster_factor") rather than over each asset row.
-            # The cluster is the group of the L2 norm here, so the problem
-            # is NOT block-separable across assets.
-            gl = set_group_loadings(group_data=asset_clusters)
-            result = solve_group_lasso_cvx_problem(
-                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
-                valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                nonneg=self.nonneg,
-                factors_beta_loading_signs=signs_np,
-                factors_beta_prior=prior_np,
-                group_penalty=self.group_penalty,
-                l1_weight=self.l1_weight,
-                penalty_weights=penalty_weights_np,
-                block_mode="cluster_factor",
-                col_weights=col_weights_np,
-            )
-        else:
-            raise NotImplementedError(f"Unsupported model_type: {self.model_type}")
-
+        Warmup zeroing, ``coef_``, the economic intercept ``alpha_const_``,
+        and cluster bookkeeping. Extracted verbatim from ``fit`` so the
+        single fit and every point on a regularisation path share one
+        post-processing path.
+        """
         # Zero out betas for variables with insufficient history
         est_beta = result.estimated_beta
         short_assets: Optional[pd.Index] = None
@@ -1512,6 +1905,13 @@ class LassoModel:
             short = n_valid < self.warmup_period
             if np.any(short):
                 est_beta[short, :] = 0.0
+                warnings.warn(
+                    f"factorlasso: {int(np.sum(short))} of "
+                    f"{len(short)} assets had fewer than "
+                    f"warmup_period={self.warmup_period} valid "
+                    f"observations and were zeroed",
+                    stacklevel=2,
+                )
                 for attr in ('alpha', 'ss_total', 'ss_res', 'r2'):
                     getattr(result, attr)[short] = np.nan
                 # Capture for use below — the cluster-assignment step
@@ -1614,7 +2014,111 @@ class LassoModel:
         self.clusters_ = asset_clusters
         self.linkage_ = linkage
         self.cutoff_ = cutoff
-        return self
+
+    def fit_reg_lambda_path(
+        self,
+        x: Union[pd.DataFrame, pd.Series],
+        y: Union[pd.DataFrame, pd.Series],
+        reg_lambdas: Sequence[float],
+        verbose: bool = False,
+        span: Optional[float] = None,
+    ) -> List["LassoModel"]:
+        """Fit at each ``reg_lambda``, sharing one derivation.
+
+        Returns one fitted model per value in ``reg_lambdas``, in the same
+        order. Each returned model is equivalent to a fresh :meth:`fit` at
+        that ``reg_lambda`` (same ``coef_``, ``alpha_const_``, diagnostics).
+
+        For the group-LASSO family (GROUP_LASSO, HCGL, FCGL) the
+        ``reg_lambda``-independent derivation (clustering, signs, adaptive
+        weights) is computed once via :meth:`_prepare_fit` and the penalty
+        path is solved with :func:`solve_group_lasso_path`, which reuses one
+        canonical form across the grid. LASSO, the cooperative estimators,
+        and UniLasso have no path solver, so each grid point is a full
+        :meth:`fit`.
+
+        Primitive behind ``LassoModelCV(use_lambda_path=True)``. ``self`` is
+        left partially updated (its ``derived_signs_`` is set); use the
+        returned models, not ``self``.
+
+        Parameters
+        ----------
+        reg_lambdas : sequence of float
+            Penalty weights, in any order. The returned list is aligned with
+            this sequence.
+        x, y, verbose, span
+            As in :meth:`fit`.
+
+        Returns
+        -------
+        list of LassoModel
+            One fitted model per ``reg_lambda``.
+        """
+        lambdas = [float(lv) for lv in reg_lambdas]
+        if len(lambdas) == 0:
+            raise ValueError("reg_lambdas must be non-empty")
+
+        group_family = (
+            LassoModelType.GROUP_LASSO,
+            LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+            LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+        )
+        if self.model_type not in group_family:
+            # No path solver for these modes; a full fit per grid point. The
+            # derivation repeats, but the result is identical to fit().
+            out: List["LassoModel"] = []
+            for lam in lambdas:
+                params = self.get_params()
+                params["reg_lambda"] = lam
+                out.append(LassoModel(**params).fit(
+                    x=x, y=y, verbose=verbose, span=span,
+                ))
+            return out
+
+        x, y = self._validate_fit_inputs(x, y)
+        eff_span = self.span if span is None else span
+        _validate_span(eff_span)
+        x_np, y_np, valid_mask = get_x_y_np(
+            x=x, y=y, span=eff_span, demean=self.demean,
+        )
+        prep = self._prepare_fit(
+            x=x, y=y, x_np=x_np, y_np=y_np,
+            valid_mask=valid_mask, eff_span=eff_span,
+        )
+
+        gl = set_group_loadings(group_data=prep.asset_clusters).to_numpy()
+        if self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO:
+            block_mode, row_w, col_w = "cluster_factor", None, prep.col_weights_np
+        else:
+            block_mode, row_w, col_w = "row", prep.row_weights_np, None
+
+        results = solve_group_lasso_path(
+            x=x_np, y=y_np, group_loadings=gl, reg_lambdas=lambdas,
+            valid_mask=valid_mask, span=eff_span, verbose=verbose,
+            solver=self.solver, solver_fallbacks=self.solver_fallbacks,
+            nonneg=self.nonneg,
+            factors_beta_loading_signs=prep.signs_np,
+            factors_beta_prior=prep.prior_np,
+            group_penalty=self.group_penalty, l1_weight=self.l1_weight,
+            penalty_weights=prep.penalty_weights_np,
+            row_weights=row_w, block_mode=block_mode, col_weights=col_w,
+        )
+
+        derived_signs = getattr(self, "derived_signs_", None)
+        out: List["LassoModel"] = []
+        for lam, result in zip(lambdas, results):
+            params = self.get_params()
+            params["reg_lambda"] = lam
+            clone = LassoModel(**params)
+            if derived_signs is not None:
+                clone.derived_signs_ = derived_signs
+            clone._finalize_fit(
+                result=result, x=x, y=y, valid_mask=valid_mask,
+                eff_span=eff_span, asset_clusters=prep.asset_clusters,
+                linkage=prep.linkage, cutoff=prep.cutoff,
+            )
+            out.append(clone)
+        return out
 
     def predict(self, x: pd.DataFrame) -> pd.DataFrame:
         """
@@ -1766,3 +2270,236 @@ class LassoModel:
         ax.set_ylabel("assets")
         ax.set_title("Derived sign matrix (+1 / 0 / -1)")
         return ax
+
+
+def solve_cooperative_group_lasso_cvx_problem(
+    x: np.ndarray,
+    y: np.ndarray,
+    group_loadings: np.ndarray,
+    *,
+    valid_mask: Optional[np.ndarray] = None,
+    reg_lambda: float = 1e-8,
+    span: Optional[float] = None,
+    verbose: bool = False,
+    solver: str = 'CLARABEL',
+    solver_fallbacks: Optional[Sequence[str]] = None,
+    factors_beta_prior: Optional[np.ndarray] = None,
+    group_penalty: str = "normalized",
+    l1_weight: float = 0.0,
+    col_weights: Optional[np.ndarray] = None,
+) -> LassoEstimationResult:
+    r"""cooperative-LASSO multi-output regression via CVXPY (soft sign coherence).
+
+    Minimises
+
+    .. math::
+
+        \frac{1}{T}\|W \odot (X\beta^\top - Y)\|_F^2
+        + (1 - \alpha)\,\lambda \sum_g w_g \sum_{j=1}^{M}
+          \big(\|(\beta_{g,j} - \beta_{0,g,j})_+\|_2
+             + \|(\beta_{g,j} - \beta_{0,g,j})_-\|_2\big)
+        + \alpha\,\lambda \,\|\beta - \beta_0\|_1
+
+    where :math:`(\cdot)_+` and :math:`(\cdot)_-` are the elementwise positive
+    and negative parts and the block :math:`\beta_{g,j}` collects the loadings
+    of cluster *g*'s assets on factor *j*. A sign-coherent block (all-positive
+    or all-negative) pays only :math:`\|\beta_{g,j}\|_2`; a mixed-sign block
+    pays strictly more, so within-block sign coherence is encouraged softly and
+    the data may overrule it. This is the cooperative-LASSO penalty of Chiquet,
+    Grandvalet & Charbonnier (2012), here in the cluster-by-factor block
+    geometry. Signs are not imposed and there is no gate; contrast the hard,
+    gated, pooled sign of FACTOR_CLUSTER_GROUP_LASSO. Solved via the positive /
+    negative split :math:`\beta - \beta_0 = P - N`, :math:`P, N \ge 0`, which is
+    DCP-clean.
+
+    Parameters
+    ----------
+    x : np.ndarray, shape (T, M)
+    y : np.ndarray, shape (T, N)
+    group_loadings : np.ndarray, shape (N, G)
+        Binary group membership matrix (one column per cluster).
+    valid_mask, reg_lambda, span, verbose, solver, factors_beta_prior
+        See :func:`solve_group_lasso_cvx_problem`.
+    group_penalty : {"normalized", "yuan_lin"}, default "normalized"
+        Per-group weight convention; see :func:`solve_group_lasso_cvx_problem`.
+    l1_weight : float, default 0.0
+        Mixing weight alpha on an elementwise L1 term, giving a sparse
+        cooperative-LASSO. 0.0 is the pure cooperative-LASSO.
+    col_weights : np.ndarray, shape (G, M), optional
+        Per-(cluster, factor) adaptive weights on each block penalty.
+
+    Returns
+    -------
+    LassoEstimationResult
+    """
+    _validate_span(span)
+    if group_penalty not in ("normalized", "yuan_lin"):
+        raise ValueError(
+            f"group_penalty must be 'normalized' or 'yuan_lin', got {group_penalty!r}"
+        )
+    if not (0.0 <= l1_weight <= 1.0):
+        raise ValueError(f"l1_weight must lie in [0, 1], got {l1_weight!r}")
+    assert y.ndim == 2 and x.ndim == 2 and group_loadings.ndim == 2
+    assert x.shape[0] == y.shape[0] and y.shape[1] == group_loadings.shape[0]
+
+    t, n_x = x.shape
+    n_y = y.shape[1]
+    n_groups = group_loadings.shape[1]
+    if valid_mask is None:
+        y, valid_mask = _derive_valid_mask_from_y(y)
+    if t < 5:
+        warnings.warn(f"insufficient observations for cooperative lasso: t={t}")
+        return _nan_result(n_y, n_x)
+
+    weights = _compute_solver_weights(t, n_y, span, valid_mask)
+    prior = _clean_beta_prior(factors_beta_prior, n_y, n_x)
+
+    # beta - prior = P - N, P, N >= 0  (positive / negative split)
+    pos = cvx.Variable((n_y, n_x), nonneg=True)
+    neg = cvx.Variable((n_y, n_x), nonneg=True)
+    beta = prior + pos - neg
+
+    fit = (1.0 / t) * cvx.sum_squares(cvx.multiply(weights, x @ beta.T - y))
+
+    def _weight(m: np.ndarray) -> float:
+        g = np.sum(m)
+        if group_penalty == "yuan_lin":
+            return float(np.sqrt(g))
+        return float(np.sqrt(g / n_groups))
+
+    masks = [np.isclose(group_loadings[:, g], 1.0) for g in range(n_groups)]
+    if col_weights is not None and col_weights.shape != (n_groups, n_x):
+        raise ValueError(
+            f"col_weights shape {col_weights.shape} != expected ({n_groups}, {n_x})"
+        )
+    coop_terms = []
+    for gi, m in enumerate(masks):
+        # length-M vectors of block L2 norms over the cluster's member rows,
+        # one per factor, on the positive and the negative part separately.
+        block = cvx.norm2(pos[m, :], axis=0) + cvx.norm2(neg[m, :], axis=0)
+        if col_weights is not None:
+            block = cvx.multiply(col_weights[gi], block)
+        coop_terms.append(reg_lambda * _weight(m) * cvx.sum(block))
+    coop_pen = cvx.sum(coop_terms)
+
+    if l1_weight > 0.0:
+        # P + N equals |beta - prior| elementwise at the optimum.
+        l1_pen = reg_lambda * cvx.sum(pos + neg)
+        penalty = (1.0 - l1_weight) * coop_pen + l1_weight * l1_pen
+    else:
+        penalty = coop_pen
+
+    problem = cvx.Problem(cvx.Minimize(fit + penalty))
+    _solve_with_fallback(problem, solver, solver_fallbacks, verbose=verbose)
+
+    if pos.value is None or neg.value is None:
+        warnings.warn("cooperative lasso problem not solved")
+        return _nan_result(n_y, n_x)
+
+    beta_val = prior + pos.value - neg.value
+    alpha, ss_total, ss_res, r2 = _compute_solver_diagnostics(
+        x, y, beta_val, weights
+    )
+    return LassoEstimationResult(
+        estimated_beta=beta_val, alpha=alpha,
+        ss_total=ss_total, ss_res=ss_res, r2=r2,
+    )
+
+
+def solve_unilasso_cvx_problem(
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    valid_mask: Optional[np.ndarray] = None,
+    reg_lambda: float = 1e-8,
+    span: Optional[float] = None,
+    verbose: bool = False,
+    solver: str = 'CLARABEL',
+    solver_fallbacks: Optional[Sequence[str]] = None,
+    loo: bool = True,
+    non_negative: bool = True,
+) -> LassoEstimationResult:
+    r"""UniLasso univariate-guided sparse regression, per response (no groups).
+
+    Two-stage estimator of Chatterjee, Hastie & Tibshirani (2025). For each
+    response, stage 1 fits the M univariate slopes
+    :math:`\hat\beta^{uni}_j = (x_j^\top y) / (x_j^\top x_j)` and forms the
+    prevalidated (leave-one-out) univariate fits :math:`\hat\eta_{\cdot,j}`.
+    Stage 2 regresses y on those fits,
+
+    .. math::
+
+        \min_{\theta \ge 0}\ \frac1T\|y - \hat\eta\,\theta\|_2^2
+          + \lambda \|\theta\|_1,
+
+    and the final coefficient :math:`\hat\beta_j = \hat\theta_j\,
+    \hat\beta^{uni}_j` inherits the univariate sign through
+    :math:`\theta_j \ge 0`. There is no grouping, no clustering, and no
+    significance gate. Sign preservation is indirect via the stage-2
+    non-negativity, in contrast to the hard sign constraint of the cluster
+    modes.
+
+    Parameters
+    ----------
+    x : np.ndarray, shape (T, M)
+    y : np.ndarray, shape (T, N)
+    valid_mask, reg_lambda, span, verbose, solver
+        See :func:`solve_group_lasso_cvx_problem`. ``reg_lambda`` weights the
+        stage-2 L1 penalty on theta.
+    loo : bool, default True
+        Use leave-one-out (prevalidated) univariate fits in stage 2 (the
+        published UniLasso). False uses in-sample univariate fits.
+    non_negative : bool, default True
+        Constrain theta >= 0 so the coefficient inherits the univariate sign.
+
+    Returns
+    -------
+    LassoEstimationResult
+    """
+    _validate_span(span)
+    assert y.ndim == 2 and x.ndim == 2 and x.shape[0] == y.shape[0]
+    t, n_x = x.shape
+    n_y = y.shape[1]
+    if valid_mask is None:
+        y, valid_mask = _derive_valid_mask_from_y(y)
+    if t < 5:
+        warnings.warn(f"insufficient observations for unilasso: t={t}")
+        return _nan_result(n_y, n_x)
+
+    weights = _compute_solver_weights(t, n_y, span, valid_mask)
+    beta = np.zeros((n_y, n_x), dtype=float)
+
+    for k in range(n_y):
+        w = valid_mask[:, k] > 0
+        xk = x[w]
+        yk = y[w, k]
+        tk = xk.shape[0]
+        if tk < 5:
+            continue
+        s_xx = np.einsum('ij,ij->j', xk, xk)        # (M,) sum x^2
+        s_xy = xk.T @ yk                            # (M,) sum x y
+        with np.errstate(divide='ignore', invalid='ignore'):
+            slope = np.where(s_xx > 0.0, s_xy / s_xx, 0.0)   # full-sample (M,)
+        if loo:
+            num = s_xy[None, :] - xk * yk[:, None]   # (tk, M) leave-one-out
+            den = s_xx[None, :] - xk * xk
+            with np.errstate(divide='ignore', invalid='ignore'):
+                slope_loo = np.where(den > 0.0, num / den, 0.0)
+            eta = xk * slope_loo                     # (tk, M)
+        else:
+            eta = xk * slope[None, :]
+        theta = cvx.Variable(n_x, nonneg=non_negative)
+        fit = (1.0 / tk) * cvx.sum_squares(eta @ theta - yk)
+        pen = reg_lambda * cvx.norm1(theta)
+        prob = cvx.Problem(cvx.Minimize(fit + pen))
+        _solve_with_fallback(prob, solver, solver_fallbacks, verbose=verbose)
+        th = theta.value if theta.value is not None else np.zeros(n_x)
+        beta[k, :] = th * slope
+
+    alpha, ss_total, ss_res, r2 = _compute_solver_diagnostics(
+        x, y, beta, weights
+    )
+    return LassoEstimationResult(
+        estimated_beta=beta, alpha=alpha,
+        ss_total=ss_total, ss_res=ss_res, r2=r2,
+    )

@@ -1,0 +1,28 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2870
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 Times-Roman;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;}
+\margl1440\margr1440\vieww14740\viewh10440\viewkind0
+\deftab720
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\fs28 \cf0 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 The article "factorlasso: Hierarchical Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for Multi-Asset Factor Models in Python" presents the Python package factorlasso that combined clustering with group-lasso consistent sign penalty. Currently, we are not sure if the proposed methodology is published somewhere. The authors must clarify this question, since Journal of Statistical Software only publishes software implementations for which the methodology has already been validated by a journal focused on statistical methodology. In addition, we found a number of issues in the replication material and package that must be solved before this article can be sent into review. We thus ask the authors to correct these issues and resubmit their work along with a point-by-point answer to all raised issues.\
+Detailed comments:\
+o JSS requires that a formal citation is made when an R or a Python package is mentioned. Please add citations where they are missing.\
+o The version of the package that was submitted does not match the version of the package on PyPI. JSS requires that both are in sync.\
+o Currently the README file advise to install required dependencies with:\
+pip install matplotlib joblib scikit-learn skglm asgl adelie\
+We would prefer, to ensure a better replicability, that a requirements.txt file is provided, listing also the versions of these packages used by the authors. Currently, trying to install it without specifying any version gives:\
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behavior is the source of the following dependency conflicts.\uc0\u8232 sparsediffpy 0.3.0 requires numpy>=2.0.0, but you have numpy 1.26.4 which is incompatible.\
+We were not able to solve this issue because sparsediffpy seems to require numpy>=2.0.0 and adelie seems to require a version of numpy smaller than 1.24.2. We have not been able to test the replication material.\
+o The use cases shown in the article are not built as they should. We expect these examples to show step-by-step lines of code with their results to show potential users how the package can be used in practical situations. Note that Journal of Statistical Software expects that not just the model is implemented but also a variety of methods associated to this model to allow its inspection (including plots). We also expect that Python package are compatible with scikit-learn architecture to allow the use of model selection methods implemented in scikit-learn.\
+o The code show in pages 15-16 does not seem to be included in the replication material:\
+rgrep "T, N, M = 120, 50, 9" .\uc0\u8232 ./paper/article.tex:>>> T, N, M = 120, 50, 9\
+JSS requires that all code shown in the manuscript is included in replication material and that shown results are reproduced exactly.\
+o On page 16, we see:\
+model.coef_.shape\uc0\u8232 model.derived_signs_.shape\u8232 int(model.clusters_.nunique())\
+This is not a recommended behavior to have private attributes (e.g., .coef_) directly queried by users. Documented public attributes or methods must be used for this, similarly to https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html.\
+o The implementation should allow for extensibility and modifications, e.g., it would be good to provide a modular implementation which would allow to use also other methods for creating the cluster solution, instead of having Ward fixed.\
+o It would be good to present the model and method in a way accessible for statistician and in a rather general way not focusing on a specific application to better match JSS's target audience.\'a0\
+}

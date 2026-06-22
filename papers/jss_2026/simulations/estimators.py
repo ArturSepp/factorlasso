@@ -22,6 +22,9 @@ factorlasso configurations
 - ``factorlasso_grp_hcgl_sign``          — HCGL + cluster-pooled sign derivation
 - ``factorlasso_grp_hcgl_sign_adapt``    — HCGL + signs + adaptive reweighting
 - ``factorlasso_sgl_hcgl_sign_adapt``    — Sparse Group LASSO (l1_weight=0.1) + signs + adaptive
+- ``factorlasso_unilasso``               — UniLasso, per-response univariate-guided (no grouping)
+- ``factorlasso_coop_oracle``            — Cooperative LASSO on the true clusters
+- ``factorlasso_coop_hcgl``              — Cooperative LASSO on HCGL-discovered clusters
 
 These six rows give the §4-§5 ablation:
 
@@ -317,6 +320,86 @@ def fit_factorlasso_sgl_hcgl_sign_adapt(
     )
     return _factorlasso_fit(
         kwargs, X_train, y_train, "factorlasso_sgl_hcgl_sign_adapt", reg_lambda,
+    )
+
+
+# ── factorlasso family members outside the ablation chain ────────
+
+
+@register("factorlasso_unilasso")
+def fit_factorlasso_unilasso(
+    X_train: pd.DataFrame,
+    y_train: pd.DataFrame,
+    reg_lambda: float,
+    *,
+    true_clusters: Optional[pd.Series] = None,
+) -> EstimatorResult:
+    """
+    UniLasso (Chatterjee, Hastie & Tibshirani 2025): per-response
+    two-stage univariate-guided fit with no grouping. Stage one fits the
+    univariate slope of each response on each factor; stage two combines
+    them with a non-negative coefficient, so each loading keeps the sign
+    of its univariate slope. ``group_data`` and ``cutoff_fraction`` are
+    ignored.
+    """
+    kwargs = dict(
+        model_type=LassoModelType.UNILASSO,
+        reg_lambda=reg_lambda,
+        unilasso_loo=True,
+        unilasso_non_negative=True,
+    )
+    return _factorlasso_fit(
+        kwargs, X_train, y_train, "factorlasso_unilasso", reg_lambda,
+    )
+
+
+@register("factorlasso_coop_oracle")
+def fit_factorlasso_coop_oracle(
+    X_train: pd.DataFrame,
+    y_train: pd.DataFrame,
+    reg_lambda: float,
+    *,
+    true_clusters: Optional[pd.Series] = None,
+) -> EstimatorResult:
+    """
+    Cooperative LASSO (Chiquet, Grandvalet & Charbonnier 2012) on the
+    TRUE cluster assignment. The cooperative penalty splits each
+    coefficient into a non-negative and a non-positive part penalised as
+    separate groups, so members of a group tend to share a sign while the
+    data can overrule it. Oracle group analogue of the cooperative mode.
+    """
+    if true_clusters is None:
+        raise ValueError("factorlasso_coop_oracle requires true_clusters")
+    kwargs = dict(
+        model_type=LassoModelType.COOPERATIVE_GROUP_LASSO,
+        reg_lambda=reg_lambda,
+        group_data=true_clusters,
+    )
+    return _factorlasso_fit(
+        kwargs, X_train, y_train, "factorlasso_coop_oracle", reg_lambda,
+    )
+
+
+@register("factorlasso_coop_hcgl")
+def fit_factorlasso_coop_hcgl(
+    X_train: pd.DataFrame,
+    y_train: pd.DataFrame,
+    reg_lambda: float,
+    *,
+    true_clusters: Optional[pd.Series] = None,
+) -> EstimatorResult:
+    """
+    Cooperative LASSO on HCGL-discovered clusters. Same soft
+    sign-coherence penalty as ``factorlasso_coop_oracle`` but on the
+    partition discovered from ``corr(Y)`` rather than supplied.
+    """
+    kwargs = dict(
+        model_type=LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
+        reg_lambda=reg_lambda,
+        cutoff_fraction=0.5,
+    )
+    return _factorlasso_fit(
+        kwargs, X_train, y_train, "factorlasso_coop_hcgl", reg_lambda,
     )
 
 

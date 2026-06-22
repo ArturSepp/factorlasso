@@ -40,7 +40,7 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
-from factorlasso.lasso_estimator import LassoModel
+from factorlasso.lasso_estimator import LassoModel, LassoModelType
 
 # Errors we treat as "this fold failed, record NaN and continue".
 # Anything else (KeyboardInterrupt, MemoryError, attribute errors from
@@ -130,6 +130,14 @@ class LassoModelCV:
     refit : bool, default True
         After CV, refit a fresh :class:`LassoModel` with ``best_lambda_``
         on the full dataset and store it as ``best_model_``.
+    use_lambda_path : bool, default False
+        When True and ``base_model`` is a group-LASSO-family estimator
+        (GROUP_LASSO, HCGL, FCGL), each fold derives its clustering,
+        signs, and adaptive weights once and sweeps the lambda grid with a
+        single canonical form via :meth:`LassoModel.fit_reg_lambda_path`.
+        Default False reproduces the per-lambda loop exactly; True is
+        numerically identical up to solver tolerance and faster for the
+        group family.
 
     Attributes
     ----------
@@ -161,6 +169,7 @@ class LassoModelCV:
     n_splits: int = 5
     base_model: Optional[LassoModel] = None
     refit: bool = True
+    use_lambda_path: bool = False
 
     # ── Fitted state (trailing underscore) ───────────────────────────
     best_lambda_: Optional[float] = None
@@ -210,29 +219,81 @@ class LassoModelCV:
         splits = list(expanding_window_splits(len(x), self.n_splits))
 
         scores = np.full((len(lambdas), len(splits)), np.nan)
-        for i, lam in enumerate(lambdas):
+        template = self._make_model(lambdas[0])
+        group_family = (
+            LassoModelType.GROUP_LASSO,
+            LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+            LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+        )
+        use_path = (
+            self.use_lambda_path and template.model_type in group_family
+        )
+
+        if use_path:
+            # Derive once per fold and sweep the lambda grid with a single
+            # canonical form (DPP warm start). Numerically identical to the
+            # per-lambda loop below up to solver tolerance.
             for j, (tr, te) in enumerate(splits):
-                model = self._make_model(lam)
                 try:
-                    model.fit(
-                        x=x.iloc[tr], y=y.iloc[tr], verbose=verbose,
+                    fold_models = self._make_model(
+                        lambdas[0]
+                    ).fit_reg_lambda_path(
+                        x=x.iloc[tr], y=y.iloc[tr],
+                        reg_lambdas=lambdas, verbose=verbose,
                     )
-                    scores[i, j] = model.score(x.iloc[te], y.iloc[te])
                 except _FOLD_ERRORS as err:
                     if verbose:
                         warnings.warn(
-                            f"CV fold (lambda={lam:.2e}, split={j}) failed: "
-                            f"{type(err).__name__}: {err}",
+                            f"CV fold (split={j}) failed during path "
+                            f"solve: {type(err).__name__}: {err}",
                             RuntimeWarning,
                             stacklevel=2,
                         )
                         print(
                             f"[LassoModelCV] fold failed "
-                            f"(lambda={lam:.2e}, split={j}): "
-                            f"{type(err).__name__}: {err}",
+                            f"(split={j}): {type(err).__name__}: {err}",
                             file=sys.stderr,
                         )
-                    # Fall through with NaN score
+                    continue  # whole split column stays NaN
+                for i, fold_model in enumerate(fold_models):
+                    try:
+                        scores[i, j] = fold_model.score(
+                            x.iloc[te], y.iloc[te]
+                        )
+                    except _FOLD_ERRORS as err:
+                        if verbose:
+                            warnings.warn(
+                                f"CV fold (lambda={lambdas[i]:.2e}, "
+                                f"split={j}) scoring failed: "
+                                f"{type(err).__name__}: {err}",
+                                RuntimeWarning,
+                                stacklevel=2,
+                            )
+                        # cell stays NaN
+        else:
+            for i, lam in enumerate(lambdas):
+                for j, (tr, te) in enumerate(splits):
+                    model = self._make_model(lam)
+                    try:
+                        model.fit(
+                            x=x.iloc[tr], y=y.iloc[tr], verbose=verbose,
+                        )
+                        scores[i, j] = model.score(x.iloc[te], y.iloc[te])
+                    except _FOLD_ERRORS as err:
+                        if verbose:
+                            warnings.warn(
+                                f"CV fold (lambda={lam:.2e}, split={j}) "
+                                f"failed: {type(err).__name__}: {err}",
+                                RuntimeWarning,
+                                stacklevel=2,
+                            )
+                            print(
+                                f"[LassoModelCV] fold failed "
+                                f"(lambda={lam:.2e}, split={j}): "
+                                f"{type(err).__name__}: {err}",
+                                file=sys.stderr,
+                            )
+                        # Fall through with NaN score
 
         cv_scores = pd.DataFrame(
             scores,

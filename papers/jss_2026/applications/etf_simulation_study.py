@@ -96,6 +96,7 @@ ROSTER = [
     ("sklearn_lasso", "sklearn Lasso"),
     ("skglm_grouplasso", "skglm GroupLasso"),
     ("asgl_sgl", "asgl SGL"),
+    ("adelie_grp", "adelie group LASSO"),
     ("factorlasso_lasso", "FL LASSO"),
     ("factorlasso_grp_hcgl", "FL HCGL"),
     ("factorlasso_grp_hcgl_sign", "FL HCGL+sign"),
