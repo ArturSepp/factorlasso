@@ -147,6 +147,20 @@ def compute_clusters_from_corr_matrix(
             f"got {linkage_method!r}"
         )
     corr_matrix = corr_matrix.fillna(0.0)
+    # A single asset is trivially its own cluster. SciPy's squareform/linkage
+    # are undefined for one observation — the condensed pairwise-distance
+    # vector is empty and ``spc.linkage`` then raises "The number of
+    # observations cannot be determined on an empty distance matrix". Short-
+    # circuit instead of letting that propagate: return the lone asset in
+    # cluster 1, an empty linkage (scipy's ``(n - 1, 4)`` linkage format has
+    # zero rows for n = 1), and a zero cutoff. This keeps the function total —
+    # callers that build group loadings receive a valid one-element Series
+    # rather than an exception or None — which unblocks any fit whose
+    # frequency bucket holds exactly one asset (e.g. a mandate whose sole
+    # quarterly-rebalanced sleeve is a single hedge-fund proxy).
+    if corr_matrix.shape[0] == 1:
+        clusters = pd.Series(1, index=corr_matrix.columns)
+        return clusters, np.empty((0, 4)), 0.0
     # squareform(1 - C) converts the correlation matrix to scipy's
     # condensed pairwise-distance vector (a correlation dissimilarity, not
     # the Euclidean chord distance). Clip guards against

@@ -35,17 +35,17 @@
 
 \title[mode=title]{Gated Cluster-Pooled Sign Constraints for Multi-Output Sparse Regression}
 
-%% TODO confirm authorship + order (matches the companion software paper).
+
 \author[1]{Artur Sepp}
 \cormark[1]
-\ead{[TODO: email]}
+\ead{artur.sepp@lgt.com}
 \credit{Conceptualization, Methodology, Software, Writing -- original draft}
 \affiliation[1]{organization={LGT Bank, Quantitative Analytics},
-                addressline={},
-                city={Zurich},
-                postcode={},
-                state={},
-                country={Switzerland}}            % TODO complete address
+	addressline={Bleicherweg 30},
+	city={Zurich},
+	postcode={8002},
+	%state={},
+	country={Switzerland}}      
 
 \author[1]{Mika Kastenholz}
 \credit{Methodology, Writing -- review \& editing}
@@ -53,32 +53,33 @@
 \cortext[1]{Corresponding author}
 
 \begin{abstract}
-In sparse multi-output regression, the marginal sign of a predictor is
-informative for a response but unstable when it is estimated one response at a
-time. Existing univariate sign guidance acts on a single response and imposes
-the marginal sign without testing whether the signal exceeds the noise. We pool
-the univariate slope across a data-driven cluster of responses, impose the
-pooled sign as a constraint, and abstain from the constraint through a
-closed-form noise-floor gate. With known clusters, pooling recovers 99\% of coefficient signs against 68\%
-per-response in simulation. With discovered clusters the gain is smaller and
-grows with cluster recoverability. On yeast eQTL data the discovered clusters
-agree on the marginal sign in 93\% of significant cells. We prove that the gated
-pooled signs are sign-consistent on the true support under a within-cluster
-sign-coherence condition. We leave the oracle limiting distribution as a
-conjecture. Pooling over a size-$m$ cluster raises the gate's effective sample
-toward $mT$, sharpening the sign-recovery rate by up to a factor $\sqrt{m}$.
+	In sparse multi-output regression, a predictor's marginal sign for a response is informative, but unstable when estimated one response at a time.
+	Existing univariate sign guidance acts on a single response and imposes
+	the marginal sign without testing whether the signal exceeds the noise. We pool
+	the univariate slope across a data-driven cluster of responses, impose the
+	pooled sign as a constraint, and abstain from the constraint through a
+	closed-form noise-floor gate. With known clusters, pooling recovers 99\% of coefficient signs against 68\%
+	per-response in simulation. With discovered clusters the gain is smaller and
+	grows with cluster recoverability. On yeast eQTL data the discovered clusters
+	agree on the marginal sign in 93\% of significant cells. We prove that the gated
+	pooled signs are sign-consistent on the true support under a within-cluster
+	sign-coherence condition. We leave the oracle limiting distribution as a
+	conjecture. Pooling over a size-$m$ cluster raises the gate's effective sample
+	toward $mT$, sharpening the sign-recovery rate by up to a factor $\sqrt{m}$. The
+	gate abstains rather than assert an unsupported sign, so the recovered structure
+	is safe to use in models where a wrong sign reverses the decision.
 \end{abstract}
 
 \begin{highlights}
-\item Pool univariate signs across data-driven response clusters in sparse regression
-\item A closed-form noise-floor gate abstains when the pooled marginal signal is weak
-\item Sign consistency proved under a within-cluster sign-coherence condition
-\item Pooling a size-$m$ cluster sharpens the sign-recovery rate by up to $\sqrt{m}$
-\item Sign-recovery gain over per-response derivation grows with cluster recoverability
+	\item Pool univariate signs across data-driven response clusters in sparse regression
+	\item A closed-form noise-floor gate abstains when the pooled marginal signal is weak
+	\item Sign consistency proved under a within-cluster sign-coherence condition
+	\item Pooling a size-$m$ cluster sharpens the sign-recovery rate by up to $\sqrt{m}$
+	\item Sign-recovery gain over per-response derivation grows with cluster recoverability
 \end{highlights}
 
 \begin{keywords}
-sparse regression \sep sign constraints \sep variable selection \sep group lasso \sep univariate guidance \sep clustering
+	sparse regression \sep sign constraints \sep variable selection \sep group lasso \sep univariate guidance \sep clustering
 \end{keywords}
 
 \maketitle
@@ -86,7 +87,12 @@ sparse regression \sep sign constraints \sep variable selection \sep group lasso
 %% =====================================================================
 \section{Introduction} \label{sec:intro}
 
-The sign of a coefficient is often its most interpretable feature. In sparse multi-output regression, where $N$ responses share $M$
+The sign of a coefficient is often its most interpretable feature. In a factor
+model for portfolio construction the sign of a loading says whether an asset
+hedges or amplifies a factor, which then sets the covariance and the allocation
+\citep{sepp2026rosaa}. A sign that points the wrong way reverses that economic
+reading, so a method that asserts an unsupported sign is worse than one that
+abstains. In sparse multi-output regression, where $N$ responses share $M$
 predictors, the marginal sign of a predictor is informative but unstable in any
 single response. Pooling the marginal evidence across similar responses
 stabilizes the sign, but only when the marginal signal is real and the responses
@@ -123,12 +129,14 @@ effective sample toward $mT$, sharpening the sign-recovery rate by up to a facto
 $\sqrt{m}$. The within-cluster residual correlation sets how much of the gain is
 realized. In simulation, pooling over known clusters recovers 99\% of coefficient
 signs against 68\% per-response. The gain with discovered clusters is smaller and
-grows with cluster recoverability. To our knowledge, the method is the first to
-derive a significance-gated, cluster-pooled univariate sign for multi-output
+grows with cluster recoverability. Where marginal screening keeps or drops a predictor, the gate keeps or withholds
+its sign, so the method declines to assert a sign that the data do not support.
+To our knowledge, the method is the first to
+derive a noise-floor-gated, cluster-pooled univariate sign for multi-output
 sparse regression.\footnote{The method is implemented
-in the open-source Python package \texttt{factorlasso} \citep{factorlasso}. The
-package and its interface are described in the companion software paper
-\citep{factorlasso-jss}.}
+	in the open-source Python package \texttt{factorlasso} \citep{factorlasso}. The
+	package and its interface are described in the companion software paper
+	\citep{factorlasso-jss}.}
 
 Section~\ref{sec:methods} develops the method. Section~\ref{sec:theory} states the sign-consistency result and the pooling rate. Section~\ref{sec:simulation} reports the simulation
 study. Section~\ref{sec:eqtl} applies the method to yeast eQTL data.
@@ -137,8 +145,7 @@ closed-form identity, the formal conditions and proof, and the reproduction
 details.
 \section{Methodology} \label{sec:methods}
 
-We develop the sign-derivation mechanism at the center of the estimator. The
-mechanism assigns a sign to each predictor-response pair and uses the signs as
+We develop the sign-derivation mechanism which assigns a sign to each predictor-response pair and uses the signs as
 hard constraints in a sparse multi-response regression. We derive each sign from
 a univariate slope pooled across the responses in a cluster, and we gate the
 sign with a closed-form noise-floor test. The pooling raises the per-cell sample
@@ -146,18 +153,22 @@ size by the cluster size, so a shared sign rests on more evidence than a single
 response provides. We discover the clusters from the response correlation
 matrix, so the partition is data-driven rather than supplied.
 
-Three lines of work meet in the mechanism.
+Four lines of work meet in the mechanism.
 \citet{Chatterjee+Hastie+Tibshirani:2025} derive per-response univariate signs
 and impose them as constraints, without pooling across responses. The group
 LASSO of \citet{Yuan+Lin:2006} imposes group structure on the coefficients but
 derives no signs. The adaptive LASSO of \citet{Zou:2006}, with the group oracle
 theory of \citet{Wang+Leng:2008}, reweights the penalty by a pilot estimate,
-again without sign derivation. We pool the univariate sign across a discovered
-cluster, gate it by a test in the spirit of marginal screening
-\citep{Fan+Lv:2008}, and prove sign consistency for the pooled and gated signs
-(Appendix~\ref{app:theory}). To our knowledge, the gated cluster-pooled
+again without sign derivation. Marginal screening removes uninformative
+predictors by a marginal test \citep{Fan+Lv:2008}, but derives no sign. We pool
+the univariate sign across a discovered cluster, gate it by a test in the spirit
+of marginal screening, and prove sign consistency for the pooled and gated signs
+(Appendix~\ref{app:theory}).
+
+
+To our knowledge, the gated cluster-pooled
 univariate sign derivation is new among multi-response sparse-regression
-methods. The companion paper \citep{factorlasso-jss} documents the software.
+methods. The companion paper \citep{factorlasso-jss} documents the software and comparison with peer methods.
 
 Section~\ref{sec:setup} fixes notation. Section~\ref{sec:univ-slope} derives the
 pooled slope. Section~\ref{sec:gate} states the gate. Section~\ref{sec:hcgl}
@@ -172,7 +183,7 @@ observations, and let $\bm{X} \in \mathbb{R}^{T \times M}$ collect $M$ predictor
 observed over the same observations. The multi-response regression model is
 %
 \begin{equation} \label{eq:setup}
-\bm{Y} \;=\; \bm{X}\, \bm{\beta}^\top + \bm{\varepsilon},
+	\bm{Y} \;=\; \bm{X}\, \bm{\beta}^\top + \bm{\varepsilon},
 \end{equation}
 %
 where $\bm{\beta} \in \mathbb{R}^{N \times M}$ is the coefficient matrix and
@@ -194,10 +205,10 @@ across all $N$ responses solves the first-order condition
 $\bm{x}_j^\top \sum_{k=1}^{N} (\bm{y}_k - \hat{\beta}_j \bm{x}_j) = 0$, which gives
 %
 \begin{equation} \label{eq:slope-pooled}
-\hat{\beta}_j \;=\; \frac{\bm{x}_j^\top \bm{y}_{\mathrm{sum}}}
-{N\, \bm{x}_j^\top \bm{x}_j},
-\qquad
-\bm{y}_{\mathrm{sum}} \;\equiv\; \sum_{k=1}^{N} \bm{y}_k \;\in\; \mathbb{R}^T.
+	\hat{\beta}_j \;=\; \frac{\bm{x}_j^\top \bm{y}_{\mathrm{sum}}}
+	{N\, \bm{x}_j^\top \bm{x}_j},
+	\qquad
+	\bm{y}_{\mathrm{sum}} \;\equiv\; \sum_{k=1}^{N} \bm{y}_k \;\in\; \mathbb{R}^T.
 \end{equation}
 %
 Equation~\eqref{eq:slope-pooled} generalizes the single-response univariate slope
@@ -207,12 +218,12 @@ grouped into clusters, we compute the slope against the cluster-sum response and
 broadcast it to every cluster member,
 %
 \begin{equation} \label{eq:slope-cluster}
-\hat{\beta}_{j, \mathcal{C}} \;=\;
-\frac{\bm{x}_j^\top \bm{y}_{\mathcal{C}, \mathrm{sum}}}
-{|\mathcal{C}|\, \bm{x}_j^\top \bm{x}_j},
-\qquad
-\bm{y}_{\mathcal{C}, \mathrm{sum}} \;=\;
-\sum_{k \in \mathcal{C}} \bm{y}_k \;\in\; \mathbb{R}^T.
+	\hat{\beta}_{j, \mathcal{C}} \;=\;
+	\frac{\bm{x}_j^\top \bm{y}_{\mathcal{C}, \mathrm{sum}}}
+	{|\mathcal{C}|\, \bm{x}_j^\top \bm{x}_j},
+	\qquad
+	\bm{y}_{\mathcal{C}, \mathrm{sum}} \;=\;
+	\sum_{k \in \mathcal{C}} \bm{y}_k \;\in\; \mathbb{R}^T.
 \end{equation}
 %
 Equation~\eqref{eq:slope-cluster} restricts Equation~\eqref{eq:slope-pooled} to
@@ -233,8 +244,8 @@ univariate $t$~statistic from a residual sum-of-squares identity that avoids
 forming the per-cell residuals,
 %
 \begin{equation} \label{eq:ssr}
-\mathrm{SSR}_j \;=\; \|\bm{Y}\|_F^2 \;-\;
-N\, \hat{\beta}_j^{\,2}\, \bigl(\bm{x}_j^\top \bm{x}_j\bigr),
+	\mathrm{SSR}_j \;=\; \|\bm{Y}\|_F^2 \;-\;
+	N\, \hat{\beta}_j^{\,2}\, \bigl(\bm{x}_j^\top \bm{x}_j\bigr),
 \end{equation}
 %
 which follows from the slope-defining identity
@@ -247,12 +258,12 @@ restricts the Frobenius norm to the cluster columns (Appendix~\ref{app:ssr}). Th
 gated sign matrix is
 %
 \begin{equation} \label{eq:gate}
-s_{kj} \;=\;
-\begin{cases}
-\operatorname{sign}\bigl(\hat{\beta}_{j, \mathcal{C}(k)}\bigr), &
-|t_{j, \mathcal{C}(k)}| \;\geq\; \tau, \\
-0, & |t_{j, \mathcal{C}(k)}| \;<\; \tau,
-\end{cases}
+	s_{kj} \;=\;
+	\begin{cases}
+		\operatorname{sign}\bigl(\hat{\beta}_{j, \mathcal{C}(k)}\bigr), &
+		|t_{j, \mathcal{C}(k)}| \;\geq\; \tau, \\
+		0, & |t_{j, \mathcal{C}(k)}| \;<\; \tau,
+	\end{cases}
 \end{equation}
 %
 where $\tau$ is the threshold, with default $\tau = 0.75$. The threshold is not a
@@ -277,9 +288,9 @@ $\sqrt{2(1 - \rho_{ij})}$ between standardized response vectors. The two agree u
 to a concave monotone transform, so we read the step as a stable
 correlation-clustering heuristic rather than exact Ward variance
 minimization.\footnote{Ward's criterion is derived for Euclidean distances
-between points, so under $1 - \rho$ the merge costs are not exact within-cluster
-sum-of-squares increments. We retain $1 - \rho$ because the partition is used
-only to pool signs and to group the penalty, not to make a metric claim.} Ward
+	between points, so under $1 - \rho$ the merge costs are not exact within-cluster
+	sum-of-squares increments. We retain $1 - \rho$ because the partition is used
+	only to pool signs and to group the penalty, not to make a metric claim.} Ward
 linkage is a standard, stable default for correlation-based agglomerative
 clustering.
 The discovered partition ranges from one cluster (at $\rho_{\mathrm{cut}} \to 1$)
@@ -293,12 +304,12 @@ matrix $\bm{S} = (s_{kj}) \in \{-1, 0, +1, \mathrm{NaN}\}^{N \times M}$ from
 Equation~\eqref{eq:gate} defines the constraint set
 %
 \begin{equation} \label{eq:sgl-sign-constraint}
-\mathcal{K}(\bm{S}) =
-\left\{
-\bm{\beta} :
-\beta_{kj} = 0 \ \text{if } s_{kj} = 0, \quad
-s_{kj}\, \beta_{kj} \ge 0 \ \text{if } s_{kj} \in \{-1, +1\}
-\right\}.
+	\mathcal{K}(\bm{S}) =
+	\left\{
+	\bm{\beta} :
+	\beta_{kj} = 0 \ \text{if } s_{kj} = 0, \quad
+	s_{kj}\, \beta_{kj} \ge 0 \ \text{if } s_{kj} \in \{-1, +1\}
+	\right\}.
 \end{equation}
 %
 A gated-out cell is pinned to zero, and a signed cell is held in the matching
@@ -306,23 +317,29 @@ half-space. Cells with $s_{kj} = \mathrm{NaN}$ are unconstrained. The estimator
 solves the prior-centered sparse group LASSO problem
 %
 \begin{align}
-\hat{\bm{\beta}} \;=\; \arg\min_{\bm{\beta} \in \mathcal{K}(\bm{S})} \;&
-\Biggl\{
-\frac{1}{T} \sum_{t = 1}^{T}
-\bigl\| \bm{y}_{t} - \bm{\beta}\, \bm{x}_{t} \bigr\|_2^2
-\;+\; \lambda\, (1 - \alpha) \sum_{g = 1}^{G} \sqrt{|\mathcal{C}_g| / G}\,
-\sum_{k \in \mathcal{C}_g}
-\bigl\| \bm{\beta}_{k, \cdot} - \bm{\beta}^{0}_{k, \cdot} \bigr\|_2
-\notag \\
-& \qquad +\; \lambda\, \alpha \sum_{k = 1}^{N} \sum_{j = 1}^{M}
-\bigl| \beta_{kj} - \beta^{0}_{kj} \bigr|
-\Biggr\}, \label{eq:sgl-sign}
+	\hat{\bm{\beta}} \;=\; \arg\min_{\bm{\beta} \in \mathcal{K}(\bm{S})} \;&
+	\Biggl\{
+	\frac{1}{T} \sum_{t = 1}^{T}
+	\bigl\| \bm{y}_{t} - \bm{\beta}\, \bm{x}_{t} \bigr\|_2^2
+	\;+\; \lambda\, (1 - \alpha) \sum_{g = 1}^{G} \sqrt{|\mathcal{C}_g| / G}\,
+	\sum_{k \in \mathcal{C}_g}
+	\bigl\| \bm{\beta}_{k, \cdot} - \bm{\beta}^{0}_{k, \cdot} \bigr\|_2
+	\notag \\
+	& \qquad +\; \lambda\, \alpha \sum_{k = 1}^{N} \sum_{j = 1}^{M} W_{kj}
+	\bigl| \beta_{kj} - \beta^{0}_{kj} \bigr|
+	\Biggr\}, \label{eq:sgl-sign}
 \end{align}
 %
 where $\lambda > 0$ is the penalty strength, $\alpha \in [0, 1]$ mixes the group
 and cell penalties, $\bm{\beta}^{0}$ is an optional target matrix (zero by
-default), and the multiplier $\sqrt{|\mathcal{C}_g| / G}$ moderates the influence
-of large clusters. The group penalty in Equation~\eqref{eq:sgl-sign} runs the
+default), the multiplier $\sqrt{|\mathcal{C}_g| / G}$ moderates the influence of
+large clusters, and the cell weights $W_{kj} > 0$
+(Equation~\eqref{eq:adapt-cell}, with $W_{kj} = 1$ when adaptive reweighting is
+off) reweight the cell penalty. The cell weights enter only the cell term, so
+adaptive reweighting is inactive when $\alpha = 0$.
+
+
+The group penalty in Equation~\eqref{eq:sgl-sign} runs the
 $\ell_2$ norm over the loadings of one response, which we call the
 hierarchical-clustering group LASSO (HCGL) mode. A complementary mode runs the
 group norm over the responses of a cluster on one predictor, which we call the
@@ -330,8 +347,8 @@ factor-clustering group LASSO (FCGL) mode. When adaptive reweighting is on, the
 penalty weights follow the adaptive LASSO of \citet{Zou:2006},
 %
 \begin{equation} \label{eq:adapt-cell}
-W_{kj} \;=\; \frac{1}
-{\max\bigl(|\hat{\beta}_{j, \mathcal{C}(k)}|,\, \varepsilon\bigr)^{\gamma}},
+	W_{kj} \;=\; \frac{1}
+	{\max\bigl(|\hat{\beta}_{j, \mathcal{C}(k)}|,\, \varepsilon\bigr)^{\gamma}},
 \end{equation}
 %
 with the cluster-pooled slope of Equation~\eqref{eq:slope-cluster} as the pilot,
@@ -363,7 +380,7 @@ within-cluster residual correlation $\bar{\rho}$, the design effect
 $1 + (m-1)\bar{\rho}$ reduces the effective sample to $mT / (1 + (m-1)\bar{\rho})$
 and the realized rate to $\sqrt{m / (1 + (m-1)\bar{\rho})}$. The realized rate
 equals $\sqrt{m}$ as $\bar{\rho} \to 0$ and falls to one as $\bar{\rho} \to 1$.
-The gain is therefore largest at moderate $\bar{\rho}$. This residual correlation
+The gain is therefore largest as $\bar{\rho} \to 0$. This residual correlation
 is distinct from the total correlation that the clustering reads, so a coherent
 cluster need not carry a large $\bar{\rho}$. Figure~\ref{fig:consistency} plots
 the $\sqrt{mT}$ ideal, which the realized recovery approaches from below.
@@ -457,16 +474,16 @@ responses as independent and so over-disperses the null statistic
 the next subsection shows.
 
 \begin{table}[t]
-\centering
-\caption{Known-cluster pooling nearly eliminates abstention on true signals.
-Monte Carlo sign-recovery, sign-flip, abstention, and false-sign rates for the
-three sign derivations in the base configuration ($N = 60$ responses,
-$M = 20$ predictors, $G = 6$ clusters, $T = 80$ observations, population
-$R^2 = 0.10$, gate threshold $\tau = 0.75$). The first three rates are computed
-on active coefficients and the false-sign rate on null coefficients. Cells are
-means over $200$ replications, with standard errors in parentheses.}
-\label{tab:base}
-\input{tableS1_base}
+	\centering
+	\caption{Known-cluster pooling nearly eliminates abstention on true signals.
+		Monte Carlo sign-recovery, sign-flip, abstention, and false-sign rates for the
+		three sign derivations in the base configuration ($N = 60$ responses,
+		$M = 20$ predictors, $G = 6$ clusters, $T = 80$ observations, population
+		$R^2 = 0.10$, gate threshold $\tau = 0.75$). The first three rates are computed
+		on active coefficients and the false-sign rate on null coefficients. Cells are
+		means over $200$ replications, with standard errors in parentheses.}
+	\label{tab:base}
+	\input{tableS1_base}
 \end{table}
 
 The advantage of estimated-cluster pooling grows with cluster recoverability.
@@ -481,15 +498,15 @@ the data reveal the clusters. The gap is near zero when the clusters are
 invisible and widens as they emerge.
 
 \begin{figure}[t]
-\centering
-\includegraphics[width=0.72\linewidth]{figS1_recoverability.pdf}
-\caption{Sign-pooling's gain over per-response derivation tracks cluster
-recoverability. Sign recovery against population $R^2$ at fixed $T = 80$, for
-per-response derivation, estimated-cluster pooling (HCGL), and known-cluster
-pooling. The shaded band marks the $R^2$ range of the eQTL application of
-Section~\ref{sec:eqtl}. Points are means over $200$ replications, and error bars show
-one standard error.}
-\label{fig:recoverability}
+	\centering
+	\includegraphics[width=0.72\linewidth]{figS1_recoverability.pdf}
+	\caption{Sign-pooling's gain over per-response derivation tracks cluster
+		recoverability. Sign recovery against population $R^2$ at fixed $T = 80$, for
+		per-response derivation, estimated-cluster pooling (HCGL), and known-cluster
+		pooling. The shaded band marks the $R^2$ range of the eQTL application of
+		Section~\ref{sec:eqtl}. Points are means over $200$ replications, and error bars show
+		one standard error.}
+	\label{fig:recoverability}
 \end{figure}
 
 Pooling helps most when the sample is small relative to the structure.
@@ -501,14 +518,14 @@ The practical reading is that pooling earns its keep in the scarce-sample
 regime, and adds little when the per-response signs already clear the gate.
 
 \begin{table}[t]
-\centering
-\caption{Pooling's advantage is largest when structure is recoverable and the
-sample is small. Sign recovery for estimated-cluster pooling (HCGL) and
-per-response derivation across population $R^2$ and sample size $T$, with their
-difference (Gap). All other settings as in the base configuration. Cells are means over
-$200$ replications.}
-\label{tab:regime}
-\input{tableS2_regime}
+	\centering
+	\caption{Pooling's advantage is largest when structure is recoverable and the
+		sample is small. Sign recovery for estimated-cluster pooling (HCGL) and
+		per-response derivation across population $R^2$ and sample size $T$, with their
+		difference (Gap). All other settings as in the base configuration. Cells are means over
+		$200$ replications.}
+	\label{tab:regime}
+	\input{tableS2_regime}
 \end{table}
 
 \subsection{The noise-floor gate} \label{sec:sim-gate}
@@ -524,14 +541,14 @@ default of $0.75$ is permissive by design, since it suits a screening step that
 removes the worst noise-driven constraints before regularization.
 
 \begin{figure}[t]
-\centering
-\includegraphics[width=0.72\linewidth]{figS2_gate_roc.pdf}
-\caption{The gate trades sensitivity for false-sign control along a smooth
-frontier. Sensitivity (recovery on true signals) against the false-sign rate
-(on null cells) as the threshold $\tau$ varies from $0.5$ to $3.5$, under
-known-cluster pooling in the base configuration. Labels give $\tau$, and the circled
-point ($\tau = 2.5$) marks the operating range. Means over $200$ replications.}
-\label{fig:gate}
+	\centering
+	\includegraphics[width=0.72\linewidth]{figS2_gate_roc.pdf}
+	\caption{The gate trades sensitivity for false-sign control along a smooth
+		frontier. Sensitivity (recovery on true signals) against the false-sign rate
+		(on null cells) as the threshold $\tau$ varies from $0.5$ to $3.5$, under
+		known-cluster pooling in the base configuration. Labels give $\tau$, and the circled
+		point ($\tau = 2.5$) marks the operating range. Means over $200$ replications.}
+	\label{fig:gate}
 \end{figure}
 
 The over-dispersion is the design effect, which can be removed. The pooled
@@ -561,16 +578,16 @@ from $\sqrt{m}$ toward one, so the gain is largest when the cluster carries
 shared signal with weakly correlated residuals.
 
 \begin{table}[t]
-\centering
-\caption{The pooling gain attenuates as within-cluster residual correlation
-rises. Known-cluster sign recovery, abstention, and false-sign rate against the
-within-cluster residual correlation $\bar{\rho}$, in the base configuration
-($N = 60$, $M = 20$, $G = 6$, $T = 80$, $R^2 = 0.10$, $\tau = 0.75$, cluster
-size $m = 10$). The rate factor $\sqrt{m / (1 + (m-1)\bar{\rho})}$ is the
-realized multiple of the per-response convergence rate against the ideal
-$\sqrt{m} = 3.16$. Means over $100$ replications.}
-\label{tab:rhobar}
-\input{tableS3_rhobar}
+	\centering
+	\caption{The pooling gain attenuates as within-cluster residual correlation
+		rises. Known-cluster sign recovery, abstention, and false-sign rate against the
+		within-cluster residual correlation $\bar{\rho}$, in the base configuration
+		($N = 60$, $M = 20$, $G = 6$, $T = 80$, $R^2 = 0.10$, $\tau = 0.75$, cluster
+		size $m = 10$). The rate factor $\sqrt{m / (1 + (m-1)\bar{\rho})}$ is the
+		realized multiple of the per-response convergence rate against the ideal
+		$\sqrt{m} = 3.16$. Means over $100$ replications.}
+	\label{tab:rhobar}
+	\input{tableS3_rhobar}
 \end{table}
 
 The threshold also sets a multiplicity budget. The gate screens $N \times M$
@@ -599,20 +616,20 @@ roughly a quarter of the sample size. Appendix~\ref{app:theory} states the rate
 that this curve illustrates.
 
 \begin{figure}[t]
-\centering
-\includegraphics[width=0.72\linewidth]{figS4_consistency.pdf}
-\caption{Pooling reaches sign consistency at far smaller samples. Sign recovery
-against sample size $T$ (log scale) at fixed $R^2 = 0.10$, for per-response
-derivation and known-cluster pooling. Both rates approach one, and pooling
-reaches it sooner. Means over $200$ replications, and error bars show one standard
-error. The dotted curves are the Gaussian-gate rate $\Phi(c\sqrt{T} - \tau)$ implied
-by Appendix~\ref{app:theory}: the constant $c$ is fit to the per-response points, and
-the pooled curve applies the same $c$ at the cluster-size sample scaling $m\,T$
-($m = 10$) with no further fit. The ideal leads the data because the $m\,T$ scaling assumes a homogeneous
-within-cluster effect, while the simulated loadings are heterogeneous (magnitudes drawn from $U[0.5, 1.5]$),
-which lowers the pooled effective sample below $m\,T$ even at the near-zero residual correlation of the
-base design (Appendix~\ref{app:theory}).}
-\label{fig:consistency}
+	\centering
+	\includegraphics[width=0.72\linewidth]{figS4_consistency.pdf}
+	\caption{Pooling reaches sign consistency at far smaller samples. Sign recovery
+		against sample size $T$ (log scale) at fixed $R^2 = 0.10$, for per-response
+		derivation and known-cluster pooling. Both rates approach one, and pooling
+		reaches it sooner. Means over $200$ replications, and error bars show one standard
+		error. The dotted curves are the Gaussian-gate rate $\Phi(c\sqrt{T} - \tau)$ implied
+		by Appendix~\ref{app:theory}: the constant $c$ is fit to the per-response points, and
+		the pooled curve applies the same $c$ at the cluster-size sample scaling $m\,T$
+		($m = 10$) with no further fit. The ideal leads the data because the $m\,T$ scaling assumes a homogeneous
+		within-cluster effect, while the simulated loadings are heterogeneous (magnitudes drawn from $U[0.5, 1.5]$),
+		which lowers the pooled effective sample below $m\,T$ even at the near-zero residual correlation of the
+		base design (Appendix~\ref{app:theory}).}
+	\label{fig:consistency}
 \end{figure}
 
 The same contrast is visible cell by cell. Figure~\ref{fig:signmat} shows the
@@ -623,14 +640,14 @@ within-cluster sign alternations on the active predictors. Pooling removes the
 alternations by sharing one decision across each cluster.
 
 \begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figS3_sign_matrices.pdf}
-\caption{Pooling suppresses spurious within-cluster sign alternations.
-Population signs (left), known-cluster-pooled signs (center), and per-response
-signs (right) for one replication at $R^2 = 0.20$ and $\tau = 2.0$. Rows are
-responses ordered by cluster, and columns are predictors. Blue, white, and red
-denote $-1$, $0$, and $+1$. Horizontal lines separate clusters.}
-\label{fig:signmat}
+	\centering
+	\includegraphics[width=\linewidth]{figS3_sign_matrices.pdf}
+	\caption{Pooling suppresses spurious within-cluster sign alternations.
+		Population signs (left), known-cluster-pooled signs (center), and per-response
+		signs (right) for one replication at $R^2 = 0.20$ and $\tau = 2.0$. Rows are
+		responses ordered by cluster, and columns are predictors. Blue, white, and red
+		denote $-1$, $0$, and $+1$. Horizontal lines separate clusters.}
+	\label{fig:signmat}
 \end{figure}
 
 \subsection{Correlated predictors and the marginal-sign assumption}
@@ -659,36 +676,42 @@ advantage of known-cluster pooling narrows sharply as $\rho_X$ rises, from $0.31
 at $\rho_X = 0$ to $0.05$ at $\rho_X = 0.8$. Above $\rho_X \approx 0.5$ the pooled
 flip rate exceeds the per-response rate, so pooling trades a small recovery edge
 for more confident errors. Cluster-pooled sign derivation suits weakly correlated
-predictors. Under strong predictor correlation a soft penalty, which the data can
-overrule, recovers more of the signs at lower coefficient error.
+predictors. Under strong predictor correlation the marginal sign becomes
+unreliable. A soft penalty that the data can overrule then recovers more signs,
+at the cost of asserting more wrong ones.
 
 We benchmark the hard sign constraint against the cooperative LASSO of
 \citet{Chiquet+Grandvalet+Charbonnier:2012}, a soft penalty that couples the
 signs of a cluster but lets the data overrule them. We fit both on the known
 clusters across the same $\rho_X$ grid and select each penalty to minimize
 coefficient error. We read the sign from the fitted coefficient
-(Table~\ref{tab:coop}). The cooperative LASSO recovers more signs and attains
-lower coefficient error at every $\rho_X$. Its recovery falls from $0.895$ at
-$\rho_X = 0$ to $0.771$ at $\rho_X = 0.8$, against $0.743$ to $0.109$ for the
-hard constraint. The hard constraint holds its flip rate near zero only by
-abstaining, and its abstention reaches $0.887$ at $\rho_X = 0.8$. The
-cooperative LASSO commits to a sign on almost every cell, so its flip rate rises
-with the leakage, from $0.101$ to $0.220$. The cooperative LASSO is the more
-accurate tool under correlated predictors, and its cost is a higher flip rate
-rather than lost recovery.
+(Table~\ref{tab:coop}), not from the derived sign of
+Figure~\ref{fig:correlated}. A wrong derived sign holds the coefficient in the
+wrong half-space, where the penalty then drives it to zero. The fitted cell reads
+as an abstention rather than a flip. The two methods make different kinds of error. The hard constraint never asserts
+a wrong sign, holding its flip rate at $0.006$ or below across the grid. It
+abstains instead, and its abstention reaches $0.887$ at $\rho_X = 0.8$ as the
+marginal signal becomes unreliable. The cooperative LASSO commits to a sign on
+almost every cell, so it asserts a wrong sign on $0.101$ to $0.220$ of cells as
+leakage grows. It recovers more signs in exchange, from $0.895$ to $0.771$ across
+the grid, against $0.743$ to $0.109$ for the hard constraint. It also reaches
+lower coefficient error throughout. An abstention assigns no sign, but a
+flip pins a coefficient to the wrong half-space. For a method whose output is a
+sign, the two are not the same error.
 
 \begin{table}[t]
-\centering
-\caption{The cooperative LASSO recovers more signs at lower coefficient error
-than the hard sign constraint, at a higher flip rate. Sign recovery, flip rate,
-and abstention on active cells, with the coefficient mean squared error
-($\beta$-MSE), for a hard sign-constrained fit and the cooperative LASSO of
-\citet{Chiquet+Grandvalet+Charbonnier:2012}, both on known clusters, against the
-predictor equicorrelation $\rho_X$, in the base configuration. Each penalty
-minimizes $\beta$-MSE, and the sign is read from the fitted coefficient. Means
-over $40$ replications.}
-\label{tab:coop}
-\input{tableS4_coop}
+	\centering
+	\caption{The hard sign constraint never asserts a wrong sign, while the
+		cooperative LASSO reaches higher recovery and lower coefficient error by flipping
+		10\% to 22\% of signs. Sign recovery, flip rate,
+		and abstention on active cells, with the coefficient mean squared error
+		($\beta$-MSE), for a hard sign-constrained fit and the cooperative LASSO of
+		\citet{Chiquet+Grandvalet+Charbonnier:2012}, both on known clusters, against the
+		predictor equicorrelation $\rho_X$, in the base configuration. Each penalty
+		minimizes $\beta$-MSE, and the sign is read from the fitted coefficient. Means
+		over $40$ replications.}
+	\label{tab:coop}
+	\input{tableS4_coop}
 \end{table}
 
 The eQTL application of Section~\ref{sec:eqtl} sits below the adversarial regime.
@@ -696,17 +719,17 @@ The screened markers retain some linkage correlation. We collapse tight-linkage
 runs to reduce it, so the design correlation is modest rather than extreme.
 
 \begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figS5_correlated.pdf}
-\caption{Cluster-pooled sign derivation degrades under correlated predictors.
-Sign recovery (left), sign-flip rate (center), and false-sign rate (right)
-against the predictor equicorrelation $\rho_X$, for per-response derivation,
-estimated-cluster pooling (HCGL), and known-cluster pooling, in the base
-configuration ($N = 60$, $M = 20$, $G = 6$, $T = 80$, $R^2 = 0.10$,
-$\tau = 0.75$). Predictors are drawn with equicorrelation $\rho_X$, which makes
-the marginal pooled slope disagree in sign with the partial coefficient. Means
-over $200$ replications, and error bars show one standard error.}
-\label{fig:correlated}
+	\centering
+	\includegraphics[width=\linewidth]{figS5_correlated.pdf}
+	\caption{Cluster-pooled sign derivation degrades under correlated predictors.
+		Sign recovery (left), sign-flip rate (center), and false-sign rate (right)
+		against the predictor equicorrelation $\rho_X$, for per-response derivation,
+		estimated-cluster pooling (HCGL), and known-cluster pooling, in the base
+		configuration ($N = 60$, $M = 20$, $G = 6$, $T = 80$, $R^2 = 0.10$,
+		$\tau = 0.75$). Predictors are drawn with equicorrelation $\rho_X$, which makes
+		the marginal pooled slope disagree in sign with the partial coefficient. Means
+		over $200$ replications, and error bars show one standard error.}
+	\label{fig:correlated}
 \end{figure}
 
 These results locate the value of cluster-pooled sign derivation. Pooling helps
@@ -736,9 +759,9 @@ $T = 112$ segregants. We study the genes of the mitogen-activated protein kinase
 pheromone response, filamentation, high-osmolarity response, and cell-wall
 integrity. We take the KEGG pathway membership measured in the data, which gives
 $N = 64$ genes.\footnote{We use the KEGG MAPK membership measured in the data
-for reproducibility. The conditional-Gaussian-graphical-model literature
-\citep{Yin+Li:2011} works with a canonical $54$-gene MAPK subset. We keep the
-full measured membership here.} We reduce the marker panel from
+	for reproducibility. The conditional-Gaussian-graphical-model literature
+	\citep{Yin+Li:2011} works with a canonical $54$-gene MAPK subset. We keep the
+	full measured membership here.} We reduce the marker panel from
 $3244$ markers to representative markers by collapsing consecutive runs in tight
 linkage, then keep the markers associated with at least two genes at
 $p \le 0.01$, the screen of \citet{Yin+Li:2011}. The screen leaves $M = 202$
@@ -774,27 +797,27 @@ Figure~\ref{fig:clusters} orders the gene correlation matrix by cluster and
 colors each gene by its sub-pathway.
 
 \begin{table}[t]
-\centering
-\caption{Recovered gene clusters are sign-coherent within, and partly aligned to
-the MAPK sub-pathways. For each discovered cluster: the number of genes, the
-dominant sub-pathway with its purity, the number of markers with a nonzero
-loading on any cluster gene, and the within-cluster raw marginal-sign agreement.
-Yeast eQTL cross of \citet{Brem+Kruglyak:2005}: $64$ MAPK genes, $202$ markers,
-$112$ segregants. Estimated-cluster pooling at $\rho_{\mathrm{cut}} = 0.7$ and
-$\tau = 2.0$.}
-\label{tab:clusters}
-\input{tableE1_clusters}
+	\centering
+	\caption{Recovered gene clusters are sign-coherent within, and partly aligned to
+		the MAPK sub-pathways. For each discovered cluster: the number of genes, the
+		dominant sub-pathway with its purity, the number of markers with a nonzero
+		loading on any cluster gene, and the within-cluster raw marginal-sign agreement.
+		Yeast eQTL cross of \citet{Brem+Kruglyak:2005}: $64$ MAPK genes, $202$ markers,
+		$112$ segregants. Estimated-cluster pooling at $\rho_{\mathrm{cut}} = 0.7$ and
+		$\tau = 2.0$.}
+	\label{tab:clusters}
+	\input{tableE1_clusters}
 \end{table}
 
 \begin{figure}[t]
-\centering
-\includegraphics[width=0.78\linewidth]{figE1_clusters.pdf}
-\caption{Recovered clusters are coherent co-expression groups that partially
-track the MAPK sub-pathways. Expression correlation among the $64$ MAPK genes,
-ordered by discovered cluster, with the sub-pathway of each gene shown in the
-left bar. Black lines separate clusters. Yeast eQTL data of
-\citet{Brem+Kruglyak:2005}.}
-\label{fig:clusters}
+	\centering
+	\includegraphics[width=0.78\linewidth]{figE1_clusters.pdf}
+	\caption{Recovered clusters are coherent co-expression groups that partially
+		track the MAPK sub-pathways. Expression correlation among the $64$ MAPK genes,
+		ordered by discovered cluster, with the sub-pathway of each gene shown in the
+		left bar. Black lines separate clusters. Yeast eQTL data of
+		\citet{Brem+Kruglyak:2005}.}
+	\label{fig:clusters}
 \end{figure}
 
 \subsection{Genomic structure} \label{sec:eqtl-genome}
@@ -807,14 +830,14 @@ statistic measures. The gate leaves many cells at zero, where the pooled
 evidence falls below $\tau$.
 
 \begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figE2_signs.pdf}
-\caption{Cluster-pooled signs are coherent within recovered gene clusters.
-Gated sign matrix for the $64$ genes (rows, ordered by cluster) against the
-$202$ markers (columns, ordered along the genome). Blue, white, and red denote
-$-1$, $0$, and $+1$, and grey lines mark chromosome boundaries. The
-within-cluster sign agreement is $0.93$.}
-\label{fig:signs}
+	\centering
+	\includegraphics[width=\linewidth]{figE2_signs.pdf}
+	\caption{Cluster-pooled signs are coherent within recovered gene clusters.
+		Gated sign matrix for the $64$ genes (rows, ordered by cluster) against the
+		$202$ markers (columns, ordered along the genome). Blue, white, and red denote
+		$-1$, $0$, and $+1$, and grey lines mark chromosome boundaries. The
+		within-cluster sign agreement is $0.93$.}
+	\label{fig:signs}
 \end{figure}
 
 The marker loadings concentrate at a few genomic positions.
@@ -825,13 +848,13 @@ eQTL hotspots that regulate many genes at once, a documented feature of this
 cross \citep{Brem+Kruglyak:2005}.
 
 \begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figE3_hotspots.pdf}
-\caption{A few loci regulate many genes, the eQTL hotspots. Number of genes
-loading on each marker against genomic position, for the $202$ screened markers.
-Alternating shades separate chromosomes, and the top four loci are labeled.
-Yeast eQTL data of \citet{Brem+Kruglyak:2005}.}
-\label{fig:hotspots}
+	\centering
+	\includegraphics[width=\linewidth]{figE3_hotspots.pdf}
+	\caption{A few loci regulate many genes, the eQTL hotspots. Number of genes
+		loading on each marker against genomic position, for the $202$ screened markers.
+		Alternating shades separate chromosomes, and the top four loci are labeled.
+		Yeast eQTL data of \citet{Brem+Kruglyak:2005}.}
+	\label{fig:hotspots}
 \end{figure}
 
 \subsection{Prediction} \label{sec:eqtl-prediction}
@@ -880,7 +903,11 @@ LASSO, which the low recoverability of the data predicts. The contribution on
 this data set is interpretable sign structure rather than forecast accuracy.
 
 The mechanism changes how a practitioner derives sign constraints. A practitioner
-with a known grouping gains the most. A practitioner relying on discovered
+with a known grouping gains the most. Factor models for portfolio optimization
+are one such setting, where the factor grouping is given. In that setting, sign
+recovery keeps the estimated factor model economically tractable, which the
+strategic and tactical allocation built on it requires \citep{sepp2026rosaa}. A
+practitioner relying on discovered
 clusters gains in proportion to how clearly the data reveal them, and should
 question the marginal sign agreement condition first when the predictors carry
 strong cross-predictor correlation of opposing sign. For the literature, the
@@ -914,14 +941,14 @@ The pooled residual sum of squares aggregates the squared residuals of the $N$
 per-response fits at the common slope $\hat{\beta}_j$,
 %
 \begin{align}
-\mathrm{SSR}_j
-&= \sum_{k=1}^{N} \bigl\| \bm{y}_k - \hat{\beta}_j\, \bm{x}_j \bigr\|_2^2
-= \sum_{k=1}^{N} \Bigl( \|\bm{y}_k\|_2^2
-- 2\, \hat{\beta}_j\, \bm{x}_j^\top \bm{y}_k
-+ \hat{\beta}_j^{\,2}\, \bm{x}_j^\top \bm{x}_j \Bigr) \notag \\
-&= \|\bm{Y}\|_F^2
-- 2\, \hat{\beta}_j\, \bm{x}_j^\top \bm{y}_{\mathrm{sum}}
-+ N\, \hat{\beta}_j^{\,2}\, \bm{x}_j^\top \bm{x}_j , \label{eq:ssr-expand}
+	\mathrm{SSR}_j
+	&= \sum_{k=1}^{N} \bigl\| \bm{y}_k - \hat{\beta}_j\, \bm{x}_j \bigr\|_2^2
+	= \sum_{k=1}^{N} \Bigl( \|\bm{y}_k\|_2^2
+	- 2\, \hat{\beta}_j\, \bm{x}_j^\top \bm{y}_k
+	+ \hat{\beta}_j^{\,2}\, \bm{x}_j^\top \bm{x}_j \Bigr) \notag \\
+	&= \|\bm{Y}\|_F^2
+	- 2\, \hat{\beta}_j\, \bm{x}_j^\top \bm{y}_{\mathrm{sum}}
+	+ N\, \hat{\beta}_j^{\,2}\, \bm{x}_j^\top \bm{x}_j , \label{eq:ssr-expand}
 \end{align}
 %
 using $\sum_k \|\bm{y}_k\|_2^2 = \|\bm{Y}\|_F^2$ and
@@ -940,12 +967,12 @@ $T \times N$ residual matrix for each predictor.
 The pooled variance estimator, standard error, and $t$~statistic are
 %
 \begin{equation} \label{eq:tstat}
-\hat{\sigma}_j^{\,2} = \frac{\mathrm{SSR}_j}{N\, T - N},
-\qquad
-\widehat{\mathrm{SE}}\bigl(\hat{\beta}_j\bigr) =
-\sqrt{\frac{\hat{\sigma}_j^{\,2}}{N\, \bm{x}_j^\top \bm{x}_j}},
-\qquad
-t_j = \frac{\hat{\beta}_j}{\widehat{\mathrm{SE}}\bigl(\hat{\beta}_j\bigr)}.
+	\hat{\sigma}_j^{\,2} = \frac{\mathrm{SSR}_j}{N\, T - N},
+	\qquad
+	\widehat{\mathrm{SE}}\bigl(\hat{\beta}_j\bigr) =
+	\sqrt{\frac{\hat{\sigma}_j^{\,2}}{N\, \bm{x}_j^\top \bm{x}_j}},
+	\qquad
+	t_j = \frac{\hat{\beta}_j}{\widehat{\mathrm{SE}}\bigl(\hat{\beta}_j\bigr)}.
 \end{equation}
 %
 The cluster-pooled variant $t_{j, \mathcal{C}}$ used in the gate of
@@ -989,97 +1016,97 @@ Equation~\eqref{eq:adapt-cell}.
 
 \paragraph{Regularity conditions.}
 \begin{description}
-\item[(A1) Sub-Gaussian noise.] The residual matrix $\bm{\varepsilon}$ has
-independent rows with mean zero and finite variance, and each entry
-$\varepsilon_{tk}$ is sub-Gaussian with proxy variance bounded above by a fixed
-constant $\sigma^2_{\max}$.
-\item[(A2) Design regularity.] The predictor matrix $\bm{X}$ satisfies the moment
-condition $T^{-1}\, \bm{X}^\top \bm{X} \to \bm{\Sigma}_F$ as $T \to \infty$ with
-$\bm{\Sigma}_F$ positive definite, and the columns of $\bm{X}$ are bounded in
-probability.
-\item[(A3) Cluster sign coherence.] The HCGL partition recovered from
-$\operatorname{corr}(\bm{Y})$ respects the true within-cluster sign structure in
-the following sense. For every cluster $\hat{\mathcal{C}}$ discovered on the
-sample $(\bm{X}, \bm{Y})$ and every predictor $j$, the signs
-$\{S_{\mathrm{true}, kj} : k \in \hat{\mathcal{C}}, S_{\mathrm{true}, kj} \neq 0\}$
-share a single value. The condition is weaker than perfect cluster recovery,
-because the discovered partition need not match the true cluster identity, only
-respect the true sign structure.
-\item[(A4) Separation.] There exists a positive constant $c^\star$ such that, for
-every cluster $\mathcal{C}$ and every predictor $j$ with
-$\beta_{\mathrm{true}, kj} \neq 0$ for some $k \in \mathcal{C}$, the
-cluster-pooled population slope $\beta_{j, \mathcal{C}}^{\mathrm{pop}}$ satisfies
-$|\beta_{j, \mathcal{C}}^{\mathrm{pop}}| / \operatorname{SE}_T(\beta_{j, \mathcal{C}}^{\mathrm{pop}}) \to \infty$
-at rate at least $\sqrt{T}$, with margin
-$|\beta_{j, \mathcal{C}}^{\mathrm{pop}}| / \operatorname{SE}_T \geq \tau + c^\star$
-for all sufficiently large $T$.
-\item[(A5) Penalty rate.] The regularization strength satisfies $\lambda_T \to 0$
-and $\sqrt{T}\, \lambda_T \to \infty$ as $T \to \infty$. The adaptive exponent is
-$\gamma > 0$.
-\item[(A6) Marginal sign agreement on the support.] For every discovered cluster
-$\hat{\mathcal{C}}$ and every predictor $j$ with $S_{\mathrm{true}, kj} \neq 0$
-for some $k \in \hat{\mathcal{C}}$, the population cluster-pooled slope satisfies
-$\operatorname{sign}(\beta_{j, \hat{\mathcal{C}}}^{\mathrm{pop}}) = S_{\mathrm{true}, kj}$
-for every such $k$. The condition is substantive because the pooled slope is a
-\emph{marginal} quantity. With correlated predictors,
-$\beta_{j, \mathcal{C}}^{\mathrm{pop}} \propto
-\sum_{l} (\sum_{k \in \mathcal{C}} \beta_{\mathrm{true}, kl})\, \bm{\Sigma}_{F, jl}$,
-so cross-predictor leakage can flip the marginal sign away from the \emph{partial}
-sign that $\bm{S}_{\mathrm{true}}$ encodes. (A6) holds when the predictors are
-uncorrelated, and more generally when the cross-predictor leakage term does not
-dominate the own-predictor term. The mixed-sign regimes of
-Section~\ref{sec:simulation} probe the violations of (A3) and (A6).
+	\item[(A1) Sub-Gaussian noise.] The residual matrix $\bm{\varepsilon}$ has
+	independent rows with mean zero and finite variance, and each entry
+	$\varepsilon_{tk}$ is sub-Gaussian with proxy variance bounded above by a fixed
+	constant $\sigma^2_{\max}$.
+	\item[(A2) Design regularity.] The predictor matrix $\bm{X}$ satisfies the moment
+	condition $T^{-1}\, \bm{X}^\top \bm{X} \to \bm{\Sigma}_F$ as $T \to \infty$ with
+	$\bm{\Sigma}_F$ positive definite, and the columns of $\bm{X}$ are bounded in
+	probability.
+	\item[(A3) Cluster sign coherence.] The HCGL partition recovered from
+	$\operatorname{corr}(\bm{Y})$ respects the true within-cluster sign structure in
+	the following sense. For every cluster $\hat{\mathcal{C}}$ discovered on the
+	sample $(\bm{X}, \bm{Y})$ and every predictor $j$, the signs
+	$\{S_{\mathrm{true}, kj} : k \in \hat{\mathcal{C}}, S_{\mathrm{true}, kj} \neq 0\}$
+	share a single value. The condition is weaker than perfect cluster recovery,
+	because the discovered partition need not match the true cluster identity, only
+	respect the true sign structure.
+	\item[(A4) Separation.] There exists a positive constant $c^\star$ such that, for
+	every cluster $\mathcal{C}$ and every predictor $j$ with
+	$\beta_{\mathrm{true}, kj} \neq 0$ for some $k \in \mathcal{C}$, the
+	cluster-pooled population slope $\beta_{j, \mathcal{C}}^{\mathrm{pop}}$ satisfies
+	$|\beta_{j, \mathcal{C}}^{\mathrm{pop}}| / \operatorname{SE}_T(\beta_{j, \mathcal{C}}^{\mathrm{pop}}) \to \infty$
+	at rate at least $\sqrt{T}$, with margin
+	$|\beta_{j, \mathcal{C}}^{\mathrm{pop}}| / \operatorname{SE}_T \geq \tau + c^\star$
+	for all sufficiently large $T$.
+	\item[(A5) Penalty rate.] The regularization strength satisfies $\lambda_T \to 0$
+	and $\sqrt{T}\, \lambda_T \to \infty$ as $T \to \infty$. The adaptive exponent is
+	$\gamma > 0$.
+	\item[(A6) Marginal sign agreement on the support.] For every discovered cluster
+	$\hat{\mathcal{C}}$ and every predictor $j$ with $S_{\mathrm{true}, kj} \neq 0$
+	for some $k \in \hat{\mathcal{C}}$, the population cluster-pooled slope satisfies
+	$\operatorname{sign}(\beta_{j, \hat{\mathcal{C}}}^{\mathrm{pop}}) = S_{\mathrm{true}, kj}$
+	for every such $k$. The condition is substantive because the pooled slope is a
+	\emph{marginal} quantity. With correlated predictors,
+	$\beta_{j, \mathcal{C}}^{\mathrm{pop}} \propto
+	\sum_{l} (\sum_{k \in \mathcal{C}} \beta_{\mathrm{true}, kl})\, \bm{\Sigma}_{F, jl}$,
+	so cross-predictor leakage can flip the marginal sign away from the \emph{partial}
+	sign that $\bm{S}_{\mathrm{true}}$ encodes. (A6) holds when the predictors are
+	uncorrelated, and more generally when the cross-predictor leakage term does not
+	dominate the own-predictor term. The mixed-sign regimes of
+	Section~\ref{sec:simulation} probe the violations of (A3) and (A6).
 \end{description}
 
 \paragraph{Statement.}
 Define the support-sign event
 %
 \begin{equation} \label{eq:thm-sign}
-\mathcal{H}_T \;=\;
-\Bigl\{\, \hat{S}_{T, kj} = S_{\mathrm{true}, kj}
-\;\;\text{for all $(k, j)$ with}\;\; S_{\mathrm{true}, kj} \neq 0 \,\Bigr\},
+	\mathcal{H}_T \;=\;
+	\Bigl\{\, \hat{S}_{T, kj} = S_{\mathrm{true}, kj}
+	\;\;\text{for all $(k, j)$ with}\;\; S_{\mathrm{true}, kj} \neq 0 \,\Bigr\},
 \end{equation}
 %
 the event that the gate neither pins a true-support cell to zero nor assigns it
 the wrong half-space.
 \begin{description}
-\item[Proposition 1 (support-sign and support consistency).] Under conditions
-(A1)--(A6), $\Pr(\mathcal{H}_T) \to 1$ as $T \to \infty$, and, conditional on
-this event, the constrained adaptive sparse group LASSO estimator
-$\hat{\bm{\beta}}_T$ recovers the true support,
-$\Pr\!\bigl(\operatorname{supp}(\hat{\bm{\beta}}_T) = \operatorname{supp}(\bm{\beta}_{\mathrm{true}})\bigr) \to 1$.
-\item[Remark (truly-zero cells and the fixed threshold).] Proposition~1 does not
-claim $\Pr(\hat{\bm{S}}_T = \bm{S}_{\mathrm{true}}) \to 1$. At a fixed threshold
-$\tau$, the stronger claim is false. On a cell where the population pooled slope
-is exactly zero, the per-response gate $t$~statistic is asymptotically standard
-normal, so the per-response gate retains the cell with limiting probability
-$2\Phi(-\tau) \approx 0.45$ at the default $\tau = 0.75$. The cluster-pooled gate
-retains such a cell with higher probability when the cluster's responses are
-correlated, because the pooled variance estimate of Equation~\eqref{eq:tstat}
-sums the $|\mathcal{C}|$ per-response residuals and does not adjust for the
-positive within-cluster correlation that pooling exploits, which over-disperses
-the pooled null $t$~statistic. The higher pooled false-sign rate in
-Section~\ref{sec:simulation} is this effect. On a cell where the partial coefficient is zero but the
-marginal pooled slope is not, through cross-predictor leakage, the gate retains
-the cell with probability tending to one. Both outcomes leave support recovery to
-the penalty. The retained constraint is a one-sided half-space whose boundary
-contains zero, so it never excludes the value $\hat{\beta}_{kj} = 0$ that the
-adaptive penalty drives the cell toward. A binding half-space on a truly-zero
-cell clips the unconstrained estimate's sampling noise on one side, a bounded
-bias of order the cell's standard error rather than a sign error. Exact recovery
-of $\bm{S}_{\mathrm{true}}$ would additionally require a diverging threshold,
-$\tau_T \to \infty$ with $\tau_T = o(\sqrt{T})$, together with zero marginal
-leakage on the off-support cells. We keep the fixed finite-sample default and
-treat the gate as a screen rather than a model-selection oracle.
-\item[Conjecture 1 (oracle distribution).] Under the same conditions, the
-restriction of $\sqrt{T}\, (\hat{\bm{\beta}}_T - \bm{\beta}_{\mathrm{true}})$ to
-the true support $\operatorname{supp}(\bm{\beta}_{\mathrm{true}})$ converges in
-distribution to a centered Gaussian with the same asymptotic covariance as the
-OLS estimator restricted to the true support. Establishing this requires
-verifying that the row-aggregated adaptive weights of the companion paper
-\citep{factorlasso-jss} inherit the divergence-on-zeros and
-boundedness-on-support rates of the \citet{Wang+Leng:2008} argument in the
-multi-response, sign-constrained setting. We do not prove it here.
+	\item[Proposition 1 (support-sign and support consistency).] Under conditions
+	(A1)--(A6), $\Pr(\mathcal{H}_T) \to 1$ as $T \to \infty$, and, conditional on
+	this event, the constrained adaptive sparse group LASSO estimator
+	$\hat{\bm{\beta}}_T$ recovers the true support,
+	$\Pr\!\bigl(\operatorname{supp}(\hat{\bm{\beta}}_T) = \operatorname{supp}(\bm{\beta}_{\mathrm{true}})\bigr) \to 1$.
+	\item[Remark (truly-zero cells and the fixed threshold).] Proposition~1 does not
+	claim $\Pr(\hat{\bm{S}}_T = \bm{S}_{\mathrm{true}}) \to 1$. At a fixed threshold
+	$\tau$, the stronger claim is false. On a cell where the population pooled slope
+	is exactly zero, the per-response gate $t$~statistic is asymptotically standard
+	normal, so the per-response gate retains the cell with limiting probability
+	$2\Phi(-\tau) \approx 0.45$ at the default $\tau = 0.75$. The cluster-pooled gate
+	retains such a cell with higher probability when the cluster's responses are
+	correlated, because the pooled variance estimate of Equation~\eqref{eq:tstat}
+	sums the $|\mathcal{C}|$ per-response residuals and does not adjust for the
+	positive within-cluster correlation that pooling exploits, which over-disperses
+	the pooled null $t$~statistic. The higher pooled false-sign rate in
+	Section~\ref{sec:simulation} is this effect. On a cell where the partial coefficient is zero but the
+	marginal pooled slope is not, through cross-predictor leakage, the gate retains
+	the cell with probability tending to one. Both outcomes leave support recovery to
+	the penalty. The retained constraint is a one-sided half-space whose boundary
+	contains zero, so it never excludes the value $\hat{\beta}_{kj} = 0$ that the
+	adaptive penalty drives the cell toward. A binding half-space on a truly-zero
+	cell clips the unconstrained estimate's sampling noise on one side, a bounded
+	bias of order the cell's standard error rather than a sign error. Exact recovery
+	of $\bm{S}_{\mathrm{true}}$ would additionally require a diverging threshold,
+	$\tau_T \to \infty$ with $\tau_T = o(\sqrt{T})$, together with zero marginal
+	leakage on the off-support cells. We keep the fixed finite-sample default and
+	treat the gate as a screen rather than a model-selection oracle.
+	\item[Conjecture 1 (oracle distribution).] Under the same conditions, the
+	restriction of $\sqrt{T}\, (\hat{\bm{\beta}}_T - \bm{\beta}_{\mathrm{true}})$ to
+	the true support $\operatorname{supp}(\bm{\beta}_{\mathrm{true}})$ converges in
+	distribution to a centered Gaussian with the same asymptotic covariance as the
+	OLS estimator restricted to the true support. Establishing this requires
+	verifying that the row-aggregated adaptive weights of the companion paper
+	\citep{factorlasso-jss} inherit the divergence-on-zeros and
+	boundedness-on-support rates of the \citet{Wang+Leng:2008} argument in the
+	multi-response, sign-constrained setting. We do not prove it here.
 \end{description}
 
 \paragraph{Pooling rate.} The separation in (A4) is stated at the minimal
@@ -1095,7 +1122,7 @@ $1 + (m-1)\bar{\rho}$, the same factor that governs a clustered-sample mean,
 reduces the effective sample to $mT / (1 + (m-1)\bar{\rho})$ and the realized rate
 to $\sqrt{m / (1 + (m-1)\bar{\rho})}$. The realized rate equals $\sqrt{m}$ as
 $\bar{\rho} \to 0$ and tends to one as $\bar{\rho} \to 1$, so the gain is largest
-at moderate $\bar{\rho}$. This residual correlation is distinct from the total
+as $\bar{\rho} \to 0$. This residual correlation is distinct from the total
 correlation that the clustering reads, so a coherent cluster need not carry a
 large $\bar{\rho}$. Equation~\eqref{eq:tstat} estimates the variance as if
 $\bar{\rho} = 0$, which both overstates the rate above and over-disperses the null
@@ -1181,14 +1208,19 @@ The method is implemented in the open-source Python package \texttt{factorlasso}
 Equation~\eqref{eq:sgl-sign} as a convex cone program. The simulation study of
 Section~\ref{sec:simulation} is reproduced by the scripts
 \texttt{sign\_pooling\_simulation.py} and \texttt{exhibits.py}, which regenerate
-Tables~\ref{tab:base} and~\ref{tab:regime} and
-Figures~\ref{fig:recoverability}--\ref{fig:signmat} from a fixed random seed. The
-eQTL application of Section~\ref{sec:eqtl} is reproduced by
+Tables~\ref{tab:base}--\ref{tab:coop} and
+Figures~\ref{fig:recoverability}--\ref{fig:correlated} from a fixed random seed.
+The eQTL application of Section~\ref{sec:eqtl} is reproduced by
 \texttt{eqtl\_pipeline.py} and \texttt{eqtl\_exhibits.py}, which regenerate
 Table~\ref{tab:clusters} and Figures~\ref{fig:clusters}--\ref{fig:hotspots}. The
 yeast eQTL data are public \citep{Brem+Kruglyak:2005} and are distributed with
-the \texttt{trigger} Bioconductor package. The reproduction bundle pins the package versions
-used for the results reported here.
+the \texttt{trigger} Bioconductor package. The reproduction bundle is openly
+archived with a permanent identifier at
+\url{https://doi.org/10.5281/zenodo.21000294}, and developed at
+\url{https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026}.
+A pinned \texttt{requirements.txt} fixes every dependency,
+including \texttt{factorlasso} version 0.7.2, so the reported
+tables and figures regenerate from the fixed seed under the recorded environment.
 
 %% =====================================================================
 %% Back matter -- these sit BEFORE the reference list (CSDA guide, Article structure).
@@ -1203,18 +1235,24 @@ public, commercial, or not-for-profit sectors.
 
 \section*{Data availability}
 The yeast eQTL data are publicly available \citep{Brem+Kruglyak:2005}. The
-simulated data and the code that regenerates every table and figure are available
-in the reproduction bundle described in Appendix~\ref{app:computation}.
+simulated data and the code that regenerates every table and figure are openly
+available in the reproduction bundle at
+\url{https://doi.org/10.5281/zenodo.21000294}, described in
+Appendix~\ref{app:computation}.
 
 %% AI-use disclosure -- Elsevier requires this given AI-assisted drafting.
 \section*{Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}
-During the preparation of this work the authors used a large language model
-assistant in order to draft and edit prose and to draft and check analysis code.
-After using this tool the authors reviewed and edited the content as needed and
-take full responsibility for the content of the publication.
+During the preparation of this work the authors used Anthropic's Claude Opus 4.8.
+The model was used to assist with the design and development of the analysis
+code (including the design of the implementation, drafting code, and reviewing and
+debugging it) and, additionally, to draft and edit prose. After using this tool the
+authors reviewed and edited all content and code as needed and take full
+responsibility for the content of the publication.
+
 
 \section*{Acknowledgements}
-[TODO: acknowledgements]
+The authors thank colleagues at LGT Bank for feedback on the methodology
+and its application to portfolio optimization and multi-asset capital market assumption estimation.
 
 %% =====================================================================
 \bibliographystyle{cas-model2-names}

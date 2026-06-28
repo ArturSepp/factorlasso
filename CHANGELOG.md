@@ -9,7 +9,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-06-22
+
+### Fixed
+- Single-asset (N=1) estimation is handled across every clustering and
+  group-based estimator. `compute_clusters_from_corr_matrix` short-circuits a
+  1x1 correlation matrix (lone asset in cluster 1, empty linkage, zero cutoff).
+  GROUP_LASSO, HCGL, and FCGL reduce to plain LASSO at N=1. The FCGL adaptive
+  block-weight step and the `fit_reg_lambda_path` group path now honour that
+  reduction instead of building a group loading from an empty cluster set. The
+  cooperative estimators fit a single asset directly.
+
+## [0.7.1] — 2026-06-22
+
+### Fixed
+- Cluster construction reached `squareform` through
+  `scipy.cluster.hierarchy.distance`, an undocumented re-export that recent
+  scipy builds no longer expose. `compute_clusters_from_corr_matrix` now
+  imports `squareform` from `scipy.spatial.distance` directly. Every clustering
+  estimator (HCGL, FCGL, Pearson clustering at `span=None`, auto-sign on
+  clusters) now runs regardless of the installed scipy build. The change is
+  behaviour-identical: both paths resolve to the same function and fitted
+  coefficients are unchanged.
+
+## [0.7.0] — 2026-06-20
+
 ### Added
+- `solve_group_lasso_path(x, y, group_loadings, reg_lambdas, ...)`: solves
+  the group-LASSO family over a grid of `reg_lambda` values, reusing a
+  single canonical form. The penalty weight is passed to CVXPY as a
+  `cvxpy.Parameter(nonneg=True)`, so the disciplined-parametrised programme
+  is compiled once and the conic form is reused on each solve; the
+  canonicalisation otherwise repeated per grid point is paid one time.
+  Covers group LASSO, HCGL (`block_mode="row"`), FCGL
+  (`block_mode="cluster_factor"`), the sparse-group L1 term, sign
+  constraints, the prior, and adaptive reweighting. Results are identical
+  to solver tolerance to calling `solve_group_lasso_cvx_problem` per grid
+  point, and aligned with `reg_lambdas`. Intended for `reg_lambda`
+  selection (CV/BIC), regularisation-path figures, rolling backtests with
+  per-date selection, and threshold or cutoff sweeps; no benefit for a
+  single `reg_lambda`. Measured speed-up at N=100, M=9 over a 15-point grid
+  is about 1.5x, bounded by the canonicalisation share of each solve.
+
+- `LassoModel.fit_reg_lambda_path(x, y, reg_lambdas, ...)`: fits at each
+  grid point sharing one derivation. For the group-LASSO family
+  (GROUP_LASSO, HCGL, FCGL) the `reg_lambda`-independent work (clustering,
+  signs, adaptive weights) is computed once and the penalty path is solved
+  with `solve_group_lasso_path`; LASSO, the cooperative estimators, and
+  UniLasso fall back to a full fit per grid point. Each returned model is
+  equivalent to a fresh `fit` at that `reg_lambda` (group family matches to
+  solver tolerance, ~1e-9 to 1e-12 observed; fallback matches exactly).
+
+- `LassoModelCV.use_lambda_path` (bool, default `False`): when `True` and
+  the model is a group-LASSO-family estimator, each fold derives once and
+  sweeps the grid via `fit_reg_lambda_path` instead of re-fitting per
+  `reg_lambda`. **Default `False` keeps the cross-validation path
+  byte-identical to before**; enabling it is numerically identical up to
+  solver tolerance (`cv_scores_` agree to ~1e-10, identical `best_lambda_`
+  observed) and faster for the group family. The flag is a no-op for
+  non-group estimators (the per-lambda loop runs in both cases).
+
+- `solver_fallbacks` parameter on `LassoModel` and on the underlying solver
+  functions. When set to an ordered list of solver names (for example
+  `["ECOS", "SCS"]`), a fit that fails with the primary solver is retried with
+  each fallback in turn, and a `SolverError` is raised only if the primary and
+  every fallback fail. The default is `None`, which preserves the previous
+  behaviour exactly: a single solve whose outcome stands, verified byte for
+  byte against the regression oracle (worst absolute difference 0 across 23
+  scenarios). Intended for production callers who prefer graceful degradation
+  over a hard failure on one solver.
+
+### Changed
+- Internal: the group-LASSO problem assembly is factored into a shared
+  `_build_group_lasso_problem` helper used by both
+  `solve_group_lasso_cvx_problem` and `solve_group_lasso_path`. The
+  single-solve path is behaviour-preserving (existing test suite unchanged).
+- Internal: `LassoModel.fit` is factored into `_prepare_fit` (the
+  `reg_lambda`-independent derivation) and `_finalize_fit` (warmup zeroing,
+  `coef_`, the economic intercept, cluster bookkeeping), with the solver
+  dispatch left inline. Both blocks are relocated verbatim; `fit` output is
+  byte-for-byte unchanged across a 23-scenario regression oracle spanning
+  every estimator and option combination (worst absolute difference 0).
+
+- The warmup zeroing step now emits a `UserWarning` reporting how many assets
+  had fewer than `warmup_period` valid observations and were zeroed, rather
+  than zeroing them silently. Numerical output is unchanged.
+
+
+## [0.6.0] — 2026-06-19
+
+### Added
+- `linkage_method` parameter on `LassoModel` and on
+  `compute_clusters_from_corr_matrix`, validated against the SciPy linkage
+  set (`single`, `complete`, `average`, `weighted`, `centroid`, `median`,
+  `ward`). The cluster-discovery step is now fully configurable, and the
+  default `ward` reproduces the prior behaviour.
 
 - `LassoModelType.UNILASSO`: a per-response univariate-guided estimator
   following Chatterjee, Hastie, and Tibshirani (2025). Stage one fits each

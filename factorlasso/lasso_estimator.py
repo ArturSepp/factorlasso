@@ -1862,7 +1862,11 @@ class LassoModel:
                 signs=auto_signs_np if auto_signs_np is not None
                 else np.sign(auto_slopes_np),
             )
-            if self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO:
+            # Skip the cluster-by-factor block weights when the fit has
+            # degenerated to plain LASSO (single asset): there are no clusters
+            # and the lasso solver does not consume col_weights anyway.
+            if (self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO
+                    and not is_lasso_mode):
                 col_weights_np = _aggregate_to_block_weights(
                     cell_weights=penalty_weights_np,
                     signs=auto_signs_np if auto_signs_np is not None
@@ -2085,6 +2089,20 @@ class LassoModel:
             x=x, y=y, x_np=x_np, y_np=y_np,
             valid_mask=valid_mask, eff_span=eff_span,
         )
+
+        if prep.is_lasso_mode:
+            # Single asset (N=1): the group penalty is degenerate, so there is
+            # no shared canonical form to exploit across the grid. Fall through
+            # to a full fit per grid point, exactly as the non-path estimators
+            # above. Each fit applies the same single-asset LASSO reduction.
+            out_single: List["LassoModel"] = []
+            for lam in lambdas:
+                params = self.get_params()
+                params["reg_lambda"] = lam
+                out_single.append(LassoModel(**params).fit(
+                    x=x, y=y, verbose=verbose, span=span,
+                ))
+            return out_single
 
         gl = set_group_loadings(group_data=prep.asset_clusters).to_numpy()
         if self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO:

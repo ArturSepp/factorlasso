@@ -7,4 +7,4 @@ matplotlib==3.10.8
 cvxpy==1.9.1
 rdata==1.1.0
 # The method itself:
-factorlasso==0.5.5
+factorlasso==0.7.2

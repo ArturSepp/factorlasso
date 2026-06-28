@@ -16,6 +16,12 @@ Software*. The manuscript is available [here](papers/jss_2026/paper/article.pdf)
 See [Citation](#citation) for the BibTeX entry. The replication
 material for the paper is in [`papers/jss_2026/`](papers/jss_2026/).
 
+**Methodology:** The cluster-pooled sign derivation and the noise-floor gate
+are developed in Sepp, A. and Kastenholz, M. (2026), *Gated Cluster-Pooled Sign
+Constraints for Multi-Output Sparse Regression*, submitted to *Computational
+Statistics and Data Analysis*. The replication material for that paper is in
+[`papers/sign_pooling_2026/`](papers/sign_pooling_2026/).
+
 `factorlasso` is a small, dependency-light Python package for fitting sparse
 multi-output linear models
 
@@ -296,6 +302,9 @@ to avoid overclaiming:
   evidence first, then regularize.
 
 References:
+* Sepp, A., & Kastenholz, M. (2026). Gated cluster-pooled sign constraints
+  for multi-output sparse regression. *Computational Statistics and Data
+  Analysis*. Submitted. (The method implemented in this section.)
 * Chatterjee, S., Hastie, T., & Tibshirani, R. (2025). Univariate-
   guided sparse regression. *Harvard Data Science Review* 7(3).
 * Fan, J., & Lv, J. (2008). Sure independence screening for ultrahigh
@@ -617,8 +626,10 @@ LASSO path.
 
 If you use `factorlasso` in academic work, please cite the software
 paper describing the package (submitted to the *Journal of Statistical
-Software*), the methodology paper documenting the
-framework in which it was developed, and the software itself:
+Software*), the methodology paper for the cluster-pooled sign derivation
+and noise-floor gate (submitted to *Computational Statistics and Data
+Analysis*), the framework papers in which it was developed, and the
+software itself:
 
 ```bibtex
 @article{SeppKastenholz2026factorlasso,
@@ -627,6 +638,15 @@ framework in which it was developed, and the software itself:
              with Cluster-Pooled Sign Derivation for Multi-Asset Factor
              Models in {Python}},
   journal = {Journal of Statistical Software},
+  year    = {2026},
+  note    = {Submitted.}
+}
+
+@article{SeppKastenholz2026sign,
+  author  = {Sepp, Artur and Kastenholz, Mika},
+  title   = {Gated Cluster-Pooled Sign Constraints for Multi-Output
+             Sparse Regression},
+  journal = {Computational Statistics and Data Analysis},
   year    = {2026},
   note    = {Submitted.}
 }
@@ -657,7 +677,7 @@ framework in which it was developed, and the software itself:
              Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
              in {Python}},
   year    = {2026},
-  version = {0.5.5},
+  version = {0.7.2},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```
