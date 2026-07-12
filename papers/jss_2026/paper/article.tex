@@ -132,7 +132,7 @@ however, is not available as a single coherent software artifact. In
 the \proglang{Python} ecosystem, \pkg{scikit-learn}'s \code{Lasso}
 class \citep{Pedregosa+etal:2011} handles the basic single-response
 LASSO with no group structure and no multi-response capability. The
-\pkg{group-lasso}, \pkg{asgl}
+\pkg{group-lasso} \citep{Moe:2020}, \pkg{asgl}
 \citep{Mendez-Civieta+Aguilera-Morillo+Lillo:2021}, and \pkg{celer}
 \citep{Massias+Gramfort+Salmon:2018} packages handle group
 LASSO with externally specified groups but do not perform cluster
@@ -142,7 +142,7 @@ multi-task group LASSO solver but again requires the group structure as
 an input. Beyond \proglang{Python}, the \proglang{R} packages
 \pkg{gglasso} \citep{Yang+Zou:2015}, \pkg{sparsegl}
 \citep{Liang+Cohen+SolonHeinsfeld+Pestilli+McDonald:2024}, and
-\pkg{oem} cover overlapping subsets of this
+\pkg{oem} \citep{Huling+Chien:2022} cover overlapping subsets of this
 surface. None of these packages combines cluster discovery,
 cluster-pooled sign derivation with a noise-floor gate, adaptive
 penalty reweighting routed through both the $\ell_1$ and group $\ell_2$ paths, and
@@ -565,7 +565,9 @@ $\beta_{kj} = 0$. Cells with $s_{kj} \in \{-1, +1\}$ are constrained to
 the matching half-space. Cells with $s_{kj} = \mathrm{NaN}$ are
 unconstrained. Together with the $\ell_1$ and group $\ell_2$ penalty terms, the
 constraint set is convex and the entire problem reduces to a
-second-order cone programme solvable by CLARABEL, ECOS, or SCS via
+second-order cone programme solvable by CLARABEL
+\citep{Goulart+Chen:2024}, ECOS \citep{Domahidi+Chu+Boyd:2013}, or SCS
+\citep{ODonoghue+Chu+Parikh+Boyd:2016} via
 CVXPY's standard cone-solver interface.
 
 The sign matrix $\bm{S}$ and the adaptive weights of
@@ -1731,8 +1733,9 @@ loadings explain why: the truth is dense, so every cell an $\ell_1$
 penalty or the noise-floor gate zeroes is a true exposure counted as a
 sign miss. \pkg{scikit-learn}'s per-asset $\ell_1$ collapses to
 $0.54$, the \pkg{factorlasso} LASSO sits at $0.65$, and the gated
-configurations ($\tau = 1.0$) sit at $0.83$ to $0.85$ — below the
-ungated group estimators at $0.91$ to $0.92$, which zero whole groups
+configurations ($\tau = 1.0$) sit at $0.83$ to $0.85$. The
+ungated group estimators sit above them at $0.91$ to $0.92$
+because they zero whole groups
 rarely. The column orders estimators by how much they shrink or gate,
 not by economic fidelity: the metric artefact established on the
 synthetic ablation, amplified by a dense truth. Runtime favours the
@@ -2092,8 +2095,8 @@ on Windows~11 with the \pkg{factorlasso}~0.7.0 package,
 dependence: the full simulation and application pipelines were re-run
 on Ubuntu Linux with \pkg{CVXPY}~1.9, \pkg{NumPy}~2.4, and
 \pkg{pandas}~3.0, and every reported metric agrees across the two
-platforms to within $10^{-11}$ — identical at the displayed
-precision.
+platforms to within $10^{-11}$ (identical at the displayed
+precision).
 
 The package ships a test suite of $305$ tests covering the estimator family,
 the sign-derivation gate, the solver paths, and the reproducibility receipts. A
@@ -2137,8 +2140,9 @@ errors are the author's own.
 
 This appendix gives step-by-step instructions for reproducing the full
 study from a fresh \proglang{Python} environment.
-The replication materials ship with the \pkg{factorlasso} source
-distribution under the \code{papers/jss\_2026/simulations/} directory. We
+The replication materials live in the \pkg{factorlasso} repository
+under the \code{papers/jss\_2026/} directory and in the replication
+archive submitted with this manuscript. We
 pin the package versions used for the reported results in
 \code{papers/jss\_2026/requirements.txt}. After installing the package from
 the repository root with \code{pip install -e .}, install the pinned
@@ -2187,9 +2191,10 @@ pip install -e ".[simulations]"
 	\end{CodeInput}
 \end{CodeChunk}
 %
-The \code{[simulations]} extra brings in \pkg{PyYAML} for study
-configuration, \pkg{joblib} for parallel cell execution,
-\pkg{pyarrow} for parquet output, and \pkg{SCS} and \pkg{ECOS} as
+The \code{[simulations]} extra brings in \pkg{PyYAML} \citep{pyyaml}
+for study configuration, \pkg{joblib} for parallel cell execution,
+\pkg{pyarrow} \citep{pyarrow} for parquet output, and \pkg{SCS} and
+\pkg{ECOS} as
 solver fallbacks for the rare problem instances where CLARABEL
 encounters numerical pathologies.
 

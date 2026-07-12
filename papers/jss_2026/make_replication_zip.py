@@ -7,7 +7,7 @@ matching the curated layout of the submitted replication materials:
     simulations/    harness code, study.yaml, tests, committed results,
                     results_calibrated (benchmark + empirical + timing CSVs)
     applications/   ETF study scripts, panel data, universe definition
-    replicate.py    the standalone five-stage replication script
+    replicate.py    the standalone six-stage replication script
     replication_output.txt   captured log of the canonical --full run
 
 Deliberately excluded (not part of the paper pipeline): __pycache__,

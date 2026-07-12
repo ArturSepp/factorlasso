@@ -11,6 +11,9 @@ information footer (package versions + platform), the Python analogue of the
 
 Exhibits and the stage that produces each
 -----------------------------------------
+  Stage 0  paper/usage_example.py           -> the usage-example outputs of the
+                                               manuscript (printed) and
+                                               Figure usage_signs_heatmap
   Stage 1  simulations.run                  -> simulations/results/*.parquet
   Stage 2  paper/analysis.py                -> Table 2 (table2_headline_ablation.csv)
                                                Figures 1-4 (fig1..fig4 *.png)
@@ -23,7 +26,7 @@ Exhibits and the stage that produces each
   Stage 5  applications/run_etf_study.py    -> tab:etf-credit (etf_empirical_credit_betas.csv)
                                                Figure etf_credit_beta_vs_lambda
 
-Stages 1-2 are fully self-contained (seeded synthetic data, no external inputs).
+Stages 0-2 are fully self-contained (seeded synthetic data, no external inputs).
 Stages 3-5 require the multi-asset input data described under "Input data"
 below; when those files are absent the stage is reported as SKIPPED and the run
 continues, so the synthetic half always reproduces.
@@ -195,6 +198,14 @@ def main(argv: list[str] | None = None) -> int:
     print(header)
     buf.write(header + "\n")
 
+    # ── Stage 0: manuscript usage example ────────────────────────────────
+    _run(
+        [py, str(PAPER / "usage_example.py"),
+         "--output", str(PAPER / "figures")],
+        "Stage 0: manuscript usage example", buf,
+    )
+    ran.append("Stage 0 (usage-example outputs, usage_signs_heatmap)")
+
     # ── Stage 1: synthetic simulation study ──────────────────────────────
     if not args.skip_sim:
         sim_cmd = [
@@ -203,10 +214,10 @@ def main(argv: list[str] | None = None) -> int:
         ]
         if quick:
             sim_cmd += ["--seeds-limit", "1"]
-        _run(sim_cmd, "Stage 1/5: synthetic simulation study", buf)
+        _run(sim_cmd, "Stage 1: synthetic simulation study", buf)
         ran.append("Stage 1 (parquet results)")
     else:
-        note = "\n[Stage 1/5] skipped (--skip-sim); reusing existing parquet."
+        note = "\n[Stage 1] skipped (--skip-sim); reusing existing parquet."
         print(note)
         buf.write(note + "\n")
         ran.append("Stage 1 (reused existing parquet)")
@@ -216,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
         [py, str(PAPER / "analysis.py"),
          "--results", str(SIM / "results"),
          "--output", str(PAPER / "figures")],
-        "Stage 2/5: Table 2 and Figures 1-4", buf,
+        "Stage 2: Table 2 and Figures 1-4", buf,
     )
     ran.append("Stage 2 (Table 2, Figures 1-4)")
 
@@ -227,10 +238,10 @@ def main(argv: list[str] | None = None) -> int:
             cmd += ["--quick"]
         else:
             cmd += ["--seeds", "15", "--seed-start", "101"]  # paper tab:competitor config
-        _run(cmd, "Stage 3/5: ETF calibrated competitor study", buf)
+        _run(cmd, "Stage 3: ETF calibrated competitor study", buf)
         ran.append("Stage 3 (tab:competitor)")
     else:
-        _skip("Stage 3/5: ETF calibrated competitor study", [FACTOR_NAV], buf)
+        _skip("Stage 3: ETF calibrated competitor study", [FACTOR_NAV], buf)
         skipped.append("Stage 3 (tab:competitor)")
 
     # ── Stage 4: ETF competitor figures ──────────────────────────────────
@@ -239,11 +250,11 @@ def main(argv: list[str] | None = None) -> int:
         _run(
             [py, str(APP / "plot_competitor_study.py"),
              "--raw", str(ETF_RAW), "--figdir", str(PAPER / "figures")],
-            "Stage 4/5: ETF competitor figures", buf,
+            "Stage 4: ETF competitor figures", buf,
         )
         ran.append("Stage 4 (etf_study_selector_contrast, etf_study_t_robustness)")
     else:
-        _skip("Stage 4/5: ETF competitor figures", [ETF_RAW], buf)
+        _skip("Stage 4: ETF competitor figures", [ETF_RAW], buf)
         skipped.append("Stage 4 (ETF competitor figures)")
 
     # ── Stage 5: ETF empirical credit application (tab:etf-credit) ───────
@@ -252,10 +263,10 @@ def main(argv: list[str] | None = None) -> int:
         cmd = [py, str(APP / "run_etf_study.py")]
         if quick:
             cmd += ["--quick"]
-        _run(cmd, "Stage 5/5: ETF empirical credit application", buf)
+        _run(cmd, "Stage 5: ETF empirical credit application", buf)
         ran.append("Stage 5 (tab:etf-credit, etf_credit_beta_vs_lambda)")
     else:
-        _skip("Stage 5/5: ETF empirical credit application", missing5, buf)
+        _skip("Stage 5: ETF empirical credit application", missing5, buf)
         skipped.append("Stage 5 (tab:etf-credit, etf_credit_beta_vs_lambda)")
 
     # ── Reproducibility summary ──────────────────────────────────────────

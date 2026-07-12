@@ -1909,23 +1909,27 @@ class LassoModel:
             short = n_valid < self.warmup_period
             if np.any(short):
                 est_beta[short, :] = 0.0
+                # Capture the zeroed assets for the warning below and for
+                # the cluster-assignment step at the end of fit(), which
+                # must drop these same assets so clusters_, coef_, and the
+                # per-asset diagnostics stay mutually consistent. Without
+                # this the zeroed-beta assets would still receive spurious
+                # singleton cluster labels that inflate downstream
+                # n_clusters and pollute cluster-based risk attribution /
+                # regime diagnostics.
+                short_assets = y.columns[short]
+                zeroed = ', '.join(map(str, short_assets[:10]))
+                if len(short_assets) > 10:
+                    zeroed += f", ... (+{len(short_assets) - 10} more)"
                 warnings.warn(
                     f"factorlasso: {int(np.sum(short))} of "
                     f"{len(short)} assets had fewer than "
                     f"warmup_period={self.warmup_period} valid "
-                    f"observations and were zeroed",
+                    f"observations and were zeroed: {zeroed}",
                     stacklevel=2,
                 )
                 for attr in ('alpha', 'ss_total', 'ss_res', 'r2'):
                     getattr(result, attr)[short] = np.nan
-                # Capture for use below — the cluster-assignment step
-                # at the end of fit() needs to drop these same assets
-                # so clusters_, coef_, and per-asset diagnostics stay
-                # mutually consistent. Without this the zeroed-beta
-                # assets would still receive spurious singleton cluster
-                # labels that inflate downstream n_clusters and pollute
-                # cluster-based risk attribution / regime diagnostics.
-                short_assets = y.columns[short]
 
         # Store fitted state (trailing underscore convention)
         self.x_ = x
