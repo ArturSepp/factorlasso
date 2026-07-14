@@ -1,33 +1,34 @@
-# .gitignore for papers/sign_pooling_2026
-#
-# paper/ holds the LaTeX build only: article.tex, article.pdf, refs.bib, the
-# figure PDFs the manuscript embeds, and the table fragments it \inputs.
-#
-# The Elsevier CAS template files are not redistributed. They are LPPL and live
-# on CTAN as els-cas-templates (tlmgr install els-cas-templates). They stay on
-# disk, so `make paper` still works locally and the Zenodo bundle stays
-# self-contained.
-
-# LaTeX build artifacts (article.pdf is TRACKED)
-paper/*.aux
-paper/*.bbl
-paper/*.blg
-paper/*.log
-paper/*.out
-paper/*.spl
-paper/*.synctex.gz
-paper/*.abs
-paper/*.toc
-
-# Regenerated raster previews. The manuscript embeds the .pdf figures.
-paper/*.png
-
-# Elsevier CAS template (CTAN: els-cas-templates)
-paper/cas-sc.cls
-paper/cas-common.sty
-paper/cas-model2-names.bst
-paper/thumbnails/
-
-# python
-**/__pycache__/
-*.pyc
+# .gitignore for papers/jss_2026
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.synctex.gz
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+simulations/results/
+simulations/results_calibrated/
+factorlasso_jss_replication.zip
+paper/jss_report/
+paper/*.py
+paper/*.md
+paper/*.csv
+paper/*.txt
+paper/jss.cls
+paper/jss.bst
+paper/jsslogo.jpg
+paper/figures/*
+!paper/figures/usage_signs_heatmap.pdf
+!paper/figures/prior_sensitivity_sweep.pdf
+!paper/figures/tau_sweep.pdf
+!paper/figures/etf_credit_beta_vs_lambda.pdf
+!paper/figures/etf_credit_beta_vs_lambda.png
+!applications/data/
+!paper/article.pdf
