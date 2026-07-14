@@ -324,14 +324,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--results",
         type=Path,
-        default=here.parent / "simulations" / "results",
+        default=here / "simulations" / "results",
         help="Directory holding results_oracle_lambda.parquet and "
         "results_long.parquet.",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=here / "figures",
+        default=here / "paper" / "figures",
         help="Directory to write the table and figures into.",
     )
     args = parser.parse_args(argv)

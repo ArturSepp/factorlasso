@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Reproduce the manuscript's minimal usage example."
     )
     parser.add_argument(
-        "--output", type=Path, default=HERE / "figures",
+        "--output", type=Path, default=HERE / "paper" / "figures",
         help="Directory for usage_signs_heatmap.{png,pdf} "
              "(default: papers/jss_2026/paper/figures).",
     )

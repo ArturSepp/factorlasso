@@ -200,7 +200,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # ── Stage 0: manuscript usage example ────────────────────────────────
     _run(
-        [py, str(PAPER / "usage_example.py"),
+        [py, str(HERE / "usage_example.py"),
          "--output", str(PAPER / "figures")],
         "Stage 0: manuscript usage example", buf,
     )
@@ -224,7 +224,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # ── Stage 2: synthetic figures + Table 2 ─────────────────────────────
     _run(
-        [py, str(PAPER / "analysis.py"),
+        [py, str(HERE / "analysis.py"),
          "--results", str(SIM / "results"),
          "--output", str(PAPER / "figures")],
         "Stage 2: Table 2 and Figures 1-4", buf,
