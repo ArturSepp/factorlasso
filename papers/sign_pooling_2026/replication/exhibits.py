@@ -22,7 +22,9 @@ import sign_pooling_simulation as S
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _RES = os.path.join(_HERE, 'results')
-_FIG = os.path.join(_HERE, '..', 'paper')
+_PAPER = os.path.join(_HERE, '..', 'paper')
+_FIG = os.path.join(_PAPER, 'figures')   # figures live in paper/figures/
+_TAB = _PAPER                            # table fragments live in paper/
 
 mpl.rcParams.update({
     'font.family': 'serif', 'font.size': 10, 'axes.titlesize': 10.5,
@@ -42,6 +44,7 @@ _STYLE = {
 def _save(fig: plt.Figure, name: str) -> None:
     """write a figure to PDF (vector) and PNG (preview)."""
     os.makedirs(_FIG, exist_ok=True)
+    os.makedirs(_TAB, exist_ok=True)
     fig.savefig(os.path.join(_FIG, name + '.pdf'))
     fig.savefig(os.path.join(_FIG, name + '.png'), dpi=150)
     plt.close(fig)
@@ -142,6 +145,7 @@ def fig_sign_matrices(seed: int = 0, r2: float = 0.20, threshold_t: float = 2.0)
     fig.suptitle(f'Pooling suppresses spurious within-cluster sign alternations '
                  f'($R^2$={r2}, threshold {threshold_t})', fontsize=10)
     os.makedirs(_FIG, exist_ok=True)
+    os.makedirs(_TAB, exist_ok=True)
     fig.savefig(os.path.join(_FIG, 'figS3_sign_matrices.pdf'))
     fig.savefig(os.path.join(_FIG, 'figS3_sign_matrices.png'), dpi=150)
     plt.close(fig)
@@ -162,7 +166,7 @@ def table_base() -> str:
                      f"{cell(m, 'abstain_true')} & {cell(m, 'false_sign')} \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     body = '\n'.join(lines)
-    open(os.path.join(_FIG, 'tableS1_base.tex'), 'w').write(body)
+    open(os.path.join(_TAB, 'tableS1_base.tex'), 'w').write(body)
     return body
 
 
@@ -179,7 +183,7 @@ def table_regime() -> str:
         last = r.r2
     lines += [r'\bottomrule', r'\end{tabular}']
     body = '\n'.join(lines)
-    open(os.path.join(_FIG, 'tableS2_regime.tex'), 'w').write(body)
+    open(os.path.join(_TAB, 'tableS2_regime.tex'), 'w').write(body)
     return body
 
 
@@ -226,7 +230,7 @@ def table_rhobar() -> str:
                      f"{r.false_sign:.3f} & {r.rate_factor:.2f} \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     body = '\n'.join(lines)
-    open(os.path.join(_FIG, 'tableS3_rhobar.tex'), 'w').write(body)
+    open(os.path.join(_TAB, 'tableS3_rhobar.tex'), 'w').write(body)
     return body
 
 
@@ -249,12 +253,13 @@ def table_coop() -> str:
                      f"{c.recovery:.3f} & {c.flip:.3f} & {c.abstain:.3f} & {c.beta_mse:.4f} \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     body = '\n'.join(lines)
-    open(os.path.join(_FIG, 'tableS4_coop.tex'), 'w').write(body)
+    open(os.path.join(_TAB, 'tableS4_coop.tex'), 'w').write(body)
     return body
 
 
 if __name__ == '__main__':
     os.makedirs(_FIG, exist_ok=True)
+    os.makedirs(_TAB, exist_ok=True)
     fig_recoverability()
     fig_gate_roc()
     fig_consistency()

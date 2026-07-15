@@ -1,17 +1,33 @@
 # .gitignore for papers/sign_pooling_2026
+#
+# paper/ holds the LaTeX build only: article.tex, article.pdf, refs.bib, the
+# figure PDFs the manuscript embeds, and the table fragments it \inputs.
+#
+# The Elsevier CAS template files are not redistributed. They are LPPL and live
+# on CTAN as els-cas-templates (tlmgr install els-cas-templates). They stay on
+# disk, so `make paper` still works locally and the Zenodo bundle stays
+# self-contained.
+
+# LaTeX build artifacts (article.pdf is TRACKED)
 paper/*.aux
 paper/*.bbl
 paper/*.blg
 paper/*.log
 paper/*.out
 paper/*.spl
+paper/*.synctex.gz
 paper/*.abs
 paper/*.toc
-paper/*.synctex.gz
-paper/*.png
+
+# Regenerated raster previews. The manuscript embeds the .pdf figures.
+paper/figures/*.png
+
+# Elsevier CAS template (CTAN: els-cas-templates)
 paper/cas-sc.cls
 paper/cas-common.sty
 paper/cas-model2-names.bst
 paper/thumbnails/
+
+# python
 **/__pycache__/
 *.pyc

@@ -22,7 +22,9 @@ import eqtl_pipeline as E
 from factorlasso import LassoModelType
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_FIG = os.path.join(_HERE, '..', 'paper')
+_PAPER = os.path.join(_HERE, '..', 'paper')
+_FIG = os.path.join(_PAPER, 'figures')   # figures live in paper/figures/
+_TAB = _PAPER                            # table fragments live in paper/
 _CUTOFF = 0.7
 
 mpl.rcParams.update({
@@ -188,12 +190,13 @@ def table_clusters(D: dict) -> str:
         lines.append(f"{c} & {ng} & {short.get(dom, dom)} & {pur:.2f} & {nm} & {ch:.2f} \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     body = '\n'.join(lines)
-    open(f"{_FIG}/tableE1_clusters.tex", 'w').write(body)
+    open(f"{_TAB}/tableE1_clusters.tex", 'w').write(body)
     return body
 
 
 if __name__ == '__main__':
     os.makedirs(_FIG, exist_ok=True)
+    os.makedirs(_TAB, exist_ok=True)
     D = prepare()
     fig_clusters(D)
     fig_signs(D)
