@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-07-12
+
+### Changed
+- **Dependency floors raised.** Python `>=3.10` (was `>=3.9`), `numpy>=2.0`
+  (was 1.22), `pandas>=2.2.0` (was 1.4), `scipy>=1.12.0` (was 1.9),
+  `cvxpy>=1.3.0`. Python 3.9 is no longer supported; the 3.9 classifier is
+  dropped. The dependency surface is unchanged in composition — `numpy`,
+  `pandas`, `scipy`, `cvxpy`, `openpyxl` — only the floors move.
+
+### Fixed
+- Single-asset (N=1) estimation is completed across the clustering and
+  group-based estimators. `compute_clusters_from_corr_matrix` short-circuits a
+  1x1 correlation matrix, returning the lone asset in cluster 1, an empty
+  `(0, 4)` linkage and a zero cutoff. SciPy's `squareform` / `linkage` are
+  undefined for one observation — the condensed pairwise-distance vector is
+  empty and `linkage` raises on an empty distance matrix — so the short-circuit
+  keeps the function total: callers building group loadings receive a valid
+  one-element `pd.Series` rather than an exception. This unblocks any fit whose
+  frequency bucket holds exactly one asset (e.g. a mandate whose sole
+  quarterly-rebalanced sleeve is a single hedge-fund proxy).
+- `LassoModel.fit_reg_lambda_path` honours the N=1 reduction: in lasso mode the
+  group path is bypassed and a full fit is run per grid point, instead of
+  building a group loading from an empty cluster set.
+- FCGL now names the assets it zeroes. When an asset has too few observations
+  the warning lists the offending columns (first ten, then a `(+n more)`
+  count) rather than reporting a bare count.
+
+### Added
+- `tests/test_single_asset_cluster.py` — covers the lone-cluster correlation
+  case, a single-asset fit across every estimator, and the single-asset
+  `reg_lambda` path across every estimator.
+- JSS submission: Stage 0 usage example (`papers/jss_2026/paper/usage_example.py`)
+  with the signs heatmap regenerated; `replicate.py` and the replication-zip
+  builder updated to match.
+
 ## [0.7.2] — 2026-06-22
 
 ### Fixed
