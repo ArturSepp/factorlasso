@@ -8,6 +8,8 @@ Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering Group LASSO
 [![PyPI](https://img.shields.io/pypi/v/factorlasso.svg)](https://pypi.org/project/factorlasso/)
 [![Python](https://img.shields.io/pypi/pyversions/factorlasso.svg)](https://pypi.org/project/factorlasso/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
+[![Downloads](https://static.pepy.tech/badge/factorlasso)](https://pepy.tech/project/factorlasso)
+[![Monthly](https://static.pepy.tech/badge/factorlasso/month)](https://pepy.tech/project/factorlasso)
 
 **Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Hierarchical
 Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for
@@ -621,6 +623,23 @@ tests against `qis` for the EWMA primitives and against `scikit-learn` for the
 LASSO path.
 
 ---
+
+## Ecosystem
+
+This package is part of an open-source Python stack for quantitative finance — full catalogue at [github.com/ArturSepp](https://github.com/ArturSepp):
+
+| Package | Purpose |
+|---|---|
+| [`qis`](https://github.com/ArturSepp/QuantInvestStrats) | Performance analytics, factsheets, and visualisation |
+| [`optimalportfolios`](https://github.com/ArturSepp/OptimalPortfolios) | Portfolio construction and backtesting |
+| [`factorlasso`](https://github.com/ArturSepp/factorlasso) *(this package)* | Sparse factor models and factor covariance estimation |
+| [`bbg-fetch`](https://github.com/ArturSepp/BloombergFetch) | Bloomberg data fetching |
+| [`trendfollowing`](https://github.com/ArturSepp/TrendFollowingSystems) | Trend-following systems: closed-form theory and replication |
+| [`goal-based-allocation`](https://github.com/ArturSepp/GoalBasedAllocation) | Dynamic MV allocation under regime-switching jump-diffusions |
+| [`stochvolmodels`](https://github.com/ArturSepp/StochVolModels) | Stochastic volatility pricing analytics |
+| [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) | Vectorised vanilla option pricers and implied volatility fitters |
+
+Dependency links within the stack: `optimalportfolios` builds on `qis` and `factorlasso`; `trendfollowing` builds on `qis`.
 
 ## Citation
 
