@@ -5,14 +5,15 @@ type: software
 authors:
   - given-names: Artur
     family-names: Sepp
+    orcid: "https://orcid.org/0000-0002-7038-1748"
     email: artursepp@gmail.com
   - given-names: Mika
     family-names: Kastenholz
 repository-code: "https://github.com/ArturSepp/factorlasso"
 url: "https://github.com/ArturSepp/factorlasso"
 license: GPL-3.0-or-later
-version: 0.7.2
-date-released: "2026-06-20"
+version: 0.8.0
+date-released: "2026-07-12"
 keywords:
   - lasso
   - group-lasso
@@ -32,6 +33,7 @@ preferred-citation:
   authors:
     - given-names: Artur
       family-names: Sepp
+      orcid: "https://orcid.org/0000-0002-7038-1748"
     - given-names: Mika
       family-names: Kastenholz
   title: "factorlasso: Hierarchical Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for Multi-Asset Factor Models in Python"
