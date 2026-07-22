@@ -360,6 +360,44 @@ Useful when you suspect group structure in the responses but don't know the
 partition — or when the correct partition drifts over time, so any manual
 grouping would need to be refit anyway.
 
+#### Distance transform (0.9.0)
+
+The correlation-to-distance step is selectable via `DistanceTransform`:
+`ONE_MINUS_RHO` (`d = 1 - ρ`, the default), `CHORD` (`d = √(2(1 - ρ))`, the
+exact Euclidean distance between unit-norm standardised return vectors, so
+Ward's variance criterion is exact under it — Mantegna 1999), and `ARCCOS`
+(`d = arccos(ρ)`, the geodesic arc). All three are monotone in ρ, so
+rank-based linkages (`single`, `complete`) build the identical merge tree
+under any of them; Ward, average, centroid, and median read magnitudes and
+react to the choice.
+
+```python
+from factorlasso import DistanceTransform, LassoModel, LassoModelType
+
+model = LassoModel(
+    model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+    reg_lambda=1e-5,
+    distance_transform=DistanceTransform.CHORD,  # or 'chord'
+    cutoff_fraction=0.5 ** 0.5,                  # see calibration note below
+).fit(x=X, y=Y)
+```
+
+`cutoff_fraction` is calibrated per transform and does not port across
+transforms: the transforms remap merge heights nonlinearly, so a shared
+fraction changes the partition granularity. On mostly-positive correlation
+panels, `CHORD` at the `ONE_MINUS_RHO`-calibrated `0.5` shatters the
+partition into near-singletons. To preserve the implied pairwise merge
+threshold when switching from `ONE_MINUS_RHO` at fraction `f`, use `√f`
+under `CHORD` (panel-independent) and `arccos(ρ*)/arccos(ρ_min)` with
+`ρ* = 1 - f(1 - ρ_min)` under `ARCCOS` (panel-dependent through the minimum
+off-diagonal correlation `ρ_min`). At matched granularity the three
+transforms typically produce identical partitions on block correlation
+structures, which is the robustness property the partition is meant to
+have: it pools signs and groups the penalty, it makes no metric claim.
+
+The default reproduces the pre-0.9.0 behaviour exactly, and the same
+keyword is available on `compute_clusters_from_corr_matrix` directly.
+
 ### 5. Sparse Group LASSO
 
 Group LASSO selects whole groups in or out — every response inside an
@@ -696,7 +734,7 @@ software itself:
              Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
              in {Python}},
   year    = {2026},
-  version = {0.7.2},
+  version = {0.9.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

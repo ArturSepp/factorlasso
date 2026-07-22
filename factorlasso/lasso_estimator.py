@@ -58,8 +58,10 @@ import pandas as pd
 
 from factorlasso.cluster_utils import (
     DEFAULT_CUTOFF_FRACTION,
+    DEFAULT_DISTANCE_TRANSFORM,
     DEFAULT_LINKAGE_METHOD,
     VALID_LINKAGE_METHODS,
+    DistanceTransform,
     compute_clusters_from_corr_matrix,
 )
 from factorlasso.ewm_utils import (
@@ -1034,6 +1036,17 @@ class LassoModel:
         ``'centroid'``, ``'median'``, or ``'ward'``.  Used only by the
         cluster-discovery modes and ignored otherwise.  The default
         ``'ward'`` reproduces the prior behaviour.
+    distance_transform : DistanceTransform or str, default ONE_MINUS_RHO
+        Correlation-to-distance transform for the cluster-discovery step:
+        ``ONE_MINUS_RHO`` (``d = 1 - rho``), ``CHORD``
+        (``d = sqrt(2 (1 - rho))``, the Euclidean chord under which Ward's
+        variance criterion is exact), or ``ARCCOS`` (``d = arccos(rho)``).
+        Used only by the cluster-discovery modes and ignored otherwise.
+        The default reproduces the pre-0.9.0 behaviour exactly.
+        ``cutoff_fraction`` is calibrated per transform and does not port
+        across transforms; see
+        :func:`factorlasso.compute_clusters_from_corr_matrix` for the
+        granularity-preserving conversion when switching.
     group_penalty : {"normalized", "yuan_lin"}, default "normalized"
         Per-group weighting for the group-LASSO penalty.  ``"normalized"``
         uses ``√(|g|/G)``, a heuristic cluster-size scaling that adjusts
@@ -1172,6 +1185,7 @@ class LassoModel:
     span_freq_dict: Optional[Dict[str, float]] = None
     cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION
     linkage_method: str = DEFAULT_LINKAGE_METHOD
+    distance_transform: Union[DistanceTransform, str] = DEFAULT_DISTANCE_TRANSFORM
     group_penalty: str = "normalized"
     l1_weight: float = 0.0
     demean: bool = True
@@ -1266,6 +1280,14 @@ class LassoModel:
                 f"linkage_method must be one of {VALID_LINKAGE_METHODS}, "
                 f"got {self.linkage_method!r}"
             )
+        try:
+            DistanceTransform(self.distance_transform)
+        except ValueError:
+            raise ValueError(
+                f"distance_transform must be one of "
+                f"{[t.value for t in DistanceTransform]}, "
+                f"got {self.distance_transform!r}"
+            ) from None
         if self.group_penalty not in ("normalized", "yuan_lin"):
             raise ValueError(
                 f"group_penalty must be 'normalized' or 'yuan_lin', "
@@ -1718,6 +1740,7 @@ class LassoModel:
             asset_clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
                 corr_df, cutoff_fraction=self.cutoff_fraction,
                 linkage_method=self.linkage_method,
+                distance_transform=self.distance_transform,
             )
 
         # ── Sign-constraint assembly ─────────────────────────────────

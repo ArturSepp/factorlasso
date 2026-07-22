@@ -14,6 +14,12 @@ compute_clusters_from_corr_matrix
     primitive used by HCGL (``LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO``)
     but callable independently for any group-discovery workflow.
 
+DistanceTransform
+    String enum selecting the correlation-to-distance transform applied
+    before linkage: ``ONE_MINUS_RHO`` (``1 - rho``, default), ``CHORD``
+    (``sqrt(2(1 - rho))``, the Euclidean chord under which Ward's variance
+    criterion is exact), or ``ARCCOS`` (``arccos(rho)``, the geodesic arc).
+
 get_linkage_array
     Extract the scipy linkage ndarray for a single frequency from the
     stacked linkage DataFrame stored in ``CurrentFactorCovarData``.
@@ -36,7 +42,8 @@ The module-level split is cleaner and keeps the import graph acyclic.
 """
 from __future__ import annotations
 
-from typing import Dict, Tuple
+from enum import Enum
+from typing import Dict, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -46,6 +53,85 @@ from scipy.spatial.distance import squareform
 # ═══════════════════════════════════════════════════════════════════════
 # Clustering from correlation
 # ═══════════════════════════════════════════════════════════════════════
+
+
+class DistanceTransform(str, Enum):
+    """correlation-to-distance transform for hierarchical clustering.
+
+    All three transforms are strictly decreasing monotone functions of the
+    correlation ``rho``, so single and complete linkage (rank-based) build
+    the identical merge tree under any of them. Ward, average, centroid,
+    and median linkage read distance magnitudes, so the tree and the
+    partition react to the choice.
+
+    - ``ONE_MINUS_RHO``: ``d = 1 - rho``. The correlation dissimilarity and
+      the package default. Not a proper metric (the triangle inequality can
+      fail), applied under Ward as a stable clustering heuristic.
+    - ``CHORD``: ``d = sqrt(2 (1 - rho))``. The exact Euclidean distance
+      between unit-norm standardised return vectors
+      (``||u_i - u_j||^2 = 2 (1 - rho_ij)``), so Ward's variance criterion
+      is exact under this transform (Mantegna 1999).
+    - ``ARCCOS``: ``d = arccos(rho)``. The great-circle (geodesic) angle
+      between the same vectors. A proper metric, but not
+      Euclidean-embeddable in general, so under Ward it is a heuristic like
+      ``ONE_MINUS_RHO``.
+    """
+    ONE_MINUS_RHO = 'one_minus_rho'   # d = 1 - rho          (dissimilarity, default)
+    CHORD = 'chord'                   # d = sqrt(2(1 - rho)) (Euclidean chord, Ward-valid)
+    ARCCOS = 'arccos'                 # d = arccos(rho)      (geodesic arc)
+
+
+# Correlation-to-distance transform applied before linkage. ONE_MINUS_RHO
+# is the package-wide default and reproduces the pre-0.9.0 hardcoded
+# ``1 - rho`` path exactly. The cutoff calibration note in
+# ``compute_clusters_from_corr_matrix`` applies when switching.
+DEFAULT_DISTANCE_TRANSFORM: DistanceTransform = DistanceTransform.ONE_MINUS_RHO
+
+
+def _corr_to_distance(
+    corr: np.ndarray,
+    distance_transform: DistanceTransform = DEFAULT_DISTANCE_TRANSFORM,
+) -> np.ndarray:
+    """map a correlation matrix to a square distance matrix under the chosen transform.
+
+    Parameters
+    ----------
+    corr : np.ndarray, shape (N, N)
+        Correlation matrix. Entries are clipped to ``[-1, 1]`` first, which
+        guards against floating-point overshoot at ``rho = 1`` and keeps
+        ``arccos`` inside its domain.
+    distance_transform : DistanceTransform
+        ``ONE_MINUS_RHO`` -> ``1 - rho``; ``CHORD`` -> ``sqrt(2 (1 - rho))``;
+        ``ARCCOS`` -> ``arccos(rho)``.
+
+    Returns
+    -------
+    np.ndarray, shape (N, N)
+        Symmetric distance matrix with an exact zero diagonal, ready for
+        ``scipy.spatial.distance.squareform``.
+
+    Raises
+    ------
+    ValueError
+        If ``distance_transform`` is not a member of ``DistanceTransform``.
+    """
+    try:
+        distance_transform = DistanceTransform(distance_transform)
+    except ValueError:
+        raise ValueError(
+            f"distance_transform must be one of "
+            f"{[t.value for t in DistanceTransform]}, "
+            f"got {distance_transform!r}"
+        ) from None
+    rho = np.clip(corr, -1.0, 1.0)
+    if distance_transform == DistanceTransform.ONE_MINUS_RHO:
+        d = 1.0 - rho
+    elif distance_transform == DistanceTransform.CHORD:
+        d = np.sqrt(np.clip(2.0 * (1.0 - rho), 0.0, None))
+    else:  # DistanceTransform.ARCCOS
+        d = np.arccos(rho)
+    np.fill_diagonal(d, 0.0)
+    return d
 
 # Default fraction of ``max(pdist)`` at which to cut the dendrogram.
 # 0.5 is the package-wide convention — half the maximum pairwise
@@ -70,13 +156,14 @@ def compute_clusters_from_corr_matrix(
     corr_matrix: pd.DataFrame,
     cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION,
     linkage_method: str = DEFAULT_LINKAGE_METHOD,
+    distance_transform: Union[DistanceTransform, str] = DEFAULT_DISTANCE_TRANSFORM,
 ) -> Tuple[pd.Series, np.ndarray, float]:
     """
     Hierarchical clustering from a correlation matrix (Ward's method).
 
-    Converts correlation to distance ``(1 − corr)``, applies Ward's
-    agglomerative clustering, and cuts the dendrogram at
-    ``cutoff_fraction × max(pairwise distance)``.
+    Converts correlation to distance under ``distance_transform``
+    (default ``1 − corr``), applies Ward's agglomerative clustering, and
+    cuts the dendrogram at ``cutoff_fraction × max(pairwise distance)``.
 
     Parameters
     ----------
@@ -95,6 +182,31 @@ def compute_clusters_from_corr_matrix(
         ``'complete'``, ``'average'``, ``'weighted'``, ``'centroid'``,
         ``'median'``, or ``'ward'``.  The default ``'ward'`` reproduces the
         prior behaviour exactly.
+    distance_transform : DistanceTransform or str, default ONE_MINUS_RHO
+        Correlation-to-distance transform applied before linkage.  One of
+        ``DistanceTransform.ONE_MINUS_RHO`` (``d = 1 - rho``),
+        ``DistanceTransform.CHORD`` (``d = sqrt(2 (1 - rho))``, the exact
+        Euclidean chord under which Ward's variance criterion is valid), or
+        ``DistanceTransform.ARCCOS`` (``d = arccos(rho)``, the geodesic
+        arc).  Plain strings (``'chord'``) are accepted.  The default
+        reproduces the pre-0.9.0 behaviour exactly.
+
+        .. warning::
+            ``cutoff_fraction`` is calibrated per transform and does not
+            port across transforms.  The transforms remap merge heights
+            nonlinearly, so a shared fraction changes the partition
+            granularity — on mostly-positive correlation panels,
+            ``CHORD`` or ``ARCCOS`` at the ``ONE_MINUS_RHO``-calibrated
+            ``0.5`` can shatter the partition into near-singletons.  To
+            preserve the implied pairwise merge threshold when switching
+            from ``ONE_MINUS_RHO`` at fraction ``f``, use
+            ``sqrt(f)`` under ``CHORD`` (panel-independent), and
+            ``arccos(rho*) / arccos(rho_min)`` with
+            ``rho* = 1 - f (1 - rho_min)`` under ``ARCCOS``
+            (panel-dependent through the minimum off-diagonal
+            correlation ``rho_min``).  At matched granularity the three
+            transforms typically produce identical partitions on block
+            correlation structures.
 
     Returns
     -------
@@ -118,11 +230,14 @@ def compute_clusters_from_corr_matrix(
     (non-semantic) metric that conflated correlation structure with
     higher-order geometric relationships.
 
-    Note that ``1 - rho`` is a correlation dissimilarity, not the
-    Euclidean chord distance ``sqrt(2(1 - rho))`` between standardised
-    return vectors. Ward linkage is applied here as a stable
+    Note that the default ``1 - rho`` is a correlation dissimilarity, not
+    the Euclidean chord distance ``sqrt(2(1 - rho))`` between standardised
+    return vectors. Under the default, Ward linkage is applied as a stable
     correlation-clustering heuristic, not as exact Ward variance
-    minimisation in Euclidean space.
+    minimisation in Euclidean space. Pass
+    ``distance_transform=DistanceTransform.CHORD`` for the metric-exact
+    Ward criterion (mind the ``cutoff_fraction`` calibration warning
+    above).
 
     Examples
     --------
@@ -146,6 +261,14 @@ def compute_clusters_from_corr_matrix(
             f"linkage_method must be one of {VALID_LINKAGE_METHODS}, "
             f"got {linkage_method!r}"
         )
+    try:
+        distance_transform = DistanceTransform(distance_transform)
+    except ValueError:
+        raise ValueError(
+            f"distance_transform must be one of "
+            f"{[t.value for t in DistanceTransform]}, "
+            f"got {distance_transform!r}"
+        ) from None
     corr_matrix = corr_matrix.fillna(0.0)
     # A single asset is trivially its own cluster. SciPy's squareform/linkage
     # are undefined for one observation — the condensed pairwise-distance
@@ -161,13 +284,15 @@ def compute_clusters_from_corr_matrix(
     if corr_matrix.shape[0] == 1:
         clusters = pd.Series(1, index=corr_matrix.columns)
         return clusters, np.empty((0, 4)), 0.0
-    # squareform(1 - C) converts the correlation matrix to scipy's
-    # condensed pairwise-distance vector (a correlation dissimilarity, not
-    # the Euclidean chord distance). Clip guards against
-    # tiny negative values from floating-point noise; fill diagonal with
-    # exact zeros on the diagonal as squareform requires.
-    dist_square = np.clip(1.0 - corr_matrix.to_numpy(), 0.0, 2.0)
-    np.fill_diagonal(dist_square, 0.0)
+    # ``_corr_to_distance`` maps the correlation matrix to a square
+    # distance matrix under the chosen transform (default ``1 - rho``,
+    # numerically identical to the pre-0.9.0 hardcoded path: clipping
+    # ``rho`` to [-1, 1] before ``1 - rho`` equals clipping ``1 - rho``
+    # to [0, 2]). It clips, zeroes the diagonal as ``squareform``
+    # requires, and validates the transform.
+    dist_square = _corr_to_distance(
+        corr_matrix.to_numpy(), distance_transform=distance_transform,
+    )
     pdist = squareform(dist_square, checks=False)
     linkage = spc.linkage(pdist, method=linkage_method)
     cutoff = cutoff_fraction * np.max(pdist)

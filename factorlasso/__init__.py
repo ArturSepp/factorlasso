@@ -39,6 +39,7 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
 from factorlasso.cluster_utils import (
+    DistanceTransform,
     compute_clusters_from_corr_matrix,
     get_clusters_by_freq,
     get_cutoffs_by_freq,
@@ -95,6 +96,7 @@ __all__ = [
     "RollingFactorCovarData",
     "VarianceColumns",
     # Clustering utilities
+    "DistanceTransform",
     "compute_clusters_from_corr_matrix",
     "get_clusters_by_freq",
     "get_cutoffs_by_freq",

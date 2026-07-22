@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-07-22
+
+### Added
+- `DistanceTransform` (exported): string enum selecting the
+  correlation-to-distance transform for hierarchical clustering —
+  `ONE_MINUS_RHO` (`d = 1 - rho`, default), `CHORD`
+  (`d = sqrt(2(1 - rho))`, the Euclidean chord under which Ward's variance
+  criterion is exact), and `ARCCOS` (`d = arccos(rho)`, the geodesic arc).
+- `compute_clusters_from_corr_matrix` gains a `distance_transform` keyword
+  (default `ONE_MINUS_RHO`), threaded like `linkage_method`. Plain strings
+  (`'chord'`) are accepted. The default path is numerically identical to
+  0.8.0: clipping `rho` to `[-1, 1]` before `1 - rho` equals the previous
+  clip of `1 - rho` to `[0, 2]`.
+- `LassoModel` gains a `distance_transform` constructor parameter, consumed
+  by the cluster-discovery modes (`HIERARCHICAL_CLUSTER_GROUP_LASSO`,
+  `FACTOR_CLUSTER_GROUP_LASSO`, `COOPERATIVE_CLUSTER_GROUP_LASSO`) and
+  ignored otherwise. Flows through `get_params`/`set_params` and
+  `LassoModelCV` automatically.
+- `tests/test_distance_transform.py` — transform values, metric properties,
+  exact 0.8.0 regression on the default path, monotone-invariance of
+  rank-based linkages, `LassoModel` threading, and validation errors.
+
+### Changed
+- Documentation only: `compute_clusters_from_corr_matrix` documents that
+  `cutoff_fraction` is calibrated per transform and does not port across
+  transforms. Switching from `ONE_MINUS_RHO` at fraction `f` while
+  preserving the implied pairwise merge threshold requires `sqrt(f)` under
+  `CHORD` and `arccos(rho*)/arccos(rho_min)` with
+  `rho* = 1 - f(1 - rho_min)` under `ARCCOS`. No behavioural change to any
+  existing default.
+
 ## [0.8.0] — 2026-07-12
 
 ### Changed
