@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from factorlasso import LassoModel, LassoModelType, LassoModelCV
+from factorlasso import LassoModel, LassoModelCV, LassoModelType
 
 COEF_ATOL = 1e-5      # path vs fresh-fit loadings (solver tolerance)
 SCORE_ATOL = 1e-6     # cv_scores_ path vs loop

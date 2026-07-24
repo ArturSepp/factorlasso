@@ -47,6 +47,11 @@ from factorlasso.cluster_utils import (
     get_linkages_by_freq,
 )
 from factorlasso.cv import LassoModelCV
+from factorlasso.dependence_utils import (
+    DependenceMeasure,
+    compute_dependence_matrix,
+    compute_gerber_matrix,
+)
 from factorlasso.ewm_utils import (
     compute_ewm,
     compute_ewm_covar,
@@ -95,6 +100,10 @@ __all__ = [
     "CurrentFactorCovarData",
     "RollingFactorCovarData",
     "VarianceColumns",
+    # Dependence measures
+    "DependenceMeasure",
+    "compute_dependence_matrix",
+    "compute_gerber_matrix",
     # Clustering utilities
     "DistanceTransform",
     "compute_clusters_from_corr_matrix",

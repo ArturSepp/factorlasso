@@ -9,6 +9,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-07-24
+
+### Added
+- `factorlasso/dependence_utils.py` — new module holding the dependence
+  measures that build the clustering correlation matrix.
+- `DependenceMeasure` (exported): string enum selecting that measure —
+  `PEARSON` (default, the pre-0.10.0 behaviour), `SPEARMAN` (Pearson
+  correlation of ranks) and `GERBER` (Gerber et al. 2022 co-movement
+  statistic). All three are signed, which cluster-pooled sign derivation
+  requires; unsigned measures are inadmissible here by construction.
+- `compute_dependence_matrix` and `compute_gerber_matrix` (both
+  exported). Every measure honours the same `span` weighting as the
+  solver loss: uniform when `span=None`, EWMA otherwise. For Gerber the
+  EWMA form weights the indicator counts, recovers the published
+  equal-weight statistic as `span → ∞` at O(1/span), and admits the
+  first-order recursion `N_t = λN_{t-1} + (1-λ)s_i,t s_j,t`,
+  `D_t = λD_{t-1} + (1-λ)[not both-noise]_t`, so roll-forward updates
+  are O(1) per observation.
+- `compute_clusters_from_corr_matrix(n_clusters=…)`: cut the dendrogram
+  at a target group count (scipy `'maxclust'`) instead of a fraction of
+  the maximum pairwise distance. The portable cut — the fractional cut
+  is calibrated against the scale of the distance matrix and does not
+  port across distance transforms or dependence measures. The returned
+  cutoff is the height of the last accepted merge, so it replays the
+  same partition through the distance criterion.
+- `LassoModel` gains `dependence_measure`, `gerber_threshold` and
+  `n_clusters`, consumed by the cluster-discovery modes and ignored
+  otherwise. All three flow through `copy`/`get_params`/`set_params`
+  and `LassoModelCV` automatically.
+- `tests/test_dependence_measures.py` — Gerber against its published
+  definition, the EWMA limit and recursion, NaN handling, exact
+  regression of the Pearson and fractional-cut defaults, robustness
+  under contamination, cut portability, `LassoModel` threading, and
+  validation errors.
+
+### Changed
+- Nothing behavioural. `DependenceMeasure.PEARSON` and `n_clusters=None`
+  reproduce prior output exactly, asserted by regression tests against
+  the previous code paths.
+- CI lint scope widened from `ruff check factorlasso/` to
+  `ruff check factorlasso/ tests/`, and the four test modules that were
+  failing under it cleaned up (import ordering in
+  `test_cv_lambda_path.py`, `test_diagnostic_norm.py` and
+  `test_solver_fallback.py`; an unused `pytest` import in
+  `test_cluster_nan_x_and_api_fixes.py`). Import statements only, no
+  test logic touched.
+
+### Notes
+- Unlike Pearson and Spearman, the Gerber statistic is **not** invariant
+  to centring, since its thresholds apply to levels. The estimator feeds
+  it the same panel the solver loss sees, which is demeaned when
+  `demean=True`.
+- The equal-weight Gerber matrix is positive semi-definite (Gerber et
+  al. 2023, arXiv:2305.05663). The EWMA-weighted matrix is not covered
+  by that proof, though it was PSD on every panel tested. PSD matters
+  here only for the `CHORD` distance transform, whose exact Euclidean
+  interpretation assumes a Gram matrix.
+
 ## [0.9.0] — 2026-07-22
 
 ### Added

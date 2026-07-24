@@ -64,10 +64,15 @@ from factorlasso.cluster_utils import (
     DistanceTransform,
     compute_clusters_from_corr_matrix,
 )
+from factorlasso.dependence_utils import (
+    DEFAULT_DEPENDENCE_MEASURE,
+    DEFAULT_GERBER_THRESHOLD,
+    DependenceMeasure,
+    compute_dependence_matrix,
+)
 from factorlasso.ewm_utils import (
     _validate_span,
     compute_ewm,
-    compute_ewm_covar,
     compute_expanding_power,
     set_group_loadings,
 )
@@ -1047,6 +1052,32 @@ class LassoModel:
         across transforms; see
         :func:`factorlasso.compute_clusters_from_corr_matrix` for the
         granularity-preserving conversion when switching.
+    dependence_measure : DependenceMeasure or str, default PEARSON
+        Dependence measure used to build the clustering correlation
+        matrix: ``'pearson'`` (the default and the pre-0.10.0 behaviour),
+        ``'spearman'`` (Pearson correlation of ranks), or ``'gerber'``
+        (Gerber et al. 2022 co-movement statistic).  Both alternatives
+        are robust to outliers, which the linear correlation is not.
+        Used only by the cluster-discovery modes and ignored otherwise.
+        Every measure honours the ``span`` weighting of the solver loss.
+        CAUTION: ``cutoff_fraction`` does not port across measures — the
+        Gerber statistic shrinks correlations toward zero by a
+        data-dependent factor, and no closed-form remapping exists.  Set
+        ``n_clusters`` instead whenever partitions are compared across
+        measures.
+    gerber_threshold : float, default 0.5
+        Threshold ``c`` for ``DependenceMeasure.GERBER``, applied as
+        ``c * sigma`` on each leg.  Observations below the threshold on
+        both legs are treated as noise and discarded.  Ignored by the
+        other measures.
+    n_clusters : int, optional
+        Target number of clusters for the cluster-discovery modes.  When
+        set, the dendrogram is cut to at most ``n_clusters`` groups and
+        ``cutoff_fraction`` is ignored.  None (default) uses the
+        fractional-height cut, the pre-0.10.0 behaviour.  Prefer
+        ``n_clusters`` when comparing partitions across distance
+        transforms or dependence measures, since the fractional cut is
+        calibrated against the scale of the distance matrix.
     group_penalty : {"normalized", "yuan_lin"}, default "normalized"
         Per-group weighting for the group-LASSO penalty.  ``"normalized"``
         uses ``√(|g|/G)``, a heuristic cluster-size scaling that adjusts
@@ -1186,6 +1217,9 @@ class LassoModel:
     cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION
     linkage_method: str = DEFAULT_LINKAGE_METHOD
     distance_transform: Union[DistanceTransform, str] = DEFAULT_DISTANCE_TRANSFORM
+    dependence_measure: Union[DependenceMeasure, str] = DEFAULT_DEPENDENCE_MEASURE
+    gerber_threshold: float = DEFAULT_GERBER_THRESHOLD
+    n_clusters: Optional[int] = None
     group_penalty: str = "normalized"
     l1_weight: float = 0.0
     demean: bool = True
@@ -1288,6 +1322,30 @@ class LassoModel:
                 f"{[t.value for t in DistanceTransform]}, "
                 f"got {self.distance_transform!r}"
             ) from None
+        try:
+            DependenceMeasure(self.dependence_measure)
+        except ValueError:
+            raise ValueError(
+                f"dependence_measure must be one of "
+                f"{[m.value for m in DependenceMeasure]}, "
+                f"got {self.dependence_measure!r}"
+            ) from None
+        if not 0.0 <= self.gerber_threshold <= 1.0:
+            raise ValueError(
+                f"gerber_threshold must lie in [0, 1], "
+                f"got {self.gerber_threshold!r}"
+            )
+        if self.n_clusters is not None:
+            if (not isinstance(self.n_clusters, (int, np.integer))
+                    or isinstance(self.n_clusters, bool)):
+                raise ValueError(
+                    f"n_clusters must be an integer or None, "
+                    f"got {self.n_clusters!r}"
+                )
+            if self.n_clusters < 1:
+                raise ValueError(
+                    f"n_clusters must be at least 1, got {self.n_clusters!r}"
+                )
         if self.group_penalty not in ("normalized", "yuan_lin"):
             raise ValueError(
                 f"group_penalty must be 'normalized' or 'yuan_lin', "
@@ -1728,19 +1786,26 @@ class LassoModel:
             # documented contract (Pearson ``corr(Y)``) and the loss
             # weighting. Correlation is invariant to centring, so computing
             # it on the demeaned panel is equivalent to the raw panel.
-            if eff_span is None:
-                corr_df = pd.DataFrame(
-                    y_for_corr, columns=y.columns,
-                ).corr()
-            else:
-                corr = compute_ewm_covar(
-                    a=y_for_corr, span=eff_span, is_corr=True,
-                )
-                corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
+            # ``compute_dependence_matrix`` preserves that contract for
+            # every measure: ``span=None`` weights observations uniformly
+            # and a finite span applies EWMA(span) weights. The Gerber
+            # statistic weights its indicator counts, which recovers the
+            # published equal-weight statistic as span grows. Note that
+            # Gerber, unlike Pearson and Spearman, is NOT invariant to
+            # centring — its thresholds apply to levels — so it sees the
+            # same demeaned panel the solver loss does.
+            corr = compute_dependence_matrix(
+                a=y_for_corr,
+                dependence_measure=self.dependence_measure,
+                span=eff_span,
+                gerber_threshold=self.gerber_threshold,
+            )
+            corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
             asset_clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
                 corr_df, cutoff_fraction=self.cutoff_fraction,
                 linkage_method=self.linkage_method,
                 distance_transform=self.distance_transform,
+                n_clusters=self.n_clusters,
             )
 
         # ── Sign-constraint assembly ─────────────────────────────────

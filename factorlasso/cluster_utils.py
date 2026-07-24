@@ -12,7 +12,11 @@ Functions
 compute_clusters_from_corr_matrix
     Ward's hierarchical clustering from a correlation matrix. The
     primitive used by HCGL (``LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO``)
-    but callable independently for any group-discovery workflow.
+    but callable independently for any group-discovery workflow. The
+    dendrogram is cut either at a fraction of the maximum pairwise
+    distance (``cutoff_fraction``) or at a target group count
+    (``n_clusters``); the latter is the portable cut when partitions are
+    compared across distance transforms or dependence measures.
 
 DistanceTransform
     String enum selecting the correlation-to-distance transform applied
@@ -43,7 +47,7 @@ The module-level split is cleaner and keeps the import graph acyclic.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -157,6 +161,7 @@ def compute_clusters_from_corr_matrix(
     cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION,
     linkage_method: str = DEFAULT_LINKAGE_METHOD,
     distance_transform: Union[DistanceTransform, str] = DEFAULT_DISTANCE_TRANSFORM,
+    n_clusters: Optional[int] = None,
 ) -> Tuple[pd.Series, np.ndarray, float]:
     """
     Hierarchical clustering from a correlation matrix (Ward's method).
@@ -207,6 +212,25 @@ def compute_clusters_from_corr_matrix(
             correlation ``rho_min``).  At matched granularity the three
             transforms typically produce identical partitions on block
             correlation structures.
+
+    n_clusters : int, optional
+        Target number of clusters. When set, the dendrogram is cut to
+        yield at most ``n_clusters`` groups (scipy's ``'maxclust'``
+        criterion) and ``cutoff_fraction`` is ignored. None (default)
+        uses the fractional-height cut.
+
+        Prefer ``n_clusters`` whenever partitions must be **compared**
+        across configurations. The fractional cut is calibrated against
+        the scale of the distance matrix, so it does not port across
+        distance transforms (see the warning above) nor across dependence
+        measures: the Gerber statistic shrinks correlations toward zero
+        relative to Pearson, by a data-dependent and non-affine factor,
+        so no closed-form fraction mapping exists. A shared
+        ``n_clusters`` removes the scale question entirely and makes the
+        comparison like-for-like by construction.
+
+        The realised count can fall below ``n_clusters`` when ties in the
+        merge heights force several merges at one level.
 
     Returns
     -------
@@ -269,6 +293,18 @@ def compute_clusters_from_corr_matrix(
             f"{[t.value for t in DistanceTransform]}, "
             f"got {distance_transform!r}"
         ) from None
+    if n_clusters is not None:
+        if not isinstance(n_clusters, (int, np.integer)) or isinstance(n_clusters, bool):
+            raise ValueError(
+                f"n_clusters must be an integer or None, got {n_clusters!r}"
+            )
+        if n_clusters < 1:
+            raise ValueError(f"n_clusters must be at least 1, got {n_clusters!r}")
+        if n_clusters > corr_matrix.shape[0]:
+            raise ValueError(
+                f"n_clusters must not exceed the number of assets "
+                f"({corr_matrix.shape[0]}), got {n_clusters!r}"
+            )
     corr_matrix = corr_matrix.fillna(0.0)
     # A single asset is trivially its own cluster. SciPy's squareform/linkage
     # are undefined for one observation — the condensed pairwise-distance
@@ -295,8 +331,17 @@ def compute_clusters_from_corr_matrix(
     )
     pdist = squareform(dist_square, checks=False)
     linkage = spc.linkage(pdist, method=linkage_method)
-    cutoff = cutoff_fraction * np.max(pdist)
-    idx = spc.fcluster(linkage, cutoff, 'distance')
+    if n_clusters is None:
+        cutoff = cutoff_fraction * np.max(pdist)
+        idx = spc.fcluster(linkage, cutoff, 'distance')
+    else:
+        idx = spc.fcluster(linkage, n_clusters, 'maxclust')
+        # Report the height of the last accepted merge, so the returned
+        # cutoff stays comparable with the fractional-cut branch. With k
+        # realised clusters over n assets, exactly n - k merges were
+        # accepted, and ``linkage`` is ordered by increasing height.
+        n_merges = corr_matrix.shape[0] - len(np.unique(idx))
+        cutoff = float(linkage[n_merges - 1, 2]) if n_merges > 0 else 0.0
     clusters = pd.Series(idx, index=corr_matrix.columns)
     return clusters, linkage, cutoff
 

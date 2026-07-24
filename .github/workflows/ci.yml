@@ -30,7 +30,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Lint
-        run: ruff check factorlasso/
+        run: ruff check factorlasso/ tests/
 
       - name: Run tests
         run: pytest --cov=factorlasso --cov-report=term-missing -q

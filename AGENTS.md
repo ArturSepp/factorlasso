@@ -46,6 +46,7 @@ factorlasso/
   factor_covar.py      factor covariance assembly
   sign_constraints.py  sign-constraint handling
   cluster_utils.py     hierarchical clustering for grouped penalties
+  dependence_utils.py  dependence measures for the clustering correlation
   cv.py                cross-validation and lambda paths
   ewm_utils.py         exponentially weighted moment utilities
 tests/                 23 test modules (top-level, test_*.py)
@@ -63,7 +64,7 @@ pip install -e ".[dev]"                                   # editable install wit
 pytest                                                    # full suite (testpaths = tests)
 pytest tests/test_integration.py -v                       # one module
 pytest --cov=factorlasso --cov-report=term-missing -q      # as CI runs it
-ruff check factorlasso/                                   # lint, as CI runs it
+ruff check factorlasso/ tests/                            # lint, as CI runs it
 ```
 
 Optional extras: `dev`, `docs`, `simulations` (for `papers/jss_2026/simulations/`).

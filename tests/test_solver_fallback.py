@@ -1,8 +1,8 @@
 """Opt-in solver fallback (`solver_fallbacks`) behaviour."""
+import cvxpy as cvx
 import numpy as np
 import pandas as pd
 import pytest
-import cvxpy as cvx
 
 from factorlasso.lasso_estimator import LassoModel, LassoModelType
 

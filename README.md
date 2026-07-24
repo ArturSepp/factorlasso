@@ -398,6 +398,57 @@ have: it pools signs and groups the penalty, it makes no metric claim.
 The default reproduces the pre-0.9.0 behaviour exactly, and the same
 keyword is available on `compute_clusters_from_corr_matrix` directly.
 
+#### Dependence measure (0.10.0)
+
+Upstream of the distance transform sits the choice of dependence measure
+itself, via `DependenceMeasure`: `PEARSON` (the default), `SPEARMAN`
+(Pearson correlation of ranks) and `GERBER` (the co-movement statistic of
+Gerber et al. 2022, counting concordant minus discordant observations
+that pierce `gerber_threshold × σ` on both legs). Pearson is efficient
+under clean data and fragile under outliers; both alternatives are
+robust, and on contaminated block panels both recover the true structure
+where Pearson does not.
+
+All three are *signed*. That is a requirement rather than a preference:
+the partition feeds cluster-pooled sign derivation, so a measure
+discarding the sign of the relationship (`|ρ|`, distance correlation,
+mutual information) would pool assets with opposite factor exposures.
+
+```python
+from factorlasso import DependenceMeasure, LassoModel, LassoModelType
+
+model = LassoModel(
+    model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+    reg_lambda=1e-5,
+    dependence_measure=DependenceMeasure.GERBER,  # or 'spearman'
+    gerber_threshold=0.5,
+    n_clusters=8,          # the portable cut, see below
+).fit(x=X, y=Y)
+```
+
+Every measure honours the same observation weighting as the estimator
+loss: uniform when `span=None`, EWMA(`span`) otherwise. For Gerber the
+EWMA generalisation is exact rather than approximate, because both the
+numerator and the denominator are counts of indicator variables. It
+recovers the published equal-weight statistic as `span → ∞` and admits a
+first-order recursion, so roll-forward updates cost O(1) per new
+observation. Spearman has no such property: ranks must be recomputed, at
+O(T log T) per update.
+
+#### Cutting the dendrogram: `cutoff_fraction` or `n_clusters`
+
+`compute_clusters_from_corr_matrix` and `LassoModel` accept either. Use
+`n_clusters` whenever partitions are **compared** across configurations.
+The fractional cut is calibrated against the scale of the distance
+matrix, and that scale moves with both the transform (hence the `√f`
+mapping above) and the dependence measure — the Gerber statistic shrinks
+correlations toward zero by a data-dependent, non-affine factor, so no
+closed-form remapping exists. A shared `n_clusters` removes the scale
+question by construction and makes the comparison like-for-like.
+
+`n_clusters=None` (default) keeps the fractional cut and the pre-0.10.0
+behaviour.
+
 ### 5. Sparse Group LASSO
 
 Group LASSO selects whole groups in or out — every response inside an
@@ -734,7 +785,7 @@ software itself:
              Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
              in {Python}},
   year    = {2026},
-  version = {0.9.0},
+  version = {0.10.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

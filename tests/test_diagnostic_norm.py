@@ -15,7 +15,7 @@ import pytest
 
 from factorlasso import LassoModel, LassoModelType
 from factorlasso.ewm_utils import compute_expanding_power
-from factorlasso.lasso_estimator import get_x_y_np, _compute_solver_weights
+from factorlasso.lasso_estimator import _compute_solver_weights, get_x_y_np
 
 SPAN = 36.0
 LAM = 1.0 - 2.0 / (SPAN + 1.0)

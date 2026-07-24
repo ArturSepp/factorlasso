@@ -18,12 +18,10 @@ Regression tests for three v0.5.1 fixes.
 """
 import numpy as np
 import pandas as pd
-import pytest
 
 from factorlasso import LassoModel, LassoModelType
 from factorlasso.lasso_estimator import LassoEstimationResult
 from factorlasso.sign_constraints import _compute_sign_vector
-
 
 # ─────────────────────────────────────────────────────────────────────────
 # 1. Cluster-mode slope under heterogeneous NaN in x
