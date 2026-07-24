@@ -230,7 +230,13 @@ def compute_clusters_from_corr_matrix(
         comparison like-for-like by construction.
 
         The realised count can fall below ``n_clusters`` when ties in the
-        merge heights force several merges at one level.
+        merge heights force several merges at one level, and when the
+        matrix holds fewer than ``n_clusters`` assets. The latter is
+        clamped rather than rejected, so a rolling estimation over a
+        growing universe keeps working at early dates where fewer
+        instruments have history. Note that a count exceeding the
+        universe size collapses the distinction between grid columns at
+        those dates, since every column clamps to the same value.
 
     Returns
     -------
@@ -300,11 +306,14 @@ def compute_clusters_from_corr_matrix(
             )
         if n_clusters < 1:
             raise ValueError(f"n_clusters must be at least 1, got {n_clusters!r}")
-        if n_clusters > corr_matrix.shape[0]:
-            raise ValueError(
-                f"n_clusters must not exceed the number of assets "
-                f"({corr_matrix.shape[0]}), got {n_clusters!r}"
-            )
+        # A request above the asset count is clamped, not rejected. The
+        # contract is "at most n_clusters groups", which N singletons
+        # already satisfies, and scipy's 'maxclust' does exactly this.
+        # Rolling estimations walk over a growing universe, so an early
+        # date can hold fewer assets than the count calibrated on the full
+        # sample; raising there would make n_clusters strictly less robust
+        # than the fractional cut, which never fails on universe size.
+        n_clusters = min(int(n_clusters), corr_matrix.shape[0])
     corr_matrix = corr_matrix.fillna(0.0)
     # A single asset is trivially its own cluster. SciPy's squareform/linkage
     # are undefined for one observation — the condensed pairwise-distance

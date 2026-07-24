@@ -785,7 +785,7 @@ software itself:
              Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
              in {Python}},
   year    = {2026},
-  version = {0.10.0},
+  version = {0.10.1},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

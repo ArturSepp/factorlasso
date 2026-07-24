@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-07-24
+
+### Fixed
+- `compute_clusters_from_corr_matrix` no longer raises when `n_clusters`
+  exceeds the number of assets. The count is clamped to the universe
+  size, which is what scipy's `'maxclust'` criterion does natively and
+  what the documented contract ("at most `n_clusters` groups") already
+  implies. The 0.10.0 validation broke rolling estimations over a
+  growing universe: a count calibrated on the full sample raised
+  `ValueError` at earlier dates holding fewer instruments, making
+  `n_clusters` strictly less robust than the fractional cut, which never
+  fails on universe size. Reported from a rolling factor-covariance fit
+  (`n_clusters must not exceed the number of assets (17), got 19`).
+  `n_clusters < 1` and non-integer values still raise.
+
 ## [0.10.0] — 2026-07-24
 
 ### Added

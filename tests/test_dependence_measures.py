@@ -361,13 +361,37 @@ def test_invalid_n_clusters_raises():
     corr = pd.DataFrame(np.eye(5))
     with pytest.raises(ValueError, match="n_clusters must be at least 1"):
         compute_clusters_from_corr_matrix(corr, n_clusters=0)
-    with pytest.raises(ValueError, match="n_clusters must not exceed"):
-        compute_clusters_from_corr_matrix(corr, n_clusters=99)
     with pytest.raises(ValueError, match="n_clusters must be an integer"):
         compute_clusters_from_corr_matrix(corr, n_clusters=2.5)
     with pytest.raises(ValueError, match="n_clusters must be at least 1"):
         LassoModel(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
                    n_clusters=-1)
+
+
+def test_n_clusters_above_universe_size_is_clamped():
+    # a rolling estimation walks a growing universe, so a count calibrated
+    # on the full sample can exceed the assets present at an early date.
+    # The contract is "at most n_clusters", which N singletons satisfies.
+    a, _ = _block_panel(seed=6, n_blocks=4, per_block=3)   # 12 assets
+    corr = pd.DataFrame(np.corrcoef(a, rowvar=False))
+    clusters, _, _ = compute_clusters_from_corr_matrix(corr, n_clusters=19)
+    assert clusters.nunique() == 12
+    # and the degenerate single-asset matrix still short-circuits cleanly
+    solo = pd.DataFrame([[1.0]], index=['x'], columns=['x'])
+    clusters, _, _ = compute_clusters_from_corr_matrix(solo, n_clusters=19)
+    assert clusters.nunique() == 1
+
+
+def test_lasso_model_clamps_n_clusters_on_a_small_panel():
+    # the failure seen in production: LassoModel carrying a count larger
+    # than the assets available at an early rebalancing date
+    rng = np.random.default_rng(11)
+    x = pd.DataFrame(rng.standard_normal((200, 3)), columns=list('abc'))
+    y = pd.DataFrame(rng.standard_normal((200, 8)),
+                     columns=[f'y{i}' for i in range(8)])
+    model = LassoModel(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+                       reg_lambda=1e-4, n_clusters=19).fit(x=x, y=y)
+    assert model.clusters_.nunique() == 8
 
 
 def test_non_2d_input_raises():
