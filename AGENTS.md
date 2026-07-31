@@ -74,6 +74,21 @@ Supported Python is >= 3.10; CI runs 3.11 – 3.14.
 
 - Test files are named `test_*.py` and live in the top-level `tests/` directory.
 - Line length 100 (`ruff`, rules `E`, `F`, `W`, `I`).
+  `I` is selected here and nowhere else in the stack — deliberate, because this package's imports
+  do not follow the scientific-stack-first grouping the other repositories use. Do not "fix" it in
+  either direction.
+- **Two invariants are enforced by ruff rather than written down**, both green on the package as
+  it stands, so a violation is always something you just introduced:
+  - `TID251` fails any import of `qis`, `optimalportfolios`, `trendfollowing`, `privateassets` or
+    `stochvolmodels`. `factorlasso` is a leaf: `optimalportfolios` depends on it, never the
+    reverse, and the small runtime surface (numpy, pandas, scipy, cvxpy, openpyxl) is a JSS
+    submission constraint rather than a preference. If a change appears to need one of these
+    imports, the code belongs in the consumer — say so rather than adding it.
+  - `TID253` fails a **module-level** import of `sklearn` anywhere in `factorlasso/`. See the
+    constraint below for the one deliberate exception and its shape. `tests/`, `benchmarks/` and
+    `papers/` are exempt in `per-file-ignores`: scikit-learn is a legitimate dev dependency there.
+  - `ICN` pins `import numpy as np` and `import pandas as pd`. Ruff's default alias map is
+    replaced rather than extended, so other libraries keep their own aliasing.
 - The estimator follows scikit-learn conventions: constructor parameters are stored
   unmodified, fitted attributes end with a trailing underscore, and `fit` returns
   `self`. `COMPATIBILITY.md` documents what this guarantees — keep it true.
@@ -85,8 +100,14 @@ Supported Python is >= 3.10; CI runs 3.11 – 3.14.
 
 ## Constraints — do not do these
 
-- Do not import scikit-learn in package code. Compatibility is achieved by following
-  its conventions, not by depending on it.
+- Do not import scikit-learn at module level in package code; `ruff`'s `TID253` fails if you do.
+  Compatibility is achieved by following its conventions, not by depending on it — `scikit-learn`
+  is in the `dev` extra only, and `import factorlasso` leaves `sklearn` absent from `sys.modules`.
+  **One deliberate exception:** `__sklearn_tags__` in `lasso_estimator.py` imports
+  `sklearn.utils` inside the method behind a `try/except`, so an older scikit-learn that does not
+  call the hook falls through and a missing scikit-learn cannot break an import. It runs only when
+  scikit-learn is installed and calling it. Any future exception keeps that shape: inside the
+  function, guarded, and reachable only from a scikit-learn code path.
 - Do not change estimator defaults, penalty scaling, or the sign-constraint logic
   without re-running the replication and comparison material (see below).
 - Do not break the sklearn API contract (`get_params`/`set_params`, trailing-underscore

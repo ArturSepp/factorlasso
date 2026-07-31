@@ -110,6 +110,40 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
 
+# --- stack invariants as lint, not prose ---------------------------------------------------
+# TID251 bans an import outright, TID253 bans it only at module level, ICN pins the numpy and
+# pandas aliases. None belongs to the "I" (isort) family, so the import-grouping convention is
+# untouched. Verified green on the repository as it stands.
+extend-select = ["TID251", "TID253", "ICN"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# A1: factorlasso is a leaf. It must never import qis -- the small dependency surface
+# (numpy, pandas, scipy, cvxpy, openpyxl) is a JSS submission constraint, not a preference.
+"qis".msg = "A1/JSS: factorlasso must never import qis; the dependency surface is a JSS constraint."
+"optimalportfolios".msg = "A1: factorlasso is a leaf; optimalportfolios depends on it, not the reverse."
+"trendfollowing".msg = "A1: factorlasso is a leaf."
+"privateassets".msg = "A1: factorlasso is a leaf."
+"stochvolmodels".msg = "A1: factorlasso is a leaf."
+
+[tool.ruff.lint.flake8-tidy-imports]
+# scikit-learn is a dev/test dependency, never a runtime one: compatibility is achieved by
+# following its conventions, not by depending on it. A module-level import fails; the
+# `__sklearn_tags__` shim in lasso_estimator.py imports sklearn.utils inside the method behind a
+# try/except and is allowed by design, which is why this is TID253 rather than a flat TID251 ban.
+banned-module-level-imports = ["sklearn"]
+
+[tool.ruff.lint.per-file-ignores]
+# scikit-learn is a legitimate dev dependency in the material that is not the shipped package
+"tests/**" = ["TID253"]
+"benchmarks/**" = ["TID253"]
+"papers/**" = ["TID253"]
+
+[tool.ruff.lint.flake8-import-conventions.aliases]
+# replaces ruff's default alias map, which also demands `matplotlib as mpl` everywhere. Only
+# numpy and pandas are house convention; matplotlib is legitimately both `mpl` and `plt` here.
+numpy = "np"
+pandas = "pd"
+
 [tool.coverage.run]
 source = ["factorlasso"]
 

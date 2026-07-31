@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Ruff now enforces two invariants that were previously prose. `TID251` bans any import of `qis`,
+  `optimalportfolios` or a subject package — this package is a leaf, and its runtime surface
+  (numpy, pandas, scipy, cvxpy, openpyxl) is a JSS submission constraint. `TID253` bans a
+  **module-level** import of `sklearn` in `factorlasso/`; the `__sklearn_tags__` shim, which
+  imports `sklearn.utils` inside the method behind a `try/except`, is unaffected and remains the
+  only place the package touches scikit-learn. `ICN` pins the `numpy`/`pandas` aliases. All three
+  are green on the repository as it stands, so no code changed.
+
 ## [0.10.1] — 2026-07-24
 
 ### Fixed
