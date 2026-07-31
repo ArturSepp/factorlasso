@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-07-31
+
+**`RollingFactorCovarData.get_alphas` now forwards `asset_frequencies` to `estimate_alpha`.**
+Before this, it passed only `alpha_span`, so a caller supplying a per-frequency span dict such as
+`{'ME': 60, 'QE': 20}` — one calendar horizon expressed across mixed-cadence responses — silently
+got the `'ME'` entry applied to every quarterly response, because `estimate_alpha` fell back to
+`default_freq`. Nothing raised. Existing callers are unaffected: both new arguments default to the
+previous behaviour.
+
+### Added
+- `RollingFactorCovarData.get_alphas(alpha_span, asset_frequencies=None, default_freq='ME')` —
+  the two new keywords are forwarded per estimation date to
+  `CurrentFactorCovarData.estimate_alpha`, which has accepted them since the per-frequency span
+  was introduced. `get_alphas` also gains a docstring stating what the dict form of `alpha_span`
+  means and why `asset_frequencies` is required for it to mean anything.
+
 ### Changed
 
 - Ruff now enforces two invariants that were previously prose. `TID251` bans any import of `qis`,

@@ -542,11 +542,45 @@ class RollingFactorCovarData:
     def get_residual_vols(self) -> pd.DataFrame:
         return np.sqrt(self.get_residual_vars())
 
-    def get_alphas(self, alpha_span: int = 120) -> pd.DataFrame:
+    def get_alphas(self,
+                   alpha_span: Union[int, Dict[str, int]] = 120,
+                   asset_frequencies: Union[str, pd.Series, None] = None,
+                   default_freq: str = 'ME',
+                   ) -> pd.DataFrame:
+        """Rolling alpha panel: index = dates, columns = variables.
+
+        Thin wrapper over :meth:`CurrentFactorCovarData.estimate_alpha`, one
+        call per estimation date. Dates whose entry carries no residuals fall
+        back to the in-sample alpha recorded on ``y_variances``.
+
+        Parameters
+        ----------
+        alpha_span : int or dict
+            EWMA span for the residual smoother. An int applies one span to
+            every column; a dict keyed by pandas frequency code
+            (``{'ME': 60, 'QE': 20}``) applies a span **in observations at the
+            column's own cadence**, which is how one calendar horizon is
+            expressed across mixed-frequency responses.
+        asset_frequencies : str or pd.Series, optional
+            Per-response frequency codes, forwarded to ``estimate_alpha``.
+            Required for a dict ``alpha_span`` to mean anything: without it
+            every response falls back to ``default_freq``, so a
+            ``{'ME': 60, 'QE': 20}`` span would silently apply 60 to the
+            quarterly responses.
+        default_freq : str, default 'ME'
+            Cadence assumed for a response absent from ``asset_frequencies``.
+
+        Returns
+        -------
+        pd.DataFrame
+            Alphas by date and response; empty when the container is empty.
+        """
         records = {}
         for d, e in sorted(self.data.items()):
             if e.residuals is not None:
-                records[d] = e.estimate_alpha(alpha_span=alpha_span)
+                records[d] = e.estimate_alpha(alpha_span=alpha_span,
+                                              asset_frequencies=asset_frequencies,
+                                              default_freq=default_freq)
             else:
                 records[d] = e.y_variances[VarianceColumns.INSAMPLE_ALPHA.value]
         return pd.DataFrame(records).T if records else pd.DataFrame()
