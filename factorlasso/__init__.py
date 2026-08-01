@@ -24,6 +24,17 @@ Cross-validated regularisation
 >>> cv.best_lambda_
 1e-4
 
+Residual validation
+-------------------
+A sparse factor model asserts that the residual covariance is diagonal. Nothing
+in the estimation enforces the assertion, so test it.
+
+>>> from factorlasso import LassoModelDiagonalityCV, diagnose_residuals
+>>> sel = LassoModelDiagonalityCV(n_splits=5).fit(x=X, y=Y)
+>>> sel.passed_           # do held-out residuals look diagonal?
+False
+>>> sel.missing_factors_  # the components the factor set does not carry
+
 Full pipeline
 -------------
 >>> from factorlasso import LassoModel, CurrentFactorCovarData, VarianceColumns
@@ -52,6 +63,7 @@ from factorlasso.dependence_utils import (
     compute_dependence_matrix,
     compute_gerber_matrix,
 )
+from factorlasso.diagonality import LassoModelDiagonalityCV
 from factorlasso.ewm_utils import (
     compute_ewm,
     compute_ewm_covar,
@@ -73,6 +85,18 @@ from factorlasso.lasso_estimator import (
     solve_group_lasso_path,
     solve_lasso_cvx_problem,
     solve_unilasso_cvx_problem,
+)
+from factorlasso.residual_diagnostics import (
+    ResidualDiagnostics,
+    Sparsity,
+    diagnose_residuals,
+    effective_sparsity,
+    marchenko_pastur_edge,
+    missing_factor_components,
+    null_threshold,
+    raw_offdiagonal_mass,
+    residual_correlation,
+    suggest_tolerance,
 )
 from factorlasso.sign_constraints import (
     derive_sign_constraints,
@@ -119,4 +143,16 @@ __all__ = [
     # Sign-constraint derivation
     "derive_sign_constraints",
     "validate_cluster_signs",
+    # Residual validation
+    "LassoModelDiagonalityCV",
+    "ResidualDiagnostics",
+    "Sparsity",
+    "diagnose_residuals",
+    "effective_sparsity",
+    "marchenko_pastur_edge",
+    "missing_factor_components",
+    "null_threshold",
+    "raw_offdiagonal_mass",
+    "residual_correlation",
+    "suggest_tolerance",
 ]

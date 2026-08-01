@@ -48,6 +48,8 @@ factorlasso/
   cluster_utils.py     hierarchical clustering for grouped penalties
   dependence_utils.py  dependence measures for the clustering correlation
   cv.py                cross-validation and lambda paths
+  diagonality.py       lambda selection on held-out residual diagonality
+  residual_diagnostics.py  residual-diagonality tests and sparsity accounting
   ewm_utils.py         exponentially weighted moment utilities
 tests/                 23 test modules (top-level, test_*.py)
 benchmarks/            performance benchmarks

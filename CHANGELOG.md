@@ -7,7 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [Unreleased]
+## [0.12.0] — 2026-08-01
+
+**Residual diagonality is now testable.** A sparse factor model asserts a strict factor structure —
+after the factors are removed, the residual covariance is diagonal — and nothing in the estimation
+enforces that assertion. A penalty set too high leaves common variation in the residual while the
+fit still scores well on out-of-sample R2, so `LassoModelCV` cannot detect the failure. Every
+downstream object that inverts `D` is affected when it does fail. Two additions, no change to any
+existing estimator, default, or number.
+
+### Added
+
+- `factorlasso/residual_diagnostics.py` — the statistics, estimator-agnostic. They take a residual
+  panel rather than a `LassoModel`, so they apply equally to loadings from this package, from a
+  time-series regression, or from observed characteristics. `diagnose_residuals` returns a
+  `ResidualDiagnostics` carrying the sphericity statistic
+  `nu * sum_{i<j} r_ij^2`, which is chi-square with `p(p-1)/2` degrees of freedom under exact
+  diagonality, against its critical value; the largest eigenvalue of the residual correlation
+  against the Marchenko-Pastur edge `(1 + sqrt(p/nu))^2`; and the count above that edge, which
+  counts the factors the model does not carry. `missing_factor_components` reports the
+  eigenvectors, so a failure names the series that would define the missing factor. Supporting
+  functions `residual_correlation`, `marchenko_pastur_edge`, `null_threshold` and
+  `raw_offdiagonal_mass` are exported. All exported.
+- `LassoModelDiagonalityCV` in `factorlasso/diagonality.py` — a sibling of `LassoModelCV` selecting
+  `reg_lambda` on held-out residual diagonality rather than on R2. It shares
+  `expanding_window_splits` and `DEFAULT_LAMBDA_GRID` with `LassoModelCV`, so the two are directly
+  comparable on the same folds and grid, and they can disagree. Scoring is out of fold: the
+  statistic computed on the fitting sample is biased toward passing. Fitted state follows the
+  package convention — `best_lambda_`, `best_score_`, `best_model_`, `fold_scores_`,
+  `diagnostics_`, plus `passed_`, `threshold_` and `missing_factors_`. Among penalties that pass,
+  the sparsest is chosen rather than the minimiser, because the statistic has no interior minimum
+  to trust. When none passes, `missing_factors_` is the actionable output: the remedy is to extend
+  the factor set, not to retune the penalty.
+- `effective_sparsity` and `Sparsity` — an interior-point solver returns numerically-zero loadings
+  as small non-zero values, so `(betas != 0).sum()` reports every cell as occupied and any sparsity
+  statement built on it is vacuous. The count is taken at a scale-aware tolerance,
+  `max(tol, rtol * max|beta|)` with `rtol=1e-4`, and the tolerance actually applied is reported.
+  `Sparsity.empty_factors` flags a regressor no response loads on, which makes `beta' D^-1 beta`
+  singular; `n_nonfinite` keeps a failed solve from reading as a sparse one, since `abs(nan) > tol`
+  is False. `suggest_tolerance` locates the gap between solver dust and live loadings on a
+  particular fit, so the default can be checked rather than trusted.
+- `tests/test_residual_diagnostics.py` — 22 tests covering the size of the test under the null,
+  detection of an injected common factor, the two accounting traps above, and the equivalence of
+  the `use_lambda_path` route with the per-lambda loop.
 
 ## [0.11.0] — 2026-07-31
 
