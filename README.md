@@ -590,6 +590,93 @@ is a soft prior rather than a known fact. On correlated factors a soft penalty
 recovers more of the signs at lower coefficient error than a hard constraint, at
 the cost of a higher sign-flip rate when the leakage is strong.
 
+### 9. Residual validation: is the factor structure actually strict?
+
+A sparse factor model asserts a strict factor structure, `Σ = B Σ_F B' + D`
+with `D` diagonal. Nothing in the estimation enforces that assertion. A penalty
+set too high leaves common variation in the residual while the fit still scores
+well on out-of-sample R², so `LassoModelCV` cannot detect the failure, and every
+downstream object that inverts `D` is affected.
+
+`diagnose_residuals` tests the assertion directly. Let `R` be the residual
+correlation matrix of `p` series and let `ν = n - k - 1` be the degrees of
+freedom left after fitting `k` loadings per response. Under the null that the
+residual covariance is exactly diagonal, the sphericity statistic
+`S = ν Σ_{i<j} r_ij²` is chi-square with `p(p-1)/2` degrees of freedom, and the
+largest eigenvalue of `R` sits below the Marchenko-Pastur edge `(1 + √(p/ν))²`.
+
+```python
+import factorlasso as fl
+
+model = fl.LassoModel(model_type=fl.LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+                      reg_lambda=1e-4).fit(x=X, y=Y)
+sparsity = fl.effective_sparsity(model.estimated_betas)
+diag = fl.diagnose_residuals(Y - model.predict(X),
+                             n_fitted_per_asset=sparsity.per_asset)
+diag.passes          # residual covariance indistinguishable from diagonal?
+diag.n_above_edge    # eigenvalues above the edge: factors the model omits
+```
+
+When the test fails, `missing_factor_components` reports the eigenvectors, so
+the failure names the series that would define the missing factor. The remedy is
+to extend the factor set, not to retune the penalty.
+
+`LassoModelDiagonalityCV` selects `reg_lambda` on that criterion, evaluated out
+of fold. It is a sibling of `LassoModelCV` and shares its splits and grid, so
+the two selectors are directly comparable and can be made to disagree:
+
+```python
+sel = fl.LassoModelDiagonalityCV(n_splits=5).fit(x=X, y=Y)
+sel.best_lambda_, sel.passed_
+sel.missing_factors_          # when nothing passes, this is the useful output
+```
+
+The criterion is not minimised. Raw off-diagonal mass falls with model density
+and then flattens, so its minimum sits in a flat region and moves with sampling
+noise rather than with structure. Each penalty is compared against the fixed
+null threshold instead, and the sparsest passing penalty is taken.
+
+`effective_sparsity` exists because an interior-point solver returns
+numerically-zero loadings as small non-zero values, so `(betas != 0).sum()`
+reports every cell as occupied and any sparsity statement built on it is
+vacuous. It counts at a scale-aware tolerance and reports the tolerance applied,
+flags a factor no response loads on (which makes `B' D⁻¹ B` singular), and keeps
+a failed solve from reading as a sparse one. `suggest_tolerance` locates the gap
+between solver dust and live loadings on a particular fit.
+
+**Which regime the calibration assumes.** `S` is calibrated for small `p`
+against large `ν`, the classical regime, where the chi-square limit is the right
+one. The Marchenko-Pastur edge is asymptotic in both dimensions and is a crude
+bound at small `p`, so on a short cross-section read `n_above_edge` as
+descriptive and put the weight on `sphericity`. When `p` and `ν` are comparable,
+or when `ν` is the smaller of the two, the references below give calibrations
+built for that corner and this package's chi-square threshold is not the right
+instrument.
+
+**References.** None of these statistics originates here.
+
+- Schott, J. R. (2005), "Testing for complete independence in high dimensions,"
+  *Biometrika* 92(4), 951–956. The sum of squared sample correlations as a test
+  of complete independence. `S` is its fixed-`p` chi-square limit; the
+  `ν = n - k - 1` charge for fitted loadings is a heuristic correction and is not
+  part of that result.
+- Marchenko, V. A., and Pastur, L. A. (1967), for the spectral edge. Laloux, L.,
+  Cizeau, P., Bouchaud, J.-P., and Potters, M. (1999), "Noise dressing of
+  financial correlation matrices," *Physical Review Letters* 83(7), 1467–1470,
+  for its use on financial correlation matrices.
+- Gagliardini, P., Ossola, E., and Scaillet, O. (2019), "A diagnostic criterion
+  for approximate factor structure," *Journal of Econometrics* 212(2), 503–521.
+  Reads the largest eigenvalue of a residual covariance as a test for an omitted
+  common factor, and selects the factor count as the smallest `k` whose penalised
+  eigenvalue turns negative. That is the published form of both the diagnostic
+  and the selection rule above, which differs only by indexing a regularisation
+  path rather than a factor count. Their calibration accounts for the loadings
+  being estimated, and this package's does not, so prefer their criterion when
+  the conclusion rests on the count of missing factors.
+- Onatski, A. (2009), *Econometrica* 77(5), 1447–1479, and Ahn, S. C., and
+  Horenstein, A. R. (2013), *Econometrica* 81(3), 1203–1227, reach a factor count
+  from the same residual eigenvalues under proportional asymptotics.
+
 ---
 
 ## When to use it — and when not
@@ -602,6 +689,8 @@ the cost of a higher sign-flip rate when the leakage is strong.
 - You need discovered-group structured sparsity (HCGL).
 - You need group-level selection with within-group elementwise sparsity
   (sparse group LASSO at small-to-moderate α).
+- You need to test whether the residual covariance is actually diagonal, or to
+  select the penalty on that criterion rather than on prediction error.
 - You want a small, auditable CVXPY-based tool rather than a coordinate-descent
   library with opaque internals.
 
@@ -632,6 +721,9 @@ class.
 | EWMA observation weighting | – | – | – | – | – | – | ✓ |
 | NaN-tolerant API | – | – | – | – | – | – | ✓ |
 | Factor covariance assembly | – | – | – | – | – | – | ✓ |
+| Residual diagonality test (strict-factor-structure check) | – | – | – | – | – | – | ✓ |
+| Penalty selection by residual diagonality | – | – | – | – | – | – | ✓ |
+| Solver-dust-aware sparsity accounting | – | – | – | – | – | – | ✓ |
 | Implementation language | Python | R | R | Python | Python | Python | Python |
 
 A more detailed feature-by-feature comparison is in
@@ -707,7 +799,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The suite currently has 273 tests at 98%+ coverage, including numerical parity
+The suite currently has 295 tests at 98%+ coverage, including numerical parity
 tests against `qis` for the EWMA primitives and against `scikit-learn` for the
 LASSO path.
 

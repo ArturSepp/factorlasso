@@ -25,6 +25,15 @@ When no penalty passes, ``passed_`` is False, ``best_lambda_`` falls back to the
 informative outcome: no penalty repairs a factor the model does not carry, and the remedy is to
 extend the factor set.
 
+Taking the most parsimonious model a specification test does not reject is standard, and the rule
+here is not new. Gagliardini, Ossola and Scaillet (2019) use the same shape on the same kind of
+statistic, selecting the factor count as ``min { k : xi(k) < 0 }`` where ``xi`` is the residual
+eigenvalue less a vanishing penalty. This class differs by indexing a regularisation path rather
+than a factor count, and by calibrating against a fixed chi-square threshold rather than a
+vanishing penalty. Neither difference is a result. See the references in
+:mod:`factorlasso.residual_diagnostics`, and prefer their criterion when the conclusion rests on
+the count of missing factors rather than on the choice of penalty.
+
 Examples
 --------
 >>> import numpy as np, pandas as pd

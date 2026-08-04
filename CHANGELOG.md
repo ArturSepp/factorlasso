@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [0.12.0] — 2026-08-01
+## [Unreleased]
 
 **Residual diagonality is now testable.** A sparse factor model asserts a strict factor structure —
 after the factors are removed, the residual covariance is diagonal — and nothing in the estimation
@@ -17,6 +17,13 @@ downstream object that inverts `D` is affected when it does fail. Two additions,
 existing estimator, default, or number.
 
 ### Added
+
+None of the statistics originates here. `residual_diagnostics.py` carries the references in its
+module docstring: Schott (2005) for the sum-of-squared-correlations test of complete independence,
+Marchenko-Pastur (1967) and Laloux et al. (1999) for the spectral edge, and Gagliardini, Ossola and
+Scaillet (2019) for reading the largest residual eigenvalue as a test for an omitted factor and for
+the "smallest model that passes" selection shape. The additions here are the composition, the
+degrees-of-freedom charge for fitted loadings, and the out-of-fold evaluation along a penalty path.
 
 - `factorlasso/residual_diagnostics.py` — the statistics, estimator-agnostic. They take a residual
   panel rather than a `LassoModel`, so they apply equally to loadings from this package, from a

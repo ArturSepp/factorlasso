@@ -48,10 +48,10 @@ factorlasso/
   cluster_utils.py     hierarchical clustering for grouped penalties
   dependence_utils.py  dependence measures for the clustering correlation
   cv.py                cross-validation and lambda paths
-  diagonality.py       lambda selection on held-out residual diagonality
-  residual_diagnostics.py  residual-diagonality tests and sparsity accounting
   ewm_utils.py         exponentially weighted moment utilities
-tests/                 23 test modules (top-level, test_*.py)
+  residual_diagnostics.py  strict-factor-structure tests on a residual panel
+  diagonality.py       LassoModelDiagonalityCV, penalty selection by those tests
+tests/                 24 test modules (top-level, test_*.py)
 benchmarks/            performance benchmarks
 examples/              runnable examples
 papers/jss_2026/       JSS paper source, replication scripts, simulations
@@ -96,6 +96,14 @@ Supported Python is >= 3.10; CI runs 3.11 – 3.14.
   `self`. `COMPATIBILITY.md` documents what this guarantees — keep it true.
 - Convex problems are expressed with `cvxpy`.
 - Dataclasses carry estimator configuration and result containers.
+- **Statistics taken from the literature carry their source in the module docstring.**
+  `residual_diagnostics.py` has a `References` section naming Schott (2005) for the sphericity
+  statistic, Marchenko-Pastur (1967) and Laloux et al. (1999) for the spectral edge, and
+  Gagliardini, Ossola and Scaillet (2019) for reading the largest residual eigenvalue as an
+  omitted-factor test and for the "smallest model that passes" selection shape. Keep that section
+  true, and state what the package's adaptation does NOT inherit from the source — here, the
+  `nu = n - k - 1` charge is heuristic and the calibration does not account for the loadings being
+  estimated. A statistic without a source in the header reads as though it was derived here.
 - Runtime dependencies are numpy, pandas, scipy, cvxpy and openpyxl. scikit-learn is a
   **dev/test** dependency only: the package is compatible with sklearn but must not
   import it at runtime.

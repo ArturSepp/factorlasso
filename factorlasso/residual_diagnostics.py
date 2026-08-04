@@ -30,6 +30,38 @@ with sampling noise. :func:`raw_offdiagonal_mass` is provided for that compariso
 should compare a statistic against the FIXED null threshold of :func:`null_threshold`, which is
 what :class:`~factorlasso.LassoModelDiagonalityCV` does.
 
+Which regime the calibration assumes
+------------------------------------
+``S`` is calibrated for small ``p`` against large ``nu``, the classical regime, where the
+chi-square limit is the right one. The Marchenko-Pastur edge is an asymptotic result in both
+dimensions and is a crude bound at small ``p``, so on a short cross-section read ``n_above_edge``
+as descriptive and put the weight on ``sphericity``. When ``p`` and ``nu`` are comparable, or when
+``nu`` is the smaller of the two, the references below give calibrations built for that corner and
+this module's chi-square threshold is not the right instrument.
+
+References
+----------
+None of these statistics originates here.
+
+- Schott, J. R. (2005), "Testing for complete independence in high dimensions", Biometrika 92(4),
+  951-956. The sum of squared sample correlations as a test of complete independence. ``S`` is its
+  fixed-``p`` chi-square limit; the ``nu = n - k - 1`` charge for fitted loadings is a heuristic
+  correction and not part of that result.
+- Marchenko, V. A. and Pastur, L. A. (1967), for the spectral edge. Laloux, L., Cizeau, P.,
+  Bouchaud, J.-P. and Potters, M. (1999), "Noise dressing of financial correlation matrices", for
+  its use on financial correlation matrices.
+- Gagliardini, P., Ossola, E. and Scaillet, O. (2019), "A diagnostic criterion for approximate
+  factor structure", Journal of Econometrics 212(2), 503-521. Reads the largest eigenvalue of a
+  residual covariance as a test for an omitted common factor, and selects the factor count as the
+  smallest ``k`` whose penalised eigenvalue turns negative. That is the published form of what
+  :func:`missing_factor_components` reports and of the selection rule in
+  :class:`~factorlasso.LassoModelDiagonalityCV`, which differs only in indexing a penalty rather
+  than a factor count. Their calibration is built for panels with many more series than periods,
+  and it accounts for the loadings being estimated, which this module does not.
+- Onatski, A. (2009), Econometrica 77(5), 1447-1479, and Ahn, S. C. and Horenstein, A. R. (2013),
+  Econometrica 81(3), 1203-1227, reach a factor count from the same residual eigenvalues under
+  proportional asymptotics.
+
 Examples
 --------
 >>> import numpy as np, pandas as pd
@@ -188,6 +220,11 @@ def marchenko_pastur_edge(n_series: int, nu: float) -> float:
     The largest eigenvalue of a correlation matrix built from ``p`` independent series over
     ``nu`` effective observations concentrates below this value. An eigenvalue above it is
     evidence of genuine common structure rather than estimation noise.
+
+    Marchenko and Pastur (1967); Laloux et al. (1999) for the financial application. The edge is
+    asymptotic in both dimensions, so at small ``p`` it is a bound rather than a calibrated
+    critical value, and it does not account for the loadings having been estimated. See the module
+    references.
     """
     if nu <= 0:
         raise ValueError(f"nu must be positive, got {nu}")
@@ -195,7 +232,10 @@ def marchenko_pastur_edge(n_series: int, nu: float) -> float:
 
 
 def null_threshold(n_pairs: int, significance: float = 0.05) -> float:
-    """Chi-square critical value for the sphericity statistic under exact diagonality."""
+    """Chi-square critical value for the sphericity statistic under exact diagonality.
+
+    The fixed-``p`` limit of Schott (2005). See the module references.
+    """
     if not 0.0 < significance < 1.0:
         raise ValueError(f"significance must lie in (0, 1), got {significance}")
     if n_pairs < 1:
@@ -314,6 +354,10 @@ def missing_factor_components(
     its loadings say which series would define it. When no penalty setting passes
     :func:`diagnose_residuals`, this is the actionable output: the remedy is to extend the factor
     set, not to retune the penalty.
+
+    Gagliardini, Ossola and Scaillet (2019) give the published form of this diagnostic, with a
+    calibration that accounts for the loadings being estimated. Prefer their criterion over the
+    raw edge comparison when the count itself carries the conclusion. See the module references.
 
     Parameters
     ----------

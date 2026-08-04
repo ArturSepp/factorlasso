@@ -24,12 +24,19 @@ All information in the tables below was verified by inspecting each package's pu
 | **Joint covariance assembly $\Sigma_Y = \beta \Sigma_X \beta^\top + D$** | — | — | — | — | — | — | **✓** |
 | sklearn `fit`/`predict`/`score` API | ✓ | ✓ | ✓ | ✓ | ✓ | partial | ✓ |
 | Time-series CV estimator built-in | — | — | — | — | — | — | ✓ |
+| **Residual diagonality test (strict-factor-structure check)** | — | — | — | — | — | — | **✓** |
+| **Penalty selection by residual diagonality rather than prediction error** | — | — | — | — | — | — | **✓** |
+| **Solver-dust-aware sparsity accounting** | — | — | — | — | — | — | **✓**⁵ |
 
 ¹ "Blanket only": a single `positive=True` flag constrains *all* coefficients to be non-negative. None of these packages accept an element-wise sign matrix where individual coefficients can be non-negative, non-positive, fixed at zero, or free.
 
 ² `sklearn.linear_model.MultiTaskLasso` couples responses via an L2,1 penalty that forces *all* responses to select the same features — not what you want when response-specific sparsity is expected.
 
 ³ Generic per-observation weights are supported but not the EWMA $\lambda = 1 - 2/(\mathrm{span} + 1)$ convention with matched covariance assembly that `factorlasso` uses throughout.
+
+⁵ Coordinate-descent backends return exact zeros, so a bare `(coef != 0).sum()` is a valid sparsity count for them. A CVXPY interior-point solve does not, which is why `effective_sparsity` counts at a stated tolerance and reports the tolerance it applied. The comparison is a difference of backend, not of ambition.
+
+The three residual-validation rows above are marked as absent elsewhere because these packages solve a penalized regression and do not assemble $\Sigma_Y = \beta \Sigma_X \beta^\top + D$, so a diagonality assertion about $D$ is not theirs to test. The statistics themselves are standard and published — see the references in the README's residual-validation section — and any of these packages' output can be passed to `factorlasso.diagnose_residuals`, which takes a residual panel rather than a model.
 
 ---
 
@@ -80,6 +87,7 @@ All information in the tables below was verified by inspecting each package's pu
 - A drop-in scikit-learn API for problems specialized solvers can't express
 - EWMA observation weighting matched to EWMA covariance estimation (same $\lambda$ convention)
 - Portfolio construction, genomics, macro-econometrics, or any domain where domain knowledge encodes as sign priors or shrinkage targets
+- To test whether the residual covariance is actually diagonal, or to select the penalty on that criterion instead of on out-of-sample $R^2$ — a model can predict well while leaving a whole factor in the residual
 
 ---
 
