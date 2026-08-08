@@ -125,6 +125,70 @@ Supported Python is >= 3.10; CI runs 3.11 – 3.14.
 - Do not relicense or copy code from MIT-licensed sibling packages into this repository
   without checking direction of licence compatibility.
 
+<!-- ===== SHARED AGENT CORE (standalone variant) — begin =====
+     Generated from SHARED_AGENT_CORE.md in the maintainer's project knowledge. Do not hand-edit
+     between these markers — propose the change to the maintainer instead. Variants: builder
+     (qis) / consumer / standalone. Last synced 2026-08-08, agent core v1.1. -->
+
+## Domain invariants
+
+- **No look-ahead in any rolling or expanding estimation.** Estimation is point-in-time; a
+  full-sample statistic inside a rolling path is forward-looking and wrong even when it runs
+  clean.
+- Conventions are stated, never implied: return frequency, annualisation, covariance scaling.
+  One convention per concept across the stack — if this package and a sibling disagree, that is
+  a bug to report, not a difference to accommodate.
+
+## Dependency surface
+
+This package is a leaf: it imports nothing from the stack (see Conventions, `TID251`), and its
+small runtime surface is a design constraint, not a preference. Ask before adding any
+dependency.
+
+**Never invent a symbol.** If a function, class, or keyword argument is not in the export
+surface of this package or of a dependency, it does not exist. Check in one line —
+`python -c "import factorlasso; print([n for n in dir(factorlasso) if not n.startswith('_')])"`
+— and say a symbol is missing rather than producing code that calls it.
+
+## Verification loop
+
+- Plan → patch → verify. Name the verification command and its result when proposing a patch.
+- A second pass is mandatory where a plausible patch can be numerically wrong and still run
+  clean: estimation windows, penalty scaling, sign constraints, covariance assembly, anything
+  cross-validated or resampled. Verify against a reference computed a different way, and say
+  which.
+- Prove a new test fails before trusting that it passes: reintroduce the defect, watch it fail,
+  restore.
+
+## Escalation and scope
+
+- Stop and propose before proceeding when a change would exceed roughly five files, alter a
+  public signature, or touch a numerical path.
+- Never change numerical results, random seeds, or computed values unless the change is the
+  request.
+- A public-signature change carries a `CHANGELOG.md` entry and a version bump in the same
+  change. Removing a keyword argument from a function taking `**kwargs` is a silent break — the
+  caller's keyword is swallowed and nothing raises. Treat it as breaking.
+- Do not refactor beyond the requested scope. Propose the wider change; do not perform it.
+
+## Concurrent sessions
+
+More than one agent or session may work on this checkout at the same time, so a file can change
+between your read of it and your write.
+
+- Re-read a file from disk immediately before editing it. Never write a file from an earlier
+  read: a whole-file write from a stale copy silently reverts another session's work.
+- Prefer minimal anchored edits over whole-file replacement. If the on-disk content is not what
+  you expected, stop and reconcile your change onto the current content rather than overwrite.
+
+## Roadmap execution
+
+Feature roadmaps live at the repository root as `ROADMAP_<feature>.md`. An execution request
+names the file and the stage. A stage is complete when its stated verification command passes;
+its out-of-scope list is binding.
+
+<!-- ===== SHARED AGENT CORE — end ===== -->
+
 ## Replication contract
 
 `papers/jss_2026/` contains the paper source, replication scripts, and the simulation
