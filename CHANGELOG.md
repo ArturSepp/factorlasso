@@ -5,6 +5,24 @@ All notable changes to `factorlasso` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] — 2026-08-11
+
+### Added — offline cluster lineage
+
+- Added `factorlasso.cluster_lineage` with canonical public entry points
+  `analyze_cluster_lineage` and `run_cluster_lineage_report`, plus `RiskClusterReport` and
+  `TaxonomyConfig`. The full-panel diagnostic fingerprints per-date covariance clusters, solves
+  deterministic sparse maximum-weight lineage paths with bridge gaps, classifies tracks, and
+  emits reporting tables. Matplotlib remains an optional function-local plotting import.
+- Moved the implementation, deterministic matching oracle, lineage invariants, and panel-golden
+  tests from OptimalPortfolios. The moved single-author code originated under the MIT licence;
+  its owner has relicensed it under GPL-3.0-or-later as part of factorlasso.
+
+### Changed
+
+- Package version and citation metadata advance to 0.14.0. No estimator default, smoothing rule,
+  penalty scaling, covariance assembly, or dependency floor changed.
+
 
 
 ## [0.13.0] — 2026-08-11

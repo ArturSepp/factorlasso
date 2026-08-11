@@ -49,6 +49,12 @@ BibTeX entries.
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
+from factorlasso.cluster_lineage import (
+    RiskClusterReport,
+    TaxonomyConfig,
+    analyze_cluster_lineage,
+    run_cluster_lineage_report,
+)
 from factorlasso.cluster_smoothing import (
     ClusterSmootherType,
     RollingClusterData,
@@ -133,6 +139,11 @@ __all__ = [
     "CurrentFactorCovarData",
     "RollingFactorCovarData",
     "VarianceColumns",
+    # Offline cluster lineage
+    "RiskClusterReport",
+    "TaxonomyConfig",
+    "analyze_cluster_lineage",
+    "run_cluster_lineage_report",
     # Dependence measures
     "DependenceMeasure",
     "compute_dependence_matrix",

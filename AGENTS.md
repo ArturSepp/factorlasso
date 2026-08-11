@@ -51,10 +51,12 @@ factorlasso/
   ewm_utils.py         exponentially weighted moment utilities
   residual_diagnostics.py  strict-factor-structure tests on a residual panel
   diagonality.py       LassoModelDiagonalityCV, penalty selection by those tests
-tests/                 24 test modules (top-level, test_*.py)
+  cluster_lineage.py   offline persistent labelling of estimated risk clusters
+tests/                 28 test modules (top-level, test_*.py)
 benchmarks/            performance benchmarks
 examples/              runnable examples
 papers/jss_2026/       JSS paper source, replication scripts, simulations
+papers/cluster_lineage/ standalone S&P 500 cluster-lineage reproduction
 COMPARISON.md          empirical comparison against competing packages
 COMPATIBILITY.md       scikit-learn compatibility notes
 ```

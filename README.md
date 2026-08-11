@@ -64,6 +64,15 @@ It is written in pure numpy/pandas/scipy/cvxpy. No numba, no custom
 coordinate descent. The solver is CVXPY (default `CLARABEL`), so problem
 formulation is explicit and auditable.
 
+## Offline cluster lineage
+
+`analyze_cluster_lineage` turns independently estimated per-date risk clusters in a
+`RollingFactorCovarData` panel into persistent derived tracks. The default deterministic sparse
+matcher handles consecutive links and bridge gaps without NetworkX; its calibrated output is an
+offline, full-panel reporting diagnostic and never a point-in-time trading signal. The report's
+table methods need only core dependencies. `RiskClusterReport.to_figures()` imports Matplotlib
+only when called, so plotting remains optional.
+
 ---
 
 ## Installation
@@ -877,7 +886,7 @@ software itself:
              Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
              in {Python}},
   year    = {2026},
-  version = {0.13.0},
+  version = {0.14.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```
