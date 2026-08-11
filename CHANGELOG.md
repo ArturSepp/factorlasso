@@ -7,7 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [Unreleased]
+## [0.13.0] — 2026-08-11
+
+**Risk-cluster smoothing is now declarative and backtestable.** The default
+`ClusterSmootherType.NONE` is bit-identical to 0.12.0. Rolling consumers can instead hold
+partitions between coarse anchors, apply a prior-partition distance bonus, or EWMA-smooth the
+clustering similarity. Every partition is a deterministic function of response history through
+its evaluation date; the estimator stores no mutable rolling state.
+
+### Added — cluster smoothing
+
+- `ClusterSmootherType` and the `LassoModel` fields `cluster_smoother_type`, `smoother_delta`,
+  `smoother_lambda`, and `recluster_freq`, including validation of every field combination.
+- `RollingClusterData` and `compute_rolling_smoothed_clusters`, which reproduce the in-fit
+  clustering correlation and return per-date partitions, linkages, cutoffs, and trailing
+  six-date co-association confidence.
+- `smooth_similarity_ewma` and `apply_partition_distance_bonus` as deterministic public
+  smoothing primitives.
+- `LassoModel.fit(external_clusters=..., external_linkage=..., external_cutoff=...)` for HCGL and
+  FCGL. External groups skip discovery but preserve the selected model type and its penalty;
+  FCGL therefore continues to use cluster-by-factor blocks.
+
+### Changed
+
+- Package version and citation metadata advance to 0.13.0 for the new public configuration and
+  fit inputs. No dependency or estimator default changed.
 
 **Residual diagonality is now testable.** A sparse factor model asserts a strict factor structure —
 after the factors are removed, the residual covariance is diagonal — and nothing in the estimation

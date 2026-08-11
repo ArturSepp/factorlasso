@@ -56,6 +56,7 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
+from factorlasso.cluster_smoothing import ClusterSmootherType
 from factorlasso.cluster_utils import (
     DEFAULT_CUTOFF_FRACTION,
     DEFAULT_DISTANCE_TRANSFORM,
@@ -1078,6 +1079,18 @@ class LassoModel:
         ``n_clusters`` when comparing partitions across distance
         transforms or dependence measures, since the fractional cut is
         calibrated against the scale of the distance matrix.
+    cluster_smoother_type : ClusterSmootherType, default NONE
+        Declarative causal temporal smoother used by rolling consumers.
+        ``NONE`` leaves the current single-fit behaviour bit-identical;
+        ``HOLD`` holds partitions between ``recluster_freq`` anchors;
+        ``PARTITION_BONUS`` discounts distances for prior peers; and
+        ``SIMILARITY_EWMA`` smooths the clustering similarity matrix.
+    smoother_delta : float, default 0.05
+        Non-negative prior-partition distance discount.
+    smoother_lambda : float, default 0.7
+        Prior-state weight for similarity EWMA, in ``[0, 1)``.
+    recluster_freq : str, optional
+        Pandas anchor frequency required exactly when the smoother is ``HOLD``.
     group_penalty : {"normalized", "yuan_lin"}, default "normalized"
         Per-group weighting for the group-LASSO penalty.  ``"normalized"``
         uses ``√(|g|/G)``, a heuristic cluster-size scaling that adjusts
@@ -1220,6 +1233,10 @@ class LassoModel:
     dependence_measure: Union[DependenceMeasure, str] = DEFAULT_DEPENDENCE_MEASURE
     gerber_threshold: float = DEFAULT_GERBER_THRESHOLD
     n_clusters: Optional[int] = None
+    cluster_smoother_type: ClusterSmootherType = ClusterSmootherType.NONE
+    smoother_delta: float = 0.05
+    smoother_lambda: float = 0.7
+    recluster_freq: Optional[str] = None
     group_penalty: str = "normalized"
     l1_weight: float = 0.0
     demean: bool = True
@@ -1346,6 +1363,30 @@ class LassoModel:
                 raise ValueError(
                     f"n_clusters must be at least 1, got {self.n_clusters!r}"
                 )
+        try:
+            smoother_type = ClusterSmootherType(self.cluster_smoother_type)
+        except ValueError:
+            raise ValueError(
+                f"cluster_smoother_type must be one of "
+                f"{list(ClusterSmootherType)}, got {self.cluster_smoother_type!r}"
+            ) from None
+        if self.smoother_delta < 0.0:
+            raise ValueError(
+                f"smoother_delta must be non-negative, got {self.smoother_delta!r}"
+            )
+        if not 0.0 <= self.smoother_lambda < 1.0:
+            raise ValueError(
+                f"smoother_lambda must lie in [0, 1), got {self.smoother_lambda!r}"
+            )
+        if smoother_type == ClusterSmootherType.HOLD and self.recluster_freq is None:
+            raise ValueError(
+                f"recluster_freq must be set for HOLD, got {self.recluster_freq!r}"
+            )
+        if smoother_type != ClusterSmootherType.HOLD and self.recluster_freq is not None:
+            raise ValueError(
+                f"recluster_freq must be None unless smoother is HOLD, "
+                f"got {self.recluster_freq!r}"
+            )
         if self.group_penalty not in ("normalized", "yuan_lin"):
             raise ValueError(
                 f"group_penalty must be 'normalized' or 'yuan_lin', "
@@ -1548,6 +1589,9 @@ class LassoModel:
         y: Union[pd.DataFrame, pd.Series],
         verbose: bool = False,
         span: Optional[float] = None,
+        external_clusters: Optional[pd.Series] = None,
+        external_linkage: Optional[np.ndarray] = None,
+        external_cutoff: Optional[float] = None,
     ) -> LassoModel:
         """
         Estimate model: Y_t = α + β X_t + ε_t.
@@ -1566,6 +1610,14 @@ class LassoModel:
             ``None`` (the default) falls back to ``self.span`` without
             modification — previous versions used ``span or self.span``
             which would treat ``span=0`` as "unset".
+        external_clusters : pandas.Series, optional
+            Asset-to-cluster partition for HCGL or FCGL. When provided,
+            cluster discovery is skipped while the model type and penalty
+            geometry remain unchanged.
+        external_linkage : numpy.ndarray, optional
+            Linkage metadata accompanying ``external_clusters``.
+        external_cutoff : float, optional
+            Dendrogram cutoff metadata accompanying ``external_clusters``.
 
         Returns
         -------
@@ -1573,6 +1625,19 @@ class LassoModel:
             Updated with ``coef_`` (N × M) and ``intercept_`` (N,).
         """
         x, y = self._validate_fit_inputs(x, y)
+        external_modes = (
+            LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+            LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+        )
+        if external_clusters is not None and self.model_type not in external_modes:
+            raise ValueError(
+                "external_clusters is supported only for HCGL and FCGL, "
+                f"got model_type={self.model_type.name}"
+            )
+        if external_clusters is None and (
+            external_linkage is not None or external_cutoff is not None
+        ):
+            raise ValueError("external linkage/cutoff metadata requires external_clusters")
 
         # Explicit None-check for span precedence: ``span or self.span``
         # would mistakenly treat span=0 as falsy and fall back to
@@ -1587,6 +1652,9 @@ class LassoModel:
         prep = self._prepare_fit(
             x=x, y=y, x_np=x_np, y_np=y_np,
             valid_mask=valid_mask, eff_span=eff_span,
+            external_clusters=external_clusters,
+            external_linkage=external_linkage,
+            external_cutoff=external_cutoff,
         )
         asset_clusters = prep.asset_clusters
         linkage = prep.linkage
@@ -1729,6 +1797,9 @@ class LassoModel:
         y_np: np.ndarray,
         valid_mask: np.ndarray,
         eff_span: Optional[float],
+        external_clusters: Optional[pd.Series] = None,
+        external_linkage: Optional[np.ndarray] = None,
+        external_cutoff: Optional[float] = None,
     ) -> "_PreparedFit":
         """derive the reg_lambda-independent solver inputs.
 
@@ -1771,42 +1842,52 @@ class LassoModel:
             LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
             LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
         ):
-            # Restore NaN before the clustering correlation (see block comment
-            # in the solver-dispatch section below for the rationale).
-            y_for_corr = np.where(valid_mask > 0, y_np, np.nan)
-            # The clustering correlation uses the SAME observation weighting
-            # as the solver loss: sample Pearson correlation (pairwise-
-            # complete over valid observations) when ``span=None``, the
-            # EWMA(span) correlation when a span is set. Versions before
-            # 0.5.1 always routed through ``compute_ewm_covar``, whose
-            # ``ewm_lambda = 0.94`` default (an effective span of ~32
-            # observations, the RiskMetrics daily convention) silently
-            # applied when ``span=None`` — so a uniform-weight fit clustered
-            # on a trailing-window correlation, contradicting both the
-            # documented contract (Pearson ``corr(Y)``) and the loss
-            # weighting. Correlation is invariant to centring, so computing
-            # it on the demeaned panel is equivalent to the raw panel.
-            # ``compute_dependence_matrix`` preserves that contract for
-            # every measure: ``span=None`` weights observations uniformly
-            # and a finite span applies EWMA(span) weights. The Gerber
-            # statistic weights its indicator counts, which recovers the
-            # published equal-weight statistic as span grows. Note that
-            # Gerber, unlike Pearson and Spearman, is NOT invariant to
-            # centring — its thresholds apply to levels — so it sees the
-            # same demeaned panel the solver loss does.
-            corr = compute_dependence_matrix(
-                a=y_for_corr,
-                dependence_measure=self.dependence_measure,
-                span=eff_span,
-                gerber_threshold=self.gerber_threshold,
-            )
-            corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
-            asset_clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
-                corr_df, cutoff_fraction=self.cutoff_fraction,
-                linkage_method=self.linkage_method,
-                distance_transform=self.distance_transform,
-                n_clusters=self.n_clusters,
-            )
+            if external_clusters is not None:
+                asset_clusters = external_clusters.reindex(y.columns)
+                if asset_clusters.isna().any():
+                    missing = asset_clusters[asset_clusters.isna()].index.tolist()
+                    raise ValueError(
+                        f"external_clusters is missing assignments for {missing!r}"
+                    )
+                linkage = external_linkage
+                cutoff = external_cutoff
+            else:
+                # Restore NaN before the clustering correlation (see block comment
+                # in the solver-dispatch section below for the rationale).
+                y_for_corr = np.where(valid_mask > 0, y_np, np.nan)
+                # The clustering correlation uses the SAME observation weighting
+                # as the solver loss: sample Pearson correlation (pairwise-
+                # complete over valid observations) when ``span=None``, the
+                # EWMA(span) correlation when a span is set. Versions before
+                # 0.5.1 always routed through ``compute_ewm_covar``, whose
+                # ``ewm_lambda = 0.94`` default (an effective span of ~32
+                # observations, the RiskMetrics daily convention) silently
+                # applied when ``span=None`` — so a uniform-weight fit clustered
+                # on a trailing-window correlation, contradicting both the
+                # documented contract (Pearson ``corr(Y)``) and the loss
+                # weighting. Correlation is invariant to centring, so computing
+                # it on the demeaned panel is equivalent to the raw panel.
+                # ``compute_dependence_matrix`` preserves that contract for
+                # every measure: ``span=None`` weights observations uniformly
+                # and a finite span applies EWMA(span) weights. The Gerber
+                # statistic weights its indicator counts, which recovers the
+                # published equal-weight statistic as span grows. Note that
+                # Gerber, unlike Pearson and Spearman, is NOT invariant to
+                # centring — its thresholds apply to levels — so it sees the
+                # same demeaned panel the solver loss does.
+                corr = compute_dependence_matrix(
+                    a=y_for_corr,
+                    dependence_measure=self.dependence_measure,
+                    span=eff_span,
+                    gerber_threshold=self.gerber_threshold,
+                )
+                corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
+                asset_clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
+                    corr_df, cutoff_fraction=self.cutoff_fraction,
+                    linkage_method=self.linkage_method,
+                    distance_transform=self.distance_transform,
+                    n_clusters=self.n_clusters,
+                )
 
         # ── Sign-constraint assembly ─────────────────────────────────
         # Two layers can contribute:

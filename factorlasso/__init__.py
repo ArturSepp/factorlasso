@@ -49,6 +49,13 @@ BibTeX entries.
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
+from factorlasso.cluster_smoothing import (
+    ClusterSmootherType,
+    RollingClusterData,
+    apply_partition_distance_bonus,
+    compute_rolling_smoothed_clusters,
+    smooth_similarity_ewma,
+)
 from factorlasso.cluster_utils import (
     DistanceTransform,
     compute_clusters_from_corr_matrix,
@@ -114,6 +121,8 @@ __all__ = [
     "LassoModelCV",
     "LassoModelType",
     "LassoEstimationResult",
+    "ClusterSmootherType",
+    "RollingClusterData",
     "solve_lasso_cvx_problem",
     "solve_group_lasso_cvx_problem",
     "solve_group_lasso_path",
@@ -135,6 +144,9 @@ __all__ = [
     "get_cutoffs_by_freq",
     "get_linkage_array",
     "get_linkages_by_freq",
+    "apply_partition_distance_bonus",
+    "compute_rolling_smoothed_clusters",
+    "smooth_similarity_ewma",
     # EWMA / group-loading utilities
     "compute_ewm",
     "compute_ewm_covar",
