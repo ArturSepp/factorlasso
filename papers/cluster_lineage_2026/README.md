@@ -33,7 +33,7 @@ under `FACTORLASSO_LINEAGE_OUTPUT_DIR` or, by default,
 ## Run
 
 ```bash
-python papers/cluster_lineage/reproduce_sp500.py
+python papers/cluster_lineage_2026/reproduce_sp500.py
 ```
 
 `FACTORLASSO_LINEAGE_WORKERS` controls parallel fitting and defaults to 2. The final assertions

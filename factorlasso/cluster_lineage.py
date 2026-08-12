@@ -1,7 +1,7 @@
 """
 Persistent risk-cluster lineage labelling for factor-model covariance estimates.
 
-factorlasso.cluster_lineage
+factorlasso.cluster_lineage_2026
 
 Statistical clusters re-estimated at each rebalancing date carry no identity: the same
 economic group returns as ``ME:3`` one month and ``ME:7`` the next, so raw per-date cluster

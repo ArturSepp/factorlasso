@@ -1,5 +1,5 @@
 """
-lineage matching, track classification and labelling in ``factorlasso.cluster_lineage``.
+lineage matching, track classification and labelling in ``factorlasso.cluster_lineage_2026``.
 
 The module is pure post-processing of an estimated ``RollingFactorCovarData`` — it fits no
 covariance — so every case here is a synthetic panel stated in the test. Nothing needs market
