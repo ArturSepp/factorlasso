@@ -1090,7 +1090,12 @@ class LassoModel:
     smoother_lambda : float, default 0.7
         Prior-state weight for similarity EWMA, in ``[0, 1)``.
     recluster_freq : str, optional
-        Pandas anchor frequency required exactly when the smoother is ``HOLD``.
+        Optional pandas anchor frequency for rolling cluster updates.  It is
+        required for ``HOLD`` and optional for ``PARTITION_BONUS`` and
+        ``SIMILARITY_EWMA``.  When supplied to either smoother, its state and
+        partition update only on anchor dates and the partition is held
+        between anchors.  ``None`` updates on every estimation date.  It must
+        remain ``None`` for ``NONE``.
     group_penalty : {"normalized", "yuan_lin"}, default "normalized"
         Per-group weighting for the group-LASSO penalty.  ``"normalized"``
         uses ``√(|g|/G)``, a heuristic cluster-size scaling that adjusts
@@ -1382,9 +1387,9 @@ class LassoModel:
             raise ValueError(
                 f"recluster_freq must be set for HOLD, got {self.recluster_freq!r}"
             )
-        if smoother_type != ClusterSmootherType.HOLD and self.recluster_freq is not None:
+        if smoother_type == ClusterSmootherType.NONE and self.recluster_freq is not None:
             raise ValueError(
-                f"recluster_freq must be None unless smoother is HOLD, "
+                f"recluster_freq must be None when smoother is NONE, "
                 f"got {self.recluster_freq!r}"
             )
         if self.group_penalty not in ("normalized", "yuan_lin"):

@@ -293,7 +293,9 @@ def compute_rolling_smoothed_clusters(
         state transitions.
     lasso_model : LassoModel
         Declarative clustering and smoother configuration. The model is not
-        fitted or mutated.
+        fitted or mutated.  An optional ``recluster_freq`` on
+        ``PARTITION_BONUS`` or ``SIMILARITY_EWMA`` updates smoother state only
+        at those anchors and holds the resulting partition between them.
 
     Returns
     -------
@@ -325,20 +327,12 @@ def compute_rolling_smoothed_clusters(
                 y_current.notna().sum() >= lasso_model.warmup_period
             ]
         smoother = ClusterSmootherType(lasso_model.cluster_smoother_type)
+        is_scheduled = lasso_model.recluster_freq is not None
+        update_partition = not is_scheduled or held is None or _is_recluster_date(
+            date, dates, str(lasso_model.recluster_freq)
+        )
 
-        if smoother == ClusterSmootherType.HOLD:
-            recut = held is None or _is_recluster_date(
-                date, dates, str(lasso_model.recluster_freq)
-            )
-            if recut:
-                held = compute_clusters_from_corr_matrix(
-                    corr,
-                    cutoff_fraction=lasso_model.cutoff_fraction,
-                    linkage_method=lasso_model.linkage_method,
-                    distance_transform=lasso_model.distance_transform,
-                    n_clusters=lasso_model.n_clusters,
-                )
-                held_eligible = held[0].reindex(eligible)
+        if not update_partition:
             assert held is not None
             assert held_eligible is not None
             partition = held[0].copy()
@@ -350,6 +344,14 @@ def compute_rolling_smoothed_clusters(
             bundle = partition, held[1], held[2]
             held = bundle
             held_eligible = assigned
+        elif smoother == ClusterSmootherType.HOLD:
+            bundle = compute_clusters_from_corr_matrix(
+                corr,
+                cutoff_fraction=lasso_model.cutoff_fraction,
+                linkage_method=lasso_model.linkage_method,
+                distance_transform=lasso_model.distance_transform,
+                n_clusters=lasso_model.n_clusters,
+            )
         elif smoother == ClusterSmootherType.PARTITION_BONUS and previous_clusters is not None:
             distance = _corr_to_distance(
                 corr.fillna(0.0).to_numpy(),
@@ -381,6 +383,9 @@ def compute_rolling_smoothed_clusters(
                 n_clusters=lasso_model.n_clusters,
             )
 
+        if is_scheduled and update_partition:
+            held = bundle
+            held_eligible = bundle[0].reindex(eligible)
         clusters[date], linkages[date], cutoffs[date] = bundle
         previous_clusters = bundle[0].reindex(eligible)
 

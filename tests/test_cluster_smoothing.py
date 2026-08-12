@@ -126,6 +126,74 @@ def test_hold_smoother_and_empty_schedule():
     np.testing.assert_array_equal(held.linkages[dates[0]], held.linkages[dates[2]])
 
 
+@pytest.mark.parametrize(
+    "smoother_kwargs",
+    [
+        {"cluster_smoother_type": "PARTITION_BONUS", "smoother_delta": 0.0},
+        {"cluster_smoother_type": "SIMILARITY_EWMA", "smoother_lambda": 0.0},
+    ],
+)
+def test_zero_strength_scheduled_smoothers_match_hold(smoother_kwargs):
+    """A zero-strength quarterly smoother must reduce exactly to HOLD@QE."""
+    from factorlasso import ClusterSmootherType, compute_rolling_smoothed_clusters
+
+    _, y = _panel()
+    dates = list(pd.date_range("2022-02-28", "2022-06-30", freq="ME"))
+    base = dict(model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO, span=36)
+    held = compute_rolling_smoothed_clusters(
+        y,
+        dates,
+        LassoModel(
+            **base,
+            cluster_smoother_type=ClusterSmootherType.HOLD,
+            recluster_freq="QE",
+        ),
+    )
+    kwargs = dict(smoother_kwargs)
+    kwargs["cluster_smoother_type"] = ClusterSmootherType[kwargs["cluster_smoother_type"]]
+    scheduled = compute_rolling_smoothed_clusters(
+        y, dates, LassoModel(**base, **kwargs, recluster_freq="QE")
+    )
+
+    for date in dates:
+        assert _same_partition(held.clusters[date], scheduled.clusters[date])
+        np.testing.assert_array_equal(held.linkages[date], scheduled.linkages[date])
+        assert held.cutoffs[date] == scheduled.cutoffs[date]
+
+
+@pytest.mark.parametrize(
+    "smoother_kwargs",
+    [
+        {"cluster_smoother_type": "PARTITION_BONUS", "smoother_delta": 0.2},
+        {"cluster_smoother_type": "SIMILARITY_EWMA", "smoother_lambda": 0.5},
+    ],
+)
+def test_scheduled_smoother_updates_only_at_anchors(smoother_kwargs):
+    """Quarterly scheduling must match anchor-only smoothing and hold between anchors."""
+    from factorlasso import ClusterSmootherType, compute_rolling_smoothed_clusters
+
+    _, y = _panel()
+    dates = list(pd.date_range("2022-02-28", "2022-06-30", freq="ME"))
+    anchor_dates = [dates[0], dates[1], dates[-1]]
+    kwargs = dict(smoother_kwargs)
+    kwargs["cluster_smoother_type"] = ClusterSmootherType[kwargs["cluster_smoother_type"]]
+    base = dict(model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO, span=36)
+    scheduled = compute_rolling_smoothed_clusters(
+        y, dates, LassoModel(**base, **kwargs, recluster_freq="QE")
+    )
+    anchor_only = compute_rolling_smoothed_clusters(
+        y, anchor_dates, LassoModel(**base, **kwargs)
+    )
+
+    for date in anchor_dates:
+        assert _same_partition(scheduled.clusters[date], anchor_only.clusters[date])
+        np.testing.assert_array_equal(scheduled.linkages[date], anchor_only.linkages[date])
+        assert scheduled.cutoffs[date] == anchor_only.cutoffs[date]
+    for date in dates[2:-1]:
+        assert _same_partition(scheduled.clusters[date], scheduled.clusters[dates[1]])
+        np.testing.assert_array_equal(scheduled.linkages[date], scheduled.linkages[dates[1]])
+
+
 def test_fcgl_external_partition_is_coefficient_identical():
     """External internal clusters must preserve FCGL coefficients and metadata."""
     x, y = _panel()
@@ -186,3 +254,19 @@ def test_smoother_configuration_validation(kwargs, match):
         values["cluster_smoother_type"] = ClusterSmootherType.HOLD
     with pytest.raises(ValueError, match=match):
         LassoModel(**values)
+
+
+@pytest.mark.parametrize(
+    "smoother",
+    ["PARTITION_BONUS", "SIMILARITY_EWMA"],
+)
+def test_stateful_smoothers_accept_optional_recluster_frequency(smoother):
+    """Stateful smoothers may update every date or only at coarser anchors."""
+    from factorlasso import ClusterSmootherType
+
+    model = LassoModel(
+        cluster_smoother_type=ClusterSmootherType[smoother],
+        recluster_freq="QE",
+    )
+
+    assert model.recluster_freq == "QE"

@@ -5,6 +5,16 @@ All notable changes to `factorlasso` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed — scheduled stateful cluster smoothing
+
+- `PARTITION_BONUS` and `SIMILARITY_EWMA` now accept an optional
+  `recluster_freq`. When supplied, smoother state and partitions update only
+  at those anchors and the resulting partition is held between anchors.
+  Leaving it as `None` preserves the existing update-on-every-date behavior;
+  all estimator defaults and production outputs remain unchanged.
+
 ## [0.14.0] — 2026-08-11
 
 ### Added — offline cluster lineage
