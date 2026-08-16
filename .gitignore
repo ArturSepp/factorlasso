@@ -57,6 +57,9 @@ Desktop.ini
 .env.local
 *.local
 
+# Local agent roadmaps and operational reports
+agents/
+
 # ─── papers/jss_2026/ — regenerable artefacts only ──────────────
 # The paper source, reproduction scripts, embedded figures, and the
 # committed reproduction data inputs (etf_excess_logreturns.csv,

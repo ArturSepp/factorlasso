@@ -35,15 +35,16 @@ from __future__ import annotations
 # rather than via ``python -m papers.jss_2026.simulations.run``, Python puts
 # only ``simulations/`` on ``sys.path``, so the
 # ``from papers.jss_2026.simulations.X import Y`` lines below cannot resolve.
-# Detect that case and prepend the repo root (four levels up:
+# Detect that case and prepend the repo root and its ``src`` directory (four levels up:
 # simulations/ → jss_2026/ → papers/ → repo root) so the imports work
-# regardless of how the file was launched.
+# regardless of how the file was launched or whether the project is installed.
 if __name__ == "__main__" and __package__ in (None, ""):
     import sys as _sys
     from pathlib import Path as _Path
     _repo_root = _Path(__file__).resolve().parents[3]
-    if str(_repo_root) not in _sys.path:
-        _sys.path.insert(0, str(_repo_root))
+    for _path in (_repo_root, _repo_root / "src"):
+        if str(_path) not in _sys.path:
+            _sys.path.insert(0, str(_path))
 
 import argparse
 import json

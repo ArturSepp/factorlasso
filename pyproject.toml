@@ -98,6 +98,7 @@ Issues = "https://github.com/ArturSepp/factorlasso/issues"
 Changelog = "https://github.com/ArturSepp/factorlasso/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["factorlasso*"]
 
 [tool.pytest.ini_options]

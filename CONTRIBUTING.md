@@ -44,7 +44,7 @@ git clone https://github.com/ArturSepp/factorlasso.git
 cd factorlasso
 pip install -e ".[dev]"
 pytest
-ruff check factorlasso/
+ruff check src/factorlasso/
 ```
 
 `AGENTS.md` in this repository documents the layout, commands, conventions, and

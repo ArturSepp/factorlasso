@@ -27,8 +27,9 @@ if __name__ == "__main__" and __package__ in (None, ""):
     import sys as _sys
     from pathlib import Path as _Path
     _root = _Path(__file__).resolve().parents[3]
-    if str(_root) not in _sys.path:
-        _sys.path.insert(0, str(_root))
+    for _path in (_root, _root / "src"):
+        if str(_path) not in _sys.path:
+            _sys.path.insert(0, str(_path))
 
 import argparse
 import warnings

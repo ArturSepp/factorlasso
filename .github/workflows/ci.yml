@@ -33,7 +33,65 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Lint
-        run: ruff check factorlasso/ tests/
+        run: ruff check src/factorlasso/ tests/
 
       - name: Run tests
         run: pytest --cov=factorlasso --cov-report=term-missing -q
+
+  wheel:
+    runs-on: ubuntu-latest
+    env:
+      MPLBACKEND: Agg
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build distributions
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+          python -m build
+          python -m twine check dist/*
+
+      - name: Inspect distribution contents
+        run: >-
+          python -c "import glob, tarfile, zipfile;
+          wheel = glob.glob('dist/*.whl')[0]; sdist = glob.glob('dist/*.tar.gz')[0];
+          wheel_names = zipfile.ZipFile(wheel).namelist(); sdist_names = tarfile.open(sdist).getnames();
+          forbidden = {'agents', '.claude', 'papers', 'examples', 'benchmarks'};
+          assert 'factorlasso/__init__.py' in wheel_names;
+          assert any(name.endswith('/src/factorlasso/__init__.py') for name in sdist_names);
+          assert not any('tests' in name.split('/') for name in wheel_names);
+          assert not any(forbidden.intersection(name.split('/')) for name in wheel_names + sdist_names)"
+
+      - name: Install wheel in a clean core environment
+        run: |
+          python -m venv "$RUNNER_TEMP/factorlasso-wheel"
+          "$RUNNER_TEMP/factorlasso-wheel/bin/python" -m pip install dist/*.whl
+
+      - name: Verify core wheel outside the checkout
+        working-directory: ${{ runner.temp }}
+        run: >-
+          "$RUNNER_TEMP/factorlasso-wheel/bin/python" -c "import factorlasso, importlib.metadata as md, importlib.util as util;
+          assert md.version('factorlasso') == factorlasso.__version__;
+          assert util.find_spec('sklearn') is None;
+          assert util.find_spec('matplotlib') is None;
+          assert factorlasso.LassoModel().get_params()['reg_lambda'] == 1e-5"
+
+      - name: Run source tests against the installed wheel
+        working-directory: ${{ runner.temp }}
+        run: |
+          "$RUNNER_TEMP/factorlasso-wheel/bin/python" -m pip install pytest pytest-cov scikit-learn matplotlib
+          "$RUNNER_TEMP/factorlasso-wheel/bin/python" -m pytest --import-mode=importlib "$GITHUB_WORKSPACE/tests" --cov=factorlasso --cov-report=term-missing --cov-fail-under=90 -q
+
+      - name: Install and verify the sdist independently
+        run: |
+          python -m venv "$RUNNER_TEMP/factorlasso-sdist"
+          "$RUNNER_TEMP/factorlasso-sdist/bin/python" -m pip install dist/*.tar.gz
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/factorlasso-sdist/bin/python" -c "import factorlasso, importlib.metadata as md; assert md.version('factorlasso') == factorlasso.__version__"

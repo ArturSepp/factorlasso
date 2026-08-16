@@ -41,7 +41,7 @@ sibling package, say so rather than reimplementing it here.
 ## Repository layout
 
 ```
-factorlasso/
+src/factorlasso/
   lasso_estimator.py   main estimator (sklearn-compatible)
   factor_covar.py      factor covariance assembly
   sign_constraints.py  sign-constraint handling
@@ -52,7 +52,7 @@ factorlasso/
   residual_diagnostics.py  strict-factor-structure tests on a residual panel
   diagonality.py       LassoModelDiagonalityCV, penalty selection by those tests
   cluster_lineage.py   offline persistent labelling of estimated risk clusters
-tests/                 28 test modules (top-level, test_*.py)
+tests/                 30 test modules (top-level, test_*.py)
 benchmarks/            performance benchmarks
 examples/              runnable examples
 papers/jss_2026/       JSS paper source, replication scripts, simulations
@@ -61,6 +61,10 @@ COMPARISON.md          empirical comparison against competing packages
 COMPATIBILITY.md       scikit-learn compatibility notes
 ```
 
+The ``src`` layout is load-bearing: imports from a checkout must resolve through
+``src/factorlasso/``, and the wheel job independently tests the built wheel and sdist from outside
+the checkout so repository files cannot shadow an incomplete artifact.
+
 ## Commands
 
 ```bash
@@ -68,7 +72,7 @@ pip install -e ".[dev]"                                   # editable install wit
 pytest                                                    # full suite (testpaths = tests)
 pytest tests/test_integration.py -v                       # one module
 pytest --cov=factorlasso --cov-report=term-missing -q      # as CI runs it
-ruff check factorlasso/ tests/                            # lint, as CI runs it
+ruff check src/factorlasso/ tests/                        # lint, as CI runs it
 ```
 
 Optional extras: `dev`, `docs`, `simulations` (for `papers/jss_2026/simulations/`).
@@ -88,7 +92,7 @@ Supported Python is >= 3.10; CI runs 3.11 – 3.14.
     reverse, and the small runtime surface (numpy, pandas, scipy, cvxpy, openpyxl) is a JSS
     submission constraint rather than a preference. If a change appears to need one of these
     imports, the code belongs in the consumer — say so rather than adding it.
-  - `TID253` fails a **module-level** import of `sklearn` anywhere in `factorlasso/`. See the
+  - `TID253` fails a **module-level** import of `sklearn` anywhere in `src/factorlasso/`. See the
     constraint below for the one deliberate exception and its shape. `tests/`, `benchmarks/` and
     `papers/` are exempt in `per-file-ignores`: scikit-learn is a legitimate dev dependency there.
   - `ICN` pins `import numpy as np` and `import pandas as pd`. Ruff's default alias map is
