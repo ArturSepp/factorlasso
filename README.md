@@ -1,9 +1,11 @@
 # factorlasso
 
-**Sparse multi-output regression with sign constraints, prior-centered
-regularisation, and a family of grouped and cooperative penalties —
-Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering Group LASSO
-(FCGL), UniLasso, and cooperative LASSO — via CVXPY.**
+**`factorlasso` is a Python library for sparse multi-output factor-model estimation with sign
+constraints, prior-centred shrinkage, data-driven grouped penalties, and consistent factor
+covariance assembly.**
+
+It provides LASSO, Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering Group LASSO
+(FCGL), sparse-group, UniLasso, and cooperative penalties through auditable CVXPY formulations.
 
 [![PyPI](https://img.shields.io/pypi/v/factorlasso.svg)](https://pypi.org/project/factorlasso/)
 [![Python](https://img.shields.io/pypi/pyversions/factorlasso.svg)](https://pypi.org/project/factorlasso/)
@@ -81,7 +83,7 @@ only when called, so plotting remains optional.
 pip install factorlasso
 ```
 
-Requires Python ≥ 3.9, CVXPY ≥ 1.3, and numpy / pandas / scipy / openpyxl.
+Requires Python ≥ 3.10, CVXPY ≥ 1.3, and numpy / pandas / scipy / openpyxl.
 
 ---
 
@@ -766,11 +768,11 @@ instrument.
 
 ### Feature comparison
 
-The table below compares `factorlasso` against six sparse-regression packages
+The table below is a maintained feature snapshot comparing `factorlasso` with six sparse-regression packages
 in the Python and R ecosystems. A checkmark indicates that the feature is
 provided natively; a dash indicates that it is absent or must be implemented
 externally by the practitioner. `sklearn` refers specifically to the `Lasso`
-class.
+class. See [`COMPARISON.md`](COMPARISON.md) for scope, sources, and correction guidance.
 
 | Feature | sklearn | gglasso | sparsegl | asgl | celer | adelie | factorlasso |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -828,25 +830,23 @@ assets. The loadings stay interpretable and stable enough to feed a portfolio
 optimiser, which is the property a deployed factor-risk system requires and an
 unconstrained penalty does not deliver.
 
-The paper quantifies this on a calibrated 102-asset universe with known true
-loadings. On generic metrics — support recovery, out-of-sample R², systematic
-covariance error — `factorlasso` is statistically indistinguishable from
-scikit-learn, skglm, and asgl, so **the structural machinery costs nothing in
-ordinary accuracy.** But under the 0.84 credit–equity collinearity the universe
-carries, every competing package and every unconstrained configuration shrinks
-the weakly identified credit loading toward zero and books it as equity. The
-sign- and prior-constrained configuration alone recovers it: **a mean Credit
-loading of 0.32 against a true 0.36, versus at most 0.08 for the competing
-packages.** The combination is the point — a prior alone can be re-centred
-around any package, but no surveyed package expresses a prior *jointly* with
-cell-level sign constraints and internally discovered clusters.
+The paper quantifies this on a calibrated 102-asset universe with known true loadings. In that
+study, the reported generic metrics — support recovery, out-of-sample R², and systematic covariance
+error — were comparable across `factorlasso`, scikit-learn, skglm, and asgl. Under the study's 0.84
+credit–equity collinearity, the compared unconstrained configurations shrink the weakly identified
+credit loading toward zero and book it as equity. The tested sign- and prior-constrained
+configuration recovers it: **a mean Credit loading of 0.32 against a true 0.36, versus at most 0.08
+for the competing configurations.** This is a result for the documented calibrated experiment, not
+a universal performance claim.
 
 ---
 
 ## Examples
 
-Three runnable examples in [`examples/`](examples/):
+Four runnable examples in [`examples/`](examples/):
 
+- [`alpha_const_vs_intercept.py`](examples/alpha_const_vs_intercept.py) —
+  shows the economic intercept and CVXPY solver intercept conventions explicitly.
 - [`genomics_factor_model.py`](examples/genomics_factor_model.py) —
   QTL-style multi-response LASSO: genotype matrix → expression panel, with
   sign constraints derived from biological priors.
@@ -865,7 +865,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The suite currently has 295 tests at 98%+ coverage, including numerical parity
+The suite currently collects 500 tests and reports 92.67% line coverage, including numerical parity
 tests against `qis` for the EWMA primitives and against `scikit-learn` for the
 LASSO path.
 
@@ -939,9 +939,8 @@ software itself:
 
 @software{factorlasso,
   author  = {Sepp, Artur and Kastenholz, Mika},
-  title   = {factorlasso: Sparse Multi-Asset Factor Model Estimation with
-             Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
-             in {Python}},
+  title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
+             {Python}},
   year    = {2026},
   version = {0.15.0},
   url     = {https://github.com/ArturSepp/factorlasso},
@@ -957,7 +956,7 @@ Issues and pull requests welcome at
 
 See [`CHANGELOG.md`](CHANGELOG.md) for release history and
 [`COMPATIBILITY.md`](COMPATIBILITY.md) for the API stability policy
-covering the v0.4.x line.
+covering the current 0.15 series.
 
 ---
 

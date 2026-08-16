@@ -1,7 +1,8 @@
 cff-version: 1.2.0
-title: "factorlasso: Sparse Multi-Asset Factor Model Estimation with Cluster-Pooled Sign Derivation and Hierarchical Group LASSO in Python"
+title: "factorlasso: Sparse Multi-Output Factor-Model Estimation in Python"
 message: "If you use this software, please cite it as below."
 type: software
+abstract: "factorlasso is a Python library for sparse multi-output factor-model estimation with sign constraints, prior-centred shrinkage, data-driven grouped penalties, and consistent factor covariance assembly."
 authors:
   - given-names: Artur
     family-names: Sepp

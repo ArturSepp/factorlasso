@@ -1,8 +1,8 @@
 # `factorlasso` vs. the Python sparse-regression ecosystem
 
-This document answers the question *"why not just use scikit-learn / skglm / groupyr?"*. The short answer: each of those packages is excellent for its niche, but none of them covers the combination of **element-wise sign constraints + informative priors + data-driven groups + ragged histories + joint covariance assembly** in a single estimator. If your problem needs any two of those features together, `factorlasso` is the only drop-in option in Python today.
+This document answers the question *"why not just use scikit-learn / skglm / groupyr?"*. Each package is strong in its own problem regime. FactorLasso is aimed at workflows that combine **element-wise sign constraints + informative priors + data-driven groups + ragged histories + joint covariance assembly** in one multi-output estimator. The matrix below is a practical selection aid, not a claim that FactorLasso dominates general-purpose sparse-regression libraries.
 
-All information in the tables below was verified by inspecting each package's public API (`sklearn==1.7.x`, `skglm==0.5`, `groupyr==0.3.2`, `group-lasso==1.5.0`, `asgl` current release) as of November 2026. Corrections welcome via [GitHub issues](https://github.com/ArturSepp/factorlasso/issues).
+The snapshot was last reconciled for FactorLasso 0.15.0 on 2026-08-16. Competitor cells require a primary-source re-audit before the guide is treated as current; package APIs change. Corrections are welcome via [GitHub issues](https://github.com/ArturSepp/factorlasso/issues).
 
 ---
 
@@ -12,7 +12,7 @@ All information in the tables below was verified by inspecting each package's pu
 |---------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | Standard L1 (Lasso) | ✓ | ✓ | ✓ | ✓ (α=1) | — | ✓ | ✓ |
 | Group LASSO (L2,1) | ✓ (MultiTask only) | ✓ | — | ✓ | ✓ | ✓ | ✓ |
-| Sparse Group Lasso | — | — | — | ✓ | ✓ | ✓ | — |
+| Sparse Group Lasso | — | — | — | ✓ | ✓ | ✓ | ✓ |
 | **Data-driven groups (HCGL)** | — | — | — | — | — | — | **✓** |
 | **Element-wise sign constraints** | blanket only¹ | blanket only¹ | blanket only¹ | — | — | — | **✓** |
 | **Data-driven sign derivation with noise gate** | — | — | — | — | — | — | **✓** |
@@ -48,8 +48,8 @@ The three residual-validation rows above are marked as absent elsewhere because 
 | Max feature count (benchmark regime) | $10^4$–$10^5$ | $10^6$+ | $10^6$+ | $10^5$ | $10^5$ | $10^4$ | $10^3$–$10^4$ |
 | Relative speed (L1, single-output) | 1× (baseline) | 10–100×⁴ | 10–100×⁴ | ~1× | ~1× | slower | slower |
 | Install deps footprint | standard | +`numba`, +`numpy<2` | +`numpy`, +`Cython` | +`copt`, +`scikit-optimize` | +`scikit-learn` | +`cvxpy` | +`cvxpy` |
-| License | BSD-3 | BSD-3 | BSD-3 | BSD-3 | MIT | GPL-3 | **MIT** |
-| Publication venue | JMLR 2011 | JMLR 2025 (MLOSS) | NeurIPS 2018 | JOSS 2021 | — | — | (in progress) |
+| License | BSD-3 | BSD-3 | BSD-3 | BSD-3 | MIT | GPL-3 | **GPL-3.0-or-later** |
+| Publication venue | JMLR 2011 | JMLR 2025 (MLOSS) | NeurIPS 2018 | JOSS 2021 | — | — | JSS (submitted) |
 | Active maintenance (2026) | very high | high | moderate | low | low | moderate | active |
 
 ⁴ Relative speed claims are quoted from the respective packages' publications; `factorlasso`'s CVXPY backend is slower on problems all packages can solve, which is a deliberate trade-off for expressiveness.
@@ -93,7 +93,7 @@ The three residual-validation rows above are marked as absent elsewhere because 
 
 ## **Complementarity, not competition**
 
-`factorlasso` is deliberately positioned *downstream* of the fast specialized solvers. For the problem *"solve a vanilla Lasso on a sparse million-feature matrix"*, use `skglm` or `celer`. For the problem *"solve a multi-output penalized regression where half the coefficients have sign priors, a third have informative priors, responses have ragged histories, and I need the implied covariance matrix to be mutually consistent with the point estimates"*, no fast specialized solver exists — the CVXPY backend is the practical trade-off for expressing the full constraint set.
+`factorlasso` is deliberately positioned *downstream* of fast specialized solvers. For the problem *"solve a vanilla Lasso on a sparse million-feature matrix"*, use `skglm` or `celer`. For the problem *"solve a multi-output penalized regression where coefficients have heterogeneous sign constraints and informative priors, responses have ragged histories, and the implied covariance must use the same point estimates"*, the surveyed specialized APIs do not expose that combined workflow; the CVXPY backend is FactorLasso's trade-off for expressing it.
 
 A natural workflow is **`skglm` for feature pre-screening** (reduce $M$ from thousands to tens) **→ `factorlasso` for the constrained final estimation** on the pre-screened features. Both packages compose cleanly with scikit-learn pipelines.
 
