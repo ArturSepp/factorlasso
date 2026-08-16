@@ -27,6 +27,7 @@ depend on the portfolio-construction or reporting libraries that consume it.
    getting-started
    task-guides
    interoperability
+   comparison
    scientific-replication
    api
 
@@ -37,11 +38,11 @@ Choose the right path
 * Follow :doc:`task-guides` for constrained regression, cluster-aware estimation, or model
   selection and covariance assembly.
 * Check :doc:`interoperability` before composing the estimator with scikit-learn.
+* Use :doc:`comparison` to choose among FactorLasso, scikit-learn, skglm, and groupyr by workflow
+  fit and documented trade-offs.
 * Use :doc:`scientific-replication` only when reproducing a manuscript rather than evaluating the
   package.
 * Use :doc:`api` for the supported top-level public surface.
-* Read the `comparison guide <https://github.com/ArturSepp/factorlasso/blob/main/COMPARISON.md>`_
-  for a qualified feature snapshot and solver trade-offs.
 * Review the `compatibility policy
   <https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md>`_ before depending on a
   specific signature or numerical contract.

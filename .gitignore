@@ -9,6 +9,7 @@ __pycache__/
 *.egg
 .eggs/
 build/
+docs/_build/
 dist/
 wheels/
 pip-wheel-metadata/

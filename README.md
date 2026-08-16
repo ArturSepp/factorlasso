@@ -759,8 +759,8 @@ instrument.
   (sparse group LASSO at small-to-moderate α).
 - You need to test whether the residual covariance is actually diagonal, or to
   select the penalty on that criterion rather than on prediction error.
-- You want a small, auditable CVXPY-based tool rather than a coordinate-descent
-  library with opaque internals.
+- You want an auditable CVXPY formulation where heterogeneous constraints matter
+  more than specialized-solver throughput.
 
 **Reach for something else when:**
 
@@ -768,33 +768,12 @@ instrument.
 
 ### Feature comparison
 
-The table below is a maintained feature snapshot comparing `factorlasso` with six sparse-regression packages
-in the Python and R ecosystems. A checkmark indicates that the feature is
-provided natively; a dash indicates that it is absent or must be implemented
-externally by the practitioner. `sklearn` refers specifically to the `Lasso`
-class. See [`COMPARISON.md`](COMPARISON.md) for scope, sources, and correction guidance.
-
-| Feature | sklearn | gglasso | sparsegl | asgl | celer | adelie | factorlasso |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Multi-response interface (*N* × *M* in one fit) | – | – | – | – | – | ✓ | ✓ |
-| ℓ₁ penalty (LASSO) | ✓ | – | ✓ | ✓ | ✓ | – | ✓ |
-| Group ℓ₂ penalty (group LASSO) | – | ✓ | ✓ | ✓ | – | ✓ | ✓ |
-| Sparse-group mixing (α ∈ [0, 1]) | – | – | ✓ | ✓ | – | – | ✓ |
-| HCGL cluster discovery (clusters found internally) | – | – | – | – | – | – | ✓ |
-| Cluster-by-factor block penalty (FCGL) | – | – | – | – | – | – | ✓ |
-| Sign constraints at cell level | – | – | – | – | – | – | ✓ |
-| Noise-floor *t*-statistic gate | – | – | – | – | – | – | ✓ |
-| Adaptive penalty reweighting | – | – | – | ✓ | – | – | ✓ |
-| Prior-centred shrinkage (β⁰ ≠ 0) | – | – | – | – | – | – | ✓ |
-| EWMA observation weighting | – | – | – | – | – | – | ✓ |
-| NaN-tolerant API | – | – | – | – | – | – | ✓ |
-| Factor covariance assembly | – | – | – | – | – | – | ✓ |
-| Residual diagonality test (strict-factor-structure check) | – | – | – | – | – | – | ✓ |
-| Penalty selection by residual diagonality | – | – | – | – | – | – | ✓ |
-| Solver-dust-aware sparsity accounting | – | – | – | – | – | – | ✓ |
-| Implementation language | Python | R | R | Python | Python | Python | Python |
-
-A more detailed feature-by-feature comparison is in
+The maintained [choice guide](https://factorlasso.readthedocs.io/en/latest/comparison.html)
+compares FactorLasso with scikit-learn, skglm, and groupyr by workflow fit,
+constraint and grouping geometry, multi-output behavior, missing-data handling,
+covariance assembly, solver trade-offs, interoperability, dependencies, and
+license. It is dated, cites primary sources, and includes cases favoring every
+project; it is not a popularity or speed ranking. The repository pointer is
 [`COMPARISON.md`](COMPARISON.md).
 
 ---
