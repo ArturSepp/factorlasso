@@ -25,12 +25,20 @@ depend on the portfolio-construction or reporting libraries that consume it.
    :caption: Start here
 
    getting-started
+   task-guides
+   interoperability
+   scientific-replication
    api
 
 Choose the right path
 ---------------------
 
 * Start with :doc:`getting-started` for a deterministic, offline fit using core dependencies.
+* Follow :doc:`task-guides` for constrained regression, cluster-aware estimation, or model
+  selection and covariance assembly.
+* Check :doc:`interoperability` before composing the estimator with scikit-learn.
+* Use :doc:`scientific-replication` only when reproducing a manuscript rather than evaluating the
+  package.
 * Use :doc:`api` for the supported top-level public surface.
 * Read the `comparison guide <https://github.com/ArturSepp/factorlasso/blob/main/COMPARISON.md>`_
   for a qualified feature snapshot and solver trade-offs.
@@ -39,15 +47,6 @@ Choose the right path
   specific signature or numerical contract.
 * Follow the `changelog <https://github.com/ArturSepp/factorlasso/blob/main/CHANGELOG.md>`_ for
   release history.
-
-Scientific replication is separate
-----------------------------------
-
-Installing and evaluating the library does not require running a paper replication. The
-`JSS replication tree <https://github.com/ArturSepp/factorlasso/tree/main/papers/jss_2026>`_ and
-`sign-pooling replication tree
-<https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026>`_ preserve their own
-scientific inputs and commands. Their submitted-paper status is not a software stability claim.
 
 Project links
 -------------

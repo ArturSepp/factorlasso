@@ -15,6 +15,7 @@ release = package_version("factorlasso")
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
     "sphinx.ext.viewcode",
     "numpydoc",
 ]
@@ -26,6 +27,7 @@ nitpicky = False
 autodoc_typehints = "description"
 autodoc_member_order = "bysource"
 numpydoc_show_class_members = False
+doctest_test_doctest_blocks = ""
 
 rst_prolog = """
 .. |t| replace:: t
