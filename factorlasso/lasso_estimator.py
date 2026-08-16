@@ -58,11 +58,14 @@ import pandas as pd
 
 from factorlasso.cluster_smoothing import ClusterSmootherType
 from factorlasso.cluster_utils import (
+    DEFAULT_CLUSTER_CORRELATION_TRANSFORM,
     DEFAULT_CUTOFF_FRACTION,
     DEFAULT_DISTANCE_TRANSFORM,
     DEFAULT_LINKAGE_METHOD,
     VALID_LINKAGE_METHODS,
+    ClusterCorrelationTransform,
     DistanceTransform,
+    apply_cluster_correlation_transform,
     compute_clusters_from_corr_matrix,
 )
 from factorlasso.dependence_utils import (
@@ -1053,6 +1056,15 @@ class LassoModel:
         across transforms; see
         :func:`factorlasso.compute_clusters_from_corr_matrix` for the
         granularity-preserving conversion when switching.
+    cluster_correlation_transform : ClusterCorrelationTransform or str, default NONE
+        Optional diagnostic/robustness transform of the signed dependence
+        matrix before distance, linkage, and cluster discovery. ``NONE`` is
+        the production default and an exact numerical bypass. ``REMOVE_PC1``
+        removes the largest algebraic eigencomponent and restandardizes the
+        residual matrix to unit diagonal. It does not residualize responses,
+        fitted loadings, or the assembled covariance matrix. A changed cluster
+        partition can nevertheless change fitted outputs indirectly when a
+        cluster-based penalty or sign-pooling rule consumes that partition.
     dependence_measure : DependenceMeasure or str, default PEARSON
         Dependence measure used to build the clustering correlation
         matrix: ``'pearson'`` (the default and the pre-0.10.0 behaviour),
@@ -1235,6 +1247,9 @@ class LassoModel:
     cutoff_fraction: float = DEFAULT_CUTOFF_FRACTION
     linkage_method: str = DEFAULT_LINKAGE_METHOD
     distance_transform: Union[DistanceTransform, str] = DEFAULT_DISTANCE_TRANSFORM
+    cluster_correlation_transform: Union[
+        ClusterCorrelationTransform, str
+    ] = DEFAULT_CLUSTER_CORRELATION_TRANSFORM
     dependence_measure: Union[DependenceMeasure, str] = DEFAULT_DEPENDENCE_MEASURE
     gerber_threshold: float = DEFAULT_GERBER_THRESHOLD
     n_clusters: Optional[int] = None
@@ -1343,6 +1358,14 @@ class LassoModel:
                 f"distance_transform must be one of "
                 f"{[t.value for t in DistanceTransform]}, "
                 f"got {self.distance_transform!r}"
+            ) from None
+        try:
+            ClusterCorrelationTransform(self.cluster_correlation_transform)
+        except ValueError:
+            raise ValueError(
+                f"cluster_correlation_transform must be one of "
+                f"{[item.value for item in ClusterCorrelationTransform]}, "
+                f"got {self.cluster_correlation_transform!r}"
             ) from None
         try:
             DependenceMeasure(self.dependence_measure)
@@ -1887,6 +1910,9 @@ class LassoModel:
                     gerber_threshold=self.gerber_threshold,
                 )
                 corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
+                corr_df = apply_cluster_correlation_transform(
+                    corr_df, transform=self.cluster_correlation_transform
+                )
                 asset_clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
                     corr_df, cutoff_fraction=self.cutoff_fraction,
                     linkage_method=self.linkage_method,

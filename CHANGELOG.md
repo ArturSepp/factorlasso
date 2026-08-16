@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-16
+
+### Added - diagnostic dominant common-mode removal for cluster discovery
+
+- Added `ClusterCorrelationTransform` with the default-off `NONE` and opt-in
+  `REMOVE_PC1` modes, plus pure transform helpers and numerical diagnostics.
+  PC1 is removed from the signed dependence matrix and the residual is
+  restandardized before distance/linkage. The operation does not residualize
+  responses, loadings, or covariance; fitted outputs can change indirectly
+  only when the opt-in diagnostic partition feeds cluster-based estimation.
+- `LassoModel.cluster_correlation_transform` threads the transform through
+  HCGL/FCGL discovery. The `NONE` path remains the production default and is
+  an exact numerical bypass; `REMOVE_PC1` is documented as a robustness
+  specification rather than an automatic production replacement.
+- `compute_rolling_smoothed_clusters(..., eligibility=...)` now accepts an
+  exact Boolean point-in-time universe. Eligibility is intersected with data
+  warmup before common-mode removal and temporal smoothing, preventing
+  excluded or future assets from entering the current PC.
+
 ### Changed — scheduled stateful cluster smoothing
 
 - `PARTITION_BONUS` and `SIMILARITY_EWMA` now accept an optional

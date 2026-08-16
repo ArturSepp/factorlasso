@@ -63,12 +63,16 @@ from factorlasso.cluster_smoothing import (
     smooth_similarity_ewma,
 )
 from factorlasso.cluster_utils import (
+    ClusterCorrelationTransform,
+    ClusterCorrelationTransformResult,
     DistanceTransform,
+    apply_cluster_correlation_transform,
     compute_clusters_from_corr_matrix,
     get_clusters_by_freq,
     get_cutoffs_by_freq,
     get_linkage_array,
     get_linkages_by_freq,
+    remove_first_principal_component,
 )
 from factorlasso.cv import LassoModelCV
 from factorlasso.dependence_utils import (
@@ -149,12 +153,16 @@ __all__ = [
     "compute_dependence_matrix",
     "compute_gerber_matrix",
     # Clustering utilities
+    "ClusterCorrelationTransform",
+    "ClusterCorrelationTransformResult",
     "DistanceTransform",
+    "apply_cluster_correlation_transform",
     "compute_clusters_from_corr_matrix",
     "get_clusters_by_freq",
     "get_cutoffs_by_freq",
     "get_linkage_array",
     "get_linkages_by_freq",
+    "remove_first_principal_component",
     "apply_partition_distance_bonus",
     "compute_rolling_smoothed_clusters",
     "smooth_similarity_ewma",

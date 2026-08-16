@@ -48,6 +48,19 @@ return contracts will not happen within the v0.4.x line.
 - `get_clusters_by_freq`, `get_cutoffs_by_freq`, `get_linkage_array`,
   `get_linkages_by_freq`
 
+#### Diagnostic clustering additions in v0.15.0
+
+The following additive symbols and parameters join the stable public surface
+in v0.15.0. Their defaults preserve the earlier numerical path:
+
+- `ClusterCorrelationTransform` enum: `NONE`, `REMOVE_PC1`.
+- `ClusterCorrelationTransformResult` diagnostic dataclass.
+- `remove_first_principal_component(corr_matrix)` and
+  `apply_cluster_correlation_transform(corr_matrix, transform=NONE)`.
+- `LassoModel.cluster_correlation_transform`, default `NONE`.
+- `compute_rolling_smoothed_clusters(..., eligibility=None)`, where supplied
+  eligibility is an exact Boolean point-in-time asset panel.
+
 ### Factor covariance assembly
 
 - `CurrentFactorCovarData` dataclass fields, including `derived_signs`.

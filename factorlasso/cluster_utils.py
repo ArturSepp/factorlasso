@@ -24,6 +24,15 @@ DistanceTransform
     (``sqrt(2(1 - rho))``, the Euclidean chord under which Ward's variance
     criterion is exact), or ``ARCCOS`` (``arccos(rho)``, the geodesic arc).
 
+ClusterCorrelationTransform, ClusterCorrelationTransformResult
+    Default-off diagnostic transform and its numerical audit record.
+    ``REMOVE_PC1`` subtracts one dominant common mode and restandardizes the
+    residual dependence matrix before clustering.
+
+remove_first_principal_component, apply_cluster_correlation_transform
+    Pure helpers for inspecting or applying the diagnostic transform without
+    fitting a factor model.
+
 get_linkage_array
     Extract the scipy linkage ndarray for a single frequency from the
     stacked linkage DataFrame stored in ``CurrentFactorCovarData``.
@@ -43,9 +52,26 @@ workflow. ``lasso_estimator.py`` and ``factor_covar.py`` previously
 each held one of these functions, which created cross-dependencies
 and blurred the boundary between "solver" and "diagnostic utility".
 The module-level split is cleaner and keeps the import graph acyclic.
+
+Diagnostic scope
+----------------
+Dominant-common-mode removal is an opt-in robustness diagnostic, not a new
+estimator default. It acts only on the dependence matrix used to discover
+groups. A changed partition can still change fitted loadings and covariance
+indirectly when a cluster-based penalty consumes those groups.
+
+References
+----------
+Plerou et al. (2002), *Physical Review E* 65, 066126, identify the largest
+correlation eigenvalue with a market-wide influence and study structure in
+the remaining modes. MacMahon and Garlaschelli (2015), *Physical Review X* 5,
+021006, discuss community detection after separating system-wide dependence.
+FactorLasso implements only rank-one common-mode removal. It does not inherit
+their random-matrix noise filtering, null models, or community estimators.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional, Tuple, Union
 
@@ -57,6 +83,237 @@ from scipy.spatial.distance import squareform
 # ═══════════════════════════════════════════════════════════════════════
 # Clustering from correlation
 # ═══════════════════════════════════════════════════════════════════════
+
+
+class ClusterCorrelationTransform(str, Enum):
+    """Select an optional diagnostic transform before cluster discovery.
+
+    ``NONE`` is the package default and an exact numerical bypass.
+    ``REMOVE_PC1`` is an opt-in robustness specification that removes one
+    dominant common mode and restandardizes the residual matrix.
+    """
+
+    NONE = "none"
+    REMOVE_PC1 = "remove_pc1"
+
+
+DEFAULT_CLUSTER_CORRELATION_TRANSFORM = ClusterCorrelationTransform.NONE
+
+# These tolerances distinguish floating-point excursions from malformed
+# dependence matrices. They do not invoke a nearest-correlation projection.
+_CORRELATION_TOLERANCE = 1e-10
+_RESIDUAL_VARIANCE_FLOOR = 1e-12
+
+
+@dataclass(frozen=True)
+class ClusterCorrelationTransformResult:
+    """Audit record for dominant-common-mode removal.
+
+    Attributes
+    ----------
+    correlation : pandas.DataFrame
+        Residual dependence matrix, restandardized to unit diagonal.
+    removed_eigenvalue : float
+        Largest algebraic eigenvalue subtracted from the input matrix.
+    removed_variance_share : float
+        Removed eigenvalue divided by the validated input trace.
+    minimum_residual_variance : float
+        Smallest diagonal element before residual restandardization.
+    eigengap : float
+        Largest eigenvalue minus the second-largest eigenvalue.
+    dominant_component_unique : bool
+        Whether the eigengap exceeds the numerical uniqueness tolerance.
+    missing_offdiagonal_pairs : int
+        Unavailable unordered pairs neutral-filled at zero before deflation.
+    isolated_assets : tuple
+        Labels whose residual variance is at the numerical floor.
+    """
+
+    correlation: pd.DataFrame
+    removed_eigenvalue: float
+    removed_variance_share: float
+    minimum_residual_variance: float
+    eigengap: float
+    dominant_component_unique: bool
+    missing_offdiagonal_pairs: int
+    isolated_assets: Tuple[object, ...]
+
+
+def _validated_clustering_correlation(
+    corr_matrix: pd.DataFrame,
+) -> Tuple[np.ndarray, int]:
+    """Validate and neutral-fill a labelled clustering correlation matrix."""
+    if not isinstance(corr_matrix, pd.DataFrame):
+        raise TypeError("corr_matrix must be a pandas DataFrame")
+    if corr_matrix.ndim != 2 or corr_matrix.shape[0] != corr_matrix.shape[1]:
+        raise ValueError(
+            f"corr_matrix must be square, got shape {corr_matrix.shape!r}"
+        )
+    if corr_matrix.empty:
+        raise ValueError("corr_matrix must contain at least one asset")
+    if not corr_matrix.index.equals(corr_matrix.columns):
+        raise ValueError("corr_matrix index and column labels must match in the same order")
+    if not corr_matrix.index.is_unique:
+        raise ValueError("corr_matrix labels must be unique")
+    try:
+        values = corr_matrix.to_numpy(dtype=float, copy=True)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("corr_matrix values must be numeric") from exc
+    diagonal = np.diag(values)
+    if not np.isfinite(diagonal).all():
+        raise ValueError("corr_matrix diagonal must be finite")
+    off_diagonal = ~np.eye(len(values), dtype=bool)
+    if np.isinf(values[off_diagonal]).any():
+        raise ValueError("corr_matrix off-diagonal values must be finite or NaN")
+
+    missing = np.isnan(values)
+    missing_pairs = int(np.count_nonzero(np.triu(missing | missing.T, k=1)))
+    values[missing | missing.T] = 0.0
+    values = 0.5 * (values + values.T)
+    np.fill_diagonal(values, 1.0)
+    maximum = float(np.max(np.abs(values)))
+    if maximum > 1.0 + _CORRELATION_TOLERANCE:
+        raise ValueError(
+            "corr_matrix contains a correlation materially outside [-1, 1]: "
+            f"maximum absolute value {maximum:.16g}"
+        )
+    values = np.clip(values, -1.0, 1.0)
+    return values, missing_pairs
+
+
+def remove_first_principal_component(
+    corr_matrix: pd.DataFrame,
+) -> ClusterCorrelationTransformResult:
+    """Diagnose and remove the dominant mode of a clustering correlation.
+
+    For a dependence matrix ``R`` with largest algebraic eigenpair
+    ``(lambda_1, v_1)``, this computes ``Q = R - lambda_1 v_1 v_1'`` and
+    rescales ``Q`` back to unit diagonal. Assets whose residual variance is
+    at the numerical floor are retained as isolated residual series.
+
+    This is dominant-common-mode removal only. It does not filter the random
+    matrix noise bulk and does not project the result to an unrelated nearest
+    correlation matrix. See Plerou et al. (2002), Physical Review E 65,
+    066126, and MacMahon and Garlaschelli (2015), Physical Review X 5,
+    021006, for the common-mode motivation and the distinction from full
+    noise filtering.
+
+    Use this pure helper when the diagnostic quantities are needed. Setting
+    ``LassoModel.cluster_correlation_transform`` applies the same residual
+    correlation to group discovery but intentionally keeps ``NONE`` as the
+    production default.
+
+    Parameters
+    ----------
+    corr_matrix : pandas.DataFrame
+        Square labelled signed dependence matrix used for cluster discovery.
+
+    Returns
+    -------
+    ClusterCorrelationTransformResult
+        Residual correlation plus numerical diagnostics.
+    """
+    values, missing_pairs = _validated_clustering_correlation(corr_matrix)
+    if len(values) == 1:
+        correlation = pd.DataFrame(
+            np.identity(1), index=corr_matrix.index, columns=corr_matrix.columns
+        )
+        return ClusterCorrelationTransformResult(
+            correlation=correlation,
+            removed_eigenvalue=0.0,
+            removed_variance_share=0.0,
+            minimum_residual_variance=1.0,
+            eigengap=float("nan"),
+            dominant_component_unique=True,
+            missing_offdiagonal_pairs=missing_pairs,
+            isolated_assets=(),
+        )
+
+    eigenvalues, eigenvectors = np.linalg.eigh(values)
+    removed_eigenvalue = float(eigenvalues[-1])
+    loading = eigenvectors[:, -1]
+    residual = values - removed_eigenvalue * np.outer(loading, loading)
+    residual = 0.5 * (residual + residual.T)
+    residual_variances = np.diag(residual).copy()
+    minimum_residual_variance = float(np.min(residual_variances))
+    if minimum_residual_variance < -_CORRELATION_TOLERANCE:
+        raise ValueError(
+            "PC1 removal produced a materially negative residual variance: "
+            f"minimum {minimum_residual_variance:.16g}"
+        )
+    residual_variances = np.maximum(residual_variances, 0.0)
+    active = residual_variances > _RESIDUAL_VARIANCE_FLOOR
+    transformed = np.zeros_like(residual)
+    if np.any(active):
+        scale = np.sqrt(residual_variances[active])
+        transformed[np.ix_(active, active)] = (
+            residual[np.ix_(active, active)] / np.outer(scale, scale)
+        )
+    transformed = 0.5 * (transformed + transformed.T)
+    np.fill_diagonal(transformed, 1.0)
+    maximum = float(np.max(np.abs(transformed)))
+    if maximum > 1.0 + _CORRELATION_TOLERANCE:
+        raise ValueError(
+            "PC1 removal produced a correlation materially outside [-1, 1]: "
+            f"maximum absolute value {maximum:.16g}"
+        )
+    transformed = np.clip(transformed, -1.0, 1.0)
+    np.fill_diagonal(transformed, 1.0)
+    correlation = pd.DataFrame(
+        transformed, index=corr_matrix.index, columns=corr_matrix.columns
+    )
+    eigengap = float(eigenvalues[-1] - eigenvalues[-2])
+    uniqueness_tolerance = _CORRELATION_TOLERANCE * max(
+        1.0, abs(removed_eigenvalue)
+    )
+    trace = float(np.trace(values))
+    isolated_assets = tuple(corr_matrix.index[~active].tolist())
+    return ClusterCorrelationTransformResult(
+        correlation=correlation,
+        removed_eigenvalue=removed_eigenvalue,
+        removed_variance_share=removed_eigenvalue / trace,
+        minimum_residual_variance=minimum_residual_variance,
+        eigengap=eigengap,
+        dominant_component_unique=eigengap > uniqueness_tolerance,
+        missing_offdiagonal_pairs=missing_pairs,
+        isolated_assets=isolated_assets,
+    )
+
+
+def apply_cluster_correlation_transform(
+    corr_matrix: pd.DataFrame,
+    transform: Union[
+        ClusterCorrelationTransform, str
+    ] = DEFAULT_CLUSTER_CORRELATION_TRANSFORM,
+) -> pd.DataFrame:
+    """Apply an optional diagnostic transform to a dependence matrix.
+
+    Parameters
+    ----------
+    corr_matrix : pandas.DataFrame
+        Square labelled signed dependence matrix used for cluster discovery.
+    transform : ClusterCorrelationTransform or str, default NONE
+        ``NONE`` returns the identical object without validation or copying.
+        ``REMOVE_PC1`` returns the residual correlation from
+        :func:`remove_first_principal_component`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Original input for ``NONE`` or the residual correlation for
+        ``REMOVE_PC1``. Call the pure removal helper directly to retain the
+        accompanying numerical diagnostics.
+    """
+    try:
+        transform = ClusterCorrelationTransform(transform)
+    except ValueError:
+        raise ValueError(
+            "cluster correlation transform must be one of "
+            f"{[item.value for item in ClusterCorrelationTransform]}, got {transform!r}"
+        ) from None
+    if transform == ClusterCorrelationTransform.NONE:
+        return corr_matrix
+    return remove_first_principal_component(corr_matrix).correlation
 
 
 class DistanceTransform(str, Enum):

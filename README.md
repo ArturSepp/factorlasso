@@ -444,6 +444,63 @@ first-order recursion, so roll-forward updates cost O(1) per new
 observation. Spearman has no such property: ranks must be recomputed, at
 O(T log T) per update.
 
+#### Diagnostic dominant common-mode removal (0.15.0)
+
+`ClusterCorrelationTransform.REMOVE_PC1` is an opt-in robustness diagnostic.
+It removes the largest algebraic eigencomponent from the signed dependence
+matrix and restandardizes the residual matrix to unit diagonal before
+distance, linkage, and cutting. `NONE` remains the production default and is
+an exact numerical bypass.
+
+Inspect the transform and its audit quantities without fitting a model:
+
+```python
+from factorlasso import remove_first_principal_component
+
+diagnostic = remove_first_principal_component(Y.corr())
+diagnostic.removed_variance_share
+diagnostic.eigengap
+diagnostic.dominant_component_unique
+residual_correlation = diagnostic.correlation
+```
+
+The result also records the removed eigenvalue, minimum residual variance,
+number of neutral-filled missing pairs, and any numerical-floor assets that
+were retained as isolated residual series. To use the residual correlation in
+an HCGL/FCGL robustness fit:
+
+```python
+from factorlasso import ClusterCorrelationTransform, LassoModel, LassoModelType
+
+model = LassoModel(
+    model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+    cluster_correlation_transform=ClusterCorrelationTransform.REMOVE_PC1,
+).fit(x=X, y=Y)
+```
+
+The operation affects cluster discovery only: it does not residualize response
+returns, fitted factor loadings, or the assembled covariance matrix. Different
+clusters can still change fitted loadings and covariance *indirectly* when the
+group penalty or cluster-pooled sign rule consumes the diagnostic partition.
+This is why `REMOVE_PC1` is documented as a robustness specification rather
+than an automatic production replacement.
+
+For rolling point-in-time universes, pass a Boolean `eligibility` panel to
+`compute_rolling_smoothed_clusters`. FactorLasso intersects it with the data
+warmup mask, restricts the current dependence matrix, removes the common mode,
+and only then applies temporal smoothing. Thus a future-listed or currently
+ineligible asset cannot influence the PC estimated at date `t`.
+
+This operation removes one dominant common mode only. It is not random-matrix
+noise-bulk filtering and it does not project to a nearest correlation matrix;
+see Plerou et al. (2002), *Physical Review E* 65, 066126, and MacMahon and
+Garlaschelli (2015), *Physical Review X* 5, 021006.
+
+For like-for-like partition comparisons, set the same `n_clusters` in the raw
+and de-PC1 arms. Holding `cutoff_fraction` fixed is also valid, but then the
+diagnostic intentionally includes the change in partition granularity caused
+by the transformed distance scale.
+
 #### Cutting the dendrogram: `cutoff_fraction` or `n_clusters`
 
 `compute_clusters_from_corr_matrix` and `LassoModel` accept either. Use
@@ -886,7 +943,7 @@ software itself:
              Cluster-Pooled Sign Derivation and Hierarchical Group {LASSO}
              in {Python}},
   year    = {2026},
-  version = {0.14.0},
+  version = {0.15.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

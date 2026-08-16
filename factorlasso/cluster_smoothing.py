@@ -17,7 +17,12 @@ import pandas as pd
 from scipy.cluster import hierarchy as spc
 from scipy.spatial.distance import squareform
 
-from factorlasso.cluster_utils import _corr_to_distance, compute_clusters_from_corr_matrix
+from factorlasso.cluster_utils import (
+    ClusterCorrelationTransform,
+    _corr_to_distance,
+    apply_cluster_correlation_transform,
+    compute_clusters_from_corr_matrix,
+)
 from factorlasso.dependence_utils import DependenceMeasure, compute_dependence_matrix
 
 if TYPE_CHECKING:
@@ -280,6 +285,7 @@ def compute_rolling_smoothed_clusters(
     y: pd.DataFrame,
     estimation_dates: List[pd.Timestamp],
     lasso_model: "LassoModel",
+    eligibility: Optional[pd.DataFrame] = None,
 ) -> RollingClusterData:
     """Compute causal rolling clusters from response-return history.
 
@@ -296,6 +302,12 @@ def compute_rolling_smoothed_clusters(
         fitted or mutated.  An optional ``recluster_freq`` on
         ``PARTITION_BONUS`` or ``SIMILARITY_EWMA`` updates smoother state only
         at those anchors and holds the resulting partition between them.
+    eligibility : pandas.DataFrame, optional
+        Exact point-in-time asset eligibility. It must have Boolean values,
+        contain every estimation date, and have exactly the columns of ``y``.
+        It is intersected with the model's data-warmup mask. No membership is
+        forward-filled or inferred. The asset submatrix is selected before an
+        optional common-mode transform and before temporal smoothing.
 
     Returns
     -------
@@ -303,6 +315,23 @@ def compute_rolling_smoothed_clusters(
         Per-date partitions and dendrogram metadata plus trailing confidence.
     """
     dates = [pd.Timestamp(date) for date in sorted(estimation_dates)]
+    if eligibility is not None:
+        if not isinstance(eligibility, pd.DataFrame):
+            raise ValueError("eligibility must be a pandas DataFrame or None")
+        if not eligibility.columns.equals(y.columns):
+            raise ValueError("eligibility must have exactly the columns of y in the same order")
+        if not eligibility.index.is_unique:
+            raise ValueError("eligibility dates must be unique")
+        missing_dates = [date for date in dates if date not in eligibility.index]
+        if missing_dates:
+            raise ValueError(
+                f"eligibility is missing {len(missing_dates)} estimation dates: "
+                f"{missing_dates[:3]!r}"
+            )
+        if eligibility.isna().any().any() or not all(
+            pd.api.types.is_bool_dtype(dtype) for dtype in eligibility.dtypes
+        ):
+            raise ValueError("eligibility values must be non-missing Boolean values")
     if not dates:
         return RollingClusterData(
             clusters={}, linkages={}, cutoffs={}, co_association=pd.DataFrame()
@@ -316,6 +345,13 @@ def compute_rolling_smoothed_clusters(
     held: Optional[Tuple[pd.Series, np.ndarray, float]] = None
     held_eligible: Optional[pd.Series] = None
 
+    transform = ClusterCorrelationTransform(
+        lasso_model.cluster_correlation_transform
+    )
+    restrict_universe = (
+        eligibility is not None or transform != ClusterCorrelationTransform.NONE
+    )
+
     for date, corr in _iter_correlation_inputs(y, dates, lasso_model):
         y_current = y.loc[:date]
         if y_current.empty:
@@ -326,6 +362,16 @@ def compute_rolling_smoothed_clusters(
             eligible = y_current.columns[
                 y_current.notna().sum() >= lasso_model.warmup_period
             ]
+        if eligibility is not None:
+            eligible_at_date = eligibility.loc[date]
+            eligible = pd.Index(
+                [asset for asset in eligible if bool(eligible_at_date.loc[asset])]
+            )
+        if len(eligible) == 0:
+            raise ValueError(f"no eligible response assets at {date!r}")
+        if restrict_universe:
+            corr = corr.reindex(index=eligible, columns=eligible)
+        corr = apply_cluster_correlation_transform(corr, transform=transform)
         smoother = ClusterSmootherType(lasso_model.cluster_smoother_type)
         is_scheduled = lasso_model.recluster_freq is not None
         update_partition = not is_scheduled or held is None or _is_recluster_date(
@@ -340,7 +386,10 @@ def compute_rolling_smoothed_clusters(
                 held_eligible,
                 corr.reindex(index=eligible, columns=eligible),
             )
-            partition.loc[assigned.index] = assigned
+            if restrict_universe:
+                partition = assigned
+            else:
+                partition.loc[assigned.index] = assigned
             bundle = partition, held[1], held[2]
             held = bundle
             held_eligible = assigned
