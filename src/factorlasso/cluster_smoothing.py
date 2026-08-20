@@ -281,6 +281,121 @@ def _co_association_panel(
     return pd.DataFrame.from_dict(rows, orient="index").sort_index(axis=1)
 
 
+def _ewma_co_association_panel(
+    clusters: Dict[pd.Timestamp, pd.Series],
+    span: int,
+    adjust: bool,
+) -> pd.DataFrame:
+    """Compute EWMA peer co-cluster frequency for each current assignment."""
+    dates = sorted(clusters)
+    assignments = pd.DataFrame.from_dict(clusters, orient="index").reindex(dates)
+    available = assignments.notna().to_numpy()
+    missing = object()
+    labels = assignments.astype(object).where(assignments.notna(), missing).to_numpy()
+    column_positions = {asset: position for position, asset in enumerate(assignments.columns)}
+    decay = 1.0 - 2.0 / (span + 1.0)
+    rows = {}
+    for position, date in enumerate(dates):
+        current = clusters[date].dropna()
+        row = {}
+        for _, members in current.groupby(current).groups.items():
+            members = list(members)
+            if len(members) == 1:
+                row[members[0]] = 1.0
+                continue
+            for asset in members:
+                asset_position = column_positions[asset]
+                peer_positions = [
+                    column_positions[peer] for peer in members if peer != asset
+                ]
+                valid = (
+                    available[:position + 1, asset_position, np.newaxis]
+                    & available[:position + 1, peer_positions]
+                )
+                counts = valid.sum(axis=1)
+                observed_dates = counts > 0
+                if not observed_dates.any():
+                    row[asset] = np.nan
+                    continue
+                matches = (
+                    labels[:position + 1, peer_positions]
+                    == labels[:position + 1, asset_position, np.newaxis]
+                ) & valid
+                observations = np.full(position + 1, np.nan, dtype=float)
+                observations[observed_dates] = (
+                    matches[observed_dates].sum(axis=1) / counts[observed_dates]
+                )
+                if adjust:
+                    weights = decay ** np.arange(position, -1, -1, dtype=float)
+                    row[asset] = float(
+                        np.dot(observations[observed_dates], weights[observed_dates])
+                        / weights[observed_dates].sum()
+                    )
+                else:
+                    row[asset] = float(
+                        pd.Series(observations).ewm(span=span, adjust=False).mean().iloc[-1]
+                    )
+        rows[date] = row
+    return pd.DataFrame.from_dict(rows, orient="index").sort_index(axis=1).clip(0.0, 1.0)
+
+
+def compute_co_association_panel(
+    clusters: Dict[pd.Timestamp, pd.Series],
+    window: int = 6,
+    min_history: int = 1,
+    *,
+    span: Optional[int] = None,
+    adjust: bool = True,
+) -> pd.DataFrame:
+    """Return causal trailing or EWMA peer co-cluster frequencies.
+
+    Parameters
+    ----------
+    clusters : dict of pandas.Timestamp to pandas.Series
+        Point-in-time asset cluster assignments.
+    window : int
+        Number of trailing partition dates, including the current date.
+    min_history : int
+        Number of available partition dates required before estimated weights
+        are used. Earlier active assignments receive one, preserving unpooled
+        scoring during short history.
+    span : int, optional
+        EWMA span over observed partition dates through each current date. If
+        supplied, it replaces the flat trailing ``window`` calculation.
+    adjust : bool
+        Whether EWMA weights are renormalised over available history. The
+        default is the pandas ``adjust=True`` convention.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Dates by assets co-cluster frequencies in ``[0, 1]`` where observed.
+    """
+    if isinstance(window, bool) or not isinstance(window, (int, np.integer)) or window <= 0:
+        raise ValueError(f"window must be a positive integer, got {window!r}")
+    if (
+        isinstance(min_history, bool)
+        or not isinstance(min_history, (int, np.integer))
+        or min_history <= 0
+    ):
+        raise ValueError(f"min_history must be a positive integer, got {min_history!r}")
+    if span is not None and (
+        isinstance(span, bool) or not isinstance(span, (int, np.integer)) or span <= 0
+    ):
+        raise ValueError(f"span must be a positive integer or None, got {span!r}")
+    panel = (
+        _ewma_co_association_panel(clusters, span=int(span), adjust=adjust)
+        if span is not None
+        else _co_association_panel(clusters, window=int(window))
+    )
+    for position, date in enumerate(sorted(clusters)):
+        if position + 1 >= min_history:
+            break
+        active = clusters[date].dropna().index.intersection(panel.columns)
+        panel.loc[date, active] = 1.0
+    return panel
+
+
 def compute_rolling_smoothed_clusters(
     y: pd.DataFrame,
     estimation_dates: List[pd.Timestamp],

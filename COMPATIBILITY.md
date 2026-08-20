@@ -4,11 +4,11 @@
 This document specifies the surface that is committed to be stable and the
 process for changes to it.
 
-## Stable surface (0.15 series)
+## Stable surface (0.16 series)
 
-The names in `factorlasso.__all__` are the authoritative public API for 0.15. Backward-incompatible
+The names in `factorlasso.__all__` are the authoritative public API for 0.16. Backward-incompatible
 changes to their names, parameter signatures, default values, or documented return contracts will
-not happen within the 0.15.x patch line. Modules that happen to be visible through `dir(factorlasso)`
+not happen within the 0.16.x patch line. Modules that happen to be visible through `dir(factorlasso)`
 but are absent from `__all__` are not additional public entry points.
 
 ### Core estimator
@@ -73,6 +73,9 @@ but are absent from `__all__` are not additional public entry points.
 - `ClusterSmootherType`, `RollingClusterData`,
   `apply_partition_distance_bonus`, `compute_rolling_smoothed_clusters`, and
   `smooth_similarity_ewma`.
+- `compute_co_association_panel`, `ClusterStabilityStatistics`, and
+  `compute_cluster_stability_statistics`.
+- `StabilityPoolingType` and `score_with_stability_pooled_clusters`.
 
 ### Factor covariance assembly
 

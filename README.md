@@ -75,6 +75,46 @@ offline, full-panel reporting diagnostic and never a point-in-time trading signa
 table methods need only core dependencies. `RiskClusterReport.to_figures()` imports Matplotlib
 only when called, so plotting remains optional.
 
+## Causal cluster-stability statistics
+
+`compute_cluster_stability_statistics` turns a regular monthly or quarterly sequence of operating
+partitions into one reusable, point-in-time `ClusterStabilityStatistics` object. Its `w_i` panel
+contains asset-level peer co-association weights and `w_g` contains their current-cluster means.
+Both use only partitions observed through the row date. A configurable `min_history` returns exact
+unit weights during warmup, so opting into the statistics object alone cannot change an existing
+score.
+
+```python
+from factorlasso import (
+    StabilityPoolingType,
+    compute_cluster_stability_statistics,
+    score_with_stability_pooled_clusters,
+)
+
+stability = compute_cluster_stability_statistics(
+    rolling_clusters,
+    span_by_freq={"ME": 36, "QE": 18},
+    min_history=12,
+)
+scores = score_with_stability_pooled_clusters(
+    raw_signal,
+    rolling_clusters,
+    stability_weights=stability.w_i,
+    min_cluster_size=10,
+    pooling_type=StabilityPoolingType.ASSET_VARIANCE,
+)
+```
+
+Pooling changes only the within-cluster denominator: the cluster mean remains local, while its
+variance is shrunk toward the contemporaneous global variance. `CLUSTER_VARIANCE` uses one mean
+stability weight per group; `ASSET_VARIANCE` retains the asset weights. `NONE` is the default and
+reproduces the unpooled score exactly. Clusters at or below `min_cluster_size` continue to use the
+global mean and variance and never enter the pooling calculation.
+
+For direct diagnostics, `compute_co_association_panel` exposes the same causal weights with either
+the established flat trailing `window` or an opt-in EWMA `span`. Supplying neither new keyword
+preserves the pre-0.16 flat-window calculation exactly.
+
 ---
 
 ## Installation
@@ -921,7 +961,7 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {0.15.0},
+  version = {0.16.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```
@@ -935,7 +975,7 @@ Issues and pull requests welcome at
 
 See [`CHANGELOG.md`](CHANGELOG.md) for release history and
 [`COMPATIBILITY.md`](COMPATIBILITY.md) for the API stability policy
-covering the current 0.15 series.
+covering the current 0.16 series.
 
 ---
 

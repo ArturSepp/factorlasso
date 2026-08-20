@@ -59,8 +59,17 @@ from factorlasso.cluster_smoothing import (
     ClusterSmootherType,
     RollingClusterData,
     apply_partition_distance_bonus,
+    compute_co_association_panel,
     compute_rolling_smoothed_clusters,
     smooth_similarity_ewma,
+)
+from factorlasso.cluster_standardization import (
+    StabilityPoolingType,
+    score_with_stability_pooled_clusters,
+)
+from factorlasso.cluster_statistics import (
+    ClusterStabilityStatistics,
+    compute_cluster_stability_statistics,
 )
 from factorlasso.cluster_utils import (
     ClusterCorrelationTransform,
@@ -132,6 +141,8 @@ __all__ = [
     "LassoModelType",
     "LassoEstimationResult",
     "ClusterSmootherType",
+    "ClusterStabilityStatistics",
+    "StabilityPoolingType",
     "RollingClusterData",
     "solve_lasso_cvx_problem",
     "solve_group_lasso_cvx_problem",
@@ -164,7 +175,10 @@ __all__ = [
     "get_linkages_by_freq",
     "remove_first_principal_component",
     "apply_partition_distance_bonus",
+    "compute_co_association_panel",
+    "compute_cluster_stability_statistics",
     "compute_rolling_smoothed_clusters",
+    "score_with_stability_pooled_clusters",
     "smooth_similarity_ewma",
     # EWMA / group-loading utilities
     "compute_ewm",

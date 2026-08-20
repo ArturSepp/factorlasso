@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-08-20
+
+### Added — causal cluster-stability statistics and opt-in signal pooling
+
+- Added `ClusterStabilityStatistics` and `compute_cluster_stability_statistics`. The shared
+  statistics object computes point-in-time asset and current-cluster co-association weights from
+  rolling operating partitions, resolves explicit ME/QE EWMA spans, retains exact unit weights
+  during a configurable short-history period, and owns the boundary, size-confound, coverage, and
+  within-cluster-dispersion diagnostics.
+- Promoted `compute_co_association_panel` to the top-level public API. Its original flat trailing
+  window remains the default and is byte-identical to the private pre-0.16 calculation; the new
+  keyword-only `span` and `adjust` arguments opt into causal EWMA weighting.
+- Added `StabilityPoolingType` and `score_with_stability_pooled_clusters`. `NONE` is the default
+  exact unpooled within-cluster score. The opt-in `CLUSTER_VARIANCE` and `ASSET_VARIANCE` modes
+  retain the current cluster mean while shrinking its variance toward contemporaneous global
+  variance using, respectively, a cluster-average or asset-specific stability weight. The
+  existing global fallback for small clusters is unchanged and precedes pooling.
+
+### Changed
+
+- Exported the new statistics, accessor, pooling enum, and scorer from `factorlasso.__all__`.
+  No estimator default, covariance result, smoother rule, dependency, or production score changes
+  unless a consumer explicitly selects a pooling mode.
+- Updated the package metadata's Documentation URL from the GitHub README to the canonical Read
+  the Docs site.
+
 ## [0.15.0] - 2026-08-16
 
 ### Added - diagnostic dominant common-mode removal for cluster discovery
