@@ -30,7 +30,12 @@ autodoc_member_order = "bysource"
 numpydoc_show_class_members = False
 doctest_test_doctest_blocks = ""
 
-rst_prolog = """
+GOOGLE_SITE_VERIFICATION = "WJen7v3RzYStpnJNMjZL5X35cuWl__U-MBvZtgN65-g"
+
+rst_prolog = f"""
+.. meta::
+   :google-site-verification: {GOOGLE_SITE_VERIFICATION}
+
 .. |t| replace:: t
 .. |beta| replace:: beta
 """
