@@ -30,7 +30,7 @@ autodoc_member_order = "bysource"
 numpydoc_show_class_members = False
 doctest_test_doctest_blocks = ""
 
-GOOGLE_SITE_VERIFICATION = "WJen7v3RzYStpnJNMjZL5X35cuWl__U-MBvZtgN65-g"
+GOOGLE_SITE_VERIFICATION = "cddUZk3Gsd1MySw42Rwuq_rMzUDcMNkJWekObx-QS9Y"
 
 rst_prolog = f"""
 .. meta::
