@@ -1,5 +1,6 @@
 """Sphinx configuration for the FactorLasso documentation."""
 
+import os
 import sys
 from importlib.metadata import version as package_version
 from pathlib import Path
@@ -36,11 +37,26 @@ rst_prolog = """
 
 html_theme = "sphinx_rtd_theme"
 html_title = f"factorlasso {release}"
-html_baseurl = "https://factorlasso.readthedocs.io/"
+html_baseurl = os.environ.get(
+    "READTHEDOCS_CANONICAL_URL",
+    "https://factorlasso.readthedocs.io/en/latest/",
+)
 html_theme_options = {
     "navigation_depth": 3,
     "collapse_navigation": False,
 }
+
+
+def _use_root_canonical(app, pagename, templatename, context, doctree) -> None:
+    """Use the HTTPS version root, rather than index.html, as the landing canonical."""
+    if pagename == "index":
+        context["pageurl"] = app.config.html_baseurl
+
+
+def setup(app) -> None:
+    """Register documentation build hooks."""
+    app.connect("html-page-context", _use_root_canonical)
+
 
 linkcheck_anchors = True
 linkcheck_timeout = 20
