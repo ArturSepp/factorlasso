@@ -1,0 +1,36 @@
+# SHARED CI CORE v1.0 — T2 — synced 2026-08-22
+name: Static
+
+permissions:
+  contents: read
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MPLBACKEND: Agg
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Install uv and Python
+      uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      with:
+        python-version: "3.12"
+
+    - name: Check lint and stack invariants
+      run: uv run --locked --only-group lint ruff check src/factorlasso tests
+
+    - name: Check measured docstring coverage
+      if: ${{ !cancelled() }}
+      run: uv run --locked --only-group lint interrogate -v src/factorlasso

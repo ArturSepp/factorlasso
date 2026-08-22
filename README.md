@@ -1,17 +1,19 @@
 # factorlasso
 
+[![PyPI](https://img.shields.io/pypi/v/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
+[![Python](https://img.shields.io/pypi/pyversions/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
+[![License](https://img.shields.io/github/license/ArturSepp/factorlasso.svg?style=flat-square)](LICENSE)
+[![CI](https://github.com/ArturSepp/factorlasso/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ArturSepp/factorlasso/actions/workflows/ci.yml)
+[![Docs](https://readthedocs.org/projects/factorlasso/badge/?version=latest)](https://factorlasso.readthedocs.io/en/latest/)
+[![Downloads](https://static.pepy.tech/badge/factorlasso)](https://pepy.tech/project/factorlasso)
+[![Monthly](https://static.pepy.tech/badge/factorlasso/month)](https://pepy.tech/project/factorlasso)
+
 **`factorlasso` is a Python library for sparse multi-output factor-model estimation with sign
 constraints, prior-centred shrinkage, data-driven grouped penalties, and consistent factor
 covariance assembly.**
 
 It provides LASSO, Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering Group LASSO
 (FCGL), sparse-group, UniLasso, and cooperative penalties through auditable CVXPY formulations.
-
-[![PyPI](https://img.shields.io/pypi/v/factorlasso.svg)](https://pypi.org/project/factorlasso/)
-[![Python](https://img.shields.io/pypi/pyversions/factorlasso.svg)](https://pypi.org/project/factorlasso/)
-[![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
-[![Downloads](https://static.pepy.tech/badge/factorlasso)](https://pepy.tech/project/factorlasso)
-[![Monthly](https://static.pepy.tech/badge/factorlasso/month)](https://pepy.tech/project/factorlasso)
 
 **Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Hierarchical
 Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for

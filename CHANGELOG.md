@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Retired the development-only `dev` extra. Repository tests, static checks, and dependency
+  audits now use the PEP 735 `test`, `lint`, and `audit` dependency groups; the user-facing
+  `docs` and `simulations` extras are unchanged.
+
 ## [0.16.0] - 2026-08-20
 
 ### Added — causal cluster-stability statistics and opt-in signal pooling

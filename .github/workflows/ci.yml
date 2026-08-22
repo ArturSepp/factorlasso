@@ -1,4 +1,8 @@
+# SHARED CI CORE v1.0 — T2 — synced 2026-08-22
 name: CI
+
+permissions:
+  contents: read
 
 on:
   push:
@@ -6,92 +10,108 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MPLBACKEND: Agg
+
 jobs:
   test:
+    name: pytest (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
+      # The full OS × Python product is an existing FactorLasso compatibility gate.
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.11', '3.12', '3.13', '3.14']
-
-    env:
-      MPLBACKEND: Agg
-
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          - {os: ubuntu-latest, python-version: "3.12", primary: true}
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          allow-prereleases: false
+    - name: Install uv and Python ${{ matrix.python-version }}
+      uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      with:
+        python-version: ${{ matrix.python-version }}
 
-      - name: Install package with dev extras
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+    - name: Sync the test environment
+      # The primary cell proves lock fidelity; floating cells test what a fresh install resolves.
+      # Resolution is retried because observed failures are transport failures, not test failures.
+      shell: bash
+      run: |
+        sync_cmd=(uv sync --group test ${{ matrix.primary && '--locked' || '--upgrade' }})
+        for attempt in 1 2 3; do
+          if "${sync_cmd[@]}"; then exit 0; fi
+          if [ "$attempt" -eq 3 ]; then echo "::error::uv sync failed after 3 attempts"; exit 1; fi
+          delay=$((attempt * 30 - 15))
+          echo "::warning::uv sync attempt $attempt failed; retrying in ${delay}s"
+          sleep "$delay"
+        done
 
-      - name: Lint
-        run: ruff check src/factorlasso/ tests/
+    - name: Run tests with coverage at the declared floor
+      if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10' }}
+      run: uv run --no-sync pytest --cov=factorlasso --cov-report=term-missing -q
 
-      - name: Run tests
-        run: pytest --cov=factorlasso --cov-report=term-missing -q
+    - name: Run tests
+      if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10') }}
+      run: uv run --no-sync pytest
 
   wheel:
+    name: built wheel (core install)
     runs-on: ubuntu-latest
-    env:
-      MPLBACKEND: Agg
-
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+    - name: Install uv and Python
+      uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      with:
+        python-version: "3.12"
 
-      - name: Build distributions
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install build twine
-          python -m build
-          python -m twine check dist/*
+    - name: Build the wheel from the source distribution
+      run: |
+        uv build --sdist --clear --out-dir dist
+        uv build --wheel dist/*.tar.gz --out-dir dist
 
-      - name: Inspect distribution contents
-        run: >-
-          python -c "import glob, tarfile, zipfile;
-          wheel = glob.glob('dist/*.whl')[0]; sdist = glob.glob('dist/*.tar.gz')[0];
-          wheel_names = zipfile.ZipFile(wheel).namelist(); sdist_names = tarfile.open(sdist).getnames();
-          forbidden = {'agents', '.claude', 'papers', 'examples', 'benchmarks'};
-          assert 'factorlasso/__init__.py' in wheel_names;
-          assert any(name.endswith('/src/factorlasso/__init__.py') for name in sdist_names);
-          assert not any('tests' in name.split('/') for name in wheel_names);
-          assert not any(forbidden.intersection(name.split('/')) for name in wheel_names + sdist_names)"
+    - name: Inspect distribution contents
+      run: >-
+        uv run --no-project python -c "import glob, tarfile, zipfile;
+        wheel = glob.glob('dist/*.whl')[0]; sdist = glob.glob('dist/*.tar.gz')[0];
+        wheel_names = zipfile.ZipFile(wheel).namelist(); sdist_names = tarfile.open(sdist).getnames();
+        forbidden = {'agents', '.claude', 'papers', 'examples', 'benchmarks'};
+        assert 'factorlasso/__init__.py' in wheel_names;
+        assert any(name.endswith('/src/factorlasso/__init__.py') for name in sdist_names);
+        assert not any('tests' in name.split('/') for name in wheel_names);
+        assert not any(forbidden.intersection(name.split('/')) for name in wheel_names + sdist_names)"
 
-      - name: Install wheel in a clean core environment
-        run: |
-          python -m venv "$RUNNER_TEMP/factorlasso-wheel"
-          "$RUNNER_TEMP/factorlasso-wheel/bin/python" -m pip install dist/*.whl
+    - name: Install wheel in a clean core environment
+      run: |
+        uv venv --python 3.12 "$RUNNER_TEMP/factorlasso-wheel"
+        uv pip install --python "$RUNNER_TEMP/factorlasso-wheel/bin/python" dist/*.whl
 
-      - name: Verify core wheel outside the checkout
-        working-directory: ${{ runner.temp }}
-        run: >-
-          "$RUNNER_TEMP/factorlasso-wheel/bin/python" -c "import factorlasso, importlib.metadata as md, importlib.util as util;
-          assert md.version('factorlasso') == factorlasso.__version__;
-          assert util.find_spec('sklearn') is None;
-          assert util.find_spec('matplotlib') is None;
-          assert factorlasso.LassoModel().get_params()['reg_lambda'] == 1e-5"
+    - name: Verify core wheel outside the checkout
+      working-directory: ${{ runner.temp }}
+      run: >-
+        "$RUNNER_TEMP/factorlasso-wheel/bin/python" -c "import factorlasso, importlib.metadata as md, importlib.util as util;
+        assert md.version('factorlasso') == factorlasso.__version__;
+        assert util.find_spec('sklearn') is None;
+        assert util.find_spec('matplotlib') is None;
+        assert factorlasso.LassoModel().get_params()['reg_lambda'] == 1e-5"
 
-      - name: Run source tests against the installed wheel
-        working-directory: ${{ runner.temp }}
-        run: |
-          "$RUNNER_TEMP/factorlasso-wheel/bin/python" -m pip install pytest pytest-cov scikit-learn matplotlib
-          "$RUNNER_TEMP/factorlasso-wheel/bin/python" -m pytest --import-mode=importlib "$GITHUB_WORKSPACE/tests" --cov=factorlasso --cov-report=term-missing --cov-fail-under=90 -q
+    - name: Run source tests against the installed wheel
+      working-directory: ${{ runner.temp }}
+      run: |
+        uv pip install --python "$RUNNER_TEMP/factorlasso-wheel/bin/python" pytest pytest-cov scikit-learn matplotlib
+        "$RUNNER_TEMP/factorlasso-wheel/bin/python" -m pytest --import-mode=importlib "$GITHUB_WORKSPACE/tests" --cov=factorlasso --cov-report=term-missing --cov-fail-under=90 -q
 
-      - name: Install and verify the sdist independently
-        run: |
-          python -m venv "$RUNNER_TEMP/factorlasso-sdist"
-          "$RUNNER_TEMP/factorlasso-sdist/bin/python" -m pip install dist/*.tar.gz
-          cd "$RUNNER_TEMP"
-          "$RUNNER_TEMP/factorlasso-sdist/bin/python" -c "import factorlasso, importlib.metadata as md; assert md.version('factorlasso') == factorlasso.__version__"
+    - name: Install and verify the sdist independently
+      run: |
+        uv venv --python 3.12 "$RUNNER_TEMP/factorlasso-sdist"
+        uv pip install --python "$RUNNER_TEMP/factorlasso-sdist/bin/python" dist/*.tar.gz
+        cd "$RUNNER_TEMP"
+        "$RUNNER_TEMP/factorlasso-sdist/bin/python" -c "import factorlasso, importlib.metadata as md; assert md.version('factorlasso') == factorlasso.__version__"
