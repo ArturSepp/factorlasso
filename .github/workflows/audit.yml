@@ -1,0 +1,116 @@
+# SHARED CI CORE v1.0 — T2 — synced 2026-08-22
+name: Audit
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  push:
+    branches: [main]
+    paths:
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/audit.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/audit.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MPLBACKEND: Agg
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Install uv and Python
+      uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      with:
+        python-version: "3.12"
+
+    - name: Resolve the latest all-extras tree
+      run: |
+        uv pip compile --all-extras --python-version 3.12 --quiet \
+          pyproject.toml -o "$RUNNER_TEMP/requirements-audit.txt"
+
+    - name: Audit the latest dependency tree
+      run: uv run --locked --only-group audit pip-audit -r "$RUNNER_TEMP/requirements-audit.txt"
+
+    - name: Audit the locked environment
+      if: ${{ !cancelled() }}
+      run: |
+        uv export --locked --all-extras --no-emit-project --quiet \
+          --format requirements-txt -o "$RUNNER_TEMP/requirements-locked.txt"
+        uv run --locked --only-group audit pip-audit -r "$RUNNER_TEMP/requirements-locked.txt"
+
+    - name: Assert the five-package JSS dependency boundary
+      if: ${{ !cancelled() }}
+      run: |
+        uv pip compile --python-version 3.12 --quiet \
+          pyproject.toml -o "$RUNNER_TEMP/requirements-core.txt"
+        uv pip compile --group test --python-version 3.12 --quiet \
+          pyproject.toml -o "$RUNNER_TEMP/requirements-test.txt"
+        uv run --no-project python - "$RUNNER_TEMP/requirements-core.txt" \
+                                    "$RUNNER_TEMP/requirements-test.txt" <<'PY'
+        import re
+        import sys
+        import tomllib
+
+        def normalise(name):
+            return name.lower().replace("_", "-").replace(".", "-")
+
+        def requirement_name(spec):
+            return normalise(re.split(r"[<>=!~; \[]", spec, maxsplit=1)[0])
+
+        with open("pyproject.toml", "rb") as fh:
+            cfg = tomllib.load(fh)
+
+        expected_core = {"numpy", "pandas", "scipy", "cvxpy", "openpyxl"}
+        declared_core = {requirement_name(spec) for spec in cfg["project"]["dependencies"]}
+        assert declared_core == expected_core, (
+            "JSS core dependency surface changed: "
+            f"expected {sorted(expected_core)}, found {sorted(declared_core)}"
+        )
+
+        tidy = cfg["tool"]["ruff"]["lint"]["flake8-tidy-imports"]
+        banned_stack = {normalise(name) for name in tidy["banned-api"]}
+        expected_banned = {
+            "qis",
+            "optimalportfolios",
+            "trendfollowing",
+            "privateassets",
+            "stochvolmodels",
+        }
+        assert banned_stack == expected_banned, "the five-package leaf boundary drifted"
+
+        def resolved(path):
+            names = set()
+            for line in open(path, encoding="utf-8"):
+                line = line.split("#", 1)[0].strip()
+                if line and not line.startswith("-"):
+                    names.add(normalise(line.split("==", 1)[0]))
+            return names
+
+        core = resolved(sys.argv[1])
+        test = resolved(sys.argv[2])
+        for label, names in (("core", core), ("test", test)):
+            leaked = sorted(names & banned_stack)
+            assert not leaked, f"{label} dependency tree contains banned stack packages: {leaked}"
+
+        optional_in_core = sorted(core & {"scikit-learn", "matplotlib"})
+        assert not optional_in_core, f"optional test packages reached the core tree: {optional_in_core}"
+        print("JSS dependency boundary clean: five core packages; no banned stack packages")
+        PY

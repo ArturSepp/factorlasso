@@ -68,23 +68,22 @@ the checkout so repository files cannot shadow an incomplete artifact.
 ## Commands
 
 ```bash
-pip install -e ".[dev]"                                   # editable install with dev tools
-pytest                                                    # full suite (testpaths = tests)
-pytest tests/test_integration.py -v                       # one module
-pytest --cov=factorlasso --cov-report=term-missing -q      # as CI runs it
-ruff check src/factorlasso/ tests/                        # lint, as CI runs it
+uv sync --locked --group test                              # exact test environment
+uv run --no-sync pytest                                   # full suite (testpaths = tests)
+uv run --no-sync pytest tests/test_integration.py -v      # one module
+uv run --no-sync pytest --cov=factorlasso --cov-report=term-missing -q
+uv run --locked --only-group lint ruff check src/factorlasso tests
 ```
 
-Optional extras: `dev`, `docs`, `simulations` (for `papers/jss_2026/simulations/`).
-Supported Python is >= 3.10; CI runs 3.11 – 3.14.
+Optional extras: `docs`, `simulations` (for `papers/jss_2026/simulations/`). Development tools
+live in the `test`, `lint`, and `audit` dependency groups. Supported Python is >= 3.10; CI runs
+3.10 – 3.14 on Linux and preserves the repository's full cross-platform product matrix.
 
 ## Conventions
 
 - Test files are named `test_*.py` and live in the top-level `tests/` directory.
-- Line length 100 (`ruff`, rules `E`, `F`, `W`, `I`).
-  `I` is selected here and nowhere else in the stack — deliberate, because this package's imports
-  do not follow the scientific-stack-first grouping the other repositories use. Do not "fix" it in
-  either direction.
+- Line length 100 (`ruff`, baseline rules `E`, `F`, `W`). Import sorting is not gated; preserve the
+  surrounding file's established grouping instead of mechanically reformatting it.
 - **Two invariants are enforced by ruff rather than written down**, both green on the package as
   it stands, so a violation is always something you just introduced:
   - `TID251` fails any import of `qis`, `optimalportfolios`, `trendfollowing`, `privateassets` or
@@ -94,7 +93,7 @@ Supported Python is >= 3.10; CI runs 3.11 – 3.14.
     imports, the code belongs in the consumer — say so rather than adding it.
   - `TID253` fails a **module-level** import of `sklearn` anywhere in `src/factorlasso/`. See the
     constraint below for the one deliberate exception and its shape. `tests/`, `benchmarks/` and
-    `papers/` are exempt in `per-file-ignores`: scikit-learn is a legitimate dev dependency there.
+    `papers/` are exempt in `per-file-ignores`: scikit-learn is a legitimate test dependency there.
   - `ICN` pins `import numpy as np` and `import pandas as pd`. Ruff's default alias map is
     replaced rather than extended, so other libraries keep their own aliasing.
 - The estimator follows scikit-learn conventions: constructor parameters are stored
@@ -111,14 +110,15 @@ Supported Python is >= 3.10; CI runs 3.11 – 3.14.
   `nu = n - k - 1` charge is heuristic and the calibration does not account for the loadings being
   estimated. A statistic without a source in the header reads as though it was derived here.
 - Runtime dependencies are numpy, pandas, scipy, cvxpy and openpyxl. scikit-learn is a
-  **dev/test** dependency only: the package is compatible with sklearn but must not
+  **test-group** dependency only: the package is compatible with sklearn but must not
   import it at runtime.
 
 ## Constraints — do not do these
 
 - Do not import scikit-learn at module level in package code; `ruff`'s `TID253` fails if you do.
   Compatibility is achieved by following its conventions, not by depending on it — `scikit-learn`
-  is in the `dev` extra only, and `import factorlasso` leaves `sklearn` absent from `sys.modules`.
+  is in the `test` dependency group only, and `import factorlasso` leaves `sklearn` absent from
+  `sys.modules`.
   **One deliberate exception:** `__sklearn_tags__` in `lasso_estimator.py` imports
   `sklearn.utils` inside the method behind a `try/except`, so an older scikit-learn that does not
   call the hook falls through and a missing scikit-learn cannot break an import. It runs only when

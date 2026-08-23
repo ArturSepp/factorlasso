@@ -1,0 +1,53 @@
+name: Feature request
+description: Propose a focused addition within FactorLasso's sparse factor-model boundary.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: research_task
+    attributes:
+      label: Research or user task
+      description: Describe the estimation or covariance task before proposing an API.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_gap
+    attributes:
+      label: Current limitation
+      description: Explain why the public API and documented workflows do not already handle it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include shapes, defaults, missing-data behavior, numerical conventions, and dependency implications.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Sparse estimator or cross-validation
+        - Sign constraints or grouped penalties
+        - Factor covariance or diagnostics
+        - scikit-learn compatibility
+        - Documentation or example
+        - Packaging or developer tooling
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Project boundary
+      options:
+        - label: This does not silently change estimator defaults, penalty scaling, or numerical output.
+          required: true
+        - label: This does not require proprietary data or expand the five-package runtime dependency surface.
+          required: true
+        - label: I considered whether the functionality belongs in a downstream consumer such as optimalportfolios.
+          required: true
