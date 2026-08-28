@@ -50,7 +50,7 @@ references:
         family-names: Hansen
       - given-names: Mika
         family-names: Kastenholz
-    title: "Capital Market Assumptions Using Multi-Asset Tradable Factors: The MATF-CMA Framework"
+    title: "Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors"
     journal: "Journal of Portfolio Management"
     year: 2026
     notes: "Methodology paper documenting the framework in which factorlasso is deployed; forthcoming."
@@ -70,17 +70,6 @@ references:
     end: 120
     year: 2026
     url: "https://eprints.pm-research.com/17511/143431/index.html"
-  - type: article
-    authors:
-      - given-names: Artur
-        family-names: Sepp
-      - given-names: Emilie
-        family-names: Hansen
-      - given-names: Mika
-        family-names: Kastenholz
-    title: "Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors"
-    journal: "Journal of Portfolio Management, forthcoming"
-    year: 2026
   - type: article
     authors:
       - given-names: Sourav

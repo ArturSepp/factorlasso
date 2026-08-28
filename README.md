@@ -1,19 +1,20 @@
 # factorlasso
 
-[![PyPI](https://img.shields.io/pypi/v/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
-[![Python](https://img.shields.io/pypi/pyversions/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
-[![License](https://img.shields.io/github/license/ArturSepp/factorlasso.svg?style=flat-square)](LICENSE)
-[![CI](https://github.com/ArturSepp/factorlasso/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ArturSepp/factorlasso/actions/workflows/ci.yml)
-[![Docs](https://readthedocs.org/projects/factorlasso/badge/?version=latest)](https://factorlasso.readthedocs.io/en/latest/)
-[![Downloads](https://static.pepy.tech/badge/factorlasso)](https://pepy.tech/project/factorlasso)
-[![Monthly](https://static.pepy.tech/badge/factorlasso/month)](https://pepy.tech/project/factorlasso)
-
-**`factorlasso` is a Python library for sparse multi-output factor-model estimation with sign
-constraints, prior-centred shrinkage, data-driven grouped penalties, and consistent factor
-covariance assembly.**
+**`factorlasso` estimates sparse multi-output factor models with sign constraints, prior-centred
+shrinkage, data-driven grouped penalties, and consistent factor covariance assembly.**
 
 It provides LASSO, Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering Group LASSO
 (FCGL), sparse-group, UniLasso, and cooperative penalties through auditable CVXPY formulations.
+
+**Install:** `pip install factorlasso` · **Import:** `factorlasso` · **Status:** Beta
+
+[![PyPI](https://img.shields.io/pypi/v/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
+[![Python](https://img.shields.io/pypi/pyversions/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
+[![CI](https://github.com/ArturSepp/factorlasso/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ArturSepp/factorlasso/actions/workflows/ci.yml)
+[![Docs](https://readthedocs.org/projects/factorlasso/badge/?version=latest)](https://factorlasso.readthedocs.io/en/latest/)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg?style=flat-square)](LICENSE)
+[![Downloads](https://static.pepy.tech/badge/factorlasso)](https://pepy.tech/project/factorlasso)
+[![Monthly](https://static.pepy.tech/badge/factorlasso/month)](https://pepy.tech/project/factorlasso)
 
 **Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Hierarchical
 Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for
@@ -68,6 +69,49 @@ It is written in pure numpy/pandas/scipy/cvxpy. No numba, no custom
 coordinate descent. The solver is CVXPY (default `CLARABEL`), so problem
 formulation is explicit and auditable.
 
+## Installation
+
+```bash
+pip install factorlasso
+```
+
+Requires Python ≥ 3.10, CVXPY ≥ 1.3, and numpy / pandas / scipy / openpyxl.
+
+## Five-minute quickstart
+
+```python
+import numpy as np
+import pandas as pd
+from factorlasso import LassoModel, LassoModelType
+
+rng = np.random.default_rng(0)
+T, M, N = 200, 4, 10
+X = pd.DataFrame(rng.standard_normal((T, M)), columns=[f"f{i}" for i in range(M)])
+Y = pd.DataFrame(rng.standard_normal((T, N)), columns=[f"y{i}" for i in range(N)])
+
+model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5).fit(x=X, y=Y)
+
+print(model.coef_.shape)       # (N, M) estimated β
+print(model.intercept_.shape)  # (N,) estimated α
+print(model.predict(X).shape)  # fitted response panel
+```
+
+```text
+(10, 4)
+(10,)
+(200, 10)
+```
+
+The API mirrors scikit-learn: `fit(x, y)`, `predict(x)`, `score(x, y)`,
+`get_params()`, `set_params()`. Fitted attributes carry a trailing underscore.
+`fit`/`predict`/`score` accept NumPy arrays as well as pandas objects, and the
+estimator declares `__sklearn_tags__`, so it composes directly with
+`sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`. A fitted
+model also exposes `summary()`. The `plot_signs()` heatmap requires Matplotlib,
+which is not a runtime dependency and must be installed separately.
+
+---
+
 ## Offline cluster lineage
 
 `analyze_cluster_lineage` turns independently estimated per-date risk clusters in a
@@ -119,47 +163,7 @@ preserves the pre-0.16 flat-window calculation exactly.
 
 ---
 
-## Installation
-
-```bash
-pip install factorlasso
-```
-
-Requires Python ≥ 3.10, CVXPY ≥ 1.3, and numpy / pandas / scipy / openpyxl.
-
----
-
-## Quickstart
-
-```python
-import numpy as np
-import pandas as pd
-from factorlasso import LassoModel, LassoModelType
-
-rng = np.random.default_rng(0)
-T, M, N = 200, 4, 10
-X = pd.DataFrame(rng.standard_normal((T, M)), columns=[f"f{i}" for i in range(M)])
-Y = pd.DataFrame(rng.standard_normal((T, N)), columns=[f"y{i}" for i in range(N)])
-
-model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5).fit(x=X, y=Y)
-
-model.coef_         # (N, M) estimated β
-model.intercept_    # (N,) estimated α
-model.predict(X)    # Ŷ
-model.score(X, Y)   # mean R²
-```
-
-The API mirrors scikit-learn: `fit(x, y)`, `predict(x)`, `score(x, y)`,
-`get_params()`, `set_params()`. Fitted attributes carry a trailing underscore.
-`fit`/`predict`/`score` accept NumPy arrays as well as pandas objects, and the
-estimator declares `__sklearn_tags__`, so it composes directly with
-`sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`. A fitted
-model also exposes `summary()` (a text fit report) and `plot_signs()` (a
-heatmap of the derived sign matrix).
-
----
-
-## Motivation
+## Why factorlasso
 
 Factor models are central to quantitative finance, underpinning the
 commercial risk systems in industry use (among others, MSCI Barra, Axioma,
@@ -192,7 +196,7 @@ under [Citation](#citation).
 
 ---
 
-## What makes it different
+## Key differentiators
 
 ### 1. Per-element sign constraints
 
@@ -373,7 +377,7 @@ References:
 * Zou, H. (2006). The adaptive Lasso and its oracle properties.
   *J. Amer. Stat. Assoc.* 101(476), 1418–1429.
 
-### 3. Prior-centered regularisation
+### 3. Prior-centred regularisation
 
 Pass a `(N × M)` DataFrame `factors_beta_prior` to penalise `‖β − β₀‖` instead
 of `‖β‖`. The prior is a soft target, not a hard constraint — the penalty
@@ -882,19 +886,20 @@ Four runnable examples in [`examples/`](examples/):
 ## Testing
 
 ```bash
-pip install -e ".[dev]"
-pytest
+uv sync --locked --group test
+uv run --no-sync pytest
+uv run --locked --only-group lint ruff check src/factorlasso tests
 ```
 
-The suite currently collects 500 tests and reports 92.67% line coverage, including numerical parity
-tests against `qis` for the EWMA primitives and against `scikit-learn` for the
-LASSO path.
+The suite covers estimator contracts, independent EWMA references, covariance assembly, cluster
+diagnostics, and numerical parity with scikit-learn and skglm on their shared LASSO surface.
 
 ---
 
 ## Ecosystem
 
-This package is part of an open-source Python stack for quantitative finance — full catalogue at [github.com/ArturSepp](https://github.com/ArturSepp):
+This package is part of an open-source Python stack for quantitative finance. The
+[ArturSepp profile](https://github.com/ArturSepp) is the canonical full catalogue:
 
 | Package | Purpose |
 |---|---|
@@ -902,14 +907,19 @@ This package is part of an open-source Python stack for quantitative finance —
 | [`optimalportfolios`](https://github.com/ArturSepp/OptimalPortfolios) | Portfolio construction and backtesting |
 | [`factorlasso`](https://github.com/ArturSepp/factorlasso) *(this package)* | Sparse factor models and factor covariance estimation |
 | [`bbg-fetch`](https://github.com/ArturSepp/BloombergFetch) | Bloomberg data fetching |
-| [`trendfollowing`](https://github.com/ArturSepp/TrendFollowingSystems) | Trend-following systems: closed-form theory and replication |
-| [`goal-based-allocation`](https://github.com/ArturSepp/GoalBasedAllocation) | Dynamic MV allocation under regime-switching jump-diffusions |
-| [`stochvolmodels`](https://github.com/ArturSepp/StochVolModels) | Stochastic volatility pricing analytics |
+| [`option-chain-analytics`](https://github.com/ArturSepp/OptionChainAnalytics) | Point-in-time option-chain normalisation, reconstruction, querying, and visualisation |
 | [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) | Vectorised vanilla option pricers and implied volatility fitters |
+| [`stochvolmodels`](https://github.com/ArturSepp/StochVolModels) | Stochastic volatility pricing analytics |
+| [`trendfollowing`](https://github.com/ArturSepp/TrendFollowingSystems) | Trend-following systems: closed-form theory and replication |
+| [`privateassets`](https://github.com/ArturSepp/privateassets) | Money-weighted multi-factor alpha from private-asset cash flows |
+| [`goal-based-allocation`](https://github.com/ArturSepp/GoalBasedAllocation) | Dynamic MV allocation under regime-switching jump-diffusions |
 
-Dependency links within the stack: `optimalportfolios` builds on `qis` and `factorlasso`; `trendfollowing` builds on `qis`.
+`factorlasso` has no runtime dependency on another package in the stack. It is consumed by
+`optimalportfolios` and, through its optional `factors` extra, by `privateassets`.
 
 ## Citation
+
+A machine-readable citation is available in [`CITATION.cff`](CITATION.cff).
 
 If you use `factorlasso` in academic work, please cite the software
 paper describing the package (submitted to the *Journal of Statistical
@@ -940,8 +950,8 @@ software itself:
 
 @article{SeppHansenKastenholz2026MATF,
   author  = {Sepp, Artur and Hansen, Emilie and Kastenholz, Mika},
-  title   = {Capital Market Assumptions Using Multi-Asset Tradable Factors:
-             The {MATF-CMA} Framework},
+  title   = {Capital Market Assumptions and Strategic Asset Allocation Using
+             Multi-Asset Tradable Factors},
   journal = {Journal of Portfolio Management},
   year    = {2026},
   note    = {Forthcoming.}
@@ -970,10 +980,12 @@ software itself:
 
 ---
 
-## Contributing & feedback
+## Feedback & contributing
 
-Issues and pull requests welcome at
-<https://github.com/ArturSepp/factorlasso>.
+- **Bug:** use the [bug-report form](https://github.com/ArturSepp/factorlasso/issues/new?template=bug_report.yml) with the version, Python/platform, a minimal reproducer, and expected versus actual output.
+- **Feature:** use the [feature-request form](https://github.com/ArturSepp/factorlasso/issues/new?template=feature_request.yml) and describe the estimation goal, current workaround, and smallest useful API. In particular: which grouping, constraint, or covariance diagnostic is missing?
+- **Question or methodology:** search or open an [issue](https://github.com/ArturSepp/factorlasso/issues) and identify the estimator, paper section, or convention involved.
+- **Contribution:** follow [CONTRIBUTING.md](CONTRIBUTING.md) and look for [`good first issue`](https://github.com/ArturSepp/factorlasso/labels/good%20first%20issue) or [`help wanted`](https://github.com/ArturSepp/factorlasso/labels/help%20wanted) work.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for release history and
 [`COMPATIBILITY.md`](COMPATIBILITY.md) for the API stability policy
