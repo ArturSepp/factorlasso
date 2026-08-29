@@ -16,12 +16,24 @@ Regression tests for three v0.5.1 fixes.
 3. ``LassoModel.copy`` returns a fresh, unfitted estimator and does not
    corrupt ``estimation_result_`` into a plain dict.
 """
+import inspect
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from factorlasso import LassoModel, LassoModelType
 from factorlasso.lasso_estimator import LassoEstimationResult
 from factorlasso.sign_constraints import _compute_sign_vector
+
+
+def test_cluster_span_fields_are_appended_to_the_constructor_signature():
+    """Do not shift any historical positional dataclass constructor field."""
+    parameters = list(inspect.signature(LassoModel).parameters)
+    assert parameters[-2:] == [
+        "cluster_correlation_span",
+        "cluster_correlation_span_freq_dict",
+    ]
 
 # ─────────────────────────────────────────────────────────────────────────
 # 1. Cluster-mode slope under heterogeneous NaN in x
@@ -315,3 +327,88 @@ def test_span_set_clusters_on_ewm_corr():
     a = m.clusters_.reindex(Y.columns).to_numpy()
     b = ref.reindex(Y.columns).to_numpy()
     np.testing.assert_array_equal(a[:, None] == a[None, :], b[:, None] == b[None, :])
+
+
+def test_cluster_correlation_span_is_independent_of_beta_span():
+    """Hold the clustering EWMA fixed while changing the beta-estimation EWMA."""
+    from factorlasso import compute_clusters_from_corr_matrix
+    from factorlasso.ewm_utils import compute_ewm_covar
+    from factorlasso.lasso_estimator import get_x_y_np
+
+    rng = np.random.default_rng(1208)
+    t, n, m = 180, 16, 4
+    x = pd.DataFrame(rng.standard_normal((t, m)))
+    beta = rng.standard_normal((n, m)) * 0.4
+    y = pd.DataFrame(
+        x.to_numpy() @ beta.T + 0.5 * rng.standard_normal((t, n)),
+        columns=[f"a{k}" for k in range(n)],
+    )
+    base = LassoModel(
+        model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+        reg_lambda=1e-4,
+        span=24,
+        cluster_correlation_span=24,
+    ).fit(x=x, y=y)
+    longer_beta = LassoModel(
+        model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+        reg_lambda=1e-4,
+        span=48,
+        cluster_correlation_span=24,
+    ).fit(x=x, y=y)
+
+    base_labels = base.clusters_.reindex(y.columns).to_numpy()
+    longer_labels = longer_beta.clusters_.reindex(y.columns).to_numpy()
+    _, cluster_y, cluster_mask = get_x_y_np(x, y, span=24, demean=True)
+    reference_corr = compute_ewm_covar(
+        a=np.where(cluster_mask > 0, cluster_y, np.nan),
+        span=24,
+        is_corr=True,
+    )
+    reference, _, _ = compute_clusters_from_corr_matrix(
+        pd.DataFrame(reference_corr, index=y.columns, columns=y.columns)
+    )
+    reference_labels = reference.reindex(y.columns).to_numpy()
+    np.testing.assert_array_equal(
+        base_labels[:, None] == base_labels[None, :],
+        longer_labels[:, None] == longer_labels[None, :],
+    )
+    np.testing.assert_array_equal(
+        longer_labels[:, None] == longer_labels[None, :],
+        reference_labels[:, None] == reference_labels[None, :],
+    )
+    assert not np.allclose(base.coef_.to_numpy(), longer_beta.coef_.to_numpy())
+    assert base.effective_cluster_correlation_span_ == 24
+    assert longer_beta.effective_cluster_correlation_span_ == 24
+
+
+def test_cluster_correlation_span_defaults_to_effective_beta_span():
+    """Omitting the clustering span preserves the historical coupled-span path."""
+    rng = np.random.default_rng(1209)
+    x = pd.DataFrame(rng.standard_normal((120, 3)))
+    y = pd.DataFrame(rng.standard_normal((120, 8)))
+    implicit = LassoModel(
+        model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+        reg_lambda=1e-4,
+        span=24,
+    ).fit(x=x, y=y, span=36)
+    explicit = LassoModel(
+        model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+        reg_lambda=1e-4,
+        span=24,
+    ).fit(x=x, y=y, span=36, cluster_correlation_span=36)
+
+    pd.testing.assert_series_equal(implicit.clusters_, explicit.clusters_)
+    np.testing.assert_array_equal(implicit.linkage_, explicit.linkage_)
+    np.testing.assert_allclose(
+        implicit.coef_.to_numpy(), explicit.coef_.to_numpy(), atol=0.0, rtol=0.0
+    )
+    assert implicit.cutoff_ == explicit.cutoff_
+    assert implicit.effective_span_ == 36
+    assert implicit.effective_cluster_correlation_span_ == 36
+
+
+@pytest.mark.parametrize("invalid_span", [0.0, np.nan, np.inf])
+def test_invalid_cluster_correlation_span_is_refused(invalid_span):
+    """Validate the independent span under its own public parameter name."""
+    with pytest.raises(ValueError, match="cluster_correlation_span"):
+        LassoModel(cluster_correlation_span=invalid_span)

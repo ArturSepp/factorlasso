@@ -4,11 +4,11 @@
 This document specifies the surface that is committed to be stable and the
 process for changes to it.
 
-## Stable surface (0.16 series)
+## Stable surface (0.17 series)
 
-The names in `factorlasso.__all__` are the authoritative public API for 0.16. Backward-incompatible
+The names in `factorlasso.__all__` are the authoritative public API for 0.17. Backward-incompatible
 changes to their names, parameter signatures, default values, or documented return contracts will
-not happen within the 0.16.x patch line. Modules that happen to be visible through `dir(factorlasso)`
+not happen within the 0.17.x patch line. Modules that happen to be visible through `dir(factorlasso)`
 but are absent from `__all__` are not additional public entry points.
 
 ### Core estimator
@@ -24,12 +24,13 @@ but are absent from `__all__` are not additional public entry points.
     `factors_beta_loading_signs`, `factors_beta_prior`,
     `auto_sign_constraints`, `auto_sign_threshold_t`,
     `auto_sign_adaptive_weights`, `auto_sign_adaptive_gamma`,
-    `auto_sign_adaptive_floor`, `unilasso_loo`, and
-    `unilasso_non_negative`.
+    `auto_sign_adaptive_floor`, `unilasso_loo`, `unilasso_non_negative`,
+    `cluster_correlation_span`, and `cluster_correlation_span_freq_dict`.
   - Fitted attributes (trailing underscore):
     `coef_`, `intercept_`, `alpha_const_`, `estimation_result_`,
     `clusters_`, `linkage_`, `cutoff_`, `valid_mask_`,
-    `effective_span_`, `derived_signs_`, `x_`, `y_`.
+    `effective_span_`, `effective_cluster_correlation_span_`,
+    `derived_signs_`, `x_`, `y_`.
   - Methods: `fit`, `predict`, `score`, `get_params`, `set_params`, `copy`,
     `summary`, and `plot_signs`.
 

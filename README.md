@@ -483,8 +483,11 @@ model = LassoModel(
 ).fit(x=X, y=Y)
 ```
 
-Every measure honours the same observation weighting as the estimator
-loss: uniform when `span=None`, EWMA(`span`) otherwise. For Gerber the
+Every measure honours the clustering-correlation observation weighting:
+uniform when its effective span is `None`, EWMA otherwise. By default this
+span equals the effective beta-estimation `span`; set
+`cluster_correlation_span` (or its downstream per-frequency map) to separate
+cluster discovery from beta estimation. For Gerber the
 EWMA generalisation is exact rather than approximate, because both the
 numerator and the denominator are counts of indicator variables. It
 recovers the published equal-weight statistic as `span → ∞` and admits a
@@ -973,7 +976,7 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {0.16.0},
+  version = {0.17.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

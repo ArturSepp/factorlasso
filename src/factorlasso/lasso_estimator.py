@@ -1028,6 +1028,15 @@ class LassoModel:
         that frequency (float).  Carried through the model specification
         but not consumed by :meth:`fit`; the caller selects the right
         span when it slices per frequency.
+    cluster_correlation_span : float, optional
+        EWMA span used only to prepare the response panel and estimate the
+        dependence matrix for cluster discovery. ``None`` (the default)
+        uses the effective beta-estimation ``span`` and therefore preserves
+        the historical coupled behaviour exactly.
+    cluster_correlation_span_freq_dict : dict, optional
+        Per-frequency clustering-correlation spans carried for downstream
+        multi-frequency pipelines. Like ``span_freq_dict``, this mapping is
+        resolved by the caller before :meth:`fit`.
     group_data : pd.Series, optional
         Group labels (required for ``GROUP_LASSO`` and
         ``COOPERATIVE_GROUP_LASSO``).
@@ -1072,7 +1081,8 @@ class LassoModel:
         (Gerber et al. 2022 co-movement statistic).  Both alternatives
         are robust to outliers, which the linear correlation is not.
         Used only by the cluster-discovery modes and ignored otherwise.
-        Every measure honours the ``span`` weighting of the solver loss.
+        Every measure honours the effective clustering-correlation span,
+        which defaults to the ``span`` weighting of the solver loss.
         CAUTION: ``cutoff_fraction`` does not port across measures — the
         Gerber statistic shrinks correlations toward zero by a
         data-dependent factor, and no closed-form remapping exists.  Set
@@ -1316,7 +1326,6 @@ class LassoModel:
     # non_negative: theta >= 0 in stage 2, so the final coefficient
     # inherits the univariate sign (UniLasso's sign-preservation).
     unilasso_non_negative: bool = True
-
     # ── Fitted state (set by fit(), trailing underscore) ──────────────
     x_: Optional[pd.DataFrame] = None
     y_: Optional[pd.DataFrame] = None
@@ -1329,7 +1338,12 @@ class LassoModel:
     cutoff_: Optional[float] = None
     valid_mask_: Optional[np.ndarray] = None
     effective_span_: Optional[float] = None
+    effective_cluster_correlation_span_: Optional[float] = None
     derived_signs_: Optional[pd.DataFrame] = None
+    # Optional independent clustering horizon. Appended after every historical
+    # dataclass field so even positional callers retain their old mapping.
+    cluster_correlation_span: Optional[float] = None
+    cluster_correlation_span_freq_dict: Optional[Dict[str, float]] = None
 
     def __post_init__(self):
         if self.model_type in (
@@ -1341,6 +1355,9 @@ class LassoModel:
                 f"{self.model_type.name}"
             )
         _validate_span(self.span)
+        _validate_span(
+            self.cluster_correlation_span, name="cluster_correlation_span"
+        )
         if not (0.0 < self.cutoff_fraction <= 1.0):
             raise ValueError(
                 f"cutoff_fraction must lie in (0, 1], "
@@ -1620,6 +1637,7 @@ class LassoModel:
         external_clusters: Optional[pd.Series] = None,
         external_linkage: Optional[np.ndarray] = None,
         external_cutoff: Optional[float] = None,
+        cluster_correlation_span: Optional[float] = None,
     ) -> LassoModel:
         """
         Estimate model: Y_t = α + β X_t + ε_t.
@@ -1638,6 +1656,11 @@ class LassoModel:
             ``None`` (the default) falls back to ``self.span`` without
             modification — previous versions used ``span or self.span``
             which would treat ``span=0`` as "unset".
+        cluster_correlation_span : float, optional
+            Per-call clustering-correlation EWMA span. ``None`` first falls
+            back to ``self.cluster_correlation_span`` and, when that is also
+            ``None``, to the effective beta ``span``. Thus callers that do
+            not supply this argument retain the historical coupled span.
         external_clusters : pandas.Series, optional
             Asset-to-cluster partition for HCGL or FCGL. When provided,
             cluster discovery is skipped while the model type and penalty
@@ -1673,6 +1696,17 @@ class LassoModel:
         # but the correct idiom is an explicit None check.
         eff_span = self.span if span is None else span
         _validate_span(eff_span)
+        configured_cluster_span = (
+            self.cluster_correlation_span
+            if cluster_correlation_span is None
+            else cluster_correlation_span
+        )
+        eff_cluster_correlation_span = (
+            eff_span if configured_cluster_span is None else configured_cluster_span
+        )
+        _validate_span(
+            eff_cluster_correlation_span, name="cluster_correlation_span"
+        )
         x_np, y_np, valid_mask = get_x_y_np(
             x=x, y=y, span=eff_span, demean=self.demean
         )
@@ -1680,6 +1714,7 @@ class LassoModel:
         prep = self._prepare_fit(
             x=x, y=y, x_np=x_np, y_np=y_np,
             valid_mask=valid_mask, eff_span=eff_span,
+            eff_cluster_correlation_span=eff_cluster_correlation_span,
             external_clusters=external_clusters,
             external_linkage=external_linkage,
             external_cutoff=external_cutoff,
@@ -1813,6 +1848,7 @@ class LassoModel:
 
         self._finalize_fit(
             result=result, x=x, y=y, valid_mask=valid_mask, eff_span=eff_span,
+            eff_cluster_correlation_span=eff_cluster_correlation_span,
             asset_clusters=asset_clusters, linkage=linkage, cutoff=cutoff,
         )
         return self
@@ -1825,6 +1861,7 @@ class LassoModel:
         y_np: np.ndarray,
         valid_mask: np.ndarray,
         eff_span: Optional[float],
+        eff_cluster_correlation_span: Optional[float],
         external_clusters: Optional[pd.Series] = None,
         external_linkage: Optional[np.ndarray] = None,
         external_cutoff: Optional[float] = None,
@@ -1880,13 +1917,30 @@ class LassoModel:
                 linkage = external_linkage
                 cutoff = external_cutoff
             else:
+                # When the two spans are equal, reuse the solver-ready panel so
+                # the default path stays numerically identical. A distinct
+                # clustering span must also own EWMA demeaning; changing only
+                # the final dependence weights would still leak the beta span
+                # into cluster discovery through the transformed response panel.
+                if eff_cluster_correlation_span == eff_span:
+                    clustering_y_np = y_np
+                    clustering_valid_mask = valid_mask
+                else:
+                    _, clustering_y_np, clustering_valid_mask = get_x_y_np(
+                        x=x,
+                        y=y,
+                        span=eff_cluster_correlation_span,
+                        demean=self.demean,
+                    )
                 # Restore NaN before the clustering correlation (see block comment
                 # in the solver-dispatch section below for the rationale).
-                y_for_corr = np.where(valid_mask > 0, y_np, np.nan)
-                # The clustering correlation uses the SAME observation weighting
-                # as the solver loss: sample Pearson correlation (pairwise-
-                # complete over valid observations) when ``span=None``, the
-                # EWMA(span) correlation when a span is set. Versions before
+                y_for_corr = np.where(
+                    clustering_valid_mask > 0, clustering_y_np, np.nan
+                )
+                # By default the clustering correlation uses the SAME observation
+                # weighting as the solver loss: sample Pearson correlation
+                # (pairwise-complete over valid observations) when ``span=None``,
+                # the EWMA(span) correlation when a span is set. Versions before
                 # 0.5.1 always routed through ``compute_ewm_covar``, whose
                 # ``ewm_lambda = 0.94`` default (an effective span of ~32
                 # observations, the RiskMetrics daily convention) silently
@@ -1906,7 +1960,7 @@ class LassoModel:
                 corr = compute_dependence_matrix(
                     a=y_for_corr,
                     dependence_measure=self.dependence_measure,
-                    span=eff_span,
+                    span=eff_cluster_correlation_span,
                     gerber_threshold=self.gerber_threshold,
                 )
                 corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
@@ -2090,6 +2144,7 @@ class LassoModel:
         y: pd.DataFrame,
         valid_mask: np.ndarray,
         eff_span: Optional[float],
+        eff_cluster_correlation_span: Optional[float],
         asset_clusters: Optional[pd.Series],
         linkage,
         cutoff,
@@ -2136,6 +2191,7 @@ class LassoModel:
         self.y_ = y
         self.valid_mask_ = valid_mask
         self.effective_span_ = eff_span
+        self.effective_cluster_correlation_span_ = eff_cluster_correlation_span
         self.coef_ = pd.DataFrame(
             est_beta, index=y.columns, columns=x.columns,
         )
@@ -2230,6 +2286,7 @@ class LassoModel:
         reg_lambdas: Sequence[float],
         verbose: bool = False,
         span: Optional[float] = None,
+        cluster_correlation_span: Optional[float] = None,
     ) -> List["LassoModel"]:
         """Fit at each ``reg_lambda``, sharing one derivation.
 
@@ -2254,7 +2311,7 @@ class LassoModel:
         reg_lambdas : sequence of float
             Penalty weights, in any order. The returned list is aligned with
             this sequence.
-        x, y, verbose, span
+        x, y, verbose, span, cluster_correlation_span
             As in :meth:`fit`.
 
         Returns
@@ -2280,18 +2337,31 @@ class LassoModel:
                 params["reg_lambda"] = lam
                 out.append(LassoModel(**params).fit(
                     x=x, y=y, verbose=verbose, span=span,
+                    cluster_correlation_span=cluster_correlation_span,
                 ))
             return out
 
         x, y = self._validate_fit_inputs(x, y)
         eff_span = self.span if span is None else span
         _validate_span(eff_span)
+        configured_cluster_span = (
+            self.cluster_correlation_span
+            if cluster_correlation_span is None
+            else cluster_correlation_span
+        )
+        eff_cluster_correlation_span = (
+            eff_span if configured_cluster_span is None else configured_cluster_span
+        )
+        _validate_span(
+            eff_cluster_correlation_span, name="cluster_correlation_span"
+        )
         x_np, y_np, valid_mask = get_x_y_np(
             x=x, y=y, span=eff_span, demean=self.demean,
         )
         prep = self._prepare_fit(
             x=x, y=y, x_np=x_np, y_np=y_np,
             valid_mask=valid_mask, eff_span=eff_span,
+            eff_cluster_correlation_span=eff_cluster_correlation_span,
         )
 
         if prep.is_lasso_mode:
@@ -2305,6 +2375,7 @@ class LassoModel:
                 params["reg_lambda"] = lam
                 out_single.append(LassoModel(**params).fit(
                     x=x, y=y, verbose=verbose, span=span,
+                    cluster_correlation_span=cluster_correlation_span,
                 ))
             return out_single
 
@@ -2336,7 +2407,9 @@ class LassoModel:
                 clone.derived_signs_ = derived_signs
             clone._finalize_fit(
                 result=result, x=x, y=y, valid_mask=valid_mask,
-                eff_span=eff_span, asset_clusters=prep.asset_clusters,
+                eff_span=eff_span,
+                eff_cluster_correlation_span=eff_cluster_correlation_span,
+                asset_clusters=prep.asset_clusters,
                 linkage=prep.linkage, cutoff=prep.cutoff,
             )
             out.append(clone)

@@ -151,22 +151,29 @@ def _cluster_distance_matrix(
     return pd.Series(labels, index=corr.index), linkage, cutoff
 
 
+def _effective_cluster_correlation_span(lasso_model: "LassoModel") -> Optional[float]:
+    """Return the clustering span, defaulting to the model's beta span."""
+    cluster_span = lasso_model.cluster_correlation_span
+    return lasso_model.span if cluster_span is None else cluster_span
+
+
 def _correlation_input(y: pd.DataFrame, lasso_model: "LassoModel") -> pd.DataFrame:
     """Reproduce the response correlation used by ``LassoModel._prepare_fit``."""
     from factorlasso.lasso_estimator import get_x_y_np
 
+    cluster_span = _effective_cluster_correlation_span(lasso_model)
     dummy_x = pd.DataFrame(0.0, index=y.index, columns=["__cluster_dummy__"])
     _, y_np, valid_mask = get_x_y_np(
         x=dummy_x,
         y=y,
-        span=lasso_model.span,
+        span=cluster_span,
         demean=lasso_model.demean,
     )
     y_for_corr = np.where(valid_mask > 0, y_np, np.nan)
     corr = compute_dependence_matrix(
         a=y_for_corr,
         dependence_measure=lasso_model.dependence_measure,
-        span=lasso_model.span,
+        span=cluster_span,
         gerber_threshold=lasso_model.gerber_threshold,
     )
     return pd.DataFrame(corr, index=y.columns, columns=y.columns)
@@ -179,7 +186,8 @@ def _iter_correlation_inputs(
 ) -> Iterator[Tuple[pd.Timestamp, pd.DataFrame]]:
     """Yield in-fit correlations, using an exact O(TN²) Pearson recursion."""
     measure = DependenceMeasure(lasso_model.dependence_measure)
-    if measure != DependenceMeasure.PEARSON or lasso_model.span is None:
+    cluster_span = _effective_cluster_correlation_span(lasso_model)
+    if measure != DependenceMeasure.PEARSON or cluster_span is None:
         for date in dates:
             yield date, _correlation_input(y.loc[:date], lasso_model)
         return
@@ -191,12 +199,12 @@ def _iter_correlation_inputs(
     _, y_np, valid_mask = get_x_y_np(
         x=dummy_x,
         y=y_limit,
-        span=lasso_model.span,
+        span=cluster_span,
         demean=lasso_model.demean,
     )
     observations = np.where(valid_mask > 0, y_np, np.nan)
     observation_index = y_limit.index[1:] if lasso_model.demean else y_limit.index
-    ewm_lambda = 1.0 - 2.0 / (lasso_model.span + 1.0)
+    ewm_lambda = 1.0 - 2.0 / (cluster_span + 1.0)
     lam1 = 1.0 - ewm_lambda
     covariance = np.zeros((len(y.columns), len(y.columns)))
     position = 0

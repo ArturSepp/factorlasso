@@ -25,12 +25,12 @@ merits elsewhere.
 
 Observation weighting
 ---------------------
-Every measure honours the same ``span`` contract as the estimator loss:
-``span=None`` weights observations uniformly, and a finite ``span``
-applies EWMA weights ``w_t ∝ λ^(T-t)`` with ``λ = 1 - 2/(span+1)``.
-Keeping the clustering correlation on the same weighting as the solver
-loss is deliberate — see the block comment at the call site in
-:meth:`factorlasso.LassoModel.fit`.
+Every measure honours the clustering-correlation ``span`` passed by the
+estimator: ``span=None`` weights observations uniformly, and a finite
+``span`` applies EWMA weights ``w_t ∝ λ^(T-t)`` with
+``λ = 1 - 2/(span+1)``. :class:`factorlasso.LassoModel` defaults this to
+the effective beta-estimation span for backward compatibility, while an
+explicit ``cluster_correlation_span`` separates the two horizons.
 
 For the Gerber statistic the EWMA generalisation is exact rather than
 approximate. Both the numerator and the denominator are counts of

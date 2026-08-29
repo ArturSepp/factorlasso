@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-08-29
+
+### Added
+
+- Added optional ``cluster_correlation_span`` and
+  ``cluster_correlation_span_freq_dict`` controls to separate the EWMA horizon used for
+  clustering-correlation estimation from the EWMA horizon used for factor-loading estimation.
+  Omitting the clustering span defaults it to the effective beta span, preserving existing fits
+  exactly. The fitted ``effective_cluster_correlation_span_`` attribute records the resolved
+  value for audit.
+
 ### Removed
 
 - Retired the development-only `dev` extra. Repository tests, static checks, and dependency

@@ -50,6 +50,34 @@ def test_none_smoother_matches_current_fit_partitions():
         assert rolling.cutoffs[date] == fitted.cutoff_
 
 
+def test_rolling_clusters_use_independent_cluster_correlation_span():
+    """Changing only the beta span leaves the rolling cluster schedule unchanged."""
+    from factorlasso import ClusterSmootherType, compute_rolling_smoothed_clusters
+
+    x, y = _panel()
+    dates = list(y.index[[79, 109, 139]])
+    base = LassoModel(
+        model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+        cluster_smoother_type=ClusterSmootherType.NONE,
+        span=36,
+        cluster_correlation_span=36,
+    )
+    longer_beta = base.copy(kwargs={"span": 72})
+
+    base_rolling = compute_rolling_smoothed_clusters(y, dates, base)
+    longer_rolling = compute_rolling_smoothed_clusters(y, dates, longer_beta)
+    for date in dates:
+        assert _same_partition(
+            base_rolling.clusters[date], longer_rolling.clusters[date]
+        )
+        fitted = longer_beta.copy().fit(x.loc[:date], y.loc[:date])
+        assert _same_partition(longer_rolling.clusters[date], fitted.clusters_)
+        np.testing.assert_array_equal(
+            longer_rolling.linkages[date], fitted.linkage_
+        )
+        assert longer_rolling.cutoffs[date] == fitted.cutoff_
+
+
 def test_zero_strength_smoothers_match_none():
     """Zero delta and zero lambda must equal NONE on every date."""
     from factorlasso import ClusterSmootherType, compute_rolling_smoothed_clusters

@@ -129,6 +129,36 @@ def test_path_fit_order_preserved():
                            atol=COEF_ATOL, rtol=0.0)
 
 
+def test_path_fit_preserves_independent_cluster_correlation_span():
+    """The shared path derivation uses the requested clustering horizon."""
+    base, x, y = _group_models()["HCGL"]
+    grid = [1e-4, 1e-2]
+    fitted = base.fit_reg_lambda_path(
+        x,
+        y,
+        reg_lambdas=grid,
+        span=72,
+        cluster_correlation_span=36,
+    )
+
+    for lam, fitted_model in zip(grid, fitted):
+        reference = base.copy(kwargs={"reg_lambda": lam}).fit(
+            x=x,
+            y=y,
+            span=72,
+            cluster_correlation_span=36,
+        )
+        assert np.allclose(
+            fitted_model.coef_.to_numpy(),
+            reference.coef_.to_numpy(),
+            atol=COEF_ATOL,
+            rtol=0.0,
+        )
+        pd.testing.assert_series_equal(fitted_model.clusters_, reference.clusters_)
+        assert fitted_model.effective_span_ == 72
+        assert fitted_model.effective_cluster_correlation_span_ == 36
+
+
 def test_path_fit_empty_grid_raises():
     base, x, y = _group_models()["HCGL"]
     with pytest.raises(ValueError, match="non-empty"):
