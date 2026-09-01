@@ -40,16 +40,12 @@ rst_prolog = f"""
 .. |beta| replace:: beta
 """
 
-html_theme = "sphinx_rtd_theme"
-html_title = f"factorlasso {release}"
+html_theme = "furo"
+html_title = "factorlasso - sparse factor-model estimation"
 html_baseurl = os.environ.get(
     "READTHEDOCS_CANONICAL_URL",
     "https://factorlasso.readthedocs.io/en/latest/",
 )
-html_theme_options = {
-    "navigation_depth": 3,
-    "collapse_navigation": False,
-}
 
 
 def _use_root_canonical(app, pagename, templatename, context, doctree) -> None:
