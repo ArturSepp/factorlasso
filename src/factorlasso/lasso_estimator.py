@@ -48,7 +48,7 @@ with grouped variables", *J. R. Statist. Soc. B*, 68(1), 49–67.
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
@@ -148,6 +148,37 @@ class LassoEstimationResult:
     ss_total: np.ndarray
     ss_res: np.ndarray
     r2: np.ndarray
+
+
+@dataclass(frozen=True)
+class LassoNowcastResult:
+    """Immutable output of :meth:`LassoModel.nowcast`.
+
+    Attributes
+    ----------
+    prediction : pd.DataFrame, shape (K, N)
+        Target-period response nowcasts in the fitted return units.
+    factor_component : pd.DataFrame, shape (K, N)
+        Target factor returns multiplied by the fitted betas, before alpha.
+    target_factors : pd.DataFrame, shape (K, M)
+        Deep copy of the target factor frame in exact fitted factor order.
+    stat_alpha : pd.Series, shape (N,)
+        Terminal causal mean of original-unit residuals ``y - X @ beta``.
+    betas : pd.DataFrame, shape (N, M)
+        Deep copy of the fitted coefficients used by this nowcast.
+    residuals : pd.DataFrame, shape (T, N)
+        Deep copy of the fit-time original-unit residual snapshot.
+    diagnostics : pd.DataFrame, shape (N, D)
+        Per-response sample metadata and fitted solver diagnostics.
+    """
+
+    prediction: pd.DataFrame
+    factor_component: pd.DataFrame
+    target_factors: pd.DataFrame
+    stat_alpha: pd.Series
+    betas: pd.DataFrame
+    residuals: pd.DataFrame
+    diagnostics: pd.DataFrame
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -1229,6 +1260,22 @@ class LassoModel:
 
         Read this attribute to inspect, log, or render the constraints
         that actually shaped the fitted ``coef_``.
+    fit_demeaned_ : bool
+        Fit-time copy of the de-meaning decision. Unlike the mutable
+        ``demean`` hyperparameter, this is immutable fitted provenance used
+        to admit a model to :meth:`nowcast`.
+    nowcast_residuals_ : pd.DataFrame, shape (T, N)
+        Deep-copied original-unit residuals ``y - X @ beta`` captured after
+        final warmup beta handling. The snapshot is independent of the
+        caller-owned frames aliased by ``x_`` and ``y_``.
+    nowcast_factors_complete_ : bool
+        Fit-time flag recording whether every fitted factor observation was
+        finite. Nowcast eligibility reads this snapshot rather than the
+        caller-owned frame aliased by ``x_``.
+    nowcast_final_response_complete_ : bool
+        Fit-time flag recording whether the final fitted response row was
+        fully observed. Nowcast eligibility reads this snapshot rather than
+        the caller-owned frame aliased by ``y_``.
 
     Examples
     --------
@@ -1340,6 +1387,10 @@ class LassoModel:
     effective_span_: Optional[float] = None
     effective_cluster_correlation_span_: Optional[float] = None
     derived_signs_: Optional[pd.DataFrame] = None
+    fit_demeaned_: Optional[bool] = field(default=None, init=False)
+    nowcast_residuals_: Optional[pd.DataFrame] = field(default=None, init=False)
+    nowcast_factors_complete_: Optional[bool] = field(default=None, init=False)
+    nowcast_final_response_complete_: Optional[bool] = field(default=None, init=False)
     # Optional independent clustering horizon. Appended after every historical
     # dataclass field so even positional callers retain their old mapping.
     cluster_correlation_span: Optional[float] = None
@@ -2195,6 +2246,24 @@ class LassoModel:
         self.coef_ = pd.DataFrame(
             est_beta, index=y.columns, columns=x.columns,
         )
+        # Capture one original-unit T x N residual panel for causal nowcasts.
+        # Existing x_/y_ intentionally preserve their historical aliasing
+        # contract, so eligibility and alpha cannot be reconstructed from
+        # those mutable caller-owned frames after fit().
+        x_snapshot = x.to_numpy(dtype=float, copy=True)
+        y_snapshot = y.to_numpy(dtype=float, copy=True)
+        beta_snapshot = self.coef_.to_numpy(dtype=float, copy=True)
+        self.fit_demeaned_ = bool(self.demean)
+        self.nowcast_residuals_ = pd.DataFrame(
+            y_snapshot - x_snapshot @ beta_snapshot.T,
+            index=y.index.copy(),
+            columns=y.columns.copy(),
+            copy=True,
+        )
+        self.nowcast_factors_complete_ = bool(np.isfinite(x_snapshot).all())
+        self.nowcast_final_response_complete_ = bool(
+            len(y_snapshot) > 0 and np.isfinite(y_snapshot[-1]).all()
+        )
         # intercept_ : preserved from v0.3.3 — the raw solver output, namely
         # the EWMA-weighted residual mean on the demeaned data. This is the
         # mechanical artefact of fitting a no-intercept model on centered
@@ -2414,6 +2483,169 @@ class LassoModel:
             )
             out.append(clone)
         return out
+
+    def nowcast(
+        self,
+        x: pd.DataFrame,
+        *,
+        alpha_span: Optional[float] = None,
+    ) -> LassoNowcastResult:
+        """Nowcast future responses from realised factors and residual alpha.
+
+        This analytic is available only for fits recorded with
+        ``demean=True``. It keeps beta fixed, estimates statistical alpha as
+        the terminal causal mean of the fit-time original-unit residuals
+        ``y - X @ beta``, and returns ``X_target @ beta + stat_alpha``. It
+        deliberately does not call :meth:`predict`: neither the economic
+        ``alpha_const_`` nor the solver's de-meaned ``intercept_`` enters the
+        nowcast.
+
+        Parameters
+        ----------
+        x : pd.DataFrame, shape (K, M)
+            Complete realised target factor returns. Columns must exactly
+            equal the fitted factor columns in identity and order, and every
+            target date must be strictly after the fit cutoff.
+        alpha_span : float, optional
+            EWMA span for the statistical residual alpha. ``None`` reuses
+            the recorded effective beta span. If both are ``None``, alpha is
+            the uniform mean of the residual history.
+
+        Returns
+        -------
+        LassoNowcastResult
+            Copied decomposition, fitted snapshots, and diagnostics.
+
+        Raises
+        ------
+        RuntimeError
+            If the estimator has not been fitted.
+        ValueError
+            If the fitted provenance or target data violate the causal
+            nowcast contract.
+        TypeError
+            If ``x`` is not a pandas DataFrame with a DatetimeIndex.
+        """
+        fitted_state = (
+            self.coef_,
+            self.estimation_result_,
+            self.alpha_const_,
+            self.valid_mask_,
+            self.fit_demeaned_,
+            self.nowcast_residuals_,
+            self.nowcast_factors_complete_,
+            self.nowcast_final_response_complete_,
+        )
+        if any(value is None for value in fitted_state):
+            raise RuntimeError("Model not fitted. Call fit() first.")
+        if self.fit_demeaned_ is not True:
+            raise ValueError("nowcast requires a model fitted with demean=True")
+        _validate_span(alpha_span, name="alpha_span")
+        if self.nowcast_factors_complete_ is not True:
+            raise ValueError("nowcast requires complete fitted factor rows")
+        if self.nowcast_final_response_complete_ is not True:
+            raise ValueError("nowcast requires a fully observed final response row")
+
+        betas = self.coef_.copy(deep=True)
+        residuals = self.nowcast_residuals_.copy(deep=True)
+        if not np.isfinite(betas.to_numpy(dtype=float)).all():
+            raise ValueError("nowcast requires finite fitted betas")
+        residual_values = residuals.to_numpy(dtype=float)
+        if np.isinf(residual_values).any():
+            raise ValueError("nowcast residual history cannot contain infinite values")
+        if not np.isfinite(residual_values[-1]).all():
+            raise ValueError("nowcast requires finite terminal residuals")
+
+        if not isinstance(x, pd.DataFrame):
+            raise TypeError("x must be a pandas DataFrame")
+        if x.empty:
+            raise ValueError("x must contain at least one target factor row")
+        if not x.columns.equals(betas.columns):
+            raise ValueError(
+                "x columns must exactly match fitted factor columns in the same order"
+            )
+        if not isinstance(residuals.index, pd.DatetimeIndex):
+            raise TypeError("fitted data must have a DatetimeIndex for nowcast")
+        if not residuals.index.is_monotonic_increasing or not residuals.index.is_unique:
+            raise ValueError("fitted DatetimeIndex must be sorted and unique")
+        if not isinstance(x.index, pd.DatetimeIndex):
+            raise TypeError("x must have a DatetimeIndex")
+        if not x.index.is_monotonic_increasing or not x.index.is_unique:
+            raise ValueError("x DatetimeIndex must be sorted and unique")
+        if residuals.index.tz != x.index.tz:
+            raise ValueError("x and fitted DatetimeIndex values must use the same timezone")
+        if bool(np.any(x.index <= residuals.index[-1])):
+            raise ValueError("every x target date must be strictly after the fit cutoff")
+
+        target_factors = x.copy(deep=True)
+        if not np.isfinite(target_factors.to_numpy(dtype=float)).all():
+            raise ValueError("x target factor values must all be finite")
+
+        resolved_alpha_span = self.effective_span_ if alpha_span is None else alpha_span
+        stat_alpha = pd.Series(index=betas.index.copy(), dtype=float, name="stat_alpha")
+        if resolved_alpha_span is None:
+            stat_alpha.loc[:] = residuals.mean(axis=0, skipna=True)
+        else:
+            for response in residuals.columns:
+                first_valid = residuals[response].first_valid_index()
+                history = residuals.loc[first_valid:, response]
+                stat_alpha.loc[response] = compute_ewm(
+                    history, span=resolved_alpha_span
+                ).iloc[-1]
+
+        factor_component = target_factors @ betas.T
+        prediction = factor_component.add(stat_alpha, axis="columns")
+
+        sqrt_solver_weights = _compute_solver_weights(
+            t=self.valid_mask_.shape[0],
+            n_y=len(betas.index),
+            span=self.effective_span_,
+            valid_mask=self.valid_mask_,
+        )
+        loss_weights = np.square(sqrt_solver_weights)
+        weight_sums = np.sum(loss_weights, axis=0)
+        squared_weight_sums = np.sum(np.square(loss_weights), axis=0)
+        effective_n_obs = np.divide(
+            np.square(weight_sums),
+            squared_weight_sums,
+            out=np.full_like(weight_sums, np.nan),
+            where=squared_weight_sums > 0.0,
+        )
+
+        fit_start_dates = []
+        for response in residuals.columns:
+            fit_start_dates.append(residuals[response].first_valid_index())
+        result = self.estimation_result_
+        diagnostics = pd.DataFrame(
+            {
+                "fit_start_date": fit_start_dates,
+                "fit_end_date": residuals.index[-1],
+                "n_response_obs_to_cutoff": residuals.notna().sum(axis=0).to_numpy(),
+                "n_obs_used": self.valid_mask_.sum(axis=0).astype(int),
+                "effective_n_obs": effective_n_obs,
+                "beta_span": self.effective_span_,
+                "alpha_span": resolved_alpha_span,
+                "fit_demeaned": self.fit_demeaned_,
+                "stat_alpha": stat_alpha.to_numpy(copy=True),
+                "alpha_const": self.alpha_const_.to_numpy(copy=True),
+                "factorlasso_fit_ss_total_ewma_demeaned": result.ss_total.copy(),
+                "factorlasso_fit_ss_res_ewma_demeaned": result.ss_res.copy(),
+                "factorlasso_fit_r2_ewma_demeaned": result.r2.copy(),
+                "n_nonzero_betas": np.count_nonzero(
+                    ~np.isclose(betas.to_numpy(dtype=float), 0.0), axis=1
+                ),
+            },
+            index=betas.index.copy(),
+        )
+        return LassoNowcastResult(
+            prediction=prediction.copy(deep=True),
+            factor_component=factor_component.copy(deep=True),
+            target_factors=target_factors.copy(deep=True),
+            stat_alpha=stat_alpha.copy(deep=True),
+            betas=betas.copy(deep=True),
+            residuals=residuals.copy(deep=True),
+            diagnostics=diagnostics.copy(deep=True),
+        )
 
     def predict(self, x: pd.DataFrame) -> pd.DataFrame:
         """

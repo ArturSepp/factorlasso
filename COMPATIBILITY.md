@@ -4,11 +4,11 @@
 This document specifies the surface that is committed to be stable and the
 process for changes to it.
 
-## Stable surface (0.17 series)
+## Stable surface (0.18 series)
 
-The names in `factorlasso.__all__` are the authoritative public API for 0.17. Backward-incompatible
+The names in `factorlasso.__all__` are the authoritative public API for 0.18. Backward-incompatible
 changes to their names, parameter signatures, default values, or documented return contracts will
-not happen within the 0.17.x patch line. Modules that happen to be visible through `dir(factorlasso)`
+not happen within the 0.18.x patch line. Modules that happen to be visible through `dir(factorlasso)`
 but are absent from `__all__` are not additional public entry points.
 
 ### Core estimator
@@ -30,9 +30,10 @@ but are absent from `__all__` are not additional public entry points.
     `coef_`, `intercept_`, `alpha_const_`, `estimation_result_`,
     `clusters_`, `linkage_`, `cutoff_`, `valid_mask_`,
     `effective_span_`, `effective_cluster_correlation_span_`,
-    `derived_signs_`, `x_`, `y_`.
-  - Methods: `fit`, `predict`, `score`, `get_params`, `set_params`, `copy`,
-    `summary`, and `plot_signs`.
+    `derived_signs_`, `fit_demeaned_`, `nowcast_residuals_`,
+    `nowcast_factors_complete_`, `nowcast_final_response_complete_`, `x_`, and `y_`.
+  - Methods: `fit`, `nowcast`, `predict`, `score`, `get_params`, `set_params`,
+    `copy`, `summary`, and `plot_signs`.
 
 - `LassoModelCV`
   - Constructor: `lambdas`, `n_splits`, `base_model`, `refit`,
@@ -55,6 +56,18 @@ but are absent from `__all__` are not additional public entry points.
 
 - `LassoEstimationResult` dataclass: `estimated_beta`, `alpha`, `ss_total`,
   `ss_res`, and `r2`.
+- `LassoNowcastResult` frozen dataclass: `prediction`, `factor_component`,
+  `target_factors`, `stat_alpha`, `betas`, `residuals`, and `diagnostics`.
+
+`LassoModel.nowcast(x, *, alpha_span=None)` is unit-preserving. It requires a fit that recorded
+`demean=True`, exact finite target factor columns, and strictly future sorted unique dates. Its
+statistical alpha is the terminal adjust-false EWMA of the fit-time original-unit residual
+snapshot, with leading missing values removed and interior missing values holding the prior state.
+`alpha_span=None` reuses `effective_span_`; a uniform fit uses the simple residual mean. Prediction
+is exactly `x @ coef_.T + stat_alpha` and includes neither `alpha_const_` nor `intercept_`.
+Diagnostics copy `alpha_const_` and the nominal-span de-meaned solver `ss_total`, `ss_res`, and
+`r2` without clipping, and include Kish effective sample size computed from normalized squared
+solver row weights.
 
 ### Sign-constraint derivation
 
@@ -135,7 +148,7 @@ Any breaking change to the stable surface follows this process:
 
 ## Numerical reproducibility
 
-Within the 0.15.x patch line, fitted `coef_`, `derived_signs_`, and
+Within the 0.18.x patch line, fitted `coef_`, `derived_signs_`, and
 `estimation_result_.r2` values for a given (data, parameters) tuple are
 guaranteed to be bit-identical across patch releases on the same Python
 and CVXPY version.
@@ -156,7 +169,7 @@ the solver, not as a `factorlasso` regression.
 
 ## Version targets
 
-- **0.15.x:** Bug fixes, documentation, and compatible additions only. No
+- **0.18.x:** Bug fixes, documentation, and compatible additions only. No
   backward-incompatible public API or default changes.
 - **Later 0.x minors:** Compatible additions are preferred. Any planned
   removal follows the deprecation cycle above.

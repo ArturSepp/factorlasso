@@ -86,8 +86,17 @@ from factorlasso import LassoModel, LassoModelType
 
 rng = np.random.default_rng(0)
 T, M, N = 200, 4, 10
-X = pd.DataFrame(rng.standard_normal((T, M)), columns=[f"f{i}" for i in range(M)])
-Y = pd.DataFrame(rng.standard_normal((T, N)), columns=[f"y{i}" for i in range(N)])
+dates = pd.date_range("2010-01-31", periods=T, freq="ME")
+X = pd.DataFrame(
+    rng.standard_normal((T, M)),
+    index=dates,
+    columns=[f"f{i}" for i in range(M)],
+)
+Y = pd.DataFrame(
+    rng.standard_normal((T, N)),
+    index=dates,
+    columns=[f"y{i}" for i in range(N)],
+)
 
 model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5).fit(x=X, y=Y)
 
@@ -109,6 +118,53 @@ estimator declares `__sklearn_tags__`, so it composes directly with
 `sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`. A fitted
 model also exposes `summary()`. The `plot_signs()` heatmap requires Matplotlib,
 which is not a runtime dependency and must be installed separately.
+
+### Residual-alpha nowcasting
+
+A fitted, de-meaned model can extrapolate a missing response return once the realised factor
+return for that target date is available:
+
+```python
+target_factors = pd.DataFrame(
+    [[0.01, -0.002, 0.004, 0.0]],
+    index=[dates[-1] + pd.offsets.MonthEnd()],
+    columns=model.coef_.columns,
+)
+nowcast = model.nowcast(target_factors, alpha_span=None)
+```
+
+`alpha_span=None` reuses the effective beta span recorded by `fit()`. The model stores one
+deep-copied original-unit residual panel at fit finalisation and applies an adjust-false recursive
+EWMA to each response after dropping its leading missing residuals. Interior missing observations
+hold the previous state. If the fit used uniform weights (`effective_span_ is None`), statistical
+alpha is the simple available-observation residual mean instead. In the fitted return units,
+
+```text
+residuals        = y_history - X_history @ beta
+stat_alpha       = terminal_residual_mean(residuals, alpha_span)
+factor_component = X_target @ beta
+prediction       = factor_component + stat_alpha
+```
+
+The prediction contains statistical alpha exactly once. It contains neither the economic
+`alpha_const_` nor the mechanical de-meaned solver `intercept_`; both would be different
+quantities. `LassoNowcastResult` separately returns copied predictions, factor components, target
+factors, statistical alpha, betas, residuals, and response-level diagnostics. Diagnostics retain
+the fitted `alpha_const_`, nominal-span de-meaned solver sums of squares and R-squared under
+explicit names, including negative R-squared, and report Kish effective sample size from the
+actual normalized quadratic-loss weights.
+
+The method fails closed unless the fit recorded `demean=True`, all fitted and target factor rows
+are finite, the final response row is fully observed, factor columns match exactly in identity and
+order, and sorted unique target dates are strictly after the sorted unique fit cutoff. It therefore
+does not infer reporting cadence or decide which missing cells are eligible; those are consumer
+responsibilities.
+
+Retained nowcast state is one `T x N` float residual DataFrame plus its index and columns. No
+additional full copies of fitted `X` and `Y` are retained. A regularisation path with `K` fitted
+models consequently adds `O(K T N)` residual storage, measured in tests with
+`DataFrame.memory_usage(index=True, deep=True)`; each path model owns exactly one independent
+snapshot.
 
 ---
 
@@ -976,7 +1032,7 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {0.17.0},
+  version = {0.18.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```
@@ -992,7 +1048,7 @@ software itself:
 
 See [`CHANGELOG.md`](CHANGELOG.md) for release history and
 [`COMPATIBILITY.md`](COMPATIBILITY.md) for the API stability policy
-covering the current 0.16 series.
+covering the current 0.18 series.
 
 ---
 

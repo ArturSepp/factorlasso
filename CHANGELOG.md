@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-09-01
+
+### Added
+
+- Added the frozen, root-exported `LassoNowcastResult` and
+  `LassoModel.nowcast(x, *, alpha_span=None)`. The analytic keeps fitted betas fixed and combines
+  realised future factor returns with a terminal causal EWMA of original-unit residuals. It returns
+  copied betas, factors, residual history, decomposition, and explicit per-response fit/sample
+  diagnostics, including Kish effective sample size and the existing nominal-span de-meaned solver
+  sums of squares and R-squared.
+- Added fitted-only `fit_demeaned_` provenance and one deep-copied
+  `nowcast_residuals_` panel, populated by the shared direct/path finalisation route. Nowcasts fail
+  closed for non-demeaned fits, incomplete fitted or target factors, a missing final response,
+  factor schema drift, or a target date at or before the fit cutoff. Statistical alpha enters the
+  prediction exactly once; neither `alpha_const_` nor `intercept_` is added.
+
+### Compatibility
+
+- Existing `fit`, `predict`, `score`, constructor/get-parameter semantics, coefficients, and solver
+  diagnostics are unchanged when `nowcast()` is not called. The new public analytic is additive;
+  no new dependency, cadence rule, workbook rule, or automatic model selection was introduced.
+
 ## [0.17.0] - 2026-08-29
 
 ### Added
