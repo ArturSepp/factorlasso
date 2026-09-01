@@ -1,6 +1,6 @@
 # factorlasso
 
-**`factorlasso` estimates sparse multi-output factor models with sign constraints, prior-centred
+**`factorlasso` estimates sparse multi-output factor models with sign constraints, prior-centered
 shrinkage, data-driven grouped penalties, and consistent factor covariance assembly.**
 
 It provides LASSO, Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering Group LASSO
@@ -433,7 +433,7 @@ References:
 * Zou, H. (2006). The adaptive Lasso and its oracle properties.
   *J. Amer. Stat. Assoc.* 101(476), 1418–1429.
 
-### 3. Prior-centred regularisation
+### 3. Prior-centered regularisation
 
 Pass a `(N × M)` DataFrame `factors_beta_prior` to penalise `‖β − β₀‖` instead
 of `‖β‖`. The prior is a soft target, not a hard constraint — the penalty
@@ -896,8 +896,8 @@ These instruments are, by construction, credit exposures. Under that
 collinearity an unconstrained sparse or group penalty (red) shrinks the
 weakly identified Credit loading to zero and books the exposure as Equity
 instead — a misattribution that no choice of penalty strength repairs. The
-prior-centred HCGL estimator (green) holds the loading at its economic prior.
-The prior-centred FCGL estimator (blue) retains more credit attribution under
+prior-centered HCGL estimator (green) holds the loading at its economic prior.
+The prior-centered FCGL estimator (blue) retains more credit attribution under
 shrinkage, because its cluster-by-factor penalty keeps the high-signal
 high-yield and emerging-market sleeves above the prior rather than pulling
 every sleeve to it.
@@ -907,7 +907,7 @@ assumptions engine, or any system that decomposes portfolio risk by factor,
 needs the credit risk to stay on the credit factor. `factorlasso` provides
 the three mechanisms that hold the attribution in place where an
 off-the-shelf LASSO cannot: cell-level sign constraints that forbid the sign
-flip into Equity, prior-centred shrinkage that pulls a weakly identified
+flip into Equity, prior-centered shrinkage that pulls a weakly identified
 loading toward an economic target rather than toward zero, and the
 cluster-grouped penalties that share signal across economically similar
 assets. The loadings stay interpretable and stable enough to feed a portfolio
