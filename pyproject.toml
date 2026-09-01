@@ -1,13 +1,14 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "factorlasso"
 version = "0.18.0"
-description = "Sparse multi-output factor-model estimation with sign constraints, prior-centred shrinkage, data-driven grouped penalties, and consistent factor covariance assembly"
+description = "Sparse multi-output factor-model estimation with sign constraints, prior-centered shrinkage, data-driven grouped penalties, and consistent factor covariance assembly"
 readme = "README.md"
-license = {text = "GPL-3.0-or-later"}
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [
     {name = "Artur Sepp", email = "artursepp@gmail.com"},
@@ -31,7 +32,6 @@ keywords = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -100,7 +100,7 @@ audit = [
 
 [project.urls]
 Homepage = "https://github.com/ArturSepp/factorlasso"
-Documentation = "https://factorlasso.readthedocs.io/en/latest/"
+Documentation = "https://factorlasso.readthedocs.io"
 Repository = "https://github.com/ArturSepp/factorlasso"
 Issues = "https://github.com/ArturSepp/factorlasso/issues"
 Changelog = "https://github.com/ArturSepp/factorlasso/blob/main/CHANGELOG.md"

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Migrated licence metadata to the PEP 639 SPDX expression and declared `LICENSE` as the
+  packaged licence file.
+
 ## [0.18.0] - 2026-09-01
 
 ### Added
