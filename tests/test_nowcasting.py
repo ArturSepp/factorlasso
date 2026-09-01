@@ -261,8 +261,13 @@ def test_nowcast_matches_independent_alpha_prediction_and_diagnostics():
     pd.testing.assert_series_equal(
         diagnostics["fit_start_date"], expected_start_dates
     )
-    np.testing.assert_array_equal(
-        diagnostics["fit_end_date"], result.residuals.index[-1]
+    pd.testing.assert_series_equal(
+        diagnostics["fit_end_date"],
+        pd.Series(
+            result.residuals.index[-1],
+            index=y.columns,
+            name="fit_end_date",
+        ),
     )
     np.testing.assert_array_equal(
         diagnostics["n_nonzero_betas"],
