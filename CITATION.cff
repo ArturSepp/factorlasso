@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "factorlasso: Sparse Multi-Output Factor-Model Estimation in Python"
+title: "factorlasso: Sparse multi-output factor-model estimation with sign constraints, prior-centered shrinkage, data-driven grouped penalties, and consistent factor covariance assembly"
 message: "If you use this software, please cite it as below."
 type: software
 abstract: "factorlasso is a Python library for sparse multi-output factor-model estimation with sign constraints, prior-centred shrinkage, data-driven grouped penalties, and consistent factor covariance assembly."
