@@ -75,7 +75,7 @@ formulation is explicit and auditable.
 pip install factorlasso
 ```
 
-Requires Python ≥ 3.10, CVXPY ≥ 1.3, and numpy / pandas / scipy / openpyxl.
+Requires Python ≥ 3.10, CVXPY ≥ 1.5.2, SciPy ≥ 1.15.0, and numpy / pandas / openpyxl.
 
 ## Five-minute quickstart
 

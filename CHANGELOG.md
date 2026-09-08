@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Raised the SciPy runtime floor to 1.15.0, which includes the upstream
+  [`fcluster(maxclust)` singleton-count fix](https://github.com/scipy/scipy/pull/21121).
+  The two existing cluster-count regression tests fail with SciPy 1.13.0 and pass
+  after changing only SciPy to 1.15.0; clustering code and assertions are unchanged.
+
 - Raised the optional simulations SCS floor to 3.2.4.post3, whose wheels import and solve
   against NumPy 2.0; the previously selected 3.2.4.post1 wheel fails the NumPy ABI check.
 

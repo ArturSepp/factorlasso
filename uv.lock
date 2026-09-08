@@ -984,7 +984,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "pyarrow", marker = "extra == 'simulations'", specifier = ">=12.0" },
     { name = "pyyaml", marker = "extra == 'simulations'", specifier = ">=6.0" },
-    { name = "scipy", specifier = ">=1.12.0" },
+    { name = "scipy", specifier = ">=1.15.0" },
     { name = "scs", marker = "extra == 'simulations'", specifier = ">=3.2.4.post3" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=6.0" },
 ]

@@ -66,4 +66,6 @@ def setup(app) -> None:
 
 
 linkcheck_anchors = True
-linkcheck_timeout = 20
+# Archived research links occasionally exceed 20 seconds; keep checks bounded and retry once.
+linkcheck_timeout = 30
+linkcheck_retries = 2
