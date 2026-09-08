@@ -3,12 +3,11 @@ factorlasso
 
 .. meta::
    :description: Sparse multi-output factor-model estimation with sign constraints,
-      prior-centred shrinkage, data-driven grouped penalties, and consistent factor
+      prior-centered shrinkage, data-driven grouped penalties, and consistent factor
       covariance assembly in Python.
 
-``factorlasso`` is a Python library for sparse multi-output factor-model estimation with sign
-constraints, prior-centred shrinkage, data-driven grouped penalties, and consistent factor
-covariance assembly.
+Sparse multi-output factor-model estimation with sign constraints, prior-centered shrinkage,
+data-driven grouped penalties, and consistent factor covariance assembly.
 
 It is designed for three connected tasks:
 

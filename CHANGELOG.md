@@ -7,10 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-09-08
+
+### Added
+
+- Added explicit stack dependency and optional-import boundary checks, including
+  isolated maintainer adapters, plus a fresh Python 3.10 lowest-direct dependency CI lane.
+
+- Added tag-driven PyPI Trusted Publishing with release-identity and distribution
+  validation; creating a GitHub Release remains optional.
+
 ### Changed
 
 - Migrated licence metadata to the PEP 639 SPDX expression and declared `LICENSE` as the
   packaged licence file.
+
+- Aligned package summaries, software citations, README navigation, and documentation
+  landing pages with the canonical package identity and Read the Docs documentation.
+
+### Fixed
+
+- Raised the CVXPY runtime floor to 1.5.2 and the test-group scikit-learn floor to 1.5.0
+  after reproducing import failures in the earlier allowed versions with NumPy 2.0.
+
+- Raised the test-group Matplotlib floor to 3.8.4: earlier wheels selected with NumPy 2.0
+  fail to import because they were built against the NumPy 1.x ABI.
+
+- Corrected the prior-centered spelling in the documentation quickstart and task guide.
 
 ## [0.18.0] - 2026-09-01
 

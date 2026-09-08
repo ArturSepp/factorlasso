@@ -10,8 +10,8 @@ These three paths use only names in the supported top-level :doc:`api`. The exam
 deterministic, offline, and executed by the documentation test suite. They check structural and
 algebraic contracts instead of solver-sensitive coefficient decimals.
 
-Constrained and prior-centred multi-output regression
------------------------------------------------------
+Constrained and prior-centered multi-output regression
+------------------------------------------------------
 
 Use :class:`~factorlasso.LassoModel` when several responses share the same factor panel but may
 need different coefficient constraints or priors. Rows of both control matrices are responses;
