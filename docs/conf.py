@@ -69,3 +69,5 @@ linkcheck_anchors = True
 # Archived research links occasionally exceed 20 seconds; keep checks bounded and retry once.
 linkcheck_timeout = 30
 linkcheck_retries = 2
+# Retry timeouts too; persistent failures still fail the link check after both attempts.
+linkcheck_report_timeouts_as_broken = True
