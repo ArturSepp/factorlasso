@@ -74,6 +74,6 @@ Next steps
 ----------
 
 The repository `README <https://github.com/ArturSepp/factorlasso/blob/main/README.md>`_ documents
-sign matrices, prior-centred penalties, group construction, cross-validation, residual diagnostics,
+sign matrices, prior-centered penalties, group construction, cross-validation, residual diagnostics,
 covariance assembly, rolling estimation, and cluster lineage. Focused task guides will be added
 without changing the estimator's numerical contracts.

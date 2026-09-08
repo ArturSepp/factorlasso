@@ -75,7 +75,7 @@ formulation is explicit and auditable.
 pip install factorlasso
 ```
 
-Requires Python ≥ 3.10, CVXPY ≥ 1.3, and numpy / pandas / scipy / openpyxl.
+Requires Python ≥ 3.10, CVXPY ≥ 1.5.2, SciPy ≥ 1.15.0, and numpy / pandas / openpyxl.
 
 ## Five-minute quickstart
 
@@ -152,7 +152,7 @@ quantities. `LassoNowcastResult` separately returns copied predictions, factor c
 factors, statistical alpha, betas, residuals, and response-level diagnostics. Diagnostics retain
 the fitted `alpha_const_`, nominal-span de-meaned solver sums of squares and R-squared under
 explicit names, including negative R-squared, and report Kish effective sample size from the
-actual normalized quadratic-loss weights.
+actual normalised quadratic-loss weights.
 
 The method fails closed unless the fit recorded `demean=True`, all fitted and target factor rows
 are finite, the final response row is fully observed, factor columns match exactly in identity and
@@ -875,7 +875,7 @@ instrument.
 
 The maintained [choice guide](https://factorlasso.readthedocs.io/en/latest/comparison.html)
 compares FactorLasso with scikit-learn, skglm, and groupyr by workflow fit,
-constraint and grouping geometry, multi-output behavior, missing-data handling,
+constraint and grouping geometry, multi-output behaviour, missing-data handling,
 covariance assembly, solver trade-offs, interoperability, dependencies, and
 license. It is dated, cites primary sources, and includes cases favoring every
 project; it is not a popularity or speed ranking. The repository pointer is
@@ -976,6 +976,19 @@ This package is part of an open-source Python stack for quantitative finance. Th
 `factorlasso` has no runtime dependency on another package in the stack. It is consumed by
 `optimalportfolios` and, through its optional `factors` extra, by `privateassets`.
 
+## Feedback & contributing
+
+- **Bug:** use the [bug-report form](https://github.com/ArturSepp/factorlasso/issues/new?template=bug_report.yml) with the version, Python/platform, a minimal reproducer, and expected versus actual output.
+- **Feature:** use the [feature-request form](https://github.com/ArturSepp/factorlasso/issues/new?template=feature_request.yml) and describe the estimation goal, current workaround, and smallest useful API. In particular: which grouping, constraint, or covariance diagnostic is missing?
+- **Question or methodology:** search or open an [issue](https://github.com/ArturSepp/factorlasso/issues) and identify the estimator, paper section, or convention involved.
+- **Contribution:** follow [CONTRIBUTING.md](CONTRIBUTING.md) and look for [`good first issue`](https://github.com/ArturSepp/factorlasso/labels/good%20first%20issue) or [`help wanted`](https://github.com/ArturSepp/factorlasso/labels/help%20wanted) work.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for release history and
+[`COMPATIBILITY.md`](COMPATIBILITY.md) for the API stability policy
+covering the current 0.18 series.
+
+---
+
 ## Citation
 
 A machine-readable citation is available in [`CITATION.cff`](CITATION.cff).
@@ -1032,23 +1045,10 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {0.18.0},
+  version = {0.18.1},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```
-
----
-
-## Feedback & contributing
-
-- **Bug:** use the [bug-report form](https://github.com/ArturSepp/factorlasso/issues/new?template=bug_report.yml) with the version, Python/platform, a minimal reproducer, and expected versus actual output.
-- **Feature:** use the [feature-request form](https://github.com/ArturSepp/factorlasso/issues/new?template=feature_request.yml) and describe the estimation goal, current workaround, and smallest useful API. In particular: which grouping, constraint, or covariance diagnostic is missing?
-- **Question or methodology:** search or open an [issue](https://github.com/ArturSepp/factorlasso/issues) and identify the estimator, paper section, or convention involved.
-- **Contribution:** follow [CONTRIBUTING.md](CONTRIBUTING.md) and look for [`good first issue`](https://github.com/ArturSepp/factorlasso/labels/good%20first%20issue) or [`help wanted`](https://github.com/ArturSepp/factorlasso/labels/help%20wanted) work.
-
-See [`CHANGELOG.md`](CHANGELOG.md) for release history and
-[`COMPATIBILITY.md`](COMPATIBILITY.md) for the API stability policy
-covering the current 0.18 series.
 
 ---
 

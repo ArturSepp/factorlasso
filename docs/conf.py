@@ -2,7 +2,11 @@
 
 import os
 import sys
-from importlib.metadata import version as package_version
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 metadata tests use the compatible parser.
+    import tomli as tomllib
 from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -11,8 +15,10 @@ sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 project = "factorlasso"
 author = "Artur Sepp and Mika Kastenholz"
 copyright = "2026, Artur Sepp and Mika Kastenholz"
-version = package_version("factorlasso")
-release = package_version("factorlasso")
+release = tomllib.loads(
+    (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+)["project"]["version"]
+version = release
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -60,4 +66,8 @@ def setup(app) -> None:
 
 
 linkcheck_anchors = True
-linkcheck_timeout = 20
+# Archived research links occasionally exceed 20 seconds; keep checks bounded and retry once.
+linkcheck_timeout = 30
+linkcheck_retries = 2
+# Retry timeouts too; persistent failures still fail the link check after both attempts.
+linkcheck_report_timeouts_as_broken = True

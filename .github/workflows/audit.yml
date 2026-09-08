@@ -1,4 +1,4 @@
-# SHARED CI CORE v1.0 — T2 — synced 2026-08-22
+# SHARED CI CORE v1.2 — T2 — synced 2026-09-08
 name: Audit
 
 permissions:
@@ -12,12 +12,14 @@ on:
     paths:
       - pyproject.toml
       - uv.lock
+      - .github/stack-policy.json
       - .github/workflows/audit.yml
   pull_request:
     branches: [main]
     paths:
       - pyproject.toml
       - uv.lock
+      - .github/stack-policy.json
       - .github/workflows/audit.yml
   workflow_dispatch:
 
@@ -65,6 +67,7 @@ jobs:
           pyproject.toml -o "$RUNNER_TEMP/requirements-test.txt"
         uv run --no-project python - "$RUNNER_TEMP/requirements-core.txt" \
                                     "$RUNNER_TEMP/requirements-test.txt" <<'PY'
+        import json
         import re
         import sys
         import tomllib
@@ -87,14 +90,11 @@ jobs:
 
         tidy = cfg["tool"]["ruff"]["lint"]["flake8-tidy-imports"]
         banned_stack = {normalise(name) for name in tidy["banned-api"]}
-        expected_banned = {
-            "qis",
-            "optimalportfolios",
-            "trendfollowing",
-            "privateassets",
-            "stochvolmodels",
-        }
-        assert banned_stack == expected_banned, "the five-package leaf boundary drifted"
+        with open(".github/stack-policy.json", encoding="utf-8") as fh:
+            policy = json.load(fh)
+        assert not policy["core"] and not policy["optional"], "JSS package must remain a stack leaf"
+        expected_banned = {normalise(name) for name in policy["forbidden"]}
+        assert banned_stack == expected_banned, "the declared stack leaf boundary drifted"
 
         def resolved(path):
             names = set()
