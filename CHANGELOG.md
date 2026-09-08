@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Raised the optional simulations SCS floor to 3.2.4.post3, whose wheels import and solve
+  against NumPy 2.0; the previously selected 3.2.4.post1 wheel fails the NumPy ABI check.
+
+- Raised the optional simulations ECOS floor to 2.0.14: the old lower bound selected an
+  unbuildable source release, and 2.0.13 wheels fail to import with NumPy 2.0.
+
 - Raised the CVXPY runtime floor to 1.5.2 and the test-group scikit-learn floor to 1.5.0
   after reproducing import failures in the earlier allowed versions with NumPy 2.0.
 

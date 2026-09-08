@@ -79,8 +79,8 @@ simulations = [
     "pyyaml>=6.0",
     "joblib>=1.2",
     "pyarrow>=12.0",
-    "scs>=3.0",
-    "ecos>=2.0",
+    "scs>=3.2.4.post3",
+    "ecos>=2.0.14",
 ]
 
 [dependency-groups]
