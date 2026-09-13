@@ -29,7 +29,7 @@ from factorlasso import (
 )
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     LASSO_BASIC = 1
     LASSO_WITH_NANS = 2
     GROUP_LASSO_PREDEFINED = 3
@@ -140,7 +140,7 @@ def print_diagnostics(result: LassoEstimationResult,
     print(f"  Total var:      {pd.Series(result.ss_total, index=asset_names).round(6).to_dict()}")
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """
     Run local tests for development and debugging purposes.
 
@@ -151,7 +151,7 @@ def run_local_test(local_test: LocalTests):
     pd.set_option('display.max_columns', 500)
     pd.set_option('display.width', 1000)
 
-    if local_test == LocalTests.LASSO_BASIC:
+    if local == Locals.LASSO_BASIC:
         """
         Basic LASSO: estimate sparse betas from synthetic data, no NaNs.
         Verifies that L1 regularisation recovers the true sparse structure
@@ -197,7 +197,7 @@ def run_local_test(local_test: LocalTests):
             "columns should be factors"
         print("PASS: estimated_betas DataFrame orientation (index=assets, columns=factors)")
 
-    elif local_test == LocalTests.LASSO_WITH_NANS:
+    elif local == Locals.LASSO_WITH_NANS:
         """
         LASSO with NaN masking: Asset_4 starts at row 50, Asset_5 starts at row 100.
         Verifies that the valid_mask correctly excludes missing observations
@@ -234,7 +234,7 @@ def run_local_test(local_test: LocalTests):
         assert not np.isnan(r.r2[3]), "Asset_4 (50 obs, above warmup=12) should have valid R²"
         print("\nPASS: NaN-masked diagnostics checks")
 
-    elif local_test == LocalTests.GROUP_LASSO_PREDEFINED:
+    elif local == Locals.GROUP_LASSO_PREDEFINED:
         """
         Group LASSO with predefined groups: assets are assigned to 2 groups.
         Group penalty encourages entire groups of betas to be zero together.
@@ -267,7 +267,7 @@ def run_local_test(local_test: LocalTests):
         assert r.ss_total.shape == (6,), f"ss_total shape: {r.ss_total.shape}"
         print("PASS: Group LASSO estimation_result_ shape checks")
 
-    elif local_test == LocalTests.GROUP_LASSO_CLUSTERS_HCGL:
+    elif local == Locals.GROUP_LASSO_CLUSTERS_HCGL:
         """
         HCGL: Group LASSO with hierarchical clustering.
         Clusters are automatically derived from the asset correlation matrix.
@@ -297,7 +297,7 @@ def run_local_test(local_test: LocalTests):
         print(f"\nDiscovered clusters:\n{model.clusters}")
         print(f"Cluster cutoff distance: {model.cutoff:.4f}")
 
-    elif local_test == LocalTests.SIGN_CONSTRAINTS:
+    elif local == Locals.SIGN_CONSTRAINTS:
         """
         Group LASSO with per-element sign constraints.
         Verifies that sign constraints are satisfied in estimated betas.
@@ -358,7 +358,7 @@ def run_local_test(local_test: LocalTests):
 
         print_diagnostics(model.estimation_result_, y_returns.columns)
 
-    elif local_test == LocalTests.GET_X_Y_NP_STANDALONE:
+    elif local == Locals.GET_X_Y_NP_STANDALONE:
         """
         Test get_x_y_np as a standalone function.
         Verifies index alignment assertion, NaN mask creation (including x all-NaN rows),
@@ -419,7 +419,7 @@ def run_local_test(local_test: LocalTests):
         except AssertionError as e:
             print(f"  Caught expected AssertionError: {e}")
 
-    elif local_test == LocalTests.SOLVER_STANDALONE_WITH_NANS:
+    elif local == Locals.SOLVER_STANDALONE_WITH_NANS:
         """
         Test solver functions standalone with raw numpy arrays containing NaNs.
         When valid_mask is not provided, solvers derive it internally.
@@ -496,7 +496,7 @@ def run_local_test(local_test: LocalTests):
         assert not np.isnan(result1.ss_res[0]), "Asset 0 should have valid ss_res"
         print("PASS: Diagnostics finite for full-history assets")
 
-    elif local_test == LocalTests.SINGLE_FACTOR_MULTI_ASSET:
+    elif local == Locals.SINGLE_FACTOR_MULTI_ASSET:
         """
         x is 1-dimensional (single factor), y is M-dimensional (multiple assets).
         Tests that a single factor can explain multiple response variables.
@@ -564,7 +564,7 @@ def run_local_test(local_test: LocalTests):
 
         print_diagnostics(model.estimation_result_, y_returns.columns)
 
-    elif local_test == LocalTests.MULTI_FACTOR_SINGLE_ASSET:
+    elif local == Locals.MULTI_FACTOR_SINGLE_ASSET:
         """
         x is M-dimensional (multiple factors), y is 1-dimensional (single asset).
         Tests that multiple factors can explain a single response variable.
@@ -644,7 +644,7 @@ def run_local_test(local_test: LocalTests):
 
         print_diagnostics(model.estimation_result_, y_returns.columns)
 
-    elif local_test == LocalTests.SINGLE_FACTOR_SINGLE_ASSET:
+    elif local == Locals.SINGLE_FACTOR_SINGLE_ASSET:
         """
         x is 1-dimensional (single factor), y is 1-dimensional (single asset).
         The simplest possible regression: univariate on univariate.
@@ -730,12 +730,12 @@ def run_local_test(local_test: LocalTests):
 
 
 if __name__ == '__main__':
-    for test in LocalTests:
+    for test in Locals:
         print(f"\n\n{'#'*70}")
         print(f"# Running: {test.name}")
         print(f"{'#'*70}")
         try:
-            run_local_test(local_test=test)
+            run_local(local=test)
         except Exception as e:
             print(f"\n  FAILED: {type(e).__name__}: {e}")
             import traceback
