@@ -59,7 +59,7 @@ Desktop.ini
 *.local
 
 # Local agent roadmaps and operational reports
-agents/
+/agents/
 
 # ─── papers/jss_2026/ — regenerable artefacts only ──────────────
 # The paper source, reproduction scripts, embedded figures, and the

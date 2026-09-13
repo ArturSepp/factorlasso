@@ -151,7 +151,7 @@ live in the `test`, `lint`, and `audit` dependency groups. Supported Python is >
 <!-- ===== SHARED AGENT CORE (standalone variant) — begin =====
      Generated from SHARED_AGENT_CORE.md in the maintainer's project knowledge. Do not hand-edit
      between these markers — propose the change to the maintainer instead. Variants: builder
-     (qis) / consumer / standalone. Last synced 2026-09-08, agent core v1.5 -->
+     (qis) / consumer / standalone. Last synced 2026-09-13, agent core v1.6 -->
 
 ## Domain invariants
 
@@ -204,11 +204,14 @@ between your read of it and your write.
 - Prefer minimal anchored edits over whole-file replacement. If the on-disk content is not what
   you expected, stop and reconcile your change onto the current content rather than overwrite.
 
-## Roadmap execution
+## Agent-generated artifacts
 
-Feature roadmaps live at the repository root as `ROADMAP_<feature>.md`. An execution request
-names the file and the stage. A stage is complete when its stated verification command passes;
-its out-of-scope list is binding.
+All agent-generated roadmaps, execution plans, audits, reports, handoffs, and other working
+outputs live under the repository-root `agents/` directory, which is local and ignored by Git.
+Never create `ROADMAP_*.md`, `Claude outputs/`, `Codex outputs/`, or similar agent-output
+artifacts at the repository root. Name feature roadmaps `agents/ROADMAP_<feature>.md`. An
+execution request names the file and stage. A stage is complete when its stated verification
+command passes; its out-of-scope list is binding.
 
 <!-- ===== SHARED AGENT CORE — end ===== -->
 
