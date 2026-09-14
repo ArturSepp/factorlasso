@@ -7,6 +7,10 @@
 - Never run plain `uv sync` or plain `uv run` from this checkout: uv otherwise creates `<repo>\.venv` even when uv was launched through a Python executable under `C:\Python`.
 - If a uv project operation is required, first set `UV_PROJECT_ENVIRONMENT=C:\Python\FactorLasso312`; for pip-style operations prefer `uv pip ... --python C:\Python\FactorLasso312\Scripts\python.exe`.
 - If any OneDrive-local environment already exists, do not use it; report it for removal.
+- Run standard portfolio tasks through
+  `& "$env:USERPROFILE\OneDrive\analytics\my_github\ArturSepp\scripts\repo_governance\Invoke-Repo.ps1" -Task verify`.
+  Use `-Task check` or `-Task test` for a narrower run. The launcher selects this repository's
+  external interpreter and routes generated state to C:.
 
 # AGENTS.md
 
