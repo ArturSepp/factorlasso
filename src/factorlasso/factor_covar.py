@@ -13,12 +13,14 @@ Convention
 - α is ``(N × 1)`` intercept (EWMA-weighted mean residual)
 - Σ_x is ``(M × M)`` factor covariance
 - Σ_y is ``(N × N)`` response covariance
-- D is ``(N × N)`` diagonal residual variances
+- D is ``(N × N)`` diagonal residual variances by default, or an empirical
+  common-period EWMA correlation scaled by current residual standard deviations;
+  both modes assume zero factor-residual covariance
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Dict, List, Optional, Union
 
@@ -26,6 +28,27 @@ import numpy as np
 import pandas as pd
 
 from factorlasso.ewm_utils import compute_ewm
+from factorlasso.residual_covar import ResidualCorrelationData
+
+
+class ResidualType(str, Enum):
+    """Residual covariance structure, with zero factor-residual cross covariance."""
+
+    ORTHOGONAL = 'orthogonal'
+    EMPIRICAL = 'empirical'
+
+
+def _validate_residual_options(residual_type, residual_var_weight, residual_corr_weight):
+    """Validate public assembly options even when no snapshots or risk are requested."""
+    kind = ResidualType(residual_type)
+    if not np.isfinite(residual_corr_weight) or not 0 <= residual_corr_weight <= 1:
+        raise ValueError("residual_corr_weight must be finite and in [0, 1]")
+    if kind == ResidualType.ORTHOGONAL and residual_corr_weight != 1.:
+        raise ValueError("residual_corr_weight applies only to empirical, not orthogonal residuals")
+    if kind == ResidualType.EMPIRICAL:
+        if not np.isfinite(residual_var_weight) or residual_var_weight < 0:
+            raise ValueError("Empirical residual_var_weight must be finite and nonnegative")
+    return kind
 
 
 class VarianceColumns(str, Enum):
@@ -62,7 +85,8 @@ class CurrentFactorCovarData:
         the other per-variable diagnostics.
     estimation_date : pd.Timestamp, optional
     residuals : pd.DataFrame, optional
-        In-sample residuals ε_t = y_t − x_t β'.
+        In-sample residuals ε_t = y_t − x_t β', in producer-declared units.
+        OptimalPortfolios stores these multiplied by native periods per year.
     clusters : pd.Series, optional
         Cluster assignment per asset (index = asset names, values = cluster
         labels, typically freq-prefixed strings like ``"ME:3"``, ``"QE:1"``).
@@ -77,6 +101,13 @@ class CurrentFactorCovarData:
         reconstructing a scipy-compatible ndarray.
     cutoffs : pd.Series, optional
         Dendrogram cutoff distance per frequency (index = freq code).
+
+    residual_metadata : pd.DataFrame, optional
+        Native frequency, beta span, annualisation factor and stored/raw residual
+        multiplier per asset; see estimate_residual_correlation.
+    residual_correlation : ResidualCorrelationData, optional
+        Dimensionless common-period correlation with observation and availability
+        dates. Empirical assembly scales this by current MATF residual variances.
 
     Examples
     --------
@@ -123,6 +154,10 @@ class CurrentFactorCovarData:
     # for diagnostic and audit purposes.
     derived_signs: Optional[pd.DataFrame] = None
 
+    # Native annual-alpha residual metadata and a prepared common-period risk estimate.
+    residual_metadata: Optional[pd.DataFrame] = None
+    residual_correlation: Optional[ResidualCorrelationData] = None
+
     def __post_init__(self):
         """
         Mirror ``clusters`` (if a per-asset Series) into
@@ -149,57 +184,71 @@ class CurrentFactorCovarData:
         self,
         residual_var_weight: float = 1.0,
         assets: Optional[Union[List[str], pd.Index]] = None,
+        *,
+        residual_type: Union[ResidualType, str] = ResidualType.ORTHOGONAL,
+        residual_corr_weight: float = 1.0,
     ) -> pd.DataFrame:
+        """Assemble B F B' + w D, assuming zero factor-residual cross covariance.
+
+        Orthogonal (default) preserves the stored MATF residual diagonal. Empirical
+        retains that same diagonal and adds rho times common-period residual
+        correlations scaled by current MATF residual standard deviations:
+        D = S [(1-rho) I + rho R] S. ``residual_corr_weight`` is rho in [0, 1];
+        ``residual_var_weight`` is w and scales the entire residual block.
+
+        Prepare correlation before retrieval; configure its grid and span during
+        estimation. Correlation retrieval has no covariance scale conversion.
         """
-        Assemble response covariance matrix.
-
-        .. math::
-
-            \\Sigma_y(w) = \\beta\\,\\Sigma_x\\,\\beta^\\top + w\\,D
-
-        Parameters
-        ----------
-        residual_var_weight : float, default 1.0
-            Scaling on the diagonal residual variances.
-        assets : list of str, optional
-            Subset of response variables.
-
-        Returns
-        -------
-        pd.DataFrame, shape (N, N) or (len(assets), len(assets))
-
-        Raises
-        ------
-        ValueError
-            If ``y_betas`` and ``y_variances`` indices disagree for the
-            requested asset set.  Silent row-ordering mismatch between β
-            and D is a subtle bug class that surfaces as wrong but
-            non-throwing covariance matrices in production; the explicit
-            check here converts it into a loud error.
-        """
+        residual = self.get_residual_covar(
+            residual_var_weight, assets, residual_type=residual_type,
+            residual_corr_weight=residual_corr_weight,
+        )
         betas = self.y_betas if assets is None else self.y_betas.loc[assets, :]
+        beta = betas.to_numpy()
+        y_covar = beta @ self.x_covar.to_numpy() @ beta.T
+        if not np.isclose(residual_var_weight, 0.0):
+            y_covar += residual.to_numpy()
+        return pd.DataFrame(y_covar, index=betas.index, columns=betas.index)
+
+    def get_residual_covar(
+        self,
+        residual_var_weight: float = 1.0,
+        assets: Optional[Union[List[str], pd.Index]] = None,
+        *,
+        residual_type: Union[ResidualType, str] = ResidualType.ORTHOGONAL,
+        residual_corr_weight: float = 1.0,
+    ) -> pd.DataFrame:
+        """Return w D using current marginal variances and available residual dependence.
+
+        Units are those of y_variances (annual variance in OptimalPortfolios).
+        Zero variance weight needs no residual state. Zero correlation retention
+        yields the orthogonal matrix exactly and also needs no prepared state.
+        """
+        kind = _validate_residual_options(residual_type, residual_var_weight,
+                                         residual_corr_weight)
+        names = self.y_betas.index if assets is None else self.y_betas.loc[assets].index
         resid = self.y_variances[VarianceColumns.RESIDUAL_VARS.value]
         resid = resid if assets is None else resid.loc[assets]
-
-        # Row-ordering guard: β and D must agree on the asset order,
-        # otherwise β Σ_x β' + diag(resid) silently mixes rows. This
-        # guards against partial filter_on_tickers or any upstream
-        # reindex that desynchronises the two containers.
-        if not betas.index.equals(resid.index):
-            raise ValueError(
-                "y_betas and y_variances residual index disagree; "
-                f"betas: {list(betas.index)[:5]}...; "
-                f"resid: {list(resid.index)[:5]}..."
-            )
-
-        names = betas.index
-        betas_np = betas.values  # (N × M)
-        y_covar = betas_np @ self.x_covar.to_numpy() @ betas_np.T
-
-        if not np.isclose(residual_var_weight, 0.0):
-            y_covar += residual_var_weight * np.diag(resid.to_numpy())
-
-        return pd.DataFrame(y_covar, index=names, columns=names)
+        if not names.equals(resid.index):
+            raise ValueError("y_betas and y_variances residual index disagree")
+        values = resid.to_numpy(dtype=float)
+        covariance = np.diag(values)
+        if np.isclose(residual_var_weight, 0.):
+            return pd.DataFrame(np.zeros_like(covariance), index=names, columns=names)
+        if kind == ResidualType.EMPIRICAL:
+            if not np.isfinite(values).all() or (values < 0).any():
+                raise ValueError("MATF residual variances must be finite and nonnegative")
+            if residual_corr_weight > 0:
+                if self.residual_correlation is None:
+                    raise ValueError(
+                        "Empirical residual covariance requires prepared residual correlation"
+                    )
+                corr = self.residual_correlation.get_corr(self.estimation_date, names).to_numpy()
+                vol = np.sqrt(values)
+                covariance = residual_corr_weight * corr * vol[:, None] * vol[None, :]
+                # Preserve the MATF diagonal bit-for-bit, independently of sqrt rounding.
+                np.fill_diagonal(covariance, values)
+        return pd.DataFrame(residual_var_weight * covariance, index=names, columns=names)
 
     @property
     def y_covar(self) -> pd.DataFrame:
@@ -262,6 +311,9 @@ class CurrentFactorCovarData:
             alphas = compute_ewm(self.residuals, span=int(alpha_span))
             return alphas.iloc[-1, :].rename(VarianceColumns.ALPHA.value)
 
+        # Metadata produced at fitting time supplies each asset's native cadence.
+        if asset_frequencies is None and self.residual_metadata is not None:
+            asset_frequencies = self.residual_metadata['frequency']
         # Normalise asset_frequencies to a per-column lookup
         if asset_frequencies is None:
             freq_lookup: Dict[str, str] = {}
@@ -387,6 +439,11 @@ class CurrentFactorCovarData:
             linkages=self.linkages,
             cutoffs=self.cutoffs,
             derived_signs=derived_signs,
+            residual_metadata=(self.residual_metadata.loc[keys].rename(
+                index=assets if isinstance(assets, dict) else {})
+                if self.residual_metadata is not None else None),
+            residual_correlation=(self.residual_correlation.filter_on_tickers(assets)
+                                  if self.residual_correlation is not None else None),
         )
 
     # ── Serialisation ────────────────────────────────────────────────
@@ -397,6 +454,14 @@ class CurrentFactorCovarData:
             self.x_covar.to_excel(writer, sheet_name='x_covar')
             self.y_betas.to_excel(writer, sheet_name='y_betas')
             self.y_variances.to_excel(writer, sheet_name='y_variances')
+            if self.estimation_date is not None:
+                pd.Series({'estimation_date': self.estimation_date.isoformat()}).to_excel(
+                    writer, sheet_name='snapshot_metadata')
+            if self.residual_metadata is not None:
+                self.residual_metadata.to_excel(writer, sheet_name='residual_metadata')
+            if self.residual_correlation is not None:
+                for name, frame in self.residual_correlation.to_sheets().items():
+                    frame.to_excel(writer, sheet_name=name)
             if self.residuals is not None:
                 self.residuals.to_excel(writer, sheet_name='residuals')
             if self.linkages is not None:
@@ -437,6 +502,11 @@ class CurrentFactorCovarData:
             y_betas=sheets['y_betas'],
             y_variances=y_var,
             residuals=sheets.get('residuals'),
+            estimation_date=(pd.Timestamp(sheets['snapshot_metadata'].iloc[0, 0])
+                             if 'snapshot_metadata' in sheets else None),
+            residual_metadata=sheets.get('residual_metadata'),
+            residual_correlation=(ResidualCorrelationData.from_sheets(sheets)
+                                  if 'residual_corr_info' in sheets else None),
             clusters=clusters,
             linkages=linkages,
             cutoffs=cutoffs,
@@ -490,16 +560,69 @@ class RollingFactorCovarData:
         """Factor covariance matrices over time."""
         return {d: e.x_covar for d, e in sorted(self.data.items())}
 
+    def _snapshots_asof(self, dates=None):
+        """Yield only snapshots available by each query date, without backdating fits."""
+        requested = self.dates if dates is None else pd.DatetimeIndex(dates).unique().sort_values()
+        available = self.dates
+        for date in requested:
+            position = available.searchsorted(date, side='right') - 1
+            if position < 0:
+                raise ValueError("No fitted covariance was available at the requested date")
+            estimation = self.data[available[position]]
+            if estimation.estimation_date is not None and estimation.estimation_date > date:
+                raise ValueError("Fitted covariance was not available at the requested date")
+            estimation_date = (
+                min(date, estimation.estimation_date)
+                if estimation.estimation_date is not None
+                else date
+            )
+            yield date, replace(estimation, estimation_date=estimation_date)
+
     def get_y_covars(
         self,
         residual_var_weight: float = 1.0,
         assets: Optional[Union[List[str], pd.Index]] = None,
+        *,
+        residual_type: Union[ResidualType, str] = ResidualType.ORTHOGONAL,
+        dates: Optional[pd.DatetimeIndex] = None,
+        residual_corr_weight: float = 1.0,
     ) -> Dict[pd.Timestamp, pd.DataFrame]:
-        """Response covariance matrices over time."""
-        return {
-            d: e.get_y_covar(residual_var_weight=residual_var_weight, assets=assets)
-            for d, e in sorted(self.data.items())
-        }
+        """Return fitted or as-of total covariances with current MATF marginal risk.
+
+        Options match CurrentFactorCovarData.get_y_covar. Between common-period
+        updates R may be held, while B, F and residual variances come from the
+        latest available snapshot. Retrieval never refits any component.
+        """
+        _validate_residual_options(residual_type, residual_var_weight, residual_corr_weight)
+        return {date: estimation.get_y_covar(
+            residual_var_weight, assets, residual_type=residual_type,
+            residual_corr_weight=residual_corr_weight,
+        ) for date, estimation in self._snapshots_asof(dates)}
+
+    def get_residual_covars(
+        self,
+        residual_var_weight: float = 1.0,
+        assets: Optional[Union[List[str], pd.Index]] = None,
+        *,
+        residual_type: Union[ResidualType, str] = ResidualType.ORTHOGONAL,
+        residual_corr_weight: float = 1.0,
+        dates: Optional[pd.DatetimeIndex] = None,
+    ) -> Dict[pd.Timestamp, pd.DataFrame]:
+        """Assemble w D at every fit/query date, refreshing MATF marginal variances."""
+        _validate_residual_options(residual_type, residual_var_weight, residual_corr_weight)
+        return {date: estimation.get_residual_covar(
+            residual_var_weight, assets, residual_type=residual_type,
+            residual_corr_weight=residual_corr_weight,
+        ) for date, estimation in self._snapshots_asof(dates)}
+
+    def get_residual_correlations(self) -> Dict[pd.Timestamp, pd.DataFrame]:
+        """Return distinct dimensionless R vintages keyed by fit/availability date."""
+        history = {}
+        for _, snapshot in self._snapshots_asof():
+            prepared = snapshot.residual_correlation
+            if prepared is not None:
+                history[prepared.estimation_date] = prepared.get_corr(snapshot.estimation_date)
+        return dict(sorted(history.items()))
 
     def get_y_betas(self) -> Dict[pd.Timestamp, pd.DataFrame]:
         """Factor loadings over time.  Each DataFrame is (N × M)."""

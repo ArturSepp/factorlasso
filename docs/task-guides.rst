@@ -236,7 +236,8 @@ material common residual component, so it can be the wrong selection criterion f
 selects the sparsest penalty on the supplied grid that passes. If none passes, it selects the
 minimum-statistic candidate and exposes the missing residual components in ``missing_factors_``.
 For a one-off in-sample diagnostic, :func:`~factorlasso.diagnose_residuals` is available, but its
-own documentation warns about in-sample optimism.
+own documentation warns about in-sample optimism. :doc:`residual_diagnostics` gives the statistics,
+their sources, a worked example and their limitations.
 
 Both selectors are time-series procedures: they use expanding training windows followed by held-out
 windows, never shuffled folds. CV solver failures are stored as ``NaN`` for the affected fold;
@@ -293,6 +294,39 @@ annualised and per-period inputs.
    True
 
 The container checks that the loading and residual-variance row indices agree before assembly.
-``residual_var_weight`` scales only the diagonal residual term; it is a deliberate sensitivity
-parameter, not an annualisation control. :class:`~factorlasso.RollingFactorCovarData` stores dated
+``residual_var_weight`` scales the entire selected residual covariance; it is a deliberate
+sensitivity parameter, not an annualisation control. :class:`~factorlasso.RollingFactorCovarData` stores dated
 snapshots and provides panel accessors without changing those conventions.
+
+
+Common-period residual dependence
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``residual_type="orthogonal"`` remains the default. The opt-in ``"empirical"``
+uses ``D = S [(1-rho) I + rho R] S``, where S contains the current stored residual
+standard deviations and R is prepared common-period EWMA correlation.
+``residual_corr_weight`` supplies rho in [0, 1], independently of the multiplier
+on the entire residual block. At zero retention the orthogonal result is exact;
+at every retention setting the MATF residual diagonal is preserved.
+
+Prepare R with ``estimate_residual_correlation(residuals, metadata, estimation_date)``
+and attach the returned ``ResidualCorrelationData`` to ``residual_correlation``.
+Metadata declares frequency, beta_span, annualisation_factor and residual_scale
+per asset. Complete native log-return intervals are summed to the lowest compatible
+grid. Monthly/quarterly data use quarters, with the quarterly beta span; an explicit
+coarser grid converts decay using ``periods_per_year``. Gaps, crossing intervals and
+undefined residual correlations fail rather than being filled or prorated.
+Positive constant scaling cancels; no annual covariance multiplier is applied to R.
+Native residuals and alpha remain unchanged.
+
+Rolling producers may retain R between completed periods, while assembly uses the
+latest available residual variances. ``get_residual_correlations()`` reports unique
+R vintages; ``get_residual_covars(residual_type="empirical")`` assembles D at every
+fit/query date. Availability follows the fit date, never an earlier observation date.
+
+Correlation is the only prepared empirical state. Rebuild earlier development
+covariance snapshots from source returns and saved betas. There is no legacy
+covariance class, migration API or getter span/scale override. Neither mode
+includes a factor-residual cross-covariance term. A PSD common-period R combined
+with nonnegative marginal variances and weights gives PSD risk; this is a model,
+not a claim of equality to annualized common-period empirical covariance.

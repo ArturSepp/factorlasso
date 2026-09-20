@@ -852,6 +852,110 @@ instrument.
 
 ---
 
+### 10. Empirical residual correlation
+
+`CurrentFactorCovarData.get_y_covar` and `RollingFactorCovarData.get_y_covars` assemble
+`B F B' + w D`, where `w` is `residual_var_weight`. With `residual_type="orthogonal"` (the
+default) `D` is the diagonal of stored residual variances. With `residual_type="empirical"` the
+same diagonal is kept and residual dependence is added:
+
+$$
+D = S \left[(1 - \rho) I + \rho R\right] S
+$$
+
+`S` is the diagonal matrix of current residual standard deviations, `R` is a prepared
+common-period EWMA residual correlation, and ρ is `residual_corr_weight` in `[0, 1]` (default
+`1`). At ρ = 0 the result equals the orthogonal matrix exactly, and at every ρ the diagonal of `D`
+equals the stored residual variances. `ResidualType.ORTHOGONAL` and `ResidualType.EMPIRICAL` are
+the equivalent enum values. Both modes assume zero factor-residual cross covariance. `w` scales
+the whole residual block, so `w = 0` removes all residual risk. Passing a `residual_corr_weight`
+other than `1` with orthogonal residuals raises `ValueError`.
+
+Prepare `R` with `estimate_residual_correlation` and pass the returned
+`ResidualCorrelationData` to the snapshot:
+
+```python
+import numpy as np
+import pandas as pd
+
+import factorlasso as fl
+
+rng = np.random.default_rng(3)
+dates = pd.date_range("2015-01-31", periods=96, freq="ME")
+assets = ["asset_a", "asset_b", "asset_c"]
+common = 0.01 * rng.standard_normal(96)
+residuals = pd.DataFrame(
+    0.02 * rng.standard_normal((96, 3)) + common[:, None], index=dates, columns=assets
+)
+metadata = pd.DataFrame(
+    {"frequency": "ME", "beta_span": 36.0, "annualisation_factor": 12.0, "residual_scale": 1.0},
+    index=assets,
+)
+prepared = fl.estimate_residual_correlation(residuals, metadata, estimation_date=dates[-1])
+
+snapshot = fl.CurrentFactorCovarData(
+    x_covar=pd.DataFrame([[0.04]], index=["market"], columns=["market"]),
+    y_betas=pd.DataFrame([[1.0], [0.8], [0.5]], index=assets, columns=["market"]),
+    y_variances=pd.DataFrame(
+        {fl.VarianceColumns.RESIDUAL_VARS.value: [0.010, 0.012, 0.008]}, index=assets
+    ),
+    estimation_date=dates[-1],
+    residual_correlation=prepared,
+)
+orthogonal = snapshot.get_y_covar()
+empirical = snapshot.get_y_covar(residual_type="empirical", residual_corr_weight=0.5)
+
+print(np.allclose(np.diag(empirical), np.diag(orthogonal)))
+print(np.allclose(
+    snapshot.get_y_covar(residual_type="empirical", residual_corr_weight=0.0), orthogonal
+))
+```
+
+```text
+True
+True
+```
+
+`metadata` is indexed by asset and declares `frequency`, `beta_span`, `annualisation_factor` and
+`residual_scale`. The input residuals are additive log-return residuals at their native
+frequencies. The stored multiplier `residual_scale` is undone first, and complete native
+intervals are then summed to the common grid. The default grid is the lowest compatible native
+frequency: monthly plus quarterly assets use `QE`. The default span is the beta span of that
+lowest-frequency bucket, so monthly span 36 with quarterly span 12 gives quarterly span 12. A
+`frequency` coarser than every native grid needs `periods_per_year`, which converts the decay as
+`lambda_common = lambda_native ** (A_native / A_common)`; it converts decay, not covariance units.
+An explicit `span` counts common-grid observations. Differing or unweighted beta spans within the
+lowest-frequency bucket require an explicit `span`.
+
+A causal EWMA mean is removed before the EWMA second moment is normalised to a correlation.
+Positive constant scaling of any asset cancels, and no annual covariance multiplier is applied to
+`R`. The native residual panel and the alpha computed from it are unchanged.
+
+Leading and trailing incomplete common periods are excluded, and an interior gap fails. Nothing is
+zero-filled, interpolated, prorated or extrapolated. Native interval boundaries must nest exactly
+within the common grid: weekly residuals that cross quarter ends have to be rebuilt from finer
+source returns first. Business-day panels use the declared pandas business-day calendar. A
+residual series with zero variance fails, because its correlation is undefined.
+
+Each `ResidualCorrelationData` records its last complete `observation_date` and its
+`estimation_date`, the date it became available. `get_corr(date)` refuses a date before the
+`estimation_date`, so a correlation refitted with today's betas is never backdated. A rolling
+producer may hold `R` between completed common periods while loadings, factor covariance and
+residual variances update at every fit. `RollingFactorCovarData.get_residual_correlations()`
+returns the distinct `R` vintages keyed by availability date,
+`get_residual_covars(residual_type="empirical")` assembles `D` at every fit or query date, and
+`get_y_covars(dates=requested_dates, ...)` selects the latest available snapshot without
+refitting. The correlation, its common-period returns and the native metadata survive ticker
+filtering and Excel save/load.
+
+Correlation is the only prepared empirical state. There is no residual-covariance class, no
+migration API and no span or scale override on the getters; snapshots written by earlier
+development builds are rebuilt from source returns and saved betas. A positive semi-definite `R`
+with non-negative residual variances and weights gives a positive semi-definite `D`. `D` is a
+model of residual risk. It is not claimed to equal an annualised common-period empirical
+covariance. In OptimalPortfolios, `FactorCovarEstimator(residual_type="empirical")` prepares the
+correlation during fitting.
+
 ## When to use it — and when not
 
 **Use it when:**
@@ -1045,7 +1149,7 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {0.18.1},
+  version = {0.19.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

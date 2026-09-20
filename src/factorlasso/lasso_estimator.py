@@ -1192,6 +1192,12 @@ class LassoModel:
         When ``factors_beta_loading_signs`` is *also* supplied, the explicit
         matrix is overlaid on the auto-derived signs per-cell: non-NaN
         explicit values win, NaN cells inherit the auto value.
+    auto_sign_excluded_factors : list or tuple of str, optional
+        Factor columns exempt from automatic signs and their t-stat zero gate.
+        Explicit non-NaN ``factors_beta_loading_signs`` still apply; supply NaN
+        there to allow either sign. Pooling, clustering and adaptive penalty
+        weights are unchanged. Names must be unique and present in the fitted
+        factor panel. None or an empty sequence preserves the existing fit.
     demean : bool, default True
     solver : str, default 'CLARABEL'
     warmup_period : int, default 12
@@ -1395,6 +1401,8 @@ class LassoModel:
     # dataclass field so even positional callers retain their old mapping.
     cluster_correlation_span: Optional[float] = None
     cluster_correlation_span_freq_dict: Optional[Dict[str, float]] = None
+    # Appended to preserve historical positional constructor arguments.
+    auto_sign_excluded_factors: Optional[Sequence[str]] = None
 
     def __post_init__(self):
         if self.model_type in (
@@ -1930,6 +1938,18 @@ class LassoModel:
         #    None for plain LASSO / single-column y; pd.Series indexed by
         #    y.columns for the GROUP modes.
         # ----------------------------------------------------------------
+        excluded = self.auto_sign_excluded_factors
+        if excluded is not None:
+            if (isinstance(excluded, str)
+                    or not isinstance(excluded, (list, tuple))
+                    or any(not isinstance(name, str) for name in excluded)
+                    or len(set(excluded)) != len(excluded)):
+                raise ValueError("auto_sign_excluded_factors must be unique factor names")
+            missing = set(excluded) - set(x.columns)
+            if missing:
+                raise ValueError(
+                    f"auto_sign_excluded_factors not present in x: {sorted(missing)}"
+                )
         asset_clusters: Optional[pd.Series] = None
         linkage = None
         cutoff = None
@@ -2111,13 +2131,19 @@ class LassoModel:
                 y.columns, x.columns
             ].to_numpy()
 
-        if auto_signs_np is not None and explicit_signs_np is not None:
+        # Exclude only the automatic constraint layer. Keep the original pooled
+        # slopes/signs for adaptive weights; explicit per-asset signs still win.
+        auto_constraint_signs = auto_signs_np
+        if auto_signs_np is not None and excluded:
+            auto_constraint_signs = auto_signs_np.copy()
+            auto_constraint_signs[:, x.columns.get_indexer(excluded)] = np.nan
+        if auto_constraint_signs is not None and explicit_signs_np is not None:
             # Overlay: explicit per-cell value wins where non-NaN
             signs_np = np.where(
-                np.isnan(explicit_signs_np), auto_signs_np, explicit_signs_np
+                np.isnan(explicit_signs_np), auto_constraint_signs, explicit_signs_np
             )
-        elif auto_signs_np is not None:
-            signs_np = auto_signs_np
+        elif auto_constraint_signs is not None:
+            signs_np = auto_constraint_signs
         elif explicit_signs_np is not None:
             signs_np = explicit_signs_np
 

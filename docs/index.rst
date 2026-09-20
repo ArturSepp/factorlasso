@@ -30,6 +30,18 @@ depend on the portfolio-construction or reporting libraries that consume it.
    scientific-replication
    api
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Methodology
+
+   residual_diagnostics
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Contributing
+
+   documentation_standard
+
 Choose the right path
 ---------------------
 
@@ -41,6 +53,8 @@ Choose the right path
   fit and documented trade-offs.
 * Use :doc:`scientific-replication` only when reproducing a manuscript rather than evaluating the
   package.
+* Read the methodology articles for the definition, equations, worked example and references
+  of one method at a time, starting with :doc:`residual_diagnostics`.
 * Use :doc:`api` for the supported top-level public surface.
 * Review the `compatibility policy
   <https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md>`_ before depending on a

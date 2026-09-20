@@ -21,14 +21,21 @@ release = tomllib.loads(
 version = release
 
 extensions = [
+    "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.viewcode",
     "numpydoc",
 ]
 
+# Methodology articles are portable Markdown; the API entry and legacy utility pages stay RST.
+# Dollar math keeps article source readable in MyST, GitHub Markdown and VS Code alike.
+myst_enable_extensions = ["dollarmath"]
+# Resolve ordinary Markdown section links with GitHub-compatible heading fragments.
+myst_heading_anchors = 4
+
 root_doc = "index"
-source_suffix = ".rst"
+source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 nitpicky = False
 autodoc_typehints = "description"

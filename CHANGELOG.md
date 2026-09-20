@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-20
+
+### Added
+
+- Added opt-in empirical residual risk through `ResidualType`,
+  `ResidualCorrelationData`, and `estimate_residual_correlation`. Common-period
+  causal EWMA correlation is combined with current MATF marginal residual
+  variances; the orthogonal default, residual diagonal, and native alpha remain
+  unchanged, and both modes assume zero factor-residual cross covariance.
+- Added independent `residual_corr_weight` retention, rolling as-of covariance
+  queries, distinct correlation-vintage history, current residual-covariance
+  history, filtering, and Excel persistence. Invalid units, incomplete histories,
+  internal gaps, and nonnested period boundaries fail closed.
+- Added opt-in `LassoModel.auto_sign_excluded_factors` so selected factor columns
+  can remain free of automatic sign and t-stat zero constraints. Explicit signs
+  still apply; adaptive weights, clustering, and default fits are unchanged.
+- Added the Markdown methodology framework, public-symbol and image ownership
+  checks, offline example execution, Sphinx testcode execution, and the first
+  methodology article and reproducible exhibit for residual diagnostics.
+
+### Changed
+
+- Documented how `effective_sparsity` treats fully collapsed fits and the absolute
+  tolerance remedy, and documented the final residual-correlation API throughout
+  the README and task guide.
+
 ## [0.18.1] - 2026-09-08
 
 ### Added

@@ -1,0 +1,123 @@
+{
+  "data_kind": "Synthetic teaching exhibits; not market or paper-replication evidence.",
+  "environment": {
+    "dependencies": {
+      "cvxpy": "1.9.2",
+      "factorlasso": "0.19.0",
+      "matplotlib": "3.11.1",
+      "numpy": "2.5.2",
+      "pandas": "3.0.5",
+      "scipy": "1.18.1"
+    },
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.7"
+  },
+  "generated_at_utc": "2026-09-20T19:25:32+00:00",
+  "kind": "factorlasso_documentation_analytics",
+  "producers": {
+    "covariance_residuals": {
+      "checks": {
+        "complete_factor_set_passes": true,
+        "edge_matches_closed_form": true,
+        "eigenvalues_sum_to_series_count": true,
+        "no_penalty_passes_without_the_factor": true,
+        "plotted_top_eigenvalue_is_reported_value": true,
+        "sphericity_matches_direct_sum": true,
+        "threshold_matches_scipy_chi2": true,
+        "withheld_factor_fails": true
+      },
+      "configuration": {
+        "conventions": {
+          "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+          "estimator": "LassoModelType.LASSO, CVXPY with CLARABEL, no sign constraints, zero prior.",
+          "evaluation": "In-sample residuals. Held-out evaluation belongs to LassoModelDiagonalityCV.",
+          "missing_data": "Complete panel.",
+          "returns": "Decimal per-period returns; factor volatility 0.04 and idiosyncratic volatility 0.02 per month; nothing is annualised.",
+          "sample": "240 synthetic month-end observations from 2006-01-31; 8 responses; 4 factors.",
+          "weighting": "Uniform observation weights (span=None); demean=True."
+        },
+        "example": "residual_diagnostics",
+        "parameters": {
+          "n_null_panels": 2000,
+          "n_obs": 240,
+          "reg_lambda": 0.0001,
+          "seed": 20260920,
+          "significance": 0.05,
+          "withheld_factor": "commodity"
+        }
+      },
+      "images": {
+        "residual_diagnostics_spectrum.png": {
+          "bytes": 126420,
+          "sha256": "41400572d64c29138e84ec9ca935bda54a4ae3707bbdd0ebd4441aff3eeb31aa"
+        }
+      },
+      "tables": {
+        "null_rejection_rates": {
+          "sha256": "ec5323c3b9de798c8e9504ef875d890604ae0c3fe6593ed0a6b1399b606f2818",
+          "shape": [
+            3,
+            1
+          ]
+        },
+        "penalty_path_complete": {
+          "sha256": "fb309d9aa8bb1b7d56c70decec0a4352c40dd83443284594804968dae41f9bd6",
+          "shape": [
+            9,
+            6
+          ]
+        },
+        "penalty_path_withheld": {
+          "sha256": "55d9383403024f43dec6e07637320645a8075fb93fde895f87288c3b283611ff",
+          "shape": [
+            9,
+            6
+          ]
+        },
+        "residual_diagnostics": {
+          "sha256": "0a60dc2cbd9556e46138d0889267aaf98c2eaa6334e8ae33d616c97c32e0c919",
+          "shape": [
+            2,
+            12
+          ]
+        },
+        "residual_eigenvalues": {
+          "sha256": "8b1b61275c7e2045feee2e9a5f9905270e7e2322772e1ff57bb9e2a50ffb9f9d",
+          "shape": [
+            8,
+            2
+          ]
+        }
+      }
+    }
+  },
+  "rendering": {
+    "dpi": 150,
+    "font_family": "DejaVu Sans"
+  },
+  "review": {
+    "inspected_at_utc": "2026-09-20",
+    "inspected_by": "Codex (agent session), not the maintainer",
+    "note": "The regenerated full-resolution preview was checked for labels, units, legend, clipping, overlap, and contrast. Maintainer visual review remains outstanding.",
+    "status": "inspected_by_agent_owner_review_pending",
+    "views": {
+      "full_resolution": true,
+      "article_width_sphinx_furo_736px": false,
+      "live_github_page": false,
+      "vs_code_application": false
+    }
+  },
+  "schema_version": 1,
+  "source": {
+    "commit": null,
+    "dirty": null,
+    "files": {
+      "examples/docs/residual_diagnostics.py": "8cff4db181609bb8ef4e8ec521ec055423bbc88292487b5db24238f9ff70169f",
+      "tools/docs_analytics/covariance_residuals.py": "a923a6a1f3eb1a4e13aeff4a5d868a5839ba9931da9ccae0d5de7b2cae9bb2de",
+      "tools/docs_analytics/fixtures.py": "4479e0da2549354daabca6095e68c253dc1f3d53745cd8a397279075aa26bb3a",
+      "tools/docs_analytics/registry.json": "cc09c1e6d2dd2c46c098e865bdac7b607f8ec4d410803955b87d7d94d4cabf89",
+      "tools/docs_analytics/run.py": "b409304109f55de5629213fb4bb3c76bc87367fee1b1338c5d9bc7f950eb5b97"
+    },
+    "package_source_sha256": "4e8657b5987b7b41cf33f3f972f07af0ba8942f4aa28747696ac7bc679dff37b"
+  }
+}

@@ -540,6 +540,13 @@ def effective_sparsity(
     so the default behaviour is relative to the largest loading in the matrix and independent of
     units. Pass ``rtol=0.0`` for a purely absolute cut.
 
+    The relative cut presumes that the largest loading is a live one. When the penalty has driven
+    every loading to zero, the largest magnitude is itself solver dust, the cut scales down with
+    it, and the dust is counted as kept loadings: a fully collapsed fit reads as a dense one.
+    Wherever a fit may have collapsed, for example at the top of a penalty grid, pass an absolute
+    ``tol`` at the scale of a meaningful loading, with ``rtol=0.0`` for a purely absolute cut, or
+    inspect :func:`suggest_tolerance`.
+
     Parameters
     ----------
     betas : np.ndarray or pd.DataFrame, shape (N, M)
@@ -588,6 +595,14 @@ def effective_sparsity(
     0
     >>> suggest_tolerance(betas)['gap_orders'] > 5    # dust and loadings are far apart
     True
+
+    A collapsed fit defeats the relative cut, because its largest magnitude is dust as well:
+
+    >>> dust = np.array([[3e-9, 1e-9], [2e-9, 4e-9]])
+    >>> effective_sparsity(dust).n_nonzero               # the relative cut counts the dust
+    4
+    >>> effective_sparsity(dust, tol=1e-6).n_nonzero     # an absolute floor does not
+    0
 
     A factor with no carrier is flagged, because it makes ``beta_F`` singular:
 
