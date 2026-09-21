@@ -16,7 +16,7 @@
 *.json  text eol=lf
 *.cfg   text eol=lf
 
-# Binaries — never touch
+# Binaries â€” never touch
 *.png   binary
 *.jpg   binary
 *.jpeg  binary
@@ -28,3 +28,4 @@
 *.pkl   binary
 *.pickle binary
 *.parquet binary
+.githooks/* text eol=lf
