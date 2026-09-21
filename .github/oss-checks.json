@@ -1,0 +1,141 @@
+{
+  "version": "1.0.0",
+  "repository": "FactorLasso",
+  "package": "factorlasso",
+  "python_environment": "FactorLasso312",
+  "lint_paths": [
+    "src/factorlasso/*.py",
+    "tests/*.py",
+    "examples/*.py"
+  ],
+  "preflight": [
+    {
+      "paths": [
+        "docs/*.md",
+        "tools/check_docs.py",
+        "tools/docs_inventory.json"
+      ],
+      "command": [
+        "tools/check_docs.py"
+      ]
+    }
+  ],
+  "docs": [
+    [
+      "-m",
+      "sphinx",
+      "-E",
+      "-W",
+      "--keep-going",
+      "-b",
+      "html",
+      "docs",
+      "{output}/html"
+    ],
+    [
+      "-m",
+      "sphinx",
+      "-E",
+      "-W",
+      "-b",
+      "doctest",
+      "docs",
+      "{output}/doctest"
+    ]
+  ],
+  "tests": [
+    [
+      "-m",
+      "pytest",
+      "-o",
+      "cache_dir={output}/pytest"
+    ]
+  ],
+  "remote_only": [
+    "supported Python/OS matrix",
+    "clean core/extras environments",
+    "wheel and sdist",
+    "coverage gates",
+    "dependency floors and live compatibility",
+    "online link and security health",
+    "pinned downstream consumer integrations"
+  ],
+  "required_jobs": [
+    "preflight",
+    "ci",
+    "docs",
+    "static",
+    "references"
+  ],
+  "workflow_inventory": {
+    "ci": {
+      "test": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python ${{ matrix.python-version }}",
+        "Sync the test environment",
+        "Run tests with coverage at the declared floor",
+        "Run tests"
+      ],
+      "wheel": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python",
+        "Build the wheel from the source distribution",
+        "Inspect distribution contents",
+        "Install wheel in a clean core environment",
+        "Verify core wheel outside the checkout",
+        "Run source tests against the installed wheel",
+        "Install and verify the sdist independently"
+      ],
+      "stack-policy": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d",
+        "Exercise policy regressions",
+        "Check stack imports and optional adapter isolation"
+      ],
+      "lowest-dependencies": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d",
+        "Keep the test environment outside the checkout",
+        "Resolve a fresh lowest-direct test environment",
+        "Record installed versions",
+        "Check optional dependencies stay outside package-root import",
+        "Test declared dependency floors without live provider credentials"
+      ]
+    },
+    "docs": {
+      "docs": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python",
+        "Sync documentation environment",
+        "Build HTML with warnings as errors",
+        "Execute documentation testcode blocks",
+        "Check documentation links"
+      ]
+    },
+    "static": {
+      "static": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python",
+        "Check lint and stack invariants",
+        "Check measured docstring coverage"
+      ]
+    }
+  },
+  "audit": true,
+  "consumers": [
+    {
+      "repository": "ArturSepp/OptimalPortfolios",
+      "module": "optimalportfolios",
+      "extra": "",
+      "sdk": false,
+      "commit": "28bc6e63d5760ac36b56282a6b49ae190bdc165b"
+    },
+    {
+      "repository": "ArturSepp/privateassets",
+      "module": "privateassets",
+      "extra": "factors",
+      "sdk": false,
+      "commit": "c03e3eeaf6296709a98c2f88d65afda0d9de3a41"
+    }
+  ]
+}
