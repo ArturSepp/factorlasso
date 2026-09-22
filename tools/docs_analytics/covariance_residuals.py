@@ -7,9 +7,13 @@ residual correlation matrix against the Marchenko-Pastur edge, and the sphericit
 against its chi-square threshold along a penalty grid, for a complete factor set and for the same
 panel with one factor withheld.
 
-The calculation is the article's worked example, loaded from
-``examples/docs/residual_diagnostics.py``. Nothing is re-implemented here: this module reads the
-example's functions, checks that the registry configuration describes what actually ran, and draws.
+``factor_covariance_assembly_history.png`` for ``docs/factor_covariance_assembly.md``: the error of
+the assembled factor covariance and of the sample covariance against the population covariance,
+and the realised volatility of the minimum-variance portfolio each implies, by history length.
+
+Each calculation is the worked example of its article, loaded from ``examples/docs/``. Nothing is
+re-implemented here: this module calls the example's functions, checks that the registry
+configuration describes what actually ran, and draws.
 """
 
 import numpy as np
@@ -18,42 +22,23 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, ScalarFormatter
 from scipy import stats
 
-from tools.docs_analytics.fixtures import GRID, INK, INK_MUTED, SERIES, SURFACE, load_example
+from tools.docs_analytics.fixtures import (
+    INK,
+    INK_MUTED,
+    SERIES,
+    SURFACE,
+    load_example,
+    style_axis,
+    verify_parameters,
+)
 
 MARKERS = ("o", "s")
-
-
-def _style(axis) -> None:
-    """Recessive frame and grid; text in ink, never in a series colour."""
-    axis.set_facecolor(SURFACE)
-    axis.grid(True, color=GRID, linewidth=0.8)
-    axis.set_axisbelow(True)
-    for side in ("top", "right"):
-        axis.spines[side].set_visible(False)
-    for side in ("left", "bottom"):
-        axis.spines[side].set_color(GRID)
-    axis.tick_params(colors=INK_MUTED, labelsize=10.5)
-    axis.xaxis.label.set_color(INK)
-    axis.xaxis.label.set_size(11.5)
-    axis.yaxis.label.set_size(11.5)
-    axis.yaxis.label.set_color(INK)
-    axis.title.set_color(INK)
 
 
 def _residual_diagnostics(configuration: dict) -> tuple[Figure, dict, dict]:
     """Compute the worked example once and draw its two-panel exhibit."""
     example = load_example(configuration["example"])
-    applied = {
-        "seed": example["SEED"],
-        "n_obs": example["N_OBS"],
-        "reg_lambda": example["REG_LAMBDA"],
-        "significance": example["SIGNIFICANCE"],
-        "withheld_factor": example["WITHHELD_FACTOR"],
-        "n_null_panels": example["N_NULL_PANELS"],
-    }
-    declared = {key: configuration["parameters"][key] for key in applied}
-    if applied != declared:
-        raise ValueError(f"Registry parameters {declared} differ from the example's {applied}")
+    verify_parameters(example, configuration["parameters"])
 
     x, y = example["make_panel"]()
     x_short = x.drop(columns=example["WITHHELD_FACTOR"])
@@ -115,7 +100,7 @@ def _residual_diagnostics(configuration: dict) -> tuple[Figure, dict, dict]:
     right.set_ylabel("Sphericity statistic S (log scale)")
     right.set_title("In-sample sphericity along the penalty grid", fontsize=12.5, loc="left")
     for axis in (left, right):
-        _style(axis)
+        style_axis(axis)
 
     rates = example["null_rejection_rates"](nu=complete.nu, n_series=y.shape[1])
     tables = {
@@ -148,13 +133,74 @@ def _residual_diagnostics(configuration: dict) -> tuple[Figure, dict, dict]:
     return figure, tables, checks
 
 
+def _factor_covariance_assembly(configuration: dict) -> tuple[Figure, dict, dict]:
+    """Assembled against sample covariance by history length: error and minimum-variance risk."""
+    example = load_example(configuration["example"])
+    verify_parameters(example, configuration["parameters"])
+    study = example["history_study"]()
+    truth = example["true_covariance"]()
+    true_min_vol = example["minimum_variance_vol"](truth, truth)
+    labels = {"factor model": "assembled factor covariance", "sample": "sample covariance"}
+
+    figure = Figure(figsize=(11.0, 4.6), facecolor=SURFACE, layout="constrained")
+    left, right = figure.subplots(1, 2)
+    for (name, label), colour, marker in zip(labels.items(), SERIES, MARKERS):
+        rows = study.loc[name]
+        left.plot(rows.index, rows["relative_error"], color=colour, marker=marker, markersize=7,
+                  linewidth=2, markeredgecolor=SURFACE, markeredgewidth=1.5, label=label)
+        right.plot(rows.index, 100.0 * rows["min_variance_vol"], color=colour, marker=marker,
+                   markersize=7, linewidth=2, markeredgecolor=SURFACE, markeredgewidth=1.5,
+                   label=label)
+        right.annotate(f"{100.0 * rows['min_variance_vol'].iloc[0]:.1f}",
+                       xy=(rows.index[0], 100.0 * rows["min_variance_vol"].iloc[0]),
+                       xytext=(8, 9), textcoords="offset points", va="center", fontsize=11,
+                       color=INK)
+    right.axhline(100.0 * true_min_vol, color=INK_MUTED, linestyle="--", linewidth=1.2)
+    right.annotate(f"population optimum {100.0 * true_min_vol:.1f}",
+                   xy=(study.loc["sample"].index[-1], 100.0 * true_min_vol), xytext=(0, -14),
+                   textcoords="offset points", ha="right", fontsize=11, color=INK_MUTED)
+    for axis in (left, right):
+        axis.set_xticks(list(study.loc["sample"].index))
+        axis.set_xlabel("Months of history (40 assets, 4 factors)")
+        style_axis(axis)
+    left.set_ylim(0.0, None)
+    left.set_ylabel("Relative Frobenius error of the covariance")
+    left.set_title("Error against the population covariance", fontsize=12.5, loc="left")
+    left.legend(frameon=False, fontsize=11, labelcolor=INK)
+    right.set_ylim(0.0, 1.12 * 100.0 * float(study["min_variance_vol"].max()))
+    right.set_ylabel("Annualised volatility, % (under the population)")
+    right.set_title("Realised risk of the minimum-variance portfolio", fontsize=12.5, loc="left")
+
+    model_rows, sample_rows = study.loc["factor model"], study.loc["sample"]
+    tables = {"factor_covariance_assembly_history": study.reset_index().set_index("n_obs")}
+    checks = {
+        "assembly_error_below_sample_at_every_history": bool(
+            (model_rows["relative_error"] < sample_rows["relative_error"]).all()),
+        "assembly_better_conditioned_at_every_history": bool(
+            (model_rows["condition_number"] < sample_rows["condition_number"]).all()),
+        "assembly_realised_risk_between_optimum_and_sample": bool(
+            ((model_rows["min_variance_vol"] > true_min_vol)
+             & (model_rows["min_variance_vol"] < sample_rows["min_variance_vol"])).all()),
+        "assembly_error_falls_with_history": bool(
+            model_rows["relative_error"].is_monotonic_decreasing),
+    }
+    return figure, tables, checks
+
+
+EXHIBITS = {
+    "residual_diagnostics_spectrum.png": _residual_diagnostics,
+    "factor_covariance_assembly_history.png": _factor_covariance_assembly,
+}
+
+
 def produce(configuration: dict) -> dict:
     """Return figures, supporting tables, the applied configuration and numerical checks.
 
     Parameters
     ----------
     configuration : dict
-        The producer's ``configuration`` record from ``registry.json``.
+        The producer's ``configuration`` record from ``registry.json``; its ``exhibits`` mapping
+        names every PNG this module draws and the example and parameters behind it.
 
     Returns
     -------
@@ -163,10 +209,13 @@ def produce(configuration: dict) -> dict:
         ``DataFrame``), ``configuration`` (echoed once verified against what ran) and ``checks``
         (name to ``True``).
     """
-    figure, tables, checks = _residual_diagnostics(configuration)
-    return {
-        "figures": {"residual_diagnostics_spectrum.png": figure},
-        "tables": tables,
-        "configuration": configuration,
-        "checks": checks,
-    }
+    if set(configuration["exhibits"]) != set(EXHIBITS):
+        declared = sorted(configuration["exhibits"])
+        raise ValueError(f"Registry exhibits {declared} != {sorted(EXHIBITS)}")
+    figures, tables, checks = {}, {}, {}
+    for basename, draw in EXHIBITS.items():
+        figure, exhibit_tables, exhibit_checks = draw(configuration["exhibits"][basename])
+        figures[basename] = figure
+        tables.update(exhibit_tables)
+        checks.update(exhibit_checks)
+    return {"figures": figures, "tables": tables, "configuration": configuration, "checks": checks}

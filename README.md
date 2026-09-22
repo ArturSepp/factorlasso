@@ -100,9 +100,9 @@ Y = pd.DataFrame(
 
 model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5).fit(x=X, y=Y)
 
-print(model.coef_.shape)       # (N, M) estimated β
-print(model.intercept_.shape)  # (N,) estimated α
-print(model.predict(X).shape)  # fitted response panel
+print(model.coef_.shape)         # (N, M) estimated β
+print(model.alpha_const_.shape)  # (N,) estimated α, the regression intercept
+print(model.predict(X).shape)    # fitted response panel
 ```
 
 ```text
@@ -449,12 +449,70 @@ model = LassoModel(
 ).fit(x=X, y=Y)
 ```
 
+For an empirical prior, set `apply_ols_prior=True` (default `False`):
+
+```python
+model = LassoModel(
+    span=36, apply_ols_prior=True, prior_selection_type="highest_r2",
+).fit(x=X, y=Y)
+model.ols_betas_             # one-factor OLS slopes, response by factor
+model.ols_r2_                # centred weighted R-squared
+model.ols_beta_prior_        # selected centres before constraints and overrides
+model.effective_beta_prior_  # centres actually supplied to the solver
+```
+
+Each response is regressed separately on each factor with an intercept.
+`prior_selection_type="highest_r2"` is the default and only supported selector.
+It selects the factor with the highest
+EWMA-weighted R-squared and assigns its full OLS beta as the prior; other
+automatic priors are zero. R-squared is one minus weighted residual sum of
+squares divided by weighted total sum of squares about the weighted mean.
+
+For response $i$ and factor $f$, the selected prior before overrides and sign filtering is
+
+$$
+\beta^{\mathrm{prior}}_{if} =
+\widehat\beta^{\mathrm{OLS}}_{if}\mathbf{1}_{f=\arg\max_g R^2_{ig}}.
+$$
+
+Ties use factor-column order. The winning factor is invariant to nonzero
+factor rescaling before sign constraints and overrides are applied; its
+beta changes inversely with the factor's units.
+The regressions use the effective LASSO **squared-loss span**, including
+fit-time overrides, with weights `(1 - 2 / (span + 1)) ** age`. `span=None`
+gives equal weights. Inputs are the original observations with a fitted
+intercept, before the LASSO's rolling-mean preprocessing. Missing pairs retain
+their original time-grid age; constant or insufficient pairs receive no automatic prior.
+No annualisation or volatility standardisation is applied.
+
+Selection is per asset, even for clustered models. After selection and any
+explicit prior overrides, a positive-only factor loses a negative prior, a
+negative-only factor loses a positive prior, and a forced-zero factor always
+gets zero. A prohibited PE exposure therefore cannot acquire a PE prior.
+Blocked priors are not reassigned. The existing sign-selection and t-statistic
+gate still apply. With this flag enabled, finite `factors_beta_prior` entries
+(including zero) override automatic values, and NaN defers to the automatic
+value; with it disabled, the historical NaN-as-zero behavior is preserved.
+
+This is a package heuristic for penalty centres, not a posterior estimate or
+a guaranteed loading. Absolute-beta selection depends on factor units, and
+correlated factors can compete for the same explanation. All prior-aware
+LASSO variants support it; UNILASSO rejects the flag. Grouped lambda paths
+compute the prior once, and cross-validation recomputes it inside each
+training fold. The offline [example](examples/ols_prior.py) checks weighted
+OLS against an independent least-squares calculation and demonstrates PE
+exclusion.
+
 ### 4. Hierarchical Clustering Group LASSO (HCGL)
 
 The groups in classical group LASSO are user-specified. HCGL discovers them
 from the data: EWMA correlation of the response matrix → Ward's linkage →
-dendrogram cut at `cutoff_fraction × max(pdist)` → block-sparse penalty on
-the resulting clusters.
+dendrogram cut at `cutoff_fraction × max(pdist)` → row-grouped penalty on
+the resulting clusters. The penalty is the L2 norm of each response's loading
+row, weighted by the size of its cluster: it removes whole responses and
+shrinks kept rows, and the cluster enters through the weight (and through the
+pooled sign derivation below). For a penalty that selects a factor for a whole
+cluster, see FCGL in section 6.
 
 ```python
 model = LassoModel(
@@ -1149,7 +1207,7 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {0.19.0},
+  version = {0.20.0.dev2},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

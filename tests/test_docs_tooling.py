@@ -182,6 +182,59 @@ def test_implementation_section_is_isolated(check_docs):
     assert "observation" not in section
 
 
+SCRIPT = """import factorlasso as fl
+
+
+def fit(x, y):
+    model = fl.LassoModel(reg_lambda=1e-4)
+    return model.fit(x=x, y=y)
+
+
+def main():
+    x, y = make_panel()
+    model = fit(x, y)
+    print(model.coef_)
+"""
+
+
+def test_python_blocks_must_be_excerpts_of_the_canonical_script(check_docs):
+    excerpt = "```python\ndef fit(x, y):\n    model = fl.LassoModel(reg_lambda=1e-4)\n```\n"
+    dedented = "```python\nx, y = make_panel()\nmodel = fit(x, y)\n```\n"
+    assert check_docs.check_code_excerpts(excerpt + dedented, SCRIPT, "examples/docs/a.py") == []
+
+    drifted = excerpt.replace("1e-4", "1e-5")
+    issues = check_docs.check_code_excerpts(drifted, SCRIPT, "examples/docs/a.py")
+    assert [issue.line for issue in issues] == [1]
+    assert "verbatim excerpt of examples/docs/a.py" in issues[0].message
+    # lines that exist in the script but are not contiguous there are not an excerpt either
+    spliced = "```python\nimport factorlasso as fl\nx, y = make_panel()\n```\n"
+    assert len(check_docs.check_code_excerpts(spliced, SCRIPT, "examples/docs/a.py")) == 1
+
+
+def test_marked_fragments_and_other_languages_are_not_excerpt_checked(check_docs):
+    fragment = "<!-- fragment -->\n```python\nmodel.coef_   # not in the script\n```\n"
+    console = "```console\npython examples/docs/a.py\n```\n"
+    assert check_docs.check_code_excerpts(fragment + console, SCRIPT, "examples/docs/a.py") == []
+    unmarked = fragment.replace("<!-- fragment -->\n", "")
+    assert len(check_docs.check_code_excerpts(unmarked, SCRIPT, "examples/docs/a.py")) == 1
+
+
+def test_inventory_example_must_be_a_script_under_examples_docs(check_docs, tmp_path):
+    inventory, _ = check_docs.load_inventory(REPOSITORY_ROOT)
+    declared = {name: entry["example"] for name, entry in inventory["pages"].items()
+                if "example" in entry}
+    assert declared and all((REPOSITORY_ROOT / path).is_file() for path in declared.values())
+
+    (tmp_path / "tools").mkdir()
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "page.md").write_text("# Page\n", encoding="utf-8")
+    broken = {"schema_version": 1, "planned": {}, "symbols": {}, "pages": {
+        "docs/page.md": {"form": "utility", "status": "pending", "example": "tools/check_docs.py"}}}
+    (tmp_path / "tools" / "docs_inventory.json").write_text(json.dumps(broken), encoding="utf-8")
+    _, errors = check_docs.load_inventory(tmp_path)
+    assert any("'example' must name an existing script" in error for error in errors)
+
+
 # --- inventory and symbol ownership ---------------------------------------------------------
 
 

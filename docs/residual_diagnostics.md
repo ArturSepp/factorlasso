@@ -227,16 +227,47 @@ the sphericity criterion rejected in 4.6% of panels, the edge criterion in 1.9%,
 of the two in 5.2%. The Monte Carlo standard error of these frequencies is about 0.5 percentage
 points. This is a result for this shape only.
 
-The functions of the example follow. The
+The two functions that produce the table and the penalty path follow. The
 [complete script](https://github.com/ArturSepp/factorlasso/blob/main/examples/docs/residual_diagnostics.py)
 also asserts every number quoted above against an independent reference: the threshold against
 `scipy.stats.chi2.ppf`, the edge against its closed form, $S$ against a direct sum over
 `numpy.corrcoef`, and the reported component against `numpy.linalg.eigh`.
 
-```{literalinclude} ../examples/docs/residual_diagnostics.py
-:language: python
-:start-at: SEED = 20260920
-:end-before: def main
+```python
+def fit_and_diagnose(
+    x: pd.DataFrame,
+    y: pd.DataFrame,
+    reg_lambda: float = REG_LAMBDA,
+) -> tuple[fl.LassoModel, fl.Sparsity, pd.DataFrame, fl.ResidualDiagnostics]:
+    """Fit a LASSO factor model and test its in-sample residuals for diagonality."""
+    model = fl.LassoModel(model_type=fl.LassoModelType.LASSO, reg_lambda=reg_lambda).fit(x=x, y=y)
+    sparsity = fl.effective_sparsity(model.coef_)
+    residuals = y - model.predict(x)
+    diagnostics = fl.diagnose_residuals(
+        residuals,
+        n_fitted_per_asset=sparsity.per_asset,
+        significance=SIGNIFICANCE,
+    )
+    return model, sparsity, residuals, diagnostics
+```
+
+```python
+def penalty_path(x: pd.DataFrame, y: pd.DataFrame) -> pd.DataFrame:
+    """Tabulate the in-sample diagnostics over a grid of penalties, sparsest model first."""
+    rows = []
+    for reg_lambda in PENALTY_GRID:
+        model, sparsity, _, diagnostics = fit_and_diagnose(x, y, reg_lambda=float(reg_lambda))
+        rows.append({
+            "reg_lambda": float(reg_lambda),
+            # An absolute cut: a fully collapsed fit defeats the default relative tolerance.
+            "n_loadings": fl.effective_sparsity(model.coef_, tol=1e-3, rtol=0.0).n_nonzero,
+            "sphericity": diagnostics.sphericity,
+            "threshold": diagnostics.threshold,
+            "raw_offdiag_ss": diagnostics.raw_offdiag_ss,
+            "n_above_edge": diagnostics.n_above_edge,
+            "passes": diagnostics.passes,
+        })
+    return pd.DataFrame(rows).set_index("reg_lambda")
 ```
 
 ## Implementation in factorlasso
@@ -259,6 +290,7 @@ All names below are exported from the top-level package and documented in the
 
 The intended call sequence passes the mean loading count of the fit into the test:
 
+<!-- fragment -->
 ```python
 import factorlasso as fl
 
@@ -341,6 +373,11 @@ factors are priced, or whether residuals are independent in any sense beyond zer
 
 ## See also
 
+- [Factor covariance assembly](factor_covariance_assembly.md) for the decomposition whose
+  diagonal residual block this test examines.
+- [Sparse factor model](sparse_factor_model.md) for the fit that produces the residuals and for
+  the numerical zeros that `effective_sparsity` counts.
+- [Quickstart](quickstart.md) for the test inside the full workflow.
 - [Task-oriented guides](task-guides.rst): model selection by prediction score and by residual
   diagonality, and factor covariance assembly.
 - [API reference](api.rst)

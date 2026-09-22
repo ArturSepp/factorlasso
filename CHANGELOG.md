@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added opt-in `LassoModel(apply_ols_prior=True)` for fast, per-response
+  univariate OLS penalty centres. The highest EWMA-weighted R-squared factor
+  receives its full slope; other automatic priors are zero. OLS includes an
+  intercept and uses the effective squared-loss span, including fit-time
+  overrides, independently of clustering span.
+- Zero selected priors that conflict with the assembled sign matrix, including
+  forced-zero exposures, without reallocating blocked priors. Finite explicit
+  prior entries override automatic values; NaN defers to the automatic prior.
+- Retain raw OLS betas, R-squared, selected and effective priors, and the span as
+  fitted diagnostics. Grouped lambda paths reuse the calculation; CV recomputes
+  it using each training fold. UNILASSO rejects this unsupported option.
+  The default `apply_ols_prior=False` preserves previous numerical behavior.
+- Added the documentation quickstart, the analytics gallery and four methodology
+  articles (sparse factor model, sign constraints and priors, group penalties,
+  factor covariance assembly), each with a canonical offline script under
+  `examples/docs/` that asserts its quoted numbers and a registered synthetic
+  exhibit. `tools/check_docs.py` now requires every Python block of an article to
+  be a verbatim excerpt of its canonical script unless marked as a fragment. The
+  documentation copyright notice reads "2026, Artur Sepp". No package code changed.
+
+### Fixed
+
+- `LassoModel` rejects `factors_beta_loading_signs` and `nonneg=True` with
+  `ValueError`, at construction and at fit, for `UNILASSO`,
+  `COOPERATIVE_GROUP_LASSO` and `COOPERATIVE_CLUSTER_GROUP_LASSO`, whose solvers
+  take no sign constraint; previously the inputs were dropped silently and the
+  fit was unconstrained. With `auto_sign_constraints=True` these modes still fit
+  and `derived_signs_` is now `None`, since the derived signs never reach the
+  solver. Fits in the other modes are unchanged.
+- `CurrentFactorCovarData.get_snapshot` names the fallback alpha column
+  `stat_alpha` when no residuals are stored, so the table no longer carries two
+  `insample_alpha` columns, and raises `ValueError` naming the missing column
+  when `y_variances` lacks `r2` or `insample_alpha`.
+- README: the quickstart reads the regression intercept from `alpha_const_`, not
+  from the solver diagnostic `intercept_`; the HCGL section describes the
+  row-grouped penalty instead of calling it block-sparse.
+
+### Changed
+
+- Development version `0.20.0.dev2` removes the experimental
+  `prior_selection_type="highest_r2_and_abs_beta"` selector. `"highest_r2"`
+  is now the default and only supported value. Explicit use of the removed
+  selector raises `ValueError` at construction and fit; replace it with
+  `"highest_r2"`. Absolute-beta ranking depended on factor units.
+  `apply_ols_prior=False` and explicitly selected `"highest_r2"` fits retain
+  their numerical behavior.
+
 ## [0.19.0] - 2026-09-20
 
 ### Added

@@ -23,6 +23,7 @@ import argparse
 import ast
 import json
 import re
+import textwrap
 from datetime import date
 from pathlib import Path
 from typing import NamedTuple, Optional, Sequence
@@ -70,6 +71,13 @@ DELIMITER_MESSAGE = (
 ESCAPE_MESSAGE = (
     "GitHub drops the backslash before punctuation inside math; use a letter command "
     "(\\lVert, \\lbrace, \\quad) or omit the spacing."
+)
+# A Python block in an article is either an excerpt of the article's canonical script, so that the
+# code a reader sees is code the test suite runs, or an explicitly marked non-runnable fragment.
+FRAGMENT_MARKER = "<!-- fragment -->"
+EXCERPT_MESSAGE = (
+    "Python block is not a verbatim excerpt of {example}; copy the lines from the script, or put "
+    "'<!-- fragment -->' on the line before a fragment that is not meant to run."
 )
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 LINK = re.compile(r"(?<!!)\[[^\]\n]+\]\((https://[^\s)]+)\)")
@@ -295,6 +303,71 @@ def check_document(text: str, *, methodology: bool) -> list[Issue]:
     return issues
 
 
+def python_blocks(text: str) -> list[tuple[int, list[str], bool]]:
+    """Return ``(line, body, is_fragment)`` for each fenced block tagged ``python``."""
+    lines = text.splitlines()
+    blocks = []
+    index = 0
+    while index < len(lines):
+        opening = FENCE.match(lines[index])
+        if not opening:
+            index += 1
+            continue
+        start = index
+        body: list[str] = []
+        index += 1
+        while index < len(lines):
+            closing = FENCE.match(lines[index])
+            if (
+                closing
+                and closing[1][0] == opening[1][0]
+                and len(closing[1]) >= len(opening[1])
+                and not closing[2].strip()
+            ):
+                break
+            body.append(lines[index])
+            index += 1
+        index += 1
+        if opening[2].strip() != "python":
+            continue
+        previous = next((line.strip() for line in reversed(lines[:start]) if line.strip()), "")
+        blocks.append((start + 1, body, previous == FRAGMENT_MARKER))
+    return blocks
+
+
+def check_code_excerpts(text: str, example_source: str, example_name: str) -> list[Issue]:
+    """Require every unmarked Python block to be a contiguous, dedented run of the example's lines.
+
+    Parameters
+    ----------
+    text : str
+        Markdown source of the page.
+    example_source : str
+        Source of the canonical script named by the page's inventory entry.
+    example_name : str
+        Repository-relative path of that script, for the message.
+
+    Returns
+    -------
+    list of Issue
+        One issue per Python block that is neither an excerpt nor marked as a fragment.
+    """
+    script = [line.rstrip() for line in example_source.splitlines()]
+    issues = []
+    for number, body, is_fragment in python_blocks(text):
+        if is_fragment:
+            continue
+        block = textwrap.dedent("\n".join(line.rstrip() for line in body)).splitlines()
+        size = len(block)
+        found = size > 0 and any(
+            textwrap.dedent("\n".join(script[first:first + size])).splitlines() == block
+            for first in range(len(script) - size + 1)
+        )
+        if not found:
+            issues.append(Issue(number, EXCERPT_MESSAGE.format(example=example_name)))
+    return issues
+
+
 def check_local_links(text: str, path: Path, root: Path) -> list[Issue]:
     """Check that local inline and reference-style Markdown links resolve inside the repository.
 
@@ -397,6 +470,15 @@ def load_inventory(root: Path) -> tuple[dict, list[str]]:
             errors.append(f"{name}:1: Adopted human pages use portable Markdown.")
         if not (root / name).is_file():
             errors.append(f"{name}:1: Missing documentation page.")
+        example = entry.get("example")
+        if example is not None and (
+            not isinstance(example, str)
+            or not example.startswith("examples/docs/")
+            or not example.endswith(".py")
+            or ".." in Path(example).parts
+            or not (root / example).is_file()
+        ):
+            errors.append(f"{name}:1: 'example' must name an existing script under examples/docs/.")
     for name, entry in planned.items():
         if name in pages:
             errors.append(f"{name}:1: A page is either planned or inventoried, not both.")
@@ -509,6 +591,10 @@ def run(root: Path, files: Optional[Sequence[Path]], require_all: bool) -> tuple
         source = path.read_text(encoding="utf-8")
         issues = check_document(source, methodology=pages[name]["form"] == "methodology")
         issues.extend(check_local_links(source, path, root))
+        example = pages[name].get("example")
+        if example:
+            script = (root / example).read_text(encoding="utf-8")
+            issues.extend(check_code_excerpts(source, script, example))
         errors.extend(f"{name}:{issue.line}: {issue.message}" for issue in issues)
         section = implementation_section(source)
         for symbol in inventory["symbols"].get(name, []):

@@ -14,7 +14,7 @@ sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
 project = "factorlasso"
 author = "Artur Sepp and Mika Kastenholz"
-copyright = "2026, Artur Sepp and Mika Kastenholz"
+copyright = "2026, Artur Sepp"
 release = tomllib.loads(
     (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
 )["project"]["version"]

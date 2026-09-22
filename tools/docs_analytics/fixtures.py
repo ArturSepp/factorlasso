@@ -13,6 +13,8 @@ a fixed seed that is never changed once an exhibit depends on it.
 import runpy
 from pathlib import Path
 
+import numpy as np
+
 ROOT = Path(__file__).resolve().parents[2]
 
 # Validated on the light chart surface with adjacent-pair colour-vision-deficiency separation.
@@ -41,3 +43,51 @@ def load_example(basename: str) -> dict:
     if not path.is_file():
         raise ValueError(f"No canonical example for {basename!r}: {path}")
     return runpy.run_path(str(path), run_name=f"docs_example_{basename}")
+
+
+def verify_parameters(example: dict, parameters: dict) -> None:
+    """Fail when the registry describes a calculation other than the one the example runs.
+
+    Parameters
+    ----------
+    example : dict
+        Namespace returned by :func:`load_example`.
+    parameters : dict
+        The exhibit's ``parameters`` record from ``registry.json``. Each key is the lower-case name
+        of a module constant of the example, for instance ``"reg_lambda"`` for ``REG_LAMBDA``.
+
+    Raises
+    ------
+    ValueError
+        If a declared value differs from the example's constant.
+    """
+    applied = {}
+    for key in parameters:
+        value = example[key.upper()]
+        applied[key] = value.tolist() if isinstance(value, np.ndarray) else value
+    if applied != parameters:
+        raise ValueError(f"Registry parameters {parameters} differ from the example's {applied}")
+
+
+def style_axis(axis) -> None:
+    """Recessive frame and grid; text in ink, never in a series colour."""
+    axis.set_facecolor(SURFACE)
+    axis.grid(True, color=GRID, linewidth=0.8)
+    axis.set_axisbelow(True)
+    for side in ("top", "right"):
+        axis.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        axis.spines[side].set_color(GRID)
+    axis.tick_params(colors=INK_MUTED, labelsize=10.5)
+    axis.xaxis.label.set_color(INK)
+    axis.xaxis.label.set_size(11.5)
+    axis.yaxis.label.set_size(11.5)
+    axis.yaxis.label.set_color(INK)
+    axis.title.set_color(INK)
+
+
+def loading_colormap():
+    """Diverging map for loadings: second series colour below zero, surface at zero, first above."""
+    from matplotlib.colors import LinearSegmentedColormap
+
+    return LinearSegmentedColormap.from_list("loadings", [SERIES[1], SURFACE, SERIES[0]])

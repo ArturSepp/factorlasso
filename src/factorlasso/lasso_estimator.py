@@ -56,6 +56,9 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
+from factorlasso.beta_priors import (
+    _compute_ols_prior, _validate_prior_selection_type, _zero_incompatible_priors,
+)
 from factorlasso.cluster_smoothing import ClusterSmootherType
 from factorlasso.cluster_utils import (
     DEFAULT_CLUSTER_CORRELATION_TRANSFORM,
@@ -98,6 +101,16 @@ class LassoModelType(Enum):
     # cooperative (soft within-block sign coherence)
     COOPERATIVE_GROUP_LASSO = 6  #: coop-LASSO on user groups
     COOPERATIVE_CLUSTER_GROUP_LASSO = 7  #: coop-LASSO on discovered clusters
+
+
+# Solvers that take no hard sign constraint: UniLasso is a two-stage univariate-guided fit and
+# the cooperative penalty handles signs softly through the positive and negative parts of beta.
+# A sign matrix or ``nonneg`` is rejected for these modes instead of being dropped silently.
+_MODES_WITHOUT_SIGN_CONSTRAINTS = (
+    LassoModelType.UNILASSO,
+    LassoModelType.COOPERATIVE_GROUP_LASSO,
+    LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
+)
 
 
 @dataclass
@@ -744,9 +757,12 @@ def solve_group_lasso_cvx_problem(
     where *g* indexes groups of response variables (rows of β) and the
     per-group weight ``w_g`` is set by ``group_penalty`` (see below).
     The inner sum of the group term is the ``L_{2,1}`` norm of the group
-    submatrix — each response's loading vector is shrunk by an L2 norm,
-    and block sparsity is driven across responses within a group. The
-    optional L1 term drives elementwise sparsity on top, zeroing
+    submatrix — each response's loading vector is shrunk by an L2 norm, so
+    a response is removed as a whole or kept with a dense row; the group
+    enters through the weight ``w_g`` only, and rows within a group are
+    not coupled (``block_mode="cluster_factor"`` below is the geometry
+    that couples them). The optional L1 term drives elementwise sparsity
+    on top, zeroing
     individual assets whose loadings are noisy even within an "active"
     group — the Simon–Friedman–Hastie–Tibshirani (2013) Sparse Group
     LASSO formulation.
@@ -1026,6 +1042,10 @@ class LassoModel:
        -1  → constrained non-positive
        NaN → unconstrained (free)
 
+    Enforced by ``LASSO``, ``GROUP_LASSO``, ``HIERARCHICAL_CLUSTER_GROUP_LASSO``
+    and ``FACTOR_CLUSTER_GROUP_LASSO``; rejected with ``ValueError`` by
+    ``UNILASSO`` and the cooperative modes, whose solvers take none.
+
     Prior-centered regularisation
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ``factors_beta_prior`` is ``(N × M)``.  The penalty becomes
@@ -1043,10 +1063,12 @@ class LassoModel:
         ``COOPERATIVE_GROUP_LASSO`` (cooperative-LASSO on an external
         partition, soft within-block sign coherence), or
         ``COOPERATIVE_CLUSTER_GROUP_LASSO`` (cooperative-LASSO on the
-        discovered partition).  The cluster modes (HCGL, FCGL, cooperative-
-        cluster) impose a hard pooled sign only when
-        ``auto_sign_constraints=True``; the cooperative modes encourage sign
-        coherence softly and never gate.
+        discovered partition).  HCGL and FCGL impose a hard pooled sign only
+        when ``auto_sign_constraints=True``.  ``UNILASSO`` and the two
+        cooperative modes take no sign constraint: ``factors_beta_loading_signs``
+        and ``nonneg=True`` raise ``ValueError`` with them, derived signs are
+        not enforced and ``derived_signs_`` stays ``None``; the cooperative
+        penalty encourages sign coherence softly.
     reg_lambda : float, default 1e-5
     span : float, optional
         EWMA span for observation weighting.  Must be ≥ 1 when provided.
@@ -1172,6 +1194,24 @@ class LassoModel:
         ``LASSO`` since L1 is the only penalty already.
     factors_beta_loading_signs : pd.DataFrame, optional
     factors_beta_prior : pd.DataFrame, optional
+        Explicit penalty centres, indexed by response and factor. With
+        ``apply_ols_prior=True``, NaN defers to the computed prior and finite
+        entries override it, including zero. Incompatible effective priors
+        are then zeroed. With the flag off, NaN retains its legacy zero meaning.
+    apply_ols_prior : bool, default False
+        Derive per-response weighted one-factor OLS priors on original inputs
+        with an intercept and the effective LASSO squared-loss span. Use
+        ``prior_selection_type`` to select the centres. After explicit prior
+        overrides, zero cells violating the final sign constraints. Do not
+        reselect or redistribute blocked priors. Unsupported for UNILASSO.
+    prior_selection_type : str, default 'highest_r2'
+        The only supported selector, consumed when ``apply_ols_prior=True``.
+        Select the factor with highest centred EWMA-weighted univariate
+        R-squared for each response and assign its full OLS slope as the prior;
+        other automatic prior cells are zero. R-squared uses weighted residual
+        and centred total sums of squares with the effective squared-loss span.
+        Ties use input factor-column order. Unsupported values raise even when
+        automatic priors are disabled.
     auto_sign_constraints : bool, default False
         If True, signs are derived inside ``fit()`` from the EWMA-demeaned,
         NaN-masked arrays returned by ``get_x_y_np`` (i.e. the same data the
@@ -1247,6 +1287,15 @@ class LassoModel:
         Scipy linkage matrix (HCGL only).
     cutoff_ : float or None
         Dendrogram cut distance (HCGL only).
+    ols_betas_, ols_r2_ : pd.DataFrame or None
+        Per-response univariate slopes and centred weighted R-squared before
+        selection, populated only when ``apply_ols_prior=True``.
+    ols_beta_prior_, effective_beta_prior_ : pd.DataFrame or None
+        Selected OLS centres before overrides/constraints, and the actual
+        solver centres after overrides and sign-conflict zeroing, respectively.
+    ols_prior_span_ : float or None
+        Effective squared-loss span used for OLS. None means uniform weighting
+        when the flag is on; diagnostics are cleared when the flag is off.
     derived_signs_ : pd.DataFrame or None
         The final ``(N × M)`` sign matrix that was passed to the solver,
         in ``LassoModel.factors_beta_loading_signs`` convention
@@ -1265,7 +1314,9 @@ class LassoModel:
           constraints).
 
         Read this attribute to inspect, log, or render the constraints
-        that actually shaped the fitted ``coef_``.
+        that actually shaped the fitted ``coef_``. ``None`` after a fit in
+        ``UNILASSO`` or a cooperative mode, whose solvers take no sign
+        constraint.
     fit_demeaned_ : bool
         Fit-time copy of the de-meaning decision. Unlike the mutable
         ``demean`` hyperparameter, this is immutable fitted provenance used
@@ -1403,8 +1454,18 @@ class LassoModel:
     cluster_correlation_span_freq_dict: Optional[Dict[str, float]] = None
     # Appended to preserve historical positional constructor arguments.
     auto_sign_excluded_factors: Optional[Sequence[str]] = None
+    # Appended; every historical positional constructor argument is preserved.
+    apply_ols_prior: bool = False
+    prior_selection_type: str = 'highest_r2'
+    ols_betas_: Optional[pd.DataFrame] = field(default=None, init=False)
+    ols_r2_: Optional[pd.DataFrame] = field(default=None, init=False)
+    ols_beta_prior_: Optional[pd.DataFrame] = field(default=None, init=False)
+    effective_beta_prior_: Optional[pd.DataFrame] = field(default=None, init=False)
+    ols_prior_span_: Optional[float] = field(default=None, init=False)
 
     def __post_init__(self):
+        self._validate_ols_prior_mode()
+        self._validate_sign_inputs_mode()
         if self.model_type in (
             LassoModelType.GROUP_LASSO,
             LassoModelType.COOPERATIVE_GROUP_LASSO,
@@ -1500,6 +1561,29 @@ class LassoModel:
             raise ValueError(
                 f"l1_weight must lie in [0, 1], got {self.l1_weight!r}"
             )
+
+    def _validate_sign_inputs_mode(self) -> None:
+        """Reject hard sign inputs for the solvers that cannot enforce them."""
+        if self.model_type not in _MODES_WITHOUT_SIGN_CONSTRAINTS:
+            return
+        if self.factors_beta_loading_signs is not None:
+            raise ValueError(
+                'factors_beta_loading_signs is not supported by the '
+                f'{self.model_type.name} solver, which takes no sign constraint'
+            )
+        if self.nonneg:
+            raise ValueError(
+                f'nonneg=True is not supported by the {self.model_type.name} solver, '
+                'which takes no sign constraint'
+            )
+
+    def _validate_ols_prior_mode(self) -> None:
+        """Reject ambiguous flags and a mode whose solver has no beta prior."""
+        _validate_prior_selection_type(self.prior_selection_type)
+        if not isinstance(self.apply_ols_prior, (bool, np.bool_)):
+            raise ValueError('apply_ols_prior must be a boolean')
+        if self.apply_ols_prior and self.model_type == LassoModelType.UNILASSO:
+            raise ValueError('apply_ols_prior is not supported by the UNILASSO solver')
 
     # ── Backward-compatible property aliases ─────────────────────────
 
@@ -1933,6 +2017,13 @@ class LassoModel:
         across the grid. Sets ``self.derived_signs_`` as the in-line code
         did.
         """
+        self._validate_ols_prior_mode()
+        self._validate_sign_inputs_mode()
+        self.ols_betas_ = None
+        self.ols_r2_ = None
+        self.ols_beta_prior_ = None
+        self.effective_beta_prior_ = None
+        self.ols_prior_span_ = None
         # ── Asset-side clustering (length N), computed once and shared by
         #    both the auto-sign derivation block and the solver dispatch.
         #    None for plain LASSO / single-column y; pd.Series indexed by
@@ -2148,17 +2239,41 @@ class LassoModel:
             signs_np = explicit_signs_np
 
         # Persist the final solver-facing sign matrix for monitoring /
-        # downstream inspection. Stored only when signs were actually used.
-        if signs_np is not None:
+        # downstream inspection. Stored only when the solver receives it:
+        # the UniLasso and cooperative solvers take no sign constraint, so
+        # derived signs are not enforced there and are not reported.
+        if signs_np is not None and self.model_type not in _MODES_WITHOUT_SIGN_CONSTRAINTS:
             self.derived_signs_ = pd.DataFrame(
                 signs_np, index=y.columns, columns=x.columns,
             )
 
         prior_np = None
+        if self.apply_ols_prior:
+            ols_beta, ols_r2, prior_np = _compute_ols_prior(
+                x.to_numpy(dtype=float), y.to_numpy(dtype=float), span=eff_span,
+                min_periods=max(3, self.warmup_period or 0),
+                prior_selection_type=self.prior_selection_type,
+            )
+            self.ols_betas_ = pd.DataFrame(ols_beta, index=y.columns, columns=x.columns)
+            self.ols_r2_ = pd.DataFrame(ols_r2, index=y.columns, columns=x.columns)
+            self.ols_beta_prior_ = pd.DataFrame(
+                prior_np.copy(), index=y.columns, columns=x.columns,
+            )
+            self.ols_prior_span_ = eff_span
         if self.factors_beta_prior is not None:
-            prior_np = self.factors_beta_prior.loc[
-                y.columns, x.columns
-            ].to_numpy()
+            explicit_prior = self.factors_beta_prior.loc[y.columns, x.columns].to_numpy()
+            if self.apply_ols_prior:
+                if np.isinf(explicit_prior).any():
+                    raise ValueError('OLS prior overrides must be finite or NaN')
+                prior_np = np.where(np.isnan(explicit_prior), prior_np, explicit_prior)
+            else:
+                prior_np = explicit_prior
+        if self.apply_ols_prior:
+            # Selection is complete: zero conflicts, without moving their votes.
+            prior_np = _zero_incompatible_priors(prior_np, signs_np, nonneg=self.nonneg)
+            self.effective_beta_prior_ = pd.DataFrame(
+                prior_np.copy(), index=y.columns, columns=x.columns,
+            )
 
         # ── Adaptive L1 penalty weights (Zou 2006; opt-in) ───────────────
         # When auto_sign_adaptive_weights=True, derive per-cell L1 weights
@@ -2500,6 +2615,10 @@ class LassoModel:
             clone = LassoModel(**params)
             if derived_signs is not None:
                 clone.derived_signs_ = derived_signs
+            for name in ('ols_betas_', 'ols_r2_', 'ols_beta_prior_', 'effective_beta_prior_'):
+                value = getattr(self, name)
+                setattr(clone, name, None if value is None else value.copy(deep=True))
+            clone.ols_prior_span_ = self.ols_prior_span_
             clone._finalize_fit(
                 result=result, x=x, y=y, valid_mask=valid_mask,
                 eff_span=eff_span,

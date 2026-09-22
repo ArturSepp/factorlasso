@@ -363,7 +363,24 @@ class CurrentFactorCovarData:
     ) -> pd.DataFrame:
         """
         Summary table: betas, R², volatilities, alpha per variable.
+
+        Columns are the factor loadings, ``r2``, ``stat_alpha``, ``insample_alpha``,
+        ``total_vol``, ``sys_vol`` and ``resid_vol``. ``stat_alpha`` is the EWMA of the
+        stored residuals; without stored residuals it falls back to the in-sample alpha,
+        so the column set does not depend on what was stored.
+
+        Raises
+        ------
+        ValueError
+            If ``y_variances`` lacks ``r2`` or ``insample_alpha``.
         """
+        required = (VarianceColumns.R2.value, VarianceColumns.INSAMPLE_ALPHA.value)
+        missing = [name for name in required if name not in self.y_variances.columns]
+        if missing:
+            raise ValueError(
+                f"get_snapshot needs y_variances columns {missing}, "
+                f"got {list(self.y_variances.columns)!r}"
+            )
         assets = assets or self.y_betas.index.tolist()
         df = self.y_betas.loc[assets, :].copy()
         vols = self.get_model_vols(assets=assets)
@@ -375,7 +392,11 @@ class CurrentFactorCovarData:
                 default_freq=default_freq,
             ).loc[assets]
         else:
-            alphas = self.y_variances.loc[assets, VarianceColumns.INSAMPLE_ALPHA.value]
+            # Fallback under the same column name, so that the table has one
+            # 'insample_alpha' column, not two.
+            alphas = self.y_variances.loc[assets, VarianceColumns.INSAMPLE_ALPHA.value].rename(
+                VarianceColumns.ALPHA.value
+            )
 
         diag = pd.concat([
             self.y_variances.loc[assets, VarianceColumns.R2.value],

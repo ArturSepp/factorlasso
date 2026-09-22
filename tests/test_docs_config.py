@@ -55,3 +55,12 @@ def test_markdown_articles_use_portable_dollar_math(monkeypatch):
     assert config["source_suffix"] == {".rst": "restructuredtext", ".md": "markdown"}
     assert "dollarmath" in config["myst_enable_extensions"]
     assert config["myst_heading_anchors"] >= 2
+
+
+def test_copyright_names_the_package_owner(monkeypatch):
+    """The rendered footer reads 'Copyright 2026, Artur Sepp'; authorship is a separate field."""
+    monkeypatch.setattr(importlib.metadata, "version", lambda _: "0.0.0")
+
+    config = runpy.run_path(str(Path(__file__).parents[1] / "docs" / "conf.py"))
+
+    assert config["copyright"] == "2026, Artur Sepp"

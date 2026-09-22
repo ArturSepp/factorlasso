@@ -66,12 +66,17 @@ Expected structural output:
 What the result means
 ---------------------
 
-``coef_`` is indexed by response and factor, ``intercept_`` stores the fitted economic intercept,
-and ``predict`` preserves the response columns for pandas inputs. Fitted attributes use a trailing
-underscore. See :doc:`api` for the complete supported top-level surface.
+``coef_`` is indexed by response and factor, ``alpha_const_`` stores the fitted regression intercept
+in the units of the responses (``intercept_`` is a solver diagnostic; see
+:doc:`sparse_factor_model`), and ``predict`` preserves the response columns for pandas inputs.
+Fitted attributes use a trailing underscore. See :doc:`api` for the complete supported top-level
+surface.
 
 Next steps
 ----------
+
+Continue with the :doc:`quickstart`, which runs penalty selection, estimation with derived signs,
+residual diagnostics and covariance assembly on one panel with known loadings.
 
 The repository `README <https://github.com/ArturSepp/factorlasso/blob/main/README.md>`_ documents
 sign matrices, prior-centered penalties, group construction, cross-validation, residual diagnostics,

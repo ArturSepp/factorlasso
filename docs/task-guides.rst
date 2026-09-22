@@ -23,7 +23,8 @@ columns are factors. In ``factors_beta_loading_signs`` the values mean:
 * ``NaN``: coefficient unconstrained.
 
 ``factors_beta_prior`` has the same shape and centres the penalty on the supplied coefficient
-matrix rather than on zero. A missing prior cell is treated as zero. When automatic and explicit
+matrix rather than on zero. With ``apply_ols_prior=False`` (the default), a missing prior cell
+is treated as zero. When automatic and explicit
 signs are both enabled, non-missing explicit cells override the derived layer and missing cells
 inherit it. The actual solver-facing matrix is retained in ``derived_signs_``.
 
@@ -80,6 +81,64 @@ inherit it. The actual solver-facing matrix is retained in ``derived_signs_``.
    (79, 3)
    True
    True
+
+Automatic OLS prior centres
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``apply_ols_prior=True`` fits a separate weighted one-factor regression with
+an intercept for every response and factor. The default and only supported
+selector, ``prior_selection_type="highest_r2"``, selects the factor with the highest
+EWMA-weighted R-squared and assign its full OLS beta as the prior. All other
+automatic prior cells are zero. Weighted R-squared is one minus the weighted
+residual sum of squares divided by the weighted total sum of squares about
+the response's weighted mean.
+
+Ties follow input column order. This is a package selection heuristic,
+not a posterior estimate. The winning factor is invariant to nonzero factor
+rescaling before sign constraints and overrides are applied; its beta
+changes inversely with the factor's units. Unsupported selectors raise a
+ValueError rather than being silently mapped to a different rule.
+
+The span is the effective squared-loss span used by the LASSO, including a
+``fit(span=...)`` override, and is independent of the clustering span. For
+span ``s``, observation age ``a`` has weight ``(1 - 2 / (s + 1)) ** a``;
+``None`` gives equal weights. OLS uses original inputs and an intercept,
+before rolling-mean preprocessing. Pairwise missing values keep their age on
+the input time grid. Constant series and pairs with fewer than the greater
+of three and ``warmup_period`` observations receive no automatic prior.
+
+The selected prior is checked against the final assembled sign matrix:
+wrong-sign values and forced-zero cells become zero, without selecting
+replacement factors. This includes automatic sign selection and its
+zero gate. With the flag enabled, finite explicit prior cells override the
+automatic values, including explicit zero; NaN leaves the automatic value.
+The input matrices are not modified. Priors are fitted per response, never
+pooled by cluster. Grouped lambda paths share their prior calculation and
+cross-validation estimates it separately inside each training fold.
+
+.. testcode:: constrained
+
+   auto = fl.LassoModel(
+       span=20, apply_ols_prior=True, prior_selection_type="highest_r2",
+       factors_beta_loading_signs=signs,
+   ).fit(x=x, y=y, span=16)
+   print(auto.ols_prior_span_ == auto.effective_span_ == 16)
+   print(auto.ols_betas_.shape == auto.coef_.shape)
+   print(auto.effective_beta_prior_.loc["asset_b", "rates"] == 0.0)
+
+.. testoutput:: constrained
+
+   True
+   True
+   True
+
+``ols_betas_`` and ``ols_r2_`` retain the marginal regression results;
+``ols_beta_prior_`` retains the selected centres before constraints and
+manual overrides, and ``effective_beta_prior_`` retains the solver centres.
+These diagnostics are cleared on a subsequent fit with the flag disabled.
+The option is supported by prior-aware LASSO variants; UNILASSO rejects it
+because its solver does not use beta priors. See the self-contained
+`OLS prior example <https://github.com/ArturSepp/factorlasso/blob/main/examples/ols_prior.py>`_.
 
 Ragged histories are not imputed into the objective. Missing response cells, and every response on
 a row where all factors are missing, receive zero weight through ``valid_mask_``. Demeaning happens
