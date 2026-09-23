@@ -206,7 +206,7 @@ functions return them in the form SciPy and a later fit expect:
 | `get_clusters_by_freq` | `clusters` with labels such as `ME:3` | `{"ME": Series}` with the prefix removed; equal to `clusters_` of the fit |
 | `get_linkage_array` | `linkages`, a frequency code | The $(N-1) \times 4$ SciPy linkage array of that frequency |
 | `get_linkages_by_freq` | `linkages` | `{"ME": array}`; the same array |
-| `get_cutoffs_by_freq` | `cutoffs` | `{"ME": float}`; cutting the returned linkage at this distance with `scipy.cluster.hierarchy.fcluster` reproduces the four clusters of the fit |
+| `get_cutoffs_by_freq` | `cutoffs` | `{"ME": float}`; cutting the returned linkage at this distance with `scipy.cluster.hierarchy.fcluster` reproduces the fitted partition (the number of clusters can vary across platforms) |
 
 On construction, a `clusters` Series is copied into the `cluster` column of `y_variances`, so
 that the assignment survives `save`, `load` and `filter_on_tickers`.

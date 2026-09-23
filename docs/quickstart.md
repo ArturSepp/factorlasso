@@ -112,7 +112,7 @@ def select_and_fit(x: pd.DataFrame, y: pd.DataFrame) -> fl.LassoModelCV:
 ```
 
 The fitted selector and its refitted model expose the results as attributes with a trailing
-underscore:
+underscore. The values annotated below are from the committed reference run:
 
 <!-- fragment -->
 ```python
@@ -147,6 +147,12 @@ full-resolution view.
 | Derived signs | One row per cluster; rates is constrained non-positive for equity and real-asset funds and non-negative for bond funds; every other cell is non-negative |
 | Loading RMSE against the truth | 0.053, against 0.091 for ordinary least squares |
 | Kept loadings | 34 of 48 at the default tolerance, against 20 in the generating matrix |
+
+The figure and table report one CLARABEL run. Small differences in the solver and linear-algebra
+libraries across platforms can change the selected penalty along the nearly flat cross-validation
+curve, and with it the loading error and number of kept loadings. The executable example checks
+that the selected penalty maximises its own score table, the fitted model improves loading RMSE
+over ordinary least squares, and the algebraic covariance identity holds on the running platform.
 
 Three observations follow from the table and the figure.
 

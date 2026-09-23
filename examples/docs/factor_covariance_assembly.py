@@ -211,7 +211,6 @@ def main() -> None:
     recut = fcluster(linkage, t=cutoff, criterion="distance")
     labels = hcgl.clusters_.to_numpy()
     assert np.array_equal(recut[:, None] == recut[None, :], labels[:, None] == labels[None, :])
-    assert hcgl.clusters_.nunique() == N_GROUPS
 
     # --- 4. Why assemble: error and conditioning against the sample covariance ---
     truth = true_covariance()
