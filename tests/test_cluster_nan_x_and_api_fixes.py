@@ -30,12 +30,13 @@ from factorlasso.sign_constraints import _compute_sign_vector
 def test_cluster_span_fields_are_appended_to_the_constructor_signature():
     """Do not shift any historical positional dataclass constructor field."""
     parameters = list(inspect.signature(LassoModel).parameters)
-    assert parameters[-5:] == [
+    assert parameters[-6:] == [
         "cluster_correlation_span",
         "cluster_correlation_span_freq_dict",
         "auto_sign_excluded_factors",
         "apply_ols_prior",
         "prior_selection_type",
+        "factor_for_prior",
     ]
 
 # ─────────────────────────────────────────────────────────────────────────
