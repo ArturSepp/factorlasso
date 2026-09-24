@@ -462,6 +462,14 @@ model.effective_beta_prior_  # centres actually supplied to the solver
 ```
 
 Each response is regressed separately on each factor with an intercept.
+`factor_for_prior={"IG index": "IG factor"}` optionally chooses the factor
+for a response while estimating its prior magnitude from that factor's weighted
+OLS slope. Unmapped responses (or missing map values) retain automatic selection.
+The selected row has zero centres on other factors; finite explicit priors
+and sign filtering still apply afterward. An unestimable selected slope gives
+a zero row. The map requires `apply_ols_prior=True` and is refitted within each
+training window, including cross-validation.
+
 `prior_selection_type="highest_r2"` is the default and only supported selector.
 It selects the factor with the highest
 EWMA-weighted R-squared and assigns its full OLS beta as the prior; other
@@ -1207,7 +1215,7 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {0.20.0.dev2},
+  version = {0.20.0.dev3},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

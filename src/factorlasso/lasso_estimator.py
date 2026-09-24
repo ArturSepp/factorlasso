@@ -48,6 +48,7 @@ with grouped variables", *J. R. Statist. Soc. B*, 68(1), 49–67.
 from __future__ import annotations
 
 import warnings
+from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -1212,6 +1213,14 @@ class LassoModel:
         and centred total sums of squares with the effective squared-loss span.
         Ties use input factor-column order. Unsupported values raise even when
         automatic priors are disabled.
+    factor_for_prior : mapping or pd.Series, optional
+        Response-to-factor labels overriding the highest-R-squared selection.
+        Requires ``apply_ols_prior=True``. Each selected factor receives its
+        own weighted OLS slope; all other automatic centres in that row are
+        zero. Omitted responses and missing values retain automatic selection.
+        Superset response maps support cadence-group and rolling fits. Unknown
+        factors raise; an unestimable selected slope gives a zero row without
+        reselection. Finite explicit centres and sign filtering apply afterward.
     auto_sign_constraints : bool, default False
         If True, signs are derived inside ``fit()`` from the EWMA-demeaned,
         NaN-masked arrays returned by ``get_x_y_np`` (i.e. the same data the
@@ -1462,6 +1471,8 @@ class LassoModel:
     ols_beta_prior_: Optional[pd.DataFrame] = field(default=None, init=False)
     effective_beta_prior_: Optional[pd.DataFrame] = field(default=None, init=False)
     ols_prior_span_: Optional[float] = field(default=None, init=False)
+    # Appended to preserve every historical positional constructor argument.
+    factor_for_prior: Optional[Union[Mapping, pd.Series]] = None
 
     def __post_init__(self):
         self._validate_ols_prior_mode()
@@ -1582,6 +1593,17 @@ class LassoModel:
         _validate_prior_selection_type(self.prior_selection_type)
         if not isinstance(self.apply_ols_prior, (bool, np.bool_)):
             raise ValueError('apply_ols_prior must be a boolean')
+        if self.factor_for_prior is not None:
+            if not self.apply_ols_prior:
+                raise ValueError('factor_for_prior requires apply_ols_prior=True')
+            if not isinstance(self.factor_for_prior, (Mapping, pd.Series)):
+                raise TypeError('factor_for_prior must be a mapping or pandas Series')
+            if (isinstance(self.factor_for_prior, pd.Series)
+                    and not self.factor_for_prior.index.is_unique):
+                raise ValueError('factor_for_prior response labels must be unique')
+            if any(not pd.api.types.is_scalar(v)
+                   for _, v in self.factor_for_prior.items()):
+                raise ValueError('factor_for_prior must contain scalar factor labels')
         if self.apply_ols_prior and self.model_type == LassoModelType.UNILASSO:
             raise ValueError('apply_ols_prior is not supported by the UNILASSO solver')
 
@@ -2254,6 +2276,19 @@ class LassoModel:
                 min_periods=max(3, self.warmup_period or 0),
                 prior_selection_type=self.prior_selection_type,
             )
+            if self.factor_for_prior is not None:
+                for response, factor in self.factor_for_prior.items():
+                    if not pd.api.types.is_scalar(factor):
+                        raise ValueError('factor_for_prior must contain scalar factor labels')
+                    if pd.isna(factor):
+                        continue
+                    if factor not in x.columns:
+                        raise ValueError(f'factor_for_prior names unknown factor {factor!r}')
+                    if response not in y.columns:
+                        continue
+                    i, j = y.columns.get_loc(response), x.columns.get_loc(factor)
+                    prior_np[i, :] = 0.0
+                    prior_np[i, j] = ols_beta[i, j] if np.isfinite(ols_beta[i, j]) else 0.0
             self.ols_betas_ = pd.DataFrame(ols_beta, index=y.columns, columns=x.columns)
             self.ols_r2_ = pd.DataFrame(ols_r2, index=y.columns, columns=x.columns)
             self.ols_beta_prior_ = pd.DataFrame(

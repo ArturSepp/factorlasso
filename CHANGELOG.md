@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 2026-09-23: development version `0.20.0.dev3` adds optional
+  `LassoModel(factor_for_prior=...)`, a response-to-factor map selecting
+  which weighted OLS slope supplies the soft prior. Unmapped responses
+  retain highest-R-squared selection. Explicit-centre precedence and sign
+  filtering are unchanged; the default `None` preserves existing fits.
+
 ### Added
 
 - Added opt-in `LassoModel(apply_ols_prior=True)` for fast, per-response
