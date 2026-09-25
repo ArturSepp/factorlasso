@@ -81,7 +81,7 @@ CREDIT_PRIORS = {"Global IG Bonds": 0.20, "Global HY Bonds": 0.40, "EM Bonds": 0
 # gate τ = 1.0, adaptive reweighting with floor 0.5. The empirical contrast
 # below holds this profile fixed and varies only the economic prior.
 PROD_FL = dict(model_type=None, cutoff_fraction=0.40,
-               auto_sign_constraints=True, auto_sign_threshold_t=1.0,
+               auto_sign_constraints=True, auto_sign_variance='independent', auto_sign_threshold_t=1.0,
                auto_sign_adaptive_weights=True, auto_sign_adaptive_gamma=1.0,
                auto_sign_adaptive_floor=0.5)
 DPI = 150

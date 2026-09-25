@@ -127,13 +127,14 @@ def test_compatible_negative_and_unconstrained_priors_are_retained():
     assert (m.effective_beta_prior_.to_numpy() == 0).all()
 
 
-def test_auto_sign_zero_gate_also_zeros_prior():
-    """The actual final solver constraints filter the selected prior."""
+def test_nonzero_ols_prior_overrides_auto_sign_zero_gate():
+    """Selected prior directions override the automatic gate on their cells."""
     x, y = panel()
     m = LassoModel(apply_ols_prior=True, span=36,
                    auto_sign_constraints=True, auto_sign_threshold_t=1e9).fit(x, y)
     assert np.count_nonzero(m.ols_beta_prior_) > 0
-    assert not m.effective_beta_prior_.to_numpy().any()
+    pd.testing.assert_frame_equal(m.effective_beta_prior_, m.ols_beta_prior_)
+    np.testing.assert_array_equal(m.derived_signs_, np.sign(m.ols_beta_prior_))
 
 
 def test_manual_overrides_nan_fallback_zero_and_sign_conflicts():

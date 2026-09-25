@@ -136,12 +136,59 @@ this explicit form; keep the two consistent.
 
 ### Relation to derived signs
 
-`auto_sign_constraints=True` derives a sign matrix from the data, by univariate slopes pooled
-within clusters and a t-statistic gate. When an explicit matrix is supplied as well, the two are
-overlaid cell by cell: a non-NaN explicit entry wins, and a NaN explicit entry inherits the
-derived value. In the four modes that enforce signs, the fitted attribute `derived_signs_` holds
-the matrix the solver received. The derivation itself is outside this article; the
-[quickstart](quickstart.md) uses it.
+`auto_sign_constraints=True` derives marginal slopes within response clusters.
+The original response and factor masks exclude pre-inception observations and gaps.
+The standalone `derive_sign_constraints(..., ewma_span=None)` retains equal observation
+weights. A finite span applies decay on the original row grid before masking. The model
+can specify `auto_sign_ewma_span`, or set `auto_sign_use_fit_span=True` to follow the
+effective span of each fit, path or cross-validation training fold. The latter is useful
+when monthly and quarterly fits have different horizons. These options are mutually exclusive.
+
+For predictor $j$, validity indicator $v_{tkj}$ and weights $w_t$, the pooled slope is
+
+$$
+D_j = \sum_{t,k} w_t v_{tkj} x_{tj}^{2}, \qquad
+\hat b_j = D_j^{-1}\sum_{t,k} w_t v_{tkj}x_{tj}y_{tk}.
+$$
+
+The public default remains `variance_estimator="independent"` for compatibility.
+Explicit `variance_estimator="date"` (model: `auto_sign_variance="date"`) sums
+response scores within each date before squaring:
+
+$$
+u_{tj}=w_t x_{tj}\sum_k v_{tkj}(y_{tk}-\hat b_jx_{tj}), \qquad
+\widehat{\mathrm{Var}}(\hat b_j)=\frac{n_{\mathrm{eff},j}}{n_{\mathrm{eff},j}-1}
+\frac{\sum_t u_{tj}^{2}}{D_j^{2}}.
+$$
+
+Here $n_{\mathrm{eff},j}$ is the Kish effective count of dates with a valid predictor
+and at least one response; response copies never increase it. The variance follows
+the date-clustered score principle described by
+[Cameron and Miller (2015)](https://cameron.econ.ucdavis.edu/research/Cameron_Miller_JHR_2015_February.pdf).
+Using effective dates in the finite-sample multiplier is an implementation choice for
+recency weighting, not a claim of an exact Student distribution. Fewer than two effective
+dates cannot pass a positive threshold. The gate allows contemporaneous dependence;
+it assumes independence across dates and does not supply HAC inference. A fixed EWMA
+span has bounded effective sample size, so increasing the stored history alone gives
+no consistency guarantee. Identical response copies leave the date statistic unchanged.
+
+`"independent"` retains the former equal-weight variance for archived replication.
+With a finite span it uses independent-cell score variance; it still omits response
+covariance. The sign gate is a screening rule that changes the feasible set, not a
+multiple-testing-adjusted significance test. Weighting does not make a marginal slope
+equal to a conditional multivariate loading.
+
+Explicit hard signs take precedence. On otherwise unrestricted cells, a finite nonzero
+prior supplies its sign; automatic detection supplies the remaining signs and zero gates.
+The final solver matrix is `derived_signs_`. `detected_signs_`, `sign_slopes_`,
+`sign_t_stats_`, `sign_effective_n_` and `sign_valid_counts_` record the original
+detection evidence, including cells subsequently overridden. Adaptive weights use those
+same detected slopes; `sign_penalty_weights_` and `sign_block_weights_` expose their
+effect on the penalty. Prior overrides do not silently replace these magnitudes.
+
+The repair changes numerical results for unbalanced panels even with `ewma_span=None`.
+Loss normalization remains unchanged. The public optimiser default remains CLARABEL;
+commercial solver selection is an explicit caller setting.
 
 ## Worked example
 

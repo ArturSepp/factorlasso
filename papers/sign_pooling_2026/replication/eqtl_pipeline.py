@@ -136,7 +136,7 @@ def fit_model(model_type: LassoModelType, x_s: pd.DataFrame, y_genes: pd.DataFra
     """fit a factorlasso model with gated sign constraints."""
     model = LassoModel(model_type=model_type, reg_lambda=reg_lambda, demean=True,
                        cutoff_fraction=cutoff_fraction, group_data=group_data,
-                       auto_sign_constraints=True, auto_sign_threshold_t=threshold_t)
+                       auto_sign_constraints=True, auto_sign_variance="independent", solver="MOSEK", auto_sign_threshold_t=threshold_t)
     model.fit(x=x_s, y=y_genes)
     return model
 
@@ -213,7 +213,7 @@ def prediction_parity(x_s: pd.DataFrame, y_genes: pd.DataFrame, n_folds: int = 3
             mu_y, sd_y = ytr.mean(), ytr.std(ddof=0).replace(0, 1)
             xtr_z, xte_z = (xtr - mu_x) / sd_x, (xte - mu_x) / sd_x
             ytr_z = (ytr - mu_y) / sd_y
-            m = LassoModel(reg_lambda=reg_lambda, demean=True, auto_sign_constraints=True,
+            m = LassoModel(reg_lambda=reg_lambda, demean=True, auto_sign_constraints=True, auto_sign_variance="independent", solver="MOSEK",
                            auto_sign_threshold_t=2.0, **spec)
             m.fit(x=xtr_z, y=ytr_z)
             beta = np.asarray(m.estimated_betas if hasattr(m, 'estimated_betas') else m.coef_)

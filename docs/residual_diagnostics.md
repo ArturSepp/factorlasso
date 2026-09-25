@@ -172,6 +172,45 @@ series loads on. Each such factor makes $\hat\beta^{\top} D^{-1} \hat\beta$ sing
 quantity built from its inverse needs a rank-safe form. Non-finite coefficients are counted
 separately and never as zeros, so that a failed solve cannot be read as a sparse one.
 
+### Partition share of the cross-section
+
+The sphericity test and the edge look for common variation in any direction. A partition of the
+series, such as the clusters that define the HCGL groups, names one block structure, and the
+partition share measures how much of it a cross-section carries. For a cross-section
+$x_1, \dots, x_N$ on one date and a partition into $K$ non-empty groups of sizes $n_k$ with
+group means $\bar x_k$,
+
+$$
+s = \frac{\sum_{k=1}^{K} n_k (\bar x_k - \bar x)^2}{\sum_{i=1}^{N} (x_i - \bar x)^2}
+$$
+
+is the share of the cross-sectional variance that demeaning within groups removes. Any
+partition removes some variance, a meaningless one included. Under a uniformly random
+permutation of the labels with the group sizes held fixed, each group mean is the mean of a
+sample drawn without replacement, and
+
+$$
+E[s] = \frac{K - 1}{N - 1}
+$$
+
+for every cross-section and every size profile. The package reports this floor together with
+the adjusted share
+
+$$
+s_{\text{adj}} = \frac{s - (K - 1)/(N - 1)}{1 - (K - 1)/(N - 1)} = 1 - (1 - s) \frac{N - 1}{N - K},
+$$
+
+which is the adjusted $R^2$ of a one-way analysis of variance on group indicators. It is zero in
+expectation under permutation, so partitions with different $K$ are compared on $s_{\text{adj}}$
+and not on $s$. On factor-model residuals a positive adjusted share means that the model leaves
+block structure among the grouped series. On returns it separates an informative partition from
+the mechanical effect of grouping. The floor is a first moment, and no test is attached.
+
+Pitman (1938) studied the permutation distribution of the analysis-of-variance ratio, of which
+the floor is the first moment. Zhu, He and Cucuringu (2026) use the same floor for an i.i.d.
+uniform random partition of equity residuals, where it holds up to empty groups. Conditioning on
+the realised group sizes, as the package does, makes it exact.
+
 ## Worked example
 
 The example uses synthetic data with a fixed seed. Eight monthly return series over $n = 240$
@@ -287,6 +326,7 @@ All names below are exported from the top-level package and documented in the
 | `effective_sparsity` | Counts kept loadings at a stated tolerance and returns a `Sparsity` record. |
 | `Sparsity` | Holds `n_nonzero`, `n_total`, `density`, `per_asset`, `max_per_asset`, `per_factor`, `empty_factors`, `empty_assets`, `n_nonfinite` and `tol_used`. The property `is_rank_deficient` is true when some factor has no carrier. |
 | `suggest_tolerance` | Locates the gap between solver residue and kept loadings. |
+| `partition_variance_share` | Per date, the share $s$ of cross-sectional variance that a partition removes, the floor $(K - 1)/(N - 1)$, the adjusted share, and the counts $N$ and $K$. Accepts a static or a date-varying partition. |
 
 The intended call sequence passes the mean loading count of the fit into the test:
 
@@ -397,6 +437,11 @@ factors are priced, or whether residuals are independent in any sense beyond zer
   DOI 10.1070/SM1967v001n04ABEH001994.
 - Onatski, A. (2009). Testing hypotheses about the number of factors in large factor models.
   *Econometrica* 77(5), 1447-1479. DOI 10.3982/ECTA6964.
+- Pitman, E. J. G. (1938). Significance tests which may be applied to samples from any
+  populations. III. The analysis of variance test. *Biometrika* 29(3-4), 322-335.
+  DOI 10.1093/biomet/29.3-4.322.
 - Schott, J. R. (2005). Testing for complete independence in high dimensions. *Biometrika* 92(4),
   951-956.
+- Zhu, L., He, Y., and Cucuringu, M. (2026). Quantifying the contributions of clustering to
+  statistical arbitrage. Working paper, September 2026.
 - [factorlasso software citation](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

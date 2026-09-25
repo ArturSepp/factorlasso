@@ -125,6 +125,7 @@ from factorlasso.residual_diagnostics import (
     marchenko_pastur_edge,
     missing_factor_components,
     null_threshold,
+    partition_variance_share,
     raw_offdiagonal_mass,
     residual_correlation,
     suggest_tolerance,
@@ -209,4 +210,5 @@ __all__ = [
     "raw_offdiagonal_mass",
     "residual_correlation",
     "suggest_tolerance",
+    "partition_variance_share",
 ]

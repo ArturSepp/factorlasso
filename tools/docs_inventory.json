@@ -84,7 +84,8 @@
     "docs/residual_diagnostics.md": [
       "ResidualDiagnostics", "Sparsity", "diagnose_residuals", "effective_sparsity",
       "marchenko_pastur_edge", "missing_factor_components", "null_threshold",
-      "raw_offdiagonal_mass", "residual_correlation", "suggest_tolerance"
+      "raw_offdiagonal_mass", "residual_correlation", "suggest_tolerance",
+      "partition_variance_share"
     ],
     "docs/residual_alpha_nowcasting.md": [
       "LassoNowcastResult"

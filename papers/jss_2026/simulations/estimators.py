@@ -268,7 +268,7 @@ def fit_factorlasso_grp_hcgl_sign(
         model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
         reg_lambda=reg_lambda,
         cutoff_fraction=0.5,
-        auto_sign_constraints=True,
+        auto_sign_constraints=True, auto_sign_variance='independent',
         auto_sign_threshold_t=0.75,
     )
     return _factorlasso_fit(
@@ -289,7 +289,7 @@ def fit_factorlasso_grp_hcgl_sign_adapt(
         model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
         reg_lambda=reg_lambda,
         cutoff_fraction=0.5,
-        auto_sign_constraints=True,
+        auto_sign_constraints=True, auto_sign_variance='independent',
         auto_sign_threshold_t=0.75,
         auto_sign_adaptive_weights=True,
         auto_sign_adaptive_gamma=1.0,
@@ -313,7 +313,7 @@ def fit_factorlasso_sgl_hcgl_sign_adapt(
         reg_lambda=reg_lambda,
         cutoff_fraction=0.5,
         l1_weight=0.1,
-        auto_sign_constraints=True,
+        auto_sign_constraints=True, auto_sign_variance='independent',
         auto_sign_threshold_t=0.75,
         auto_sign_adaptive_weights=True,
         auto_sign_adaptive_gamma=1.0,

@@ -58,7 +58,8 @@ import numpy as np
 import pandas as pd
 
 from factorlasso.beta_priors import (
-    _compute_ols_prior, _validate_prior_selection_type, _zero_incompatible_priors,
+    _compute_joint_ols_prior, _compute_ols_prior,
+    _validate_prior_selection_type, _zero_incompatible_priors,
 )
 from factorlasso.cluster_smoothing import ClusterSmootherType
 from factorlasso.cluster_utils import (
@@ -264,6 +265,42 @@ def _compute_solver_weights(
         w = np.tile(w, (n_y, 1)).T
 
     return w * valid_mask
+
+
+def _validate_loss_normalization(loss_normalization: str) -> None:
+    """Validate the explicit objective convention without changing defaults."""
+    if loss_normalization not in ('sample', 'weight_sum'):
+        raise ValueError("loss_normalization must be 'sample' or 'weight_sum'")
+
+
+def _weighted_squared_loss(residual, weights: np.ndarray, t: int,
+                           loss_normalization: str):
+    """Build a loss with legacy row scaling or per-response valid weight mass.
+
+    ``weights`` are square-root observation weights. Diagnostics continue to
+    use the original weights; only the optimization loss is normalized. A
+    response with zero mass contributes zero loss, with no division by zero.
+    """
+    _validate_loss_normalization(loss_normalization)
+    if loss_normalization == 'sample':
+        return (1.0 / t) * cvx.sum_squares(cvx.multiply(weights, residual))
+    mass = np.sum(np.square(weights), axis=0)
+    normalized = np.divide(weights, np.sqrt(mass), out=np.zeros_like(weights),
+                           where=mass > 0.0)
+    return cvx.sum_squares(cvx.multiply(normalized, residual))
+
+
+def _selected_prior_factors(value) -> tuple:
+    """Validate a scalar or ordered factor list without mutating estimator parameters."""
+    if pd.api.types.is_scalar(value):
+        return () if pd.isna(value) else (value,)
+    if not isinstance(value, (list, tuple)) or not value:
+        raise ValueError('factor_for_prior requires a scalar label or nonempty list/tuple')
+    if any(not pd.api.types.is_scalar(label) or pd.isna(label) for label in value):
+        raise ValueError('factor_for_prior selections require nonmissing scalar labels')
+    if pd.Index(value).has_duplicates:
+        raise ValueError('factor_for_prior selections must contain unique factors')
+    return tuple(value)
 
 
 def _clean_beta_prior(
@@ -472,6 +509,7 @@ def solve_lasso_cvx_problem(
     factors_beta_loading_signs: Optional[np.ndarray] = None,
     factors_beta_prior: Optional[np.ndarray] = None,
     penalty_weights: Optional[np.ndarray] = None,
+    loss_normalization: str = "sample",
 ) -> LassoEstimationResult:
     r"""
     L1-regularised (LASSO) multi-output regression via CVXPY.
@@ -493,6 +531,10 @@ def solve_lasso_cvx_problem(
         Response matrix.
     valid_mask : np.ndarray, shape (T, N), optional
         Binary validity mask.  Derived from ``y`` if ``None``.
+    loss_normalization : {"sample", "weight_sum"}, default "sample"
+        The displayed loss uses ``sample``. ``weight_sum`` instead divides each
+        response's weighted squared error by its valid squared-weight mass.
+        Recalibrate lambda when switching; zero-mass responses contribute no loss.
     reg_lambda : float, default 1e-8
         L1 regularisation strength.
     span : float, optional
@@ -550,7 +592,7 @@ def solve_lasso_cvx_problem(
         l1_term = reg_lambda * cvx.norm1(beta - prior)
 
     objective = cvx.Minimize(
-        (1.0 / t) * cvx.sum_squares(cvx.multiply(weights, x @ beta.T - y))
+        _weighted_squared_loss(x @ beta.T - y, weights, t, loss_normalization)
         + l1_term
     )
     problem = cvx.Problem(objective, constraints) if constraints else cvx.Problem(objective)
@@ -586,6 +628,7 @@ def _build_group_lasso_problem(
     row_weights: Optional[np.ndarray],
     block_mode: str,
     col_weights: Optional[np.ndarray],
+    loss_normalization: str = "sample",
 ) -> Optional[Tuple[cvx.Problem, cvx.Variable, np.ndarray, np.ndarray]]:
     """assemble the sparse group-LASSO CVXPY problem.
 
@@ -639,7 +682,7 @@ def _build_group_lasso_problem(
     prior = _clean_beta_prior(factors_beta_prior, n_y, n_x)
 
     # Fit term
-    fit = (1.0 / t) * cvx.sum_squares(cvx.multiply(weights, x @ beta.T - y))
+    fit = _weighted_squared_loss(x @ beta.T - y, weights, t, loss_normalization)
 
     # Per-group weight. "normalized" (default) preserves the v0.2.2
     # behaviour √(|g|/G); "yuan_lin" uses the classical √|g|.
@@ -742,6 +785,7 @@ def solve_group_lasso_cvx_problem(
     row_weights: Optional[np.ndarray] = None,
     block_mode: str = "row",
     col_weights: Optional[np.ndarray] = None,
+    loss_normalization: str = "sample",
 ) -> LassoEstimationResult:
     r"""
     Group LASSO multi-output regression via CVXPY.
@@ -786,6 +830,8 @@ def solve_group_lasso_cvx_problem(
     valid_mask, reg_lambda, span, nonneg, verbose, solver,
     factors_beta_loading_signs, factors_beta_prior
         See :func:`solve_lasso_cvx_problem`.
+    loss_normalization : {"sample", "weight_sum"}, default "sample"
+        Observation-loss convention; see :func:`solve_lasso_cvx_problem`.
     group_penalty : {"normalized", "yuan_lin"}, default "normalized"
         Per-group weighting convention:
 
@@ -855,6 +901,7 @@ def solve_group_lasso_cvx_problem(
         factors_beta_prior=factors_beta_prior, group_penalty=group_penalty,
         l1_weight=l1_weight, penalty_weights=penalty_weights,
         row_weights=row_weights, block_mode=block_mode, col_weights=col_weights,
+        loss_normalization=loss_normalization,
     )
     if built is None:
         return _nan_result(y.shape[1], x.shape[1])
@@ -893,6 +940,7 @@ def solve_group_lasso_path(
     row_weights: Optional[np.ndarray] = None,
     block_mode: str = "row",
     col_weights: Optional[np.ndarray] = None,
+    loss_normalization: str = "sample",
 ) -> List[LassoEstimationResult]:
     r"""Group-LASSO over a regularisation path, reusing one canonical form.
 
@@ -931,7 +979,7 @@ def solve_group_lasso_path(
         returned list is aligned with this sequence.
     x, y, group_loadings, valid_mask, span, nonneg, verbose, solver,
     factors_beta_loading_signs, factors_beta_prior, group_penalty,
-    l1_weight, penalty_weights, row_weights, block_mode, col_weights
+    l1_weight, penalty_weights, row_weights, block_mode, col_weights, loss_normalization
         As in :func:`solve_group_lasso_cvx_problem`.
 
     Returns
@@ -963,6 +1011,7 @@ def solve_group_lasso_path(
         factors_beta_prior=factors_beta_prior, group_penalty=group_penalty,
         l1_weight=l1_weight, penalty_weights=penalty_weights,
         row_weights=row_weights, block_mode=block_mode, col_weights=col_weights,
+        loss_normalization=loss_normalization,
     )
     if built is None:
         return [_nan_result(n_y, n_x) for _ in lambdas]
@@ -1070,6 +1119,15 @@ class LassoModel:
         and ``nonneg=True`` raise ``ValueError`` with them, derived signs are
         not enforced and ``derived_signs_`` stays ``None``; the cooperative
         penalty encourages sign coherence softly.
+    loss_normalization : {"sample", "weight_sum"}, default "sample"
+        ``sample`` preserves the historical loss divided by panel row count.
+        ``weight_sum`` divides each response's weighted squared error by its
+        own valid squared-weight mass, then sums over responses. Empty responses
+        contribute zero loss. For balanced data with common mass S, the equivalent
+        penalty is ``lambda_weight_sum = lambda_sample * T / S``. Unequal histories
+        change relative response weights, so one conversion cannot preserve every
+        old fit. This option does not change signs, targets or diagnostic SSE units.
+        UniLasso retains its separate unweighted loss and rejects ``weight_sum``.
     reg_lambda : float, default 1e-5
     span : float, optional
         EWMA span for observation weighting.  Must be ≥ 1 when provided.
@@ -1197,13 +1255,16 @@ class LassoModel:
     factors_beta_prior : pd.DataFrame, optional
         Explicit penalty centres, indexed by response and factor. With
         ``apply_ols_prior=True``, NaN defers to the computed prior and finite
-        entries override it, including zero. Incompatible effective priors
-        are then zeroed. With the flag off, NaN retains its legacy zero meaning.
+        entries override it, including zero. A finite nonzero prior overrides
+        a conflicting automatically detected sign or zero gate. Explicit hard
+        signs still win; with OLS enabled their incompatible priors are zeroed.
+        With the flag off, NaN retains its legacy zero meaning.
     apply_ols_prior : bool, default False
         Derive per-response weighted one-factor OLS priors on original inputs
         with an intercept and the effective LASSO squared-loss span. Use
         ``prior_selection_type`` to select the centres. After explicit prior
-        overrides, zero cells violating the final sign constraints. Do not
+        overrides, nonzero prior signs take precedence over automatic signs;
+        zero cells violating remaining explicit hard constraints. Do not
         reselect or redistribute blocked priors. Unsupported for UNILASSO.
     prior_selection_type : str, default 'highest_r2'
         The only supported selector, consumed when ``apply_ols_prior=True``.
@@ -1215,9 +1276,11 @@ class LassoModel:
         automatic priors are disabled.
     factor_for_prior : mapping or pd.Series, optional
         Response-to-factor labels overriding the highest-R-squared selection.
-        Requires ``apply_ols_prior=True``. Each selected factor receives its
-        own weighted OLS slope; all other automatic centres in that row are
-        zero. Omitted responses and missing values retain automatic selection.
+        Requires ``apply_ols_prior=True``. A scalar selects its univariate slope;
+        a nonempty ordered list/tuple selects slopes from one joint weighted OLS
+        regression with intercept and complete finite rows. All other automatic
+        centres in that row are zero. Omitted responses and missing values retain
+        automatic selection.
         Superset response maps support cadence-group and rolling fits. Unknown
         factors raise; an unestimable selected slope gives a zero row without
         reselection. Finite explicit centres and sign filtering apply afterward.
@@ -1230,7 +1293,7 @@ class LassoModel:
         * ``LASSO`` (or single-column y): per-y-column independent
           univariate sign derivation; rows of ``derived_signs_`` may differ.
         * ``GROUP_LASSO``: signs pooled within each ``group_data`` group;
-          members of a group share their ``derived_signs_`` row.
+          members share detected signs before per-cell prior/hard overrides.
         * ``HIERARCHICAL_CLUSTER_GROUP_LASSO``: signs pooled within each HCGL asset
           cluster (the same clustering the group solver uses).
         * ``FACTOR_CLUSTER_GROUP_LASSO``: signs pooled within each HCGL
@@ -1238,9 +1301,13 @@ class LassoModel:
           modes share the sign derivation and differ only in the group
           norm of the penalty.
 
-        When ``factors_beta_loading_signs`` is *also* supplied, the explicit
-        matrix is overlaid on the auto-derived signs per-cell: non-NaN
-        explicit values win, NaN cells inherit the auto value.
+        A finite nonzero resolved prior (explicit, mapped OLS, or automatic
+        OLS) overrides a conflicting detected sign, including an automatic
+        zero gate. Zero or missing priors leave detection unchanged. This is
+        per response/factor, so final signs may differ within a pooled cluster.
+        Excluded factor columns remain exempt. Non-NaN entries of
+        ``factors_beta_loading_signs`` take precedence over both prior and
+        detected signs. Adaptive weights retain the original detected values.
     auto_sign_excluded_factors : list or tuple of str, optional
         Factor columns exempt from automatic signs and their t-stat zero gate.
         Explicit non-NaN ``factors_beta_loading_signs`` still apply; supply NaN
@@ -1473,8 +1540,34 @@ class LassoModel:
     ols_prior_span_: Optional[float] = field(default=None, init=False)
     # Appended to preserve every historical positional constructor argument.
     factor_for_prior: Optional[Union[Mapping, pd.Series]] = None
+    # Appended: preserve positional compatibility. None retains equal weights.
+    auto_sign_ewma_span: Optional[float] = None
+    auto_sign_use_fit_span: bool = False
+    auto_sign_variance: str = 'independent'
+    effective_sign_span_: Optional[float] = field(default=None, init=False)
+    detected_signs_: Optional[pd.DataFrame] = field(default=None, init=False)
+    sign_slopes_: Optional[pd.DataFrame] = field(default=None, init=False)
+    sign_t_stats_: Optional[pd.DataFrame] = field(default=None, init=False)
+    sign_effective_n_: Optional[pd.DataFrame] = field(default=None, init=False)
+    sign_valid_counts_: Optional[pd.DataFrame] = field(default=None, init=False)
+    sign_penalty_weights_: Optional[pd.DataFrame] = field(default=None, init=False)
+    sign_block_weights_: Optional[np.ndarray] = field(default=None, init=False)
+    # Appended: retain historical constructor positions and objective default.
+    loss_normalization: str = "sample"
+    loss_weight_mass_: Optional[pd.Series] = field(default=None, init=False)
+    loss_denominator_: Optional[pd.Series] = field(default=None, init=False)
+    n_loss_rows_: Optional[int] = field(default=None, init=False)
+
+    def _validate_loss_mode(self) -> None:
+        """Reject invalid or unsupported objective conventions, including after mutation."""
+        _validate_loss_normalization(self.loss_normalization)
+        if (self.model_type == LassoModelType.UNILASSO
+                and self.loss_normalization != 'sample'):
+            raise ValueError('UNILASSO uses its existing unweighted two-stage loss; '
+                             'loss_normalization must be sample')
 
     def __post_init__(self):
+        self._validate_loss_mode()
         self._validate_ols_prior_mode()
         self._validate_sign_inputs_mode()
         if self.model_type in (
@@ -1601,9 +1694,8 @@ class LassoModel:
             if (isinstance(self.factor_for_prior, pd.Series)
                     and not self.factor_for_prior.index.is_unique):
                 raise ValueError('factor_for_prior response labels must be unique')
-            if any(not pd.api.types.is_scalar(v)
-                   for _, v in self.factor_for_prior.items()):
-                raise ValueError('factor_for_prior must contain scalar factor labels')
+            for _, value in self.factor_for_prior.items():
+                _selected_prior_factors(value)
         if self.apply_ols_prior and self.model_type == LassoModelType.UNILASSO:
             raise ValueError('apply_ols_prior is not supported by the UNILASSO solver')
 
@@ -1901,6 +1993,7 @@ class LassoModel:
                 reg_lambda=self.reg_lambda, span=eff_span,
                 verbose=verbose, solver=self.solver,
                 solver_fallbacks=self.solver_fallbacks,
+                loss_normalization=self.loss_normalization,
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
@@ -1937,6 +2030,7 @@ class LassoModel:
                 reg_lambda=self.reg_lambda, span=eff_span,
                 verbose=verbose, solver=self.solver,
                 solver_fallbacks=self.solver_fallbacks,
+                loss_normalization=self.loss_normalization,
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
@@ -1954,6 +2048,7 @@ class LassoModel:
                 reg_lambda=self.reg_lambda, span=eff_span,
                 verbose=verbose, solver=self.solver,
                 solver_fallbacks=self.solver_fallbacks,
+                loss_normalization=self.loss_normalization,
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
@@ -1975,6 +2070,7 @@ class LassoModel:
                 reg_lambda=self.reg_lambda, span=eff_span,
                 verbose=verbose, solver=self.solver,
                 solver_fallbacks=self.solver_fallbacks,
+                loss_normalization=self.loss_normalization,
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
@@ -1995,6 +2091,7 @@ class LassoModel:
                 reg_lambda=self.reg_lambda, span=eff_span,
                 verbose=verbose, solver=self.solver,
                 solver_fallbacks=self.solver_fallbacks,
+                loss_normalization=self.loss_normalization,
                 factors_beta_prior=prior_np,
                 group_penalty=self.group_penalty,
                 l1_weight=self.l1_weight,
@@ -2039,6 +2136,7 @@ class LassoModel:
         across the grid. Sets ``self.derived_signs_`` as the in-line code
         did.
         """
+        self._validate_loss_mode()
         self._validate_ols_prior_mode()
         self._validate_sign_inputs_mode()
         self.ols_betas_ = None
@@ -2046,6 +2144,16 @@ class LassoModel:
         self.ols_beta_prior_ = None
         self.effective_beta_prior_ = None
         self.ols_prior_span_ = None
+        _validate_span(self.auto_sign_ewma_span, name="auto_sign_ewma_span")
+        if self.auto_sign_variance not in ('date', 'independent'):
+            raise ValueError("auto_sign_variance must be 'date' or 'independent'")
+        if self.auto_sign_use_fit_span and self.auto_sign_ewma_span is not None:
+            raise ValueError("select either auto_sign_use_fit_span or auto_sign_ewma_span")
+        self.effective_sign_span_ = None
+        for attr in ('detected_signs_', 'sign_slopes_', 'sign_t_stats_',
+                     'sign_effective_n_', 'sign_valid_counts_',
+                     'sign_penalty_weights_', 'sign_block_weights_'):
+            setattr(self, attr, None)
         # ── Asset-side clustering (length N), computed once and shared by
         #    both the auto-sign derivation block and the solver dispatch.
         #    None for plain LASSO / single-column y; pd.Series indexed by
@@ -2191,53 +2299,41 @@ class LassoModel:
 
         if self.auto_sign_constraints:
             from factorlasso.sign_constraints import (
-                _compute_sign_matrix_per_response,
-                _compute_sign_vector,
+                _compute_sign_matrix_per_response, _compute_sign_vector,
             )
-            N = y_np.shape[1]
-            M = x_np.shape[1]
-
+            n, m = y_np.shape[1], x_np.shape[1]
+            # Solver arrays remain zero-filled; signs must see the original masks.
+            offset = len(x) - len(x_np)
+            sign_x = np.where(x.iloc[offset:].notna().to_numpy(), x_np, np.nan)
+            sign_y = np.where(valid_mask > 0, y_np, np.nan)
+            sign_span = eff_span if self.auto_sign_use_fit_span else self.auto_sign_ewma_span
+            self.effective_sign_span_ = sign_span
+            sign_kwargs = dict(auto_sign_threshold_t=self.auto_sign_threshold_t,
+                               ewma_span=sign_span, variance_estimator=self.auto_sign_variance,
+                               return_diagnostics=True)
             if asset_clusters is not None:
-                # Pool y columns within each asset cluster — one call per
-                # cluster, broadcast result to all members.
-                auto_signs_np = np.empty((N, M), dtype=float)
-                if want_adaptive:
-                    auto_slopes_np = np.empty((N, M), dtype=float)
-                cluster_vals = (
-                    asset_clusters.values
-                    if isinstance(asset_clusters, pd.Series)
-                    else np.asarray(asset_clusters)
-                )
+                auto_signs_np = np.empty((n, m))
+                auto_slopes_np = np.empty((n, m))
+                diagnostics = {key: np.empty((n, m))
+                               for key in ('t_stats', 'effective_n', 'n_obs')}
+                cluster_vals = np.asarray(asset_clusters)
                 for c in np.unique(cluster_vals):
                     members_idx = np.where(cluster_vals == c)[0]
-                    y_sub = y_np[:, members_idx]
-                    sign_vec, slope_vec = _compute_sign_vector(
-                        x_arr=x_np, y_arr=y_sub,
-                        clusters=None, master_constraints=None,
-                        auto_sign_threshold_t=self.auto_sign_threshold_t,
-                    )
-                    auto_signs_np[members_idx, :] = sign_vec
-                    if want_adaptive:
-                        # Cluster-aggregated slope shared by all members
-                        # (same broadcast logic as the sign matrix).
-                        auto_slopes_np[members_idx, :] = slope_vec
+                    signs, slopes, diag = _compute_sign_vector(
+                        x_arr=sign_x, y_arr=sign_y[:, members_idx], **sign_kwargs)
+                    auto_signs_np[members_idx] = signs
+                    auto_slopes_np[members_idx] = slopes
+                    for key in diagnostics:
+                        diagnostics[key][members_idx] = diag[key]
             else:
-                # LASSO or single-column y: per-y-column independent signs.
-                # Bulk-vectorised closed-form path — eliminates the N-deep
-                # Python loop of the prior implementation.
-                if want_adaptive:
-                    auto_signs_np, auto_slopes_np = (
-                        _compute_sign_matrix_per_response(
-                            x_arr=x_np, y_arr=y_np,
-                            auto_sign_threshold_t=self.auto_sign_threshold_t,
-                            return_slopes=True,
-                        )
-                    )
-                else:
-                    auto_signs_np = _compute_sign_matrix_per_response(
-                        x_arr=x_np, y_arr=y_np,
-                        auto_sign_threshold_t=self.auto_sign_threshold_t,
-                    )
+                auto_signs_np, auto_slopes_np, diagnostics = _compute_sign_matrix_per_response(
+                    x_arr=sign_x, y_arr=sign_y, **sign_kwargs)
+            self.detected_signs_ = pd.DataFrame(auto_signs_np, index=y.columns, columns=x.columns)
+            self.sign_slopes_ = pd.DataFrame(auto_slopes_np, index=y.columns, columns=x.columns)
+            for attr, key in (('sign_t_stats_', 't_stats'), ('sign_effective_n_', 'effective_n'),
+                              ('sign_valid_counts_', 'n_obs')):
+                setattr(self, attr, pd.DataFrame(
+                    diagnostics[key], index=y.columns, columns=x.columns))
 
         if self.factors_beta_loading_signs is not None:
             explicit_signs_np = self.factors_beta_loading_signs.loc[
@@ -2260,15 +2356,6 @@ class LassoModel:
         elif explicit_signs_np is not None:
             signs_np = explicit_signs_np
 
-        # Persist the final solver-facing sign matrix for monitoring /
-        # downstream inspection. Stored only when the solver receives it:
-        # the UniLasso and cooperative solvers take no sign constraint, so
-        # derived signs are not enforced there and are not reported.
-        if signs_np is not None and self.model_type not in _MODES_WITHOUT_SIGN_CONSTRAINTS:
-            self.derived_signs_ = pd.DataFrame(
-                signs_np, index=y.columns, columns=x.columns,
-            )
-
         prior_np = None
         if self.apply_ols_prior:
             ols_beta, ols_r2, prior_np = _compute_ols_prior(
@@ -2277,18 +2364,26 @@ class LassoModel:
                 prior_selection_type=self.prior_selection_type,
             )
             if self.factor_for_prior is not None:
-                for response, factor in self.factor_for_prior.items():
-                    if not pd.api.types.is_scalar(factor):
-                        raise ValueError('factor_for_prior must contain scalar factor labels')
-                    if pd.isna(factor):
+                for response, selection in self.factor_for_prior.items():
+                    factors = _selected_prior_factors(selection)
+                    if not factors:
                         continue
-                    if factor not in x.columns:
-                        raise ValueError(f'factor_for_prior names unknown factor {factor!r}')
+                    missing = [factor for factor in factors if factor not in x.columns]
+                    if missing:
+                        raise ValueError(f'factor_for_prior names unknown factors {missing!r}')
                     if response not in y.columns:
                         continue
-                    i, j = y.columns.get_loc(response), x.columns.get_loc(factor)
+                    i = y.columns.get_loc(response)
+                    columns = x.columns.get_indexer(factors)
                     prior_np[i, :] = 0.0
-                    prior_np[i, j] = ols_beta[i, j] if np.isfinite(ols_beta[i, j]) else 0.0
+                    if len(factors) == 1:
+                        j = columns[0]
+                        prior_np[i, j] = ols_beta[i, j] if np.isfinite(ols_beta[i, j]) else 0.0
+                    else:
+                        prior_np[i, columns] = _compute_joint_ols_prior(
+                            x.iloc[:, columns].to_numpy(dtype=float),
+                            y.iloc[:, i].to_numpy(dtype=float), span=eff_span,
+                            min_periods=max(3, self.warmup_period or 0))
             self.ols_betas_ = pd.DataFrame(ols_beta, index=y.columns, columns=x.columns)
             self.ols_r2_ = pd.DataFrame(ols_r2, index=y.columns, columns=x.columns)
             self.ols_beta_prior_ = pd.DataFrame(
@@ -2303,8 +2398,31 @@ class LassoModel:
                 prior_np = np.where(np.isnan(explicit_prior), prior_np, explicit_prior)
             else:
                 prior_np = explicit_prior
+        # Prior direction overrides only data-detected constraints, including
+        # the automatic zero gate. Explicit hard signs and excluded columns
+        # retain their precedence; zero/missing priors carry no direction.
+        # Keep auto_signs_np untouched: adaptive weights still use detection.
+        if auto_constraint_signs is not None and prior_np is not None:
+            prior_signs = np.sign(prior_np)
+            override = (np.isfinite(prior_np) & (prior_np != 0.0)
+                        & np.isfinite(auto_constraint_signs)
+                        & (prior_signs != auto_constraint_signs))
+            if explicit_signs_np is not None:
+                override &= np.isnan(explicit_signs_np)
+            signs_np = signs_np.copy()
+            signs_np[override] = prior_signs[override]
+
+        # Persist the final solver-facing sign matrix for monitoring /
+        # downstream inspection. Stored only when the solver receives it:
+        # the UniLasso and cooperative solvers take no sign constraint, so
+        # derived signs are not enforced there and are not reported.
+        if signs_np is not None and self.model_type not in _MODES_WITHOUT_SIGN_CONSTRAINTS:
+            self.derived_signs_ = pd.DataFrame(
+                signs_np, index=y.columns, columns=x.columns,
+            )
+
         if self.apply_ols_prior:
-            # Selection is complete: zero conflicts, without moving their votes.
+            # Only remaining hard-constraint conflicts lose their prior.
             prior_np = _zero_incompatible_priors(prior_np, signs_np, nonneg=self.nonneg)
             self.effective_beta_prior_ = pd.DataFrame(
                 prior_np.copy(), index=y.columns, columns=x.columns,
@@ -2356,6 +2474,11 @@ class LassoModel:
                         group_data=asset_clusters
                     ).to_numpy(),
                 )
+
+        if penalty_weights_np is not None:
+            self.sign_penalty_weights_ = pd.DataFrame(
+                penalty_weights_np, index=y.columns, columns=x.columns)
+        self.sign_block_weights_ = None if col_weights_np is None else col_weights_np.copy()
 
         return _PreparedFit(
             asset_clusters=asset_clusters, linkage=linkage, cutoff=cutoff,
@@ -2417,6 +2540,19 @@ class LassoModel:
         self.x_ = x
         self.y_ = y
         self.valid_mask_ = valid_mask
+        self.n_loss_rows_ = valid_mask.shape[0]
+        loss_weights = _compute_solver_weights(
+            self.n_loss_rows_, len(y.columns), eff_span, valid_mask)
+        if self.model_type == LassoModelType.UNILASSO:
+            # UniLasso's stage-two objective is unweighted on each valid window.
+            mass = np.sum(valid_mask, axis=0)
+            denominator = mass.copy()
+        else:
+            mass = np.sum(np.square(loss_weights), axis=0)
+            denominator = (mass.copy() if self.loss_normalization == 'weight_sum'
+                           else np.full(len(y.columns), self.n_loss_rows_, dtype=float))
+        self.loss_weight_mass_ = pd.Series(mass, index=y.columns, name='loss_weight_mass')
+        self.loss_denominator_ = pd.Series(denominator, index=y.columns, name='loss_denominator')
         self.effective_span_ = eff_span
         self.effective_cluster_correlation_span_ = eff_cluster_correlation_span
         self.coef_ = pd.DataFrame(
@@ -2640,6 +2776,7 @@ class LassoModel:
             group_penalty=self.group_penalty, l1_weight=self.l1_weight,
             penalty_weights=prep.penalty_weights_np,
             row_weights=row_w, block_mode=block_mode, col_weights=col_w,
+            loss_normalization=self.loss_normalization,
         )
 
         derived_signs = getattr(self, "derived_signs_", None)
@@ -2994,6 +3131,7 @@ def solve_cooperative_group_lasso_cvx_problem(
     group_penalty: str = "normalized",
     l1_weight: float = 0.0,
     col_weights: Optional[np.ndarray] = None,
+    loss_normalization: str = "sample",
 ) -> LassoEstimationResult:
     r"""cooperative-LASSO multi-output regression via CVXPY (soft sign coherence).
 
@@ -3027,6 +3165,8 @@ def solve_cooperative_group_lasso_cvx_problem(
         Binary group membership matrix (one column per cluster).
     valid_mask, reg_lambda, span, verbose, solver, factors_beta_prior
         See :func:`solve_group_lasso_cvx_problem`.
+    loss_normalization : {"sample", "weight_sum"}, default "sample"
+        Observation-loss convention; see :func:`solve_lasso_cvx_problem`.
     group_penalty : {"normalized", "yuan_lin"}, default "normalized"
         Per-group weight convention; see :func:`solve_group_lasso_cvx_problem`.
     l1_weight : float, default 0.0
@@ -3066,7 +3206,7 @@ def solve_cooperative_group_lasso_cvx_problem(
     neg = cvx.Variable((n_y, n_x), nonneg=True)
     beta = prior + pos - neg
 
-    fit = (1.0 / t) * cvx.sum_squares(cvx.multiply(weights, x @ beta.T - y))
+    fit = _weighted_squared_loss(x @ beta.T - y, weights, t, loss_normalization)
 
     def _weight(m: np.ndarray) -> float:
         g = np.sum(m)

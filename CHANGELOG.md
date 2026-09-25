@@ -1,11 +1,79 @@
 # Changelog
 
+## 0.20.0 - 2026-09-25
+
+- Consolidate automatic highest-R-squared and named/joint OLS prior targets,
+  prior-sign precedence, missing-data repairs, optional EWMA date-pooled signs,
+  per-response weight-sum loss normalization and partition variance diagnostics.
+- Public defaults remain CLARABEL, opt-in priors, equal-weight independent
+  sign screening and sample-normalized loss. Private production callers select
+  revised settings explicitly and calibrate penalties for their horizons.
+- The development entries below record the individual changes in this release.
+
+## 0.20.0.dev8 — 2026-09-25
+
+- Add `partition_variance_share(returns, labels)` to `residual_diagnostics`. Per date it
+  reports the share of cross-sectional variance that demeaning within a static or date-varying
+  partition removes, the size-preserving permutation floor `(K - 1)/(N - 1)` (exact for every
+  cross-section and group-size profile), and the floor-adjusted share, equal to the one-way
+  ANOVA adjusted R^2. Additive: one new public name, no existing signature, default or
+  numerical path changed. Assigned to `docs/residual_diagnostics.md`; tested against a
+  hand computation, an OLS-on-indicators reference and exact permutation enumeration.
+
+## 0.20.0.dev7 — 2026-09-25
+
+- Restore independent pooled screening as the public default pending the submitted-paper
+  revision. Date-score screening remains an explicit option; missing-data repairs remain.
+- Pin JSS legacy and revised sign-study conventions explicitly. Public CLARABEL and
+  loss-normalization defaults are unchanged.
+
+## 0.20.0.dev6 — 2026-09-25
+
+- Add opt-in `loss_normalization="weight_sum"` to LASSO, group/cluster and
+  cooperative estimators and their regularization paths. Each response's loss
+  uses its valid EWMA weight mass, eliminating shrinkage from missing pre-history.
+  The historical `"sample"` objective and public CLARABEL default remain unchanged.
+- Record `loss_weight_mass_`, `loss_denominator_` and `n_loss_rows_` on fitted models.
+  Switching conventions requires penalty conversion/calibration; unequal histories
+  change relative response weights. UniLasso's separate unweighted objective is
+  unchanged and explicitly rejects the new option.
+
+## 0.20.0.dev5 — 2026-09-25
+
+- Restore missing response and factor masks before automatic sign derivation.
+- Add optional `ewma_span=None` sign analytics and estimator sign-horizon controls;
+  private callers can follow the effective fit span without changing public weighting defaults.
+- Default the pooled gate to a date-score sandwich: duplicate responses no longer
+  inflate screening evidence. `variance_estimator="independent"` (model:
+  `auto_sign_variance="independent"`) retains the old equal-weight gate for replication.
+  The date gate allows contemporaneous dependence, assumes independent dates and
+  is a screening rule, not a calibrated Student t test. Existing numerical results
+  using the gate can change. Loss normalization is unchanged.
+- Expose detected signs, slopes, score statistics, effective dates and adaptive
+  weights separately from the final prior/explicit-constraint sign matrix.
+- Public solver defaults remain CLARABEL; MOSEK is selected by private callers.
+
+
 All notable changes to `factorlasso` are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+- 2026-09-24 (`0.20.0.dev4`): `factor_for_prior` also accepts ordered
+  factor lists/tuples. Their joint weighted OLS slopes with intercept become
+  soft prior centres on each fit window. Preserve original-grid missing-data
+  weights, single-factor results, automatic fallback, explicit overrides and
+  prior-sign precedence; unidentified joint regressions yield zero centres.
+
+- 2026-09-24: finite nonzero prior centres now override conflicting automatic
+  sign detection, including automatic t-statistic zero gates, per response and
+  factor. This applies to supplied, mapped OLS and automatic OLS priors. Explicit
+  hard sign/zero constraints and automatic-sign exclusions retain precedence;
+  zero or missing priors leave detection unchanged. Adaptive penalty weights
+  remain based on the original detection. Direct fits and lambda paths expose
+  the final solver signs through `derived_signs_`. No public signature changed.
 
 - 2026-09-23: development version `0.20.0.dev3` adds optional
   `LassoModel(factor_for_prior=...)`, a response-to-factor map selecting
@@ -20,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   receives its full slope; other automatic priors are zero. OLS includes an
   intercept and uses the effective squared-loss span, including fit-time
   overrides, independently of clustering span.
-- Zero selected priors that conflict with the assembled sign matrix, including
+- Zero selected priors that conflict with explicit hard sign constraints, including
   forced-zero exposures, without reallocating blocked priors. Finite explicit
   prior entries override automatic values; NaN defers to the automatic prior.
 - Retain raw OLS betas, R-squared, selected and effective priors, and the span as

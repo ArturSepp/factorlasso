@@ -39,6 +39,17 @@ as descriptive and put the weight on ``sphericity``. When ``p`` and ``nu`` are c
 ``nu`` is the smaller of the two, the references below give calibrations built for that corner and
 this module's chi-square threshold is not the right instrument.
 
+Partition share of cross-sectional variance
+-------------------------------------------
+:func:`partition_variance_share` asks whether a given partition of the series, for example the
+HCGL clusters, still groups co-moving series. For each date it reports the share of the
+cross-sectional variance that demeaning within groups removes, the floor ``(K - 1) / (N - 1)``
+that any partition into ``K`` groups removes by construction, and the adjusted share that nets
+the floor out. Applied to factor-model residuals it complements
+:func:`missing_factor_components`: the spectral test looks for an omitted common direction, the
+partition share measures block structure left among the grouped series. On raw returns it
+separates an informative partition from the mechanical effect of grouping.
+
 References
 ----------
 None of these statistics originates here.
@@ -61,6 +72,16 @@ None of these statistics originates here.
 - Onatski, A. (2009), Econometrica 77(5), 1447-1479, and Ahn, S. C. and Horenstein, A. R. (2013),
   Econometrica 81(3), 1203-1227, reach a factor count from the same residual eigenvalues under
   proportional asymptotics.
+- Pitman, E. J. G. (1938), "Significance tests which may be applied to samples from any
+  populations. III. The analysis of variance test", Biometrika 29(3-4), 322-335. The permutation
+  distribution of the analysis-of-variance ratio. :func:`partition_variance_share` uses only its
+  first moment, derived in that function's notes, and attaches no test.
+- Zhu, L., He, Y. and Cucuringu, M. (2026), "Quantifying the contributions of clustering to
+  statistical arbitrage", working paper, September 2026. Compare the variance share that
+  demeaning within a partition of equity residuals removes against the floor ``(K - 1)/(N - 1)``
+  of a random partition. They draw the random partition i.i.d. uniform, where the floor holds
+  up to empty groups. This module conditions on the realised group sizes, where it is exact,
+  and adds the adjusted share for comparing partitions with different ``K``.
 
 Examples
 --------
@@ -100,6 +121,7 @@ __all__ = [
     "effective_sparsity",
     "Sparsity",
     "suggest_tolerance",
+    "partition_variance_share",
 ]
 
 
@@ -648,3 +670,147 @@ def effective_sparsity(
         n_nonfinite=n_nonfinite,
         tol_used=tol_used,
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Partition share of cross-sectional variance
+# ═══════════════════════════════════════════════════════════════════════
+
+_PARTITION_SHARE_COLUMNS = ["share", "floor", "adjusted_share", "n_names", "n_groups"]
+
+
+def _partition_share_row(values: np.ndarray, groups: np.ndarray) -> tuple:
+    """Share, permutation floor and adjusted share for one filtered cross-section."""
+    n_names = int(values.shape[0])
+    codes, uniques = pd.factorize(groups)
+    n_groups = int(uniques.shape[0])
+    nan = float("nan")
+    if n_names < 2:
+        return nan, nan, nan, n_names, n_groups
+    deviation = values - values.mean()
+    total = float(deviation @ deviation)
+    if not total > 0.0:
+        return nan, nan, nan, n_names, n_groups
+    group_sums = np.bincount(codes, weights=deviation, minlength=n_groups)
+    group_sizes = np.bincount(codes, minlength=n_groups)
+    share = float(np.sum(group_sums ** 2 / group_sizes) / total)
+    floor = (n_groups - 1) / (n_names - 1)
+    if n_names > n_groups:
+        adjusted = 1.0 - (1.0 - share) * (n_names - 1) / (n_names - n_groups)
+    else:
+        adjusted = nan
+    return share, floor, adjusted, n_names, n_groups
+
+
+def partition_variance_share(
+    returns: Union[pd.DataFrame, pd.Series],
+    labels: Union[pd.DataFrame, pd.Series],
+) -> pd.DataFrame:
+    r"""
+    Share of cross-sectional variance removed by demeaning within groups, against its floor.
+
+    For one cross-section ``x`` of ``N`` names that carry both a value and a label, grouped
+    into ``K`` non-empty groups of sizes ``n_k``,
+
+        share = SSB / SST,   SSB = sum_k n_k (xbar_k - xbar)^2,   SST = sum_i (x_i - xbar)^2.
+
+    Under a uniformly random permutation of the labels over the names, with the group sizes
+    held fixed, ``E[share] = (K - 1) / (N - 1)`` for every ``x`` and every size profile. That
+    expectation is the ``floor``: what any partition into ``K`` groups removes by construction.
+    The adjusted share
+
+        adjusted_share = (share - floor) / (1 - floor) = 1 - (1 - share) (N - 1) / (N - K)
+
+    is the adjusted R^2 of the one-way analysis of variance of ``x`` on group indicators. It is
+    zero in expectation under permutation and one when the groups explain ``x`` exactly, so
+    partitions with different ``K`` are compared on it rather than on ``share``.
+
+    Parameters
+    ----------
+    returns : pd.DataFrame, shape (T, N), or pd.Series, shape (N,)
+        Cross-sections to decompose, one row per date. Any panel works: raw or excess
+        returns, factor-model residuals, or signal scores. A Series is a single cross-section.
+    labels : pd.DataFrame, shape (T, N), or pd.Series, shape (N,)
+        Group labels of any hashable type. A DataFrame is a date-varying partition, aligned to
+        ``returns`` on both index and columns, so a date absent from ``labels`` yields an empty
+        cross-section. A Series is a static partition aligned on names. A missing label or a
+        non-finite value drops the name from that date's cross-section.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per row of ``returns`` (a single row for a Series), with columns
+
+        - ``share``: SSB / SST, in [0, 1].
+        - ``floor``: (K - 1) / (N - 1).
+        - ``adjusted_share``: (share - floor) / (1 - floor).
+        - ``n_names``, ``n_groups``: N and K after dropping missing values and labels.
+
+        ``share``, ``floor`` and ``adjusted_share`` are NaN when N < 2 or the cross-section is
+        constant. ``adjusted_share`` is also NaN when every name is its own group (N = K).
+
+    Raises
+    ------
+    ValueError
+        If ``returns`` is not a DataFrame or Series, if its columns repeat, if a Series
+        cross-section comes with DataFrame labels, or if ``returns`` and ``labels`` share no
+        names.
+
+    Notes
+    -----
+    The floor follows from sampling without replacement. Under permutation the mean of a
+    group of ``n_k`` names is the mean of ``n_k`` values drawn without replacement from the
+    ``N`` values, so ``n_k E[(xbar_k - xbar)^2] = (SST / N)(N - n_k)/(N - 1)``. Summing over the
+    ``K`` groups gives ``E[SSB] = SST (K - 1)/(N - 1)``.
+
+    The floor is a first moment, not a critical value, and no test is attached. Singletons
+    count as groups: each removes its own deviation, and the floor charges for it through
+    ``K``. Group means are taken over the names present on the date, so a name with a missing
+    value does not enter its group's mean.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> x = pd.Series([1.0, 2.0, 3.0, 10.0, 11.0, 12.0])
+    >>> z = pd.Series(["a", "a", "a", "b", "b", "b"])
+    >>> out = partition_variance_share(x, z)
+    >>> round(float(out["share"].iloc[0]), 4), float(out["floor"].iloc[0])
+    (0.9681, 0.2)
+    """
+    if isinstance(returns, pd.Series):
+        if not isinstance(labels, pd.Series):
+            raise ValueError(
+                f"a Series cross-section needs Series labels, got {type(labels).__name__}"
+            )
+        returns = returns.to_frame().T
+    elif not isinstance(returns, pd.DataFrame):
+        raise ValueError(
+            f"returns must be a pandas DataFrame or Series, got {type(returns).__name__}"
+        )
+    if returns.columns.has_duplicates:
+        duplicated = returns.columns[returns.columns.duplicated()].unique().tolist()
+        raise ValueError(f"returns has repeated names: {duplicated[:5]}")
+
+    if isinstance(labels, pd.Series):
+        common = returns.columns.intersection(labels.index)
+        static = labels.reindex(returns.columns).to_numpy(dtype=object)
+        label_values = np.tile(static, (returns.shape[0], 1))
+    elif isinstance(labels, pd.DataFrame):
+        common = returns.columns.intersection(labels.columns)
+        label_values = labels.reindex(
+            index=returns.index, columns=returns.columns
+        ).to_numpy(dtype=object)
+    else:
+        raise ValueError(
+            f"labels must be a pandas DataFrame or Series, got {type(labels).__name__}"
+        )
+    if common.empty:
+        raise ValueError("returns and labels share no names")
+
+    values = returns.to_numpy(dtype=float)
+    rows = []
+    for row_values, row_labels in zip(values, label_values):
+        keep = np.isfinite(row_values) & ~pd.isna(row_labels)
+        rows.append(_partition_share_row(row_values[keep], row_labels[keep]))
+    out = pd.DataFrame(rows, index=returns.index, columns=_PARTITION_SHARE_COLUMNS)
+    return out.astype({"n_names": int, "n_groups": int})

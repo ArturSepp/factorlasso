@@ -1,0 +1,49 @@
+{
+  "status": "verified_and_visually_reviewed",
+  "gate_designs": 6000,
+  "independent_replications_per_cell": 500,
+  "overfull": [
+    "Overfull \\hbox (117.0831pt too wide) detected at line 85"
+  ],
+  "archived_eqtl_explicit": true,
+  "new_default": "date-score sandwich",
+  "equal_weights_default": true,
+  "physical_pages": 29,
+  "reviewed_physical_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+  ],
+  "pdf_sha256": "8d5bddd15675c19cd211da9acbef4ee87ea6f2475487a82e9afca27cee56b0b9",
+  "source_sha256": "af2106ed5f36a4e935f95f7fa3adf5f09ede91b2be6a200269b3cd09ef344a83",
+  "known_CAS_keyword_diagnostic": [
+    "Overfull \\hbox (117.0831pt too wide) detected at line 85"
+  ],
+  "visual_notes": "All pages inspected; corrected CAS figure placement and total page count; no clipping or overlaps found."
+}

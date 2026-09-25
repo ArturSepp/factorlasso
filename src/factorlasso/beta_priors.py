@@ -107,6 +107,47 @@ def _compute_ols_prior(
     return beta, r_squared, prior
 
 
+def _compute_joint_ols_prior(
+    x: np.ndarray, y: np.ndarray, span: Optional[float], min_periods: int = 3,
+) -> np.ndarray:
+    """Estimate joint slopes with intercept, loss-span weights and complete finite rows.
+
+    Age weights retain the original observation grid when rows are missing.
+    Undefined or rank-deficient joint regressions yield neutral zero centres.
+    Single-factor requests retain the existing pairwise-moment implementation.
+    """
+    _validate_span(span)
+    x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+    if x.ndim != 2 or y.ndim != 1 or len(x) != len(y) or not x.shape[1]:
+        raise ValueError('joint OLS priors require aligned X and one response')
+    neutral = np.zeros(x.shape[1])
+    if span is None:
+        weights = np.ones(len(x))
+    elif span == 1.0:
+        return neutral
+    else:
+        weights = compute_expanding_power(
+            n=len(x), power_lambda=1.0 - 2.0 / (span + 1.0), reverse_columns=True)
+    valid = np.isfinite(x).all(axis=1) & np.isfinite(y) & (weights > 0.0)
+    if valid.sum() < max(min_periods, x.shape[1] + 1, 3):
+        return neutral
+    xx, yy, ww = x[valid], y[valid], weights[valid]
+    # Shift before centring for stability on large-offset observations.
+    xx, yy = xx - xx[-1], yy - yy[-1]
+    xx -= np.average(xx, axis=0, weights=ww)
+    yy -= np.average(yy, weights=ww)
+    root = np.sqrt(ww / ww.sum())
+    design = xx * root[:, None]
+    scales = np.linalg.norm(design, axis=0)
+    if np.any(scales == 0.0):
+        return neutral
+    slopes, _, rank, _ = np.linalg.lstsq(design / scales, yy * root, rcond=None)
+    slopes = slopes / scales
+    if rank != x.shape[1] or not np.isfinite(slopes).all():
+        return neutral
+    return slopes
+
+
 def _zero_incompatible_priors(
     prior: np.ndarray, signs: Optional[np.ndarray], nonneg: bool = False,
 ) -> np.ndarray:

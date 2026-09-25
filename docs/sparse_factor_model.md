@@ -105,6 +105,39 @@ of the rows has a loss smaller by about the factor $f$ against the same penalty,
 more. The same holds for a short EWMA span, whose squared weights sum to about
 $(\mathrm{span}+1)/2$ instead of $T$.
 
+### Optional normalization by valid weight mass
+
+The preceding equations and the worked example use the historical default
+`loss_normalization="sample"`. Setting `loss_normalization="weight_sum"` instead
+normalizes each response separately. Define $S_i = \sum_t W_{ti}^2 V_{ti}$ and let
+$e_{ti}$ be its regression residual. The fitting loss becomes
+
+$$
+L(\beta) = \sum_{i:S_i>0} \frac{\sum_t W_{ti}^2 V_{ti} e_{ti}^2}{S_i}.
+$$
+
+An empty response contributes zero loss. The loss remains a sum over responses;
+it is not additionally divided by their number. Missing observations add no weight,
+and multiplying all observation weights for a response by a constant leaves its
+loss unchanged. Invariance concerns the loss for fixed transformed inputs: changing
+centring, target estimation, sign rules or cluster composition can independently
+change a complete fit. Short histories still carry greater estimation uncertainty;
+normalizing the loss does not supply additional information.
+
+For a balanced panel with common weight mass $S$, equivalent penalties satisfy
+
+$$
+\lambda_{\mathrm{normalized}} = \lambda_{\mathrm{sample}} T/S.
+$$
+
+With unequal masses, the relative response weights change and a single lambda
+conversion cannot preserve every old fit. Calibration must therefore accompany
+activation. `loss_weight_mass_`, `loss_denominator_` and `n_loss_rows_` record the
+fitted convention's inputs. Diagnostic residual sums retain their original EWMA
+units. LASSO, group/cluster and cooperative models support this option, including
+regularization paths and cross-validation. UniLasso retains its separate unweighted
+two-stage objective and rejects the option.
+
 ### Separability
 
 With no group penalty the objective is a sum over responses,
