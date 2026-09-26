@@ -159,10 +159,10 @@ python examples/docs/unilasso.py
 - **`reg_lambda` has a different scale.** It penalises $\theta$, which is near one for a kept
   loading, not the loading itself; a value tuned for `LASSO` does not carry over.
 - **Several package options do not apply.** `UNILASSO` rejects `factors_beta_loading_signs`,
-  `nonneg=True`, `apply_ols_prior=True` and `loss_normalization="weight_sum"` with `ValueError`.
-  With `auto_sign_constraints=True` the fit is unchanged and `derived_signs_` is `None`. An
-  explicit `factors_beta_prior` is accepted but has no effect. `span` sets the de-meaning and the
-  reported diagnostics; the stage-two loss is unweighted.
+  `nonneg=True`, `factors_beta_prior`, `apply_ols_prior=True` and
+  `loss_normalization="weight_sum"` with `ValueError`. With `auto_sign_constraints=True` the fit
+  is unchanged and `derived_signs_` is `None`. `span` sets the de-meaning and the reported
+  diagnostics; the stage-two loss is unweighted.
 - **No pooling across responses.** Each response is fitted alone, so clusters of responses do not
   share evidence.
 

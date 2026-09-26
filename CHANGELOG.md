@@ -6,6 +6,9 @@
   result. It accepts factor-name collections rather than a consumer model object, with optional
   caller-owned ticker overrides and policy version. No estimator default, solver or fitted
   numerical path changes.
+- `UNILASSO` now rejects an explicit `factors_beta_prior` with `ValueError`, at construction and
+  at fit. The prior was accepted and silently ignored, because the UniLasso solver takes no beta
+  prior; fits without a prior are unchanged.
 
 ## Unreleased - documentation
 

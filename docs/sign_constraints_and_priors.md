@@ -299,7 +299,7 @@ solvers; this article owns no separate public symbol. All names are documented i
 | Argument or attribute | Role |
 |---|---|
 | `factors_beta_loading_signs` | DataFrame $S$. Enforced by `LASSO`, `GROUP_LASSO`, `HIERARCHICAL_CLUSTER_GROUP_LASSO` and `FACTOR_CLUSTER_GROUP_LASSO`. Rejected with `ValueError` by `UNILASSO` and the two cooperative modes, whose solvers take no sign constraint. |
-| `factors_beta_prior` | DataFrame $\beta_0$. Centres the L1 term and, in the group and cooperative modes, the group norms. Not used by `UNILASSO`. |
+| `factors_beta_prior` | DataFrame $\beta_0$. Centres the L1 term and, in the group and cooperative modes, the group norms. Rejected with `ValueError` by `UNILASSO`, whose solver takes no beta prior. |
 | `nonneg` | Global non-negativity, used only when no sign matrix is active. |
 | `auto_sign_constraints`, `auto_sign_threshold_t`, `auto_sign_excluded_factors` | Data-derived signs and their overlay with the explicit matrix. |
 | `derived_signs_` | Fitted attribute: the final overlaid sign matrix the solver received, or `None` when none was supplied or derived, or when the solver takes none. |

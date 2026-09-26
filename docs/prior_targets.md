@@ -263,8 +263,8 @@ Verified with factorlasso 0.20.0 and CVXPY with the CLARABEL solver.
 The OLS weights use the effective squared-loss span of the fit, including a span passed to
 `fit`, and are independent of `cluster_correlation_span`. The regularisation path of the group
 estimators reuses one calculation of the centres across penalties. `UNILASSO` rejects
-`apply_ols_prior=True`. The feature is off by default, so fits that do not request it are
-unchanged.
+`apply_ols_prior=True` and an explicit `factors_beta_prior`. The feature is off by default, so
+fits that do not request it are unchanged.
 
 `map_expert_factor_priors` accepts a ticker-indexed Series of instrument names and a collection
 of available factor names (a dictionary contributes its keys). Broad equity and unambiguous

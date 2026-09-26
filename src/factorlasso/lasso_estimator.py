@@ -1271,7 +1271,8 @@ class LassoModel:
         entries override it, including zero. A finite nonzero prior overrides
         a conflicting automatically detected sign or zero gate. Explicit hard
         signs still win; with OLS enabled their incompatible priors are zeroed.
-        With the flag off, NaN retains its legacy zero meaning.
+        With the flag off, NaN retains its legacy zero meaning. Rejected with
+        ``ValueError`` by ``UNILASSO``, whose solver takes no beta prior.
     apply_ols_prior : bool, default False
         Derive per-response weighted one-factor OLS priors on original inputs
         with an intercept and the effective LASSO squared-loss span. Use
@@ -1763,8 +1764,15 @@ class LassoModel:
                 raise ValueError('factor_for_prior response labels must be unique')
             for _, value in self.factor_for_prior.items():
                 _selected_prior_factors(value)
-        if self.apply_ols_prior and self.model_type == LassoModelType.UNILASSO:
-            raise ValueError('apply_ols_prior is not supported by the UNILASSO solver')
+        if self.model_type == LassoModelType.UNILASSO:
+            if self.apply_ols_prior:
+                raise ValueError('apply_ols_prior is not supported by the UNILASSO solver')
+            # The UniLasso solver takes no beta prior; reject rather than ignore it silently.
+            if self.factors_beta_prior is not None:
+                raise ValueError(
+                    'factors_beta_prior is not supported by the UNILASSO solver, '
+                    'which takes no beta prior'
+                )
 
     # ── Backward-compatible property aliases ─────────────────────────
 
