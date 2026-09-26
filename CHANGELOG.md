@@ -7,6 +7,49 @@
   caller-owned ticker overrides and policy version. No estimator default, solver or fitted
   numerical path changes.
 
+## Unreleased - documentation
+
+- Read the Docs site restructured on the qis pattern: a Markdown home page grouped by the
+  estimation pipeline, with a Mermaid overview diagram; `getting-started`, `interoperability`,
+  `comparison` and `scientific-replication` converted to Markdown with unchanged URLs; a new
+  conventions and glossary page; the API page generated at build time from `__all__`, grouped by
+  owning article and with a map of the 42 `LassoModel` parameters (anchors unchanged); a
+  canonical-URL and sitemap extension ported from qis, with `latest` as the canonical version.
+- New methodology article on prior targets (automatic and mapped OLS centres) and a first case
+  study, credit attribution in a multi-asset ETF model, each with an offline canonical script that
+  asserts its quoted numbers; one new synthetic exhibit and eight paper exhibits displayed in
+  place from committed PNG twins.
+- New methodology articles on EWMA weighting and ragged histories, the gated cluster-pooled sign
+  derivation, adaptive penalty weights, the cooperative LASSO, UniLasso, and the regularisation
+  path and penalty selection, each with an offline canonical script that asserts its quoted
+  numbers against an independent reference and a synthetic exhibit; the residual diagnostics
+  article gains the partition variance share with its exhibit.
+- New cluster articles: cluster discovery (dependence measure, distance transform, linkage and
+  cut), dominant common-mode removal, causal smoothing of rolling clusters, cluster stability
+  statistics with stability-pooled scoring, and offline cluster lineage, with new `clustering`
+  and `lineage` exhibit producers and a "Clusters" sidebar group.
+- New articles on residual-alpha nowcasting and empirical residual correlation, and two case
+  studies: sign pooling on the yeast eQTL cross, read from the committed results of the
+  sign-pooling paper with its three exhibits displayed in place, and one loading matrix for
+  portfolio risk and capital market assumptions with the MATF-CMA audit. Every public name is now
+  documented by an adopted article.
+- `task-guides` is now a Markdown "Examples and recipes" page, with the same URL: a router from
+  each task to its article and script, and recipes excerpted from `examples/docs/task_guides.py`;
+  its topics moved into the articles. A new software design page maps the module layers. The home
+  page maps each step of its diagram to the articles, and the link check skips SSRN, which refuses
+  automated requests.
+- `tools/check_docs.py` now also enforces one owning article per `LassoModel` configuration
+  parameter, the case-study page form, and the paper ledger: the JSS paper is cited everywhere,
+  including `README.md` and `CITATION.cff`, by the title in its LaTeX source.
+- `papers/prior_targets_2026` is tracked, without its working records, backups, build artifacts
+  and derived-data bundle. No package code, default or numerical result changed.
+- The `LassoModel` docstring now describes all 42 configuration parameters (eleven had no entry
+  and five an empty one); a test fails when a new parameter lacks a description. Docstring text
+  only.
+- The MATF-CMA paper is cited as a working paper (SSRN 6785958) in `README.md` and
+  `CITATION.cff`, and the manuscript bibliographies cite the JSS and sign-pooling papers by their
+  LaTeX titles.
+
 ## 0.20.0 - 2026-09-25
 
 - Consolidate automatic highest-R-squared and named/joint OLS prior targets,

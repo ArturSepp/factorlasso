@@ -15,6 +15,8 @@ sphericity statistic from a direct sum over ``numpy.corrcoef``, the leading comp
 Synthetic data, fixed seed, no network, no files written. Solver: CVXPY with CLARABEL.
 """
 
+import itertools
+
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -113,6 +115,22 @@ def null_rejection_rates(nu: float, n_series: int, seed: int = SEED + 1) -> pd.S
     return pd.Series(rejects / N_NULL_PANELS, index=["sphericity", "edge", "either"])
 
 
+def partition_shares(
+    residual_panels: dict,
+    labels: pd.Series,
+    seed: int = SEED + 2,
+) -> pd.DataFrame:
+    """Per-date adjusted partition share of residual panels, for a partition and a shuffled one."""
+    rng = np.random.default_rng(seed)
+    shuffled = pd.Series(rng.permutation(labels.to_numpy()), index=labels.index)
+    columns = {}
+    for panel_name, panel in residual_panels.items():
+        for partition_name, partition in (("carriers", labels), ("shuffled", shuffled)):
+            share = fl.partition_variance_share(panel, partition)
+            columns[f"{panel_name}, {partition_name}"] = share["adjusted_share"]
+    return pd.DataFrame(columns)
+
+
 def main() -> None:
     """Run the example, verify each quoted number independently, and print the summary."""
     x, y = make_panel()
@@ -196,6 +214,37 @@ def main() -> None:
     print(path_complete[["n_loadings", "sphericity", "passes"]].round(1).to_string())
     print("Rejection frequency on simulated diagonal panels")
     print(rates.round(3).to_string())
+
+    # --- 5. Partition share: the carriers of the withheld factor form a block in the residuals ---
+    labels = pd.Series(np.where(y.columns.isin(carriers), "carriers", "others"), index=y.columns)
+    shares = partition_shares({"complete": residuals, "withheld": residuals_short}, labels)
+    print("Mean adjusted partition share of the residuals")
+    print(shares.mean().round(2).to_string())
+
+    # the share of one cross-section against the R-squared of a regression on group indicators
+    cross_section = residuals_short.iloc[0].to_numpy()
+    groups = sorted(set(labels))
+    indicators = np.column_stack([(labels == group).to_numpy(float) for group in groups])
+    fitted = indicators @ np.linalg.lstsq(indicators, cross_section, rcond=None)[0]
+    total = np.sum((cross_section - cross_section.mean()) ** 2)
+    one = fl.partition_variance_share(residuals_short.iloc[0], labels)
+    assert np.isclose(one["share"].iloc[0], np.sum((fitted - cross_section.mean()) ** 2) / total)
+    # the floor (K - 1)/(N - 1) = 1/7 is the exact mean over all 70 size-preserving relabellings
+    exact = [
+        fl.partition_variance_share(
+            residuals_short.iloc[0],
+            pd.Series(np.where(np.isin(np.arange(n_series), chosen), "a", "b"), index=y.columns),
+        )["share"].iloc[0]
+        for chosen in itertools.combinations(range(n_series), int(labels.eq("carriers").sum()))
+    ]
+    assert len(exact) == 70 and np.isclose(np.mean(exact), 1.0 / 7.0)
+    assert np.isclose(one["floor"].iloc[0], 1.0 / 7.0)
+    # the carriers carry a block only while their factor is withheld
+    means = shares.mean()
+    assert 0.19 < means["withheld, carriers"] < 0.22                  # quoted: 0.21
+    assert abs(means["complete, carriers"]) < 0.02                     # quoted: 0.01
+    assert abs(means["complete, shuffled"]) < 0.03                     # quoted: 0.02
+    assert abs(means["withheld, shuffled"]) < 0.06                     # quoted: 0.04
 
 
 if __name__ == "__main__":

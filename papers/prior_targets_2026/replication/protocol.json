@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "date": "2026-09-21",
+  "phase": "exploratory_pilot",
+  "empirical_assets": [
+    "HYG",
+    "LQD",
+    "TLT",
+    "VCSH",
+    "VCIT",
+    "SPY"
+  ],
+  "empirical_training_months": 60,
+  "empirical_validation_months": 24,
+  "factors": [
+    "Equity",
+    "Rates",
+    "Credit",
+    "Carry",
+    "Inflation",
+    "Commodities",
+    "PrivateEquity",
+    "RatesVol",
+    "Fx"
+  ],
+  "pilot": {
+    "rho": [
+      0,
+      0.8,
+      0.95
+    ],
+    "secondary": [
+      0,
+      0.3
+    ],
+    "n": [
+      60,
+      240
+    ],
+    "snr": [
+      2
+    ],
+    "seeds": [
+      910000,
+      910019
+    ],
+    "test_size": 2000
+  },
+  "confirmation": {
+    "rho": [
+      0,
+      0.5,
+      0.8,
+      0.95,
+      0.99
+    ],
+    "secondary": [
+      0,
+      0.1,
+      0.3,
+      1
+    ],
+    "n": [
+      60,
+      120,
+      240
+    ],
+    "snr": [
+      1,
+      4
+    ],
+    "seeds": [
+      920000,
+      920199
+    ],
+    "test_size": 2000
+  },
+  "lambda": {
+    "minimum": 0.000001,
+    "maximum": 10,
+    "positive_points": 36,
+    "include_zero": true,
+    "loss": "mean squared error + lambda * L1 deviation after training-only standardisation"
+  },
+  "scenarios": {
+    "units": "one population SD per factor in simulation; 1% monthly factor return empirically",
+    "vectors": [
+      [
+        1,
+        0
+      ],
+      [
+        -1,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        -1
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        -1,
+        -1
+      ]
+    ]
+  },
+  "target_methods": {
+    "M3_fixed": "fixed [1, .3] in simulation; no per-cell truth access",
+    "M3_noisy": "true beta plus independent N(0,.25^2) measurement error; external-information experiment",
+    "M3_oracle": "true beta; oracle diagnostic",
+    "M3_small_model": "empirical: training-only Rates+Credit OLS for corporate bonds; Rates-only Treasury; Equity-only SPY"
+  },
+  "zero_tolerance": 0.000001,
+  "solver": "CLARABEL",
+  "practical_effect": {
+    "scenario_rmse_standardised_response": 0.05,
+    "maximum_relative_prediction_mse_increase": 0.05,
+    "interpretation": "prospective relevance scales, not a significance threshold; all effects reported"
+  },
+  "data_status": {
+    "etf": "saved public-price-derived snapshot; historical vintages not certified",
+    "factors": "production MATF snapshot; public rebuild and redistribution not established; empirical lane is exploratory snapshot replication"
+  },
+  "rules": {
+    "theory_deferred": true,
+    "oracle_primary": false,
+    "failures_retained": true,
+    "prior_fold_local": true,
+    "all_runtime_outputs_c_local": true
+  }
+}

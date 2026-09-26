@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "date": "2026-09-21",
+  "stage": "E3_groups",
+  "prerequisite": "E3_L1_confirmation_v1",
+  "n": 112,
+  "profiles": [
+    "baseline",
+    "credit_removed"
+  ],
+  "pilot_seeds": [
+    960000,
+    960004
+  ],
+  "confirmation_seeds": [
+    970000,
+    970049
+  ],
+  "test_size": 2000,
+  "lambda": {
+    "maximum": 10,
+    "minimum": 0.000001,
+    "positive_points": 15
+  },
+  "settings": [
+    {
+      "name": "HCGL",
+      "geometry": "HCGL",
+      "signs": false,
+      "adaptive": false,
+      "known": false
+    },
+    {
+      "name": "HCGL_sign",
+      "geometry": "HCGL",
+      "signs": true,
+      "adaptive": false,
+      "known": false
+    },
+    {
+      "name": "HCGL_sign_adaptive",
+      "geometry": "HCGL",
+      "signs": true,
+      "adaptive": true,
+      "known": false
+    },
+    {
+      "name": "FCGL_sign_adaptive",
+      "geometry": "FCGL",
+      "signs": true,
+      "adaptive": true,
+      "known": false
+    },
+    {
+      "name": "Known_HCGL_sign_adaptive",
+      "geometry": "GROUP",
+      "signs": true,
+      "adaptive": true,
+      "known": true
+    }
+  ],
+  "targets": [
+    "zero",
+    "auto",
+    "economic"
+  ],
+  "preprocessing": "Training means and ddof0 standard deviations for every X/Y; native priors transformed consistently. All model settings get the same standardised arrays and validation/test transformations. Global intercept, span=None.",
+  "selection": "One lambda per full panel, selected by mean validation MSE normalised by training response variance. Different from the earlier per-asset L1 selector; primary target contrast is within each geometry/setting.",
+  "model": "Frozen LassoModel.fit_reg_lambda_path; cutoff_fraction .4, threshold_t1.0, adaptive gamma1 floor.5, CLARABEL only, warmup_period=None. Economic priors passed explicitly with apply_ols_prior=False; automatic uses existing selection/filter semantics. Record prior/sign conflicts rather than alter production behavior.",
+  "known_groups": "Original sub_asset_class from frozen universe; generative groups labelled oracle. Compare GROUP row geometry to HCGL row geometry. FCGL comparison changes cluster-by-factor penalty holding learned groups/sign/adaptive specification fixed.",
+  "seeds": "Same independent train/validation/test streams as E3_L1, fresh seed ranges and common innovations across profiles. No pilot/confirmation pooling.",
+  "metrics": "Credit cohort MSE/bias, native full beta MSE, isolated one-population-factor-SD scenario MSE, normalised test MSE, training-estimated systematic/full covariance error. Paired seed effects for auto/economic minus zero within setting. Save per-asset betas, raw/effective centres, signs and cluster labels.",
+  "validation": "Path vs standalone fit in every setting/target on a deterministic 12-asset fixture including multiple groups. Verify sign feasibility and transformed direct residuals. Mutated future arrays cannot change fits; corrupt errors and missing cells must be rejected. Pin source/prerequisite hashes. Save every warning/failure.",
+  "pilot_gate": "10 panels, 150 setting-target rows. Five seeds per profile. No failed fits or numerical discrepancies; report warnings and runtime. Then all 100 confirmation panels unchanged (50 per profile). Four worker processes allowed.",
+  "scope": "Bounded group extension at n112 in original/removed-Credit profiles, not Cartesian repeat of every E3 axis. No package or legacy-result modifications; theory deferred."
+}

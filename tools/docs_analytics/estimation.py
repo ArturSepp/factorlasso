@@ -15,6 +15,33 @@ distribution of the error with and without the constraints.
 ``group_penalties_selection.png`` for ``docs/group_penalties_hcgl_fcgl.md``: the loadings kept by
 the LASSO, HCGL and FCGL penalties at one common penalty, against the true loadings.
 
+``prior_targets_paths.png`` for ``docs/prior_targets.md``: the Rates and Inflation loadings of one
+inflation-linked response along the penalty grid under a zero, an automatic and a joint centre.
+
+``ewma_weighting_shrinkage.png`` for ``docs/ewma_weighting_and_ragged_histories.md``: EWMA weight
+profiles of three spans, and the shrinkage of loadings with ragged histories under the two loss
+normalisations.
+
+``pooled_sign_recovery.png`` for ``docs/gated_cluster_pooled_signs.md``: sign recovery on active
+cells and false signs on null cells against the gate threshold, per response and pooled within
+known clusters.
+
+``adaptive_penalty_weights.png`` for ``docs/adaptive_penalty_weights.md``: the adaptive weight as a
+function of the univariate slope, and the fitted loadings of a plain and an adaptive LASSO by true
+loading.
+
+``cooperative_lasso_geometry.png`` for ``docs/cooperative_lasso.md``: unit level sets of the group
+and cooperative penalties for two loadings, and the loading of a cluster's rogue member along the
+penalty grid under three penalties.
+
+``unilasso_two_stage.png`` for ``docs/unilasso.md``: final UniLasso loadings against the stage-one
+univariate slopes, with and without non-negative stage-two coefficients, and the noise loadings
+kept along the penalty grid under three settings of the two UniLasso options.
+
+``penalty_selection_paths.png`` for ``docs/penalty_selection.md``: held-out R-squared and held-out
+residual sphericity along one penalty grid, on a complete panel and on a panel with an omitted
+factor, with the penalty each selector takes.
+
 Each calculation is the worked example of its article, loaded from ``examples/docs/``. Nothing is
 re-implemented here: this module calls the example's functions, checks that the registry
 configuration describes what actually ran, and draws.
@@ -23,6 +50,8 @@ configuration describes what actually ran, and draws.
 import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
+from matplotlib.ticker import NullFormatter
 
 from tools.docs_analytics.fixtures import (
     GRID,
@@ -36,7 +65,7 @@ from tools.docs_analytics.fixtures import (
     verify_parameters,
 )
 
-MARKERS = ("o", "s")
+MARKERS = ("o", "s", "D")
 LINE = {"linewidth": 2, "markersize": 7, "markeredgecolor": SURFACE, "markeredgewidth": 1.5}
 
 
@@ -303,11 +332,452 @@ def _group_penalties(spec: dict) -> tuple[Figure, dict, dict]:
     return figure, tables, checks
 
 
+def _prior_targets(spec: dict) -> tuple[Figure, dict, dict]:
+    """Where each prior-centre policy sends the two loadings as the penalty grows."""
+    example = load_example(spec["example"])
+    verify_parameters(example, spec["parameters"])
+    x, y = example["make_panel"]()
+    paths = example["loading_paths"](x, y)
+    truth = example["TRUE_BETA"]
+    policies = list(example["POLICIES"])
+    grid = example["REG_LAMBDAS"]
+
+    figure = Figure(figsize=(11.0, 4.6), facecolor=SURFACE, layout="constrained")
+    axes = figure.subplots(1, 2)
+    for axis, factor, true_value in zip(axes, example["FACTORS"], truth):
+        axis.axhline(true_value, color=INK_MUTED, linestyle="--", linewidth=1.2)
+        axis.annotate(f"true loading {true_value:.2f}", xy=(grid[0], true_value),
+                      xytext=(-4, -16), textcoords="offset points", ha="right", fontsize=11,
+                      color=INK_MUTED)
+        ends = {}
+        for name, colour, marker in zip(policies, SERIES, MARKERS):
+            path = paths[paths["policy"] == name]
+            axis.plot(path["reg_lambda"], path[factor], color=colour, marker=marker, **LINE)
+            ends.setdefault(round(float(path[factor].iloc[-1]), 2), []).append(name)
+        # Direct labels at the large-penalty end, where each fit has reached its centre.
+        for level, names in ends.items():
+            axis.annotate(" and ".join(names), xy=(grid[-1], level), xytext=(4, 7),
+                          textcoords="offset points", ha="left", fontsize=11, color=INK)
+        axis.set_xscale("log")
+        axis.invert_xaxis()
+        axis.set_ylim(-0.12, 1.05)
+        axis.set_xlabel("reg_lambda (the penalty falls to the right)")
+        axis.set_title(f"{factor.capitalize()} loading", fontsize=12.5, loc="left")
+        style_axis(axis)
+    axes[0].set_ylabel("Fitted loading of the inflation-linked response")
+
+    signs = {name: example["fit"](x, y, 1e-4, **policy).derived_signs_.loc["linker"]
+             for name, policy in example["POLICIES"].items()}
+    tables = {
+        "prior_targets_paths": paths.set_index(["policy", "reg_lambda"]),
+        "prior_targets_signs": pd.DataFrame(signs).T.rename_axis("policy"),
+    }
+    large = paths[paths["reg_lambda"] == grid[-1]].set_index("policy")
+    small = paths[paths["reg_lambda"] == grid[0]].set_index("policy")
+    checks = {
+        "prior_targets_zero_centre_returns_zero": bool(
+            np.allclose(large.loc["zero centre", ["rates", "inflation"]], 0.0, atol=1e-3)),
+        "prior_targets_detected_signs_hold_inflation_at_zero": bool(
+            np.allclose(small.loc[["zero centre", "automatic centre"], "inflation"], 0.0,
+                        atol=1e-4)),
+        "prior_targets_joint_centre_restores_positive_inflation": bool(
+            (paths.loc[paths["policy"] == "joint centre", "inflation"] > 0.3).all()),
+        "prior_targets_joint_centre_flips_the_detected_sign": bool(
+            signs["joint centre"]["inflation"] == 1.0
+            and signs["automatic centre"]["inflation"] == -1.0),
+    }
+    return figure, tables, checks
+
+
+def _ewma_weighting(spec: dict) -> tuple[Figure, dict, dict]:
+    """Weight profiles of three spans, and shrinkage by history length under two normalisations."""
+    example = load_example(spec["example"])
+    verify_parameters(example, spec["parameters"])
+    x, y = example["make_ragged_panel"]()
+    profiles = pd.concat([example["weight_profile"](span) for span in example["SPANS"]], axis=1)
+    tables = {
+        "equal weights": example["shrinkage_by_history"](x, y, span=None),
+        f"span {example['FIT_SPAN']}": example["shrinkage_by_history"](x, y,
+                                                                      span=example["FIT_SPAN"]),
+    }
+
+    figure = Figure(figsize=(11.0, 4.6), facecolor=SURFACE, layout="constrained")
+    left, right = figure.subplots(1, 2)
+    for (name, profile), colour, marker, span in zip(profiles.items(), SERIES, MARKERS,
+                                                   example["SPANS"]):
+        half_life = np.log(0.5) / np.log(example["decay"](span))
+        left.plot(profile.index, profile.to_numpy(), color=colour, linewidth=2,
+                  label=f"{name}: half-life {half_life:.1f} months")
+        left.plot([half_life], [0.5], linestyle="none", color=colour, marker=marker,
+                  markersize=8, markeredgecolor=SURFACE, markeredgewidth=1.5)
+    left.axhline(0.5, color=INK_MUTED, linestyle="--", linewidth=1.0)
+    left.set_xlim(0, 120)
+    left.set_ylim(0.0, 1.05)
+    left.set_xlabel("Months before the last observation")
+    left.set_ylabel("Observation weight")
+    left.set_title("EWMA weights: the span is not a window", fontsize=12.5, loc="left")
+    left.legend(frameon=False, fontsize=11, labelcolor=INK, loc="upper right")
+
+    histories = example["HISTORIES"]
+    styles = {"equal weights": "-", f"span {example['FIT_SPAN']}": "--"}
+    for table_name, table in tables.items():
+        for convention, colour, marker in zip(("sample", "weight_sum"), SERIES, MARKERS):
+            values = table.loc[histories, convention]
+            right.plot(histories, values.to_numpy(), color=colour, marker=marker,
+                       linestyle=styles[table_name], label=f"{convention}, {table_name}",
+                       **LINE)
+    right.set_xscale("log")
+    right.set_xticks(histories, labels=[str(h) for h in histories])
+    right.minorticks_off()
+    right.invert_xaxis()
+    right.set_xlim(300, 30)
+    right.set_ylim(0.0, 0.42)
+    right.set_xlabel("Months of history of the response (fewer to the right)")
+    right.set_ylabel("Shrinkage of the loading against least squares")
+    right.set_title("Same loading, ragged histories, one panel", fontsize=12.5, loc="left")
+    right.legend(frameon=False, fontsize=11, labelcolor=INK, loc="upper left")
+    for axis in (left, right):
+        style_axis(axis)
+
+    flat, ewma = tables["equal weights"], tables[f"span {example['FIT_SPAN']}"]
+    out_tables = {
+        "ewma_weight_profiles": profiles,
+        "ewma_shrinkage_equal_weights": flat,
+        "ewma_shrinkage_span": ewma,
+    }
+    checks = {
+        "ewma_closed_form_shrinkage_sample": bool(np.allclose(
+            pd.concat([flat, ewma])["sample"], pd.concat([flat, ewma])["sample_closed_form"],
+            atol=1e-4)),
+        "ewma_closed_form_shrinkage_weight_sum": bool(np.allclose(
+            pd.concat([flat, ewma])["weight_sum"],
+            pd.concat([flat, ewma])["weight_sum_closed_form"], atol=1e-4)),
+        "ewma_sample_shrinks_short_histories_harder": bool(
+            flat.loc[36, "sample"] > 5 * flat.loc[240, "sample"]),
+        "ewma_weight_sum_is_indifferent_to_history": bool(
+            flat.loc[36, "weight_sum"] < 1.25 * flat.loc[240, "weight_sum"]),
+    }
+    return figure, out_tables, checks
+
+
+def _pooled_signs(spec: dict) -> tuple[Figure, dict, dict]:
+    """Recovery and false-sign rates of per-response and pooled signs across the gate."""
+    from scipy import stats
+
+    example = load_example(spec["example"])
+    verify_parameters(example, spec["parameters"])
+    sweep = example["gate_sweep"]()
+    taus = np.array(example["TAUS"])
+    labels = {"per response": "per response", "pooled": "pooled in known clusters"}
+
+    figure = Figure(figsize=(11.0, 4.6), facecolor=SURFACE, layout="constrained")
+    left, right = figure.subplots(1, 2)
+    for (key, label), colour, marker, offset in zip(labels.items(), SERIES, MARKERS, (-20, 10)):
+        rates = sweep.loc[key]
+        left.plot(taus, rates["recovery"].to_numpy(), color=colour, marker=marker, **LINE)
+        left.annotate(label, xy=(taus[-1], rates["recovery"].iloc[-1]), xytext=(-4, offset),
+                      textcoords="offset points", ha="right", fontsize=11, color=INK)
+        right.plot(taus, rates["false_sign"].to_numpy(), color=colour, marker=marker,
+                   label=label, **LINE)
+    right.plot(taus, 2.0 * stats.norm.sf(taus), color=INK_MUTED, linestyle="--", linewidth=1.2,
+               label="2 Phi(-tau), one response under the null")
+    right.legend(frameon=False, fontsize=11, labelcolor=INK, loc="upper right")
+    for axis in (left, right):
+        axis.axvline(0.75, color=GRID, linewidth=2.0, zorder=0)
+        axis.set_xlabel("Gate threshold tau (package default 0.75)")
+        axis.set_ylim(0.0, 1.02)
+        style_axis(axis)
+    left.set_ylabel("Share of active cells with the true sign")
+    left.set_title("Signals recovered", fontsize=12.5, loc="left")
+    right.set_ylabel("Share of null cells given a sign")
+    right.set_title("Null cells signed", fontsize=12.5, loc="left")
+
+    tables = {"pooled_sign_rates": sweep}
+    per, pooled = sweep.loc["per response"], sweep.loc["pooled"]
+    checks = {
+        "pooled_signs_recover_more_at_default": bool(
+            pooled.loc[0.75, "recovery"] > per.loc[0.75, "recovery"] + 0.2),
+        "pooled_signs_never_flip": bool(pooled["flip"].max() < 0.01),
+        "per_response_null_retention_matches_normal_reference": bool(np.allclose(
+            per["false_sign"].to_numpy(), 2.0 * stats.norm.sf(taus), atol=0.03)),
+    }
+    return figure, tables, checks
+
+
+def _adaptive_weights(spec: dict) -> tuple[Figure, dict, dict]:
+    """Weight curves, and fitted loadings by true loading for plain and adaptive fits."""
+    example = load_example(spec["example"])
+    verify_parameters(example, spec["parameters"])
+    x, y = example["make_panel"]()
+    fits = {"plain LASSO": example["fit"](x, y, adaptive=False),
+            "adaptive weights": example["fit"](x, y, adaptive=True)}
+    grid = np.linspace(0.0, 2.0, 401)[1:]
+    curves = {
+        f"gamma {gamma}, floor {floor}": example["weight_curve"](grid, gamma, floor)
+        for gamma, floor in ((0.5, example["FLOOR"]), (1.0, example["FLOOR"]),
+                             (2.0, example["FLOOR"]), (1.0, 1e-3))
+    }
+
+    figure = Figure(figsize=(11.0, 4.6), facecolor=SURFACE, layout="constrained")
+    left, right = figure.subplots(1, 2)
+    styles = (("-", SERIES[0]), ("-", SERIES[1]), ("-", SERIES[2]), ("--", INK_MUTED))
+    for (label, curve), (style, colour) in zip(curves.items(), styles):
+        left.plot(grid, curve, linestyle=style, color=colour, linewidth=2, label=label)
+    left.axhline(1.0, color=GRID, linewidth=1.5, zorder=0)
+    left.set_ylim(0.0, 4.2)
+    left.set_xlim(0.0, 2.0)
+    left.set_xlabel("Absolute pooled univariate slope |b|")
+    left.set_ylabel("Adaptive weight on the cell's penalty")
+    left.set_title("W = 1 / max(|b|, floor) ** gamma", fontsize=12.5, loc="left")
+    left.legend(frameon=False, fontsize=11, labelcolor=INK, loc="upper right")
+
+    truth = example["TRUE_BETA"]
+    classes = [0.0, 0.3, 1.0]
+    for offset, ((label, model), colour, marker) in zip((-0.12, 0.12), zip(fits.items(), SERIES,
+                                                                            MARKERS)):
+        beta = model.coef_.to_numpy()
+        for position, value in enumerate(classes):
+            cells = beta[truth == value]
+            jitter = np.linspace(-0.06, 0.06, cells.size)
+            right.plot(position + offset + jitter, cells, linestyle="none", color=colour,
+                       marker=marker, markersize=7, markeredgecolor=SURFACE,
+                       markeredgewidth=1.2, label=label if position == 0 else None)
+    for position, value in enumerate(classes):
+        right.hlines(value, position - 0.3, position + 0.3, color=INK_MUTED, linestyle="--",
+                     linewidth=1.2)
+    right.set_xticks(range(len(classes)), labels=[f"true {value}" for value in classes])
+    right.set_xlim(-0.5, len(classes) - 0.5)
+    right.set_ylabel("Fitted loading")
+    right.set_title(f"36 loadings at reg_lambda = {example['REG_LAMBDA']:g}", fontsize=12.5,
+                    loc="left")
+    right.legend(frameon=False, fontsize=11, labelcolor=INK, loc="upper left")
+    for axis in (left, right):
+        style_axis(axis)
+    right.grid(axis="x", visible=False)
+
+    summary = pd.DataFrame({label: example["error_summary"](model)
+                            for label, model in fits.items()})
+    tables = {"adaptive_weights_summary": summary.rename_axis("measure"),
+              "adaptive_weights_cells": fits["adaptive weights"].sign_penalty_weights_}
+    checks = {
+        "adaptive_weights_remove_loadings_on_zeros": bool(
+            summary.loc["kept_on_zeros", "adaptive weights"]
+            < summary.loc["kept_on_zeros", "plain LASSO"]),
+        "adaptive_weights_bounded_by_floor": bool(
+            fits["adaptive weights"].sign_penalty_weights_.to_numpy().max()
+            <= 1.0 / example["FLOOR"] + 1e-12),
+    }
+    return figure, tables, checks
+
+
+def _cooperative(spec: dict) -> tuple[Figure, dict, dict]:
+    """Penalty level sets, and the rogue member's loading along the penalty grid."""
+    example = load_example(spec["example"])
+    verify_parameters(example, spec["parameters"])
+    x, y = example["make_panel"]()
+    path = example["rogue_path"](x, y)
+
+    figure = Figure(figsize=(11.0, 4.6), facecolor=SURFACE, layout="constrained")
+    left, right = figure.subplots(1, 2, width_ratios=(1.0, 1.35))
+    angles = np.linspace(0.0, 2.0 * np.pi, 721)
+    directions = np.column_stack([np.cos(angles), np.sin(angles)])
+    group_radius = 1.0 / np.linalg.norm(directions, axis=1)
+    coop_radius = 1.0 / np.array([example["cooperative_penalty"](d) for d in directions])
+    left.plot(group_radius * directions[:, 0], group_radius * directions[:, 1], color=SERIES[0],
+              linewidth=2, label="group LASSO: norm of the block")
+    left.plot(coop_radius * directions[:, 0], coop_radius * directions[:, 1], color=SERIES[1],
+              linewidth=2, label="cooperative LASSO: norm of each sign part")
+    left.axhline(0.0, color=GRID, linewidth=1.0, zorder=0)
+    left.axvline(0.0, color=GRID, linewidth=1.0, zorder=0)
+    left.set_aspect("equal")
+    left.set_xlim(-1.35, 1.35)
+    left.set_ylim(-1.35, 1.75)
+    left.set_xlabel("Loading of member 1")
+    left.set_ylabel("Loading of member 2")
+    left.set_title("Loadings with penalty 1", fontsize=12.5, loc="left")
+    left.legend(frameon=False, fontsize=10.5, labelcolor=INK, loc="upper center")
+
+    styles = {"group LASSO": (SERIES[0], MARKERS[0]), "cooperative LASSO": (SERIES[1], MARKERS[1]),
+              "hard pooled sign": (SERIES[2], MARKERS[2])}
+    for name, (colour, marker) in styles.items():
+        rows = path[path["penalty"] == name]
+        right.plot(rows["reg_lambda"], rows["rogue"], color=colour, marker=marker, label=name,
+                   **LINE)
+    least_squares = float((x.T @ y / len(x)).loc["f1", "asset_4"])
+    right.axhline(least_squares, color=INK_MUTED, linestyle="--", linewidth=1.2)
+    right.annotate(f"least squares {least_squares:.2f}", xy=(0.8, least_squares), xytext=(0, 6),
+                   textcoords="offset points", ha="left", fontsize=11, color=INK_MUTED)
+    right.axhline(0.0, color=GRID, linewidth=1.0, zorder=0)
+    right.set_ylim(least_squares - 0.03, 0.03)
+    right.invert_xaxis()
+    right.set_xlabel("reg_lambda, linear scale (the penalty falls to the right)")
+    right.set_ylabel("Loading of the rogue member on factor 1")
+    right.set_title("A member against its cluster's sign", fontsize=12.5, loc="left")
+    right.legend(frameon=False, fontsize=11, labelcolor=INK, loc="upper left",
+                 bbox_to_anchor=(0.02, 0.82))
+    for axis in (left, right):
+        style_axis(axis)
+
+    tables = {"cooperative_rogue_path": path.set_index(["penalty", "reg_lambda"])}
+    coop = path[path["penalty"] == "cooperative LASSO"].set_index("reg_lambda")["rogue"]
+    group = path[path["penalty"] == "group LASSO"].set_index("reg_lambda")["rogue"]
+    checks = {
+        "cooperative_shrinks_the_rogue_faster": bool((coop >= group - 1e-6).all()),
+        "cooperative_rogue_reaches_zero": bool(abs(coop.iloc[-1]) < 1e-4),
+        "hard_sign_holds_the_rogue_at_zero": bool(
+            path.loc[path["penalty"] == "hard pooled sign", "rogue"].abs().max() < 1e-4),
+    }
+    return figure, tables, checks
+
+
+def _unilasso(spec: dict) -> tuple[Figure, dict, dict]:
+    """Final loadings against univariate slopes, and noise loadings kept along the grid."""
+    example = load_example(spec["example"])
+    verify_parameters(example, spec["parameters"])
+    x, y = example["make_panel"]()
+    slopes = example["univariate_slopes"](x, y)
+    fits = {"UniLasso": example["fit_unilasso"](x, y),
+            "signs free": example["fit_unilasso"](x, y, non_negative=False)}
+    path = example["settings_path"](x, y)
+    styles = {"UniLasso": (SERIES[0], MARKERS[0]), "signs free": (SERIES[1], MARKERS[1]),
+              "in-sample fits": (SERIES[2], MARKERS[2])}
+
+    figure = Figure(figsize=(11.0, 4.6), facecolor=SURFACE, layout="constrained")
+    left, right = figure.subplots(1, 2)
+    limit = 1.25
+    for corner in ((0.0, -limit), (-limit, 0.0)):
+        left.add_patch(Rectangle(corner, limit, limit, facecolor=GRID, alpha=0.45, linewidth=0,
+                                 zorder=0))
+    left.text(0.62, -1.12, "sign reversed", ha="center", fontsize=10.5, color=INK_MUTED)
+    left.text(-0.62, 1.05, "sign reversed", ha="center", fontsize=10.5, color=INK_MUTED)
+    suppressor = np.zeros(slopes.shape, dtype=bool)
+    suppressor[:, list(slopes.columns).index("f2")] = True
+    for label, coef in fits.items():
+        colour, marker = styles[label]
+        values = coef.to_numpy()
+        left.plot(slopes.to_numpy()[~suppressor], values[~suppressor], linestyle="none",
+                  color=colour, marker=marker, markersize=7, markeredgecolor=SURFACE,
+                  markeredgewidth=1.2, label=label)
+        left.plot(slopes.to_numpy()[suppressor], values[suppressor], linestyle="none",
+                  color=colour, marker=marker, markersize=9, markeredgecolor=INK,
+                  markeredgewidth=1.4)
+    left.plot([], [], linestyle="none", marker="o", markersize=9, markerfacecolor="none",
+              markeredgecolor=INK, markeredgewidth=1.4, label="suppressor f2 (true -0.4)")
+    left.axhline(0.0, color=GRID, linewidth=1.0, zorder=0)
+    left.axvline(0.0, color=GRID, linewidth=1.0, zorder=0)
+    left.set_xlim(-limit, limit)
+    left.set_ylim(-limit, limit)
+    left.set_xlabel("Stage-one univariate slope")
+    left.set_ylabel("Final loading")
+    left.set_title(f"72 loadings at reg_lambda = {example['REG_LAMBDA']:g}", fontsize=12.5,
+                   loc="left")
+    left.legend(frameon=False, fontsize=10.5, labelcolor=INK, loc="lower left")
+
+    for name, (colour, marker) in styles.items():
+        rows = path[path["setting"] == name]
+        right.plot(rows["reg_lambda"], rows["noise_kept"], color=colour, marker=marker,
+                   label=name, **LINE)
+    right.axvline(example["REG_LAMBDA"], color=INK_MUTED, linestyle=":", linewidth=1.2)
+    right.set_xscale("log")
+    right.invert_xaxis()
+    right.set_ylim(-1, 37)
+    right.set_xlabel("reg_lambda, log scale (the penalty falls to the right)")
+    right.set_ylabel("Loadings kept on the 36 noise cells")
+    right.set_title("Noise loadings along the penalty grid", fontsize=12.5, loc="left")
+    right.legend(frameon=False, fontsize=11, labelcolor=INK, loc="upper left")
+    for axis in (left, right):
+        style_axis(axis)
+
+    tables = {"unilasso_settings_path": path.set_index(["setting", "reg_lambda"]),
+              "unilasso_final_loadings": pd.concat(fits, names=["setting", "response"])}
+    unilasso = fits["UniLasso"].to_numpy()
+    checks = {
+        "unilasso_keeps_univariate_signs": bool((unilasso * slopes.to_numpy() >= -1e-9).all()),
+        "unilasso_drops_the_suppressor": bool(np.abs(unilasso[suppressor]).max() < 1e-6),
+        "free_signs_reverse_the_suppressor": bool(
+            (fits["signs free"].to_numpy()[suppressor] < 0).all()),
+    }
+    return figure, tables, checks
+
+
+def _penalty_selection(spec: dict) -> tuple[Figure, dict, dict]:
+    """Held-out R-squared and residual sphericity along the grid, with both selections."""
+    example = load_example(spec["example"])
+    verify_parameters(example, spec["parameters"])
+    curves = {name: example["selection_curves"](*example["make_panel"](omitted))
+              for name, omitted in (("complete panel", False), ("omitted factor", True))}
+
+    figure = Figure(figsize=(11.0, 4.6), facecolor=SURFACE, layout="constrained")
+    left, right = figure.subplots(1, 2)
+    for (name, table), colour, marker in zip(curves.items(), SERIES, MARKERS):
+        left.plot(table.index, table["held_out_r2"], color=colour, marker=marker, label=name,
+                  **LINE)
+        chosen = table.attrs["r2_lambda"]
+        left.plot([chosen], [table.loc[chosen, "held_out_r2"]], linestyle="none", marker=marker,
+                  markersize=15, markerfacecolor="none", markeredgecolor=INK, markeredgewidth=1.6)
+        right.plot(table.index, table["sphericity"], color=colour, marker=marker, label=name,
+                   **LINE)
+        chosen = table.attrs["diagonality_lambda"]
+        right.plot([chosen], [table.loc[chosen, "sphericity"]], linestyle="none", marker=marker,
+                   markersize=15, markerfacecolor="none", markeredgecolor=INK,
+                   markeredgewidth=1.6)
+    threshold = float(curves["complete panel"]["threshold"].iloc[0])
+    right.axhline(threshold, color=INK_MUTED, linestyle="--", linewidth=1.2)
+    right.annotate(f"chi-square threshold {threshold:.0f}", xy=(1e-6, threshold), xytext=(0, -16),
+                   textcoords="offset points", ha="right", fontsize=11, color=INK_MUTED)
+    left.plot([], [], linestyle="none", marker="o", markersize=12, markerfacecolor="none",
+              markeredgecolor=INK, markeredgewidth=1.6, label="selected penalty")
+    left.set_ylim(-0.1, 0.9)
+    left.set_ylabel("Held-out R-squared, mean over folds")
+    left.set_title("LassoModelCV: best held-out fit", fontsize=12.5, loc="left")
+    left.legend(frameon=False, fontsize=11, labelcolor=INK, loc="lower right")
+    right.set_yscale("log")
+    right.set_ylim(95.0, 1000.0)
+    right.set_yticks([100, 150, 200, 300, 500, 800], labels=["100", "150", "200", "300", "500",
+                                                             "800"])
+    right.yaxis.set_minor_formatter(NullFormatter())
+    right.set_ylabel("Held-out residual sphericity, mean over folds")
+    right.set_title("LassoModelDiagonalityCV: sparsest passing", fontsize=12.5, loc="left")
+    right.legend(frameon=False, fontsize=11, labelcolor=INK, loc="center right")
+    for axis in (left, right):
+        axis.set_xscale("log")
+        axis.invert_xaxis()
+        axis.set_xlabel("reg_lambda, log scale (the penalty falls to the right)")
+        style_axis(axis)
+
+    tables = {
+        "penalty_selection_curves": pd.concat(
+            {name: table.drop(columns="passes") for name, table in curves.items()},
+            names=["panel", "reg_lambda"]),
+        "penalty_selection_choices": pd.DataFrame({
+            name: {"held_out_r2": table.attrs["r2_lambda"],
+                   "diagonality": table.attrs["diagonality_lambda"],
+                   "diagonality_passed": float(table.attrs["passed"])}
+            for name, table in curves.items()}).T.rename_axis("panel"),
+    }
+    complete, omitted = curves["complete panel"], curves["omitted factor"]
+    checks = {
+        "diagonality_is_sparser_on_the_complete_panel": bool(
+            complete.attrs["diagonality_lambda"] > complete.attrs["r2_lambda"]),
+        "no_penalty_passes_with_an_omitted_factor": bool(not omitted["passes"].any()),
+        "missing_component_is_the_hidden_block": bool(
+            set(omitted.attrs["missing"]["series"]) == {f"y0{k}" for k in range(1, 7)}),
+    }
+    return figure, tables, checks
+
+
 EXHIBITS = {
     "quickstart_workflow.png": _quickstart,
     "sparse_factor_model_path.png": _sparse_factor_model,
     "sign_constraints_and_priors_error.png": _sign_constraints_and_priors,
     "group_penalties_selection.png": _group_penalties,
+    "prior_targets_paths.png": _prior_targets,
+    "ewma_weighting_shrinkage.png": _ewma_weighting,
+    "pooled_sign_recovery.png": _pooled_signs,
+    "adaptive_penalty_weights.png": _adaptive_weights,
+    "cooperative_lasso_geometry.png": _cooperative,
+    "unilasso_two_stage.png": _unilasso,
+    "penalty_selection_paths.png": _penalty_selection,
 }
 
 

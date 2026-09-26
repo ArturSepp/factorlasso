@@ -9,7 +9,7 @@ myst:
 
 # Group penalties: HCGL, sparse-group and FCGL
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-22](https://github.com/ArturSepp/factorlasso/commit/fe2063860f701ac5a71951161bf391a1285d503d)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
@@ -333,20 +333,23 @@ and the hash of the image.
 - [Sparse factor model](sparse_factor_model.md) for the loss and the cell-wise penalty.
 - [Sign constraints and priors](sign_constraints_and_priors.md) for $\mathcal{C}$, $\beta_0$ and
   the zero entries used by the refit.
+- [Credit attribution case study](app_multi_asset_credit_attribution.md) for HCGL and FCGL with
+  priors on the JSS multi-asset ETF panel, including the paper's credit-loading exhibit.
 - [Quickstart](quickstart.md) for HCGL with derived signs and cross-validated penalty.
 - [Residual diagnostics](residual_diagnostics.md) for counting kept loadings.
-- [Task guides](task-guides.rst) for cluster-aware estimation recipes.
+- [Cluster discovery](cluster_discovery.md) and [examples and recipes](task-guides.md) for
+  cluster-aware estimation.
 - [API reference](api.rst) for signatures.
 
 ## References
 
 - Meinshausen, N. (2007). Relaxed Lasso. *Computational Statistics and Data Analysis* 52(1),
   374-393. DOI 10.1016/j.csda.2006.12.019.
-- Sepp, A., and Kastenholz, M. (2026). factorlasso: hierarchical clustering group LASSO (HCGL)
-  with cluster-pooled sign derivation for multi-asset factor models in Python. Submitted to the
-  *Journal of Statistical Software*.
-- Sepp, A., Ossa, I., and Kastenholz, M. (2026). Robust optimization of strategic and tactical
-  asset allocation for multi-asset portfolios. *The Journal of Portfolio Management* 52(4),
+- Sepp, A., and Kastenholz, M. A. (2026). factorlasso: Sparse Multi-Output Regression with
+  Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
+  Software*. [Manuscript](../papers/jss_2026/paper/article.pdf).
+- Sepp, A., Ossa, I., and Kastenholz, M. (2026). Robust Optimization of Strategic and Tactical
+  Asset Allocation for Multi-Asset Portfolios. *The Journal of Portfolio Management* 52(4),
   86-120.
 - Simon, N., Friedman, J., Hastie, T., and Tibshirani, R. (2013). A sparse-group lasso. *Journal
   of Computational and Graphical Statistics* 22(2), 231-245. DOI 10.1080/10618600.2012.681250.

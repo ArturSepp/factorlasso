@@ -9,7 +9,7 @@ myst:
 
 # Quickstart: from return panels to a factor covariance
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-22](https://github.com/ArturSepp/factorlasso/commit/fe2063860f701ac5a71951161bf391a1285d503d)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
@@ -17,7 +17,7 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/
 This page runs the package once from end to end on a synthetic panel with known loadings: select
 the penalty, fit the loadings, read the fit, test the residuals, and assemble the covariance
 matrix. Each step names the article that defines the method. For installation and the smallest
-possible fit, start with [installation and first success](getting-started.rst).
+possible fit, start with [installation and first fit](getting-started.md).
 
 ## The model and the five steps
 
@@ -273,9 +273,12 @@ and the hash of the image.
 |---|---|
 | Understand the objective, the intercepts and the units of `reg_lambda` | [Sparse factor model](sparse_factor_model.md) |
 | Impose economic signs or shrink toward a prior loading matrix | [Sign constraints and priors](sign_constraints_and_priors.md) |
+| Estimate the prior centres from the fitting window | [Prior targets](prior_targets.md) |
 | Choose between the LASSO, HCGL, sparse-group and FCGL penalties | [Group penalties](group_penalties_hcgl_fcgl.md) |
 | Store, subset and roll the covariance decomposition | [Factor covariance assembly](factor_covariance_assembly.md) |
 | Test the diagonal-residual assumption and name a missing factor | [Residual diagnostics](residual_diagnostics.md) |
+| Look up shapes, units, EWMA spans and the precedence of signs and priors | [Conventions and glossary](conventions.md) |
 | See every exhibit with its sample and producer | [Analytics gallery](analytics_gallery.md) |
-| Follow task recipes for ragged histories, rolling estimation and model selection | [Task guides](task-guides.rst) |
+| Read a case study from the JSS paper | [Credit attribution in a multi-asset ETF model](app_multi_asset_credit_attribution.md) |
+| Find the script and article for a task | [Examples and recipes](task-guides.md) |
 | Look up a signature | [API reference](api.rst) |

@@ -1,0 +1,27 @@
+# .gitignore for papers/prior_targets_2026
+#
+# Tracked: manuscript.md (editorial source), paper_sources.json, paper/article.tex,
+# paper/article.pdf, paper/refs.bib, paper/README.md, paper/verification.json,
+# paper/figures/ (PDF and PNG) and the replication scripts and protocols.
+
+# Working records and dated backups stay local.
+agents/
+_backup_*/
+
+# The source bundle predates the 26 September revision and contains derived
+# outputs of licensed index histories. It is not redistributed.
+paper/fi_prior_validation_source_bundle.zip
+
+# LaTeX build artifacts (article.pdf is tracked)
+paper/*.aux
+paper/*.abs
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.synctex.gz
+paper/*.toc
+
+# python
+**/__pycache__/
+*.pyc

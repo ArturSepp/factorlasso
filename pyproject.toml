@@ -58,6 +58,7 @@ docs = [
     "furo>=2024.8.6",
     "numpydoc>=1.5",
     "myst-parser>=4.0",
+    "sphinxcontrib-mermaid>=1.0",
 ]
 # Dependencies for the in-repo simulation harness
 # (``papers/jss_2026/simulations/`` directory).

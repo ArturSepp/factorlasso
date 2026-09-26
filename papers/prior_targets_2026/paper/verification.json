@@ -1,0 +1,204 @@
+{
+  "status": "verified_and_visually_reviewed",
+  "verified_blocks": [
+    "cases",
+    "oos",
+    "bootstrap",
+    "cma_cases",
+    "portfolio",
+    "mechanism",
+    "spillover",
+    "stability",
+    "oad",
+    "categories",
+    "roster_indices",
+    "roster_funds",
+    "mc",
+    "mc_focal",
+    "stress_scenarios",
+    "sign_ablation",
+    "penalty_controls"
+  ],
+  "rejected_corruptions": [
+    "cases",
+    "oos",
+    "bootstrap",
+    "cma_cases",
+    "portfolio",
+    "mechanism",
+    "spillover",
+    "stability",
+    "oad",
+    "categories",
+    "roster_indices",
+    "roster_funds",
+    "mc",
+    "mc_focal",
+    "stress_scenarios",
+    "sign_ablation",
+    "penalty_controls"
+  ],
+  "source_sha256": "1862856fe15267d12ec22dae1e5b17833dd0f66c99f8902127e2d7d03a92436e",
+  "pdf_sha256": "a3cde5982af6fa30edd09f0862d98ed731ac00a841457a63cf75d09d35e76477",
+  "figure_hashes": {
+    "fi_cma.pdf": "4cadbea54b70ae85d282c8e31fecdd1fd7283d9bec8783585ae734ae17684f6d",
+    "fi_cma.png": "4340ff7b4726a473c74fddf1a8611e27ee348a73f9b861bd5c1f0b0365a4ae08",
+    "fi_dendrogram.pdf": "427b3951b2a1a5c40488625ab3474be1c38ffdb9d6347d08048162bfb0d360c2",
+    "fi_dendrogram.png": "98bbfb1f7f4ad776197eef000789608ba93be13b7b04174cb91c3c8bcb10b7cc",
+    "fi_frontier.pdf": "42f1b15e05f2f4c2dec3d9e14c17f58a8296e780f3197d052bdd9d325bc68a7c",
+    "fi_frontier.png": "f788ab3768b4f84047a5f6825cab7131d2aa692700eaf9edf5c8677a24b22d37",
+    "fi_il_path.pdf": "6c0b6b8ef7ff8123d9db379a78ec1b9ca3800f602fcaf21ff4e63ab972a2f389",
+    "fi_il_path.png": "475446d37abd84803b86d010c84773562fd7eebfbebf44c62687ed7f0f19d04b",
+    "fi_loadings.pdf": "6b169e1d5c2a5f451f1360214f188adf6a253ec9f193c34fd2290a055b6e475a",
+    "fi_loadings.png": "36e68d09336e4813a70930aa16bcf3671a571db550b1b7168668c1530779dfc2",
+    "fi_mc.pdf": "ff2fd5846feaa097aaafd802a14d344ac1cf57984a7c88e0a387673295c4664f",
+    "fi_mc.png": "f35712b72ab529da6093b76866a81614dd20062f458e2fea0895df2feb7f98db",
+    "fi_oos.pdf": "484f7f9d36a311c8c049e3822edfe5f3932ba9fb50f0dac314f9e830a96e2443",
+    "fi_oos.png": "5f7b8f6aa7f6a8b37292c23e5d99aa57f9ba6b925ed6373391d4dc8f23ac79fd",
+    "fi_sign_revision.pdf": "af562532733fcdfcc54131c8168e84178dfc90b227017f01da9f3903fbc217de",
+    "fi_sign_revision.png": "096be96fb4332e67685ad4258ce491f4168f455becd19af39d22f127401cdc6d",
+    "fi_stress_funds.pdf": "c7b55dd89703510f720cc2cda4b40bf8645ac81c43561681beb9e8f827c06f16",
+    "fi_stress_funds.png": "02534b58517c15a73dfbb7223447e4a16440f19c22edccb33fe8f0743d95cb84",
+    "fi_stress_indices_baseline.pdf": "85f4639ca0b300eefdd99665123ec50e08cfd3d84acc3a13421b509ff660fcea",
+    "fi_stress_indices_baseline.png": "4a257d1fb2395b8016028166e825778784c7019724d9fc48f9afd00e79383f28",
+    "fi_stress_indices_expert.pdf": "770dc281bc4dc374cc37f0872c141a5da673ead0233199d4880d4145743c38a2",
+    "fi_stress_indices_expert.png": "ac01766e2064c8ca3b676449e73d29db4bedc65d75ce783881c15a83c135bbfd"
+  },
+  "aux_convergence_passes": 2,
+  "known_CAS_keyword_diagnostic": [
+    "Overfull \\hbox (117.0831pt too wide) detected at line 33"
+  ],
+  "exhibit_checks": {
+    "status": "passed",
+    "risk_convention": "annual systematic MATF volatility; residual excluded",
+    "policy": "E2",
+    "covariance_rank": 10,
+    "frontier_points": 81,
+    "optimizer_eigenvalue_floor": 1e-10,
+    "alternate_eigenvalue_floor": 1e-12,
+    "plotted_risk_uses_original_covariance": true,
+    "constraints": "long-only, fully invested; no cash sleeve, leverage or additional caps",
+    "alternate_solver_checks": [
+      {
+        "point": 0,
+        "risk_difference": 1.5075208562448372e-06,
+        "cma_difference": 8.524635372597622e-07,
+        "reduced_floor_risk_difference": 1.5075208562448372e-06
+      },
+      {
+        "point": 20,
+        "risk_difference": 2.4699071294702335e-06,
+        "cma_difference": 7.036877678473497e-08,
+        "reduced_floor_risk_difference": 2.4699071294702335e-06
+      },
+      {
+        "point": 40,
+        "risk_difference": 3.1391359246041306e-07,
+        "cma_difference": 8.854699667937282e-09,
+        "reduced_floor_risk_difference": 3.1391359246041306e-07
+      },
+      {
+        "point": 60,
+        "risk_difference": 1.1843929650437457e-06,
+        "cma_difference": 2.1539227415545703e-08,
+        "reduced_floor_risk_difference": 1.1843929650437457e-06
+      },
+      {
+        "point": 80,
+        "risk_difference": 2.9239208276798934e-11,
+        "cma_difference": 8.238992821318902e-12,
+        "reduced_floor_risk_difference": 2.9239208276798934e-11
+      }
+    ],
+    "asset_vol_reference_max_error": 0.0,
+    "dendrogram_cutoff": 0.6484220252019784,
+    "cluster_sizes": {
+      "1": 6,
+      "2": 19,
+      "3": 5
+    },
+    "refit_beta_max_error": 0.0,
+    "refit_audit": {
+      "prior_reference_error": 0,
+      "warnings": []
+    },
+    "minimum_risk": {
+      "cma": 0.04788353010831856,
+      "factor_vol": 0.016326595959439038
+    },
+    "maximum_return": {
+      "cma": 0.08450107069620118,
+      "factor_vol": 0.10037950088899707
+    }
+  },
+  "exhibit_manifest_sha256": "05ec678c9b164ff01c88282abe174f28df32edd9513571b58d3df0e80a830ef4",
+  "stress_checks": {
+    "status": "passed",
+    "selection_rule": "March 2020 plus five lowest other reference-basket months",
+    "reference_indices": [
+      "LEGATRUH Index",
+      "H23059US Index",
+      "H04386US Index"
+    ],
+    "reference_weights": [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    "selection_from": "2001-09-30",
+    "selection_to": "2026-06-30",
+    "selection_months": 298,
+    "reference_return_convention": "mean of expm1(monthly excess log returns); constant equal weights; complete cases",
+    "selected_dates": [
+      "2020-03-31",
+      "2008-10-31",
+      "2008-09-30",
+      "2022-09-30",
+      "2022-06-30",
+      "2002-06-30"
+    ],
+    "predictions": 1008,
+    "stress_convention": "expm1(sum beta times historical factor log shock); negative is loss",
+    "excluded_components": [
+      "cash",
+      "intercept",
+      "alpha",
+      "regional expected-return overlay",
+      "residual shock"
+    ],
+    "endpoint_betas": "2026-06-30; fixed historical-shock replay, not contemporaneous forecast",
+    "valuation_reference_max_error": 5.551115123125783e-17,
+    "log_reference_max_error": 5.551115123125783e-17,
+    "frequency_audit": {
+      "beta_response_frequency": "ME",
+      "beta_factor_frequency": "ME",
+      "factor_covariance_frequency": "W-WED",
+      "factor_covariance_span": 260,
+      "beta_span_months": 60,
+      "model_type": "LassoModelType.FACTOR_CLUSTER_GROUP_LASSO",
+      "reg_lambda": 0.000104264890398061,
+      "cutoff_fraction": 0.6,
+      "auto_sign_threshold": 1.0,
+      "adaptive_floor": 0.5,
+      "solver": "MOSEK",
+      "factor_covariance_reference_max_error": 3.469446951953614e-18,
+      "research_variations": "four prior policies; span 36, sign and penalty sensitivities; synthetic MC is separate"
+    }
+  },
+  "stress_manifest_sha256": "1a5e81432752cc16cb6e612345aaec7742d1efc45f71ca0a3f263f2eb4996be2",
+  "shaded_loading_cells": 396,
+  "physical_pages": 27,
+  "tables": 17,
+  "figures": 11,
+  "visual_review": "All pages reviewed; final figure and table-placement revisions separately re-rendered",
+  "core_regression_tests_passed": 65,
+  "monte_carlo_paired_draws": 2400,
+  "monte_carlo_fits": 12800,
+  "monte_carlo_failures": 0,
+  "source_versions": {
+    "FactorLasso": "0.20.0.dev7",
+    "QuantInvestStrats": "5.30.3",
+    "OptimalPortfolios": "7.8.1.dev1",
+    "Rosaa": "0.7.1.dev2"
+  }
+}

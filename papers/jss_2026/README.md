@@ -1,7 +1,7 @@
 # factorlasso — JSS 2026 replication materials
 
-Replication for *"factorlasso: Hierarchical Clustering Group LASSO (HCGL) with
-Cluster-Pooled Sign Derivation for Multi-Asset Factor Models in Python."*
+Replication for *"factorlasso: Sparse Multi-Output Regression with
+Cluster-Grouped Sign Constraints in Python."*
 
 ## Install
 The package is on PyPI:

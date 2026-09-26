@@ -9,7 +9,7 @@ myst:
 
 # Residual diagnostics for strict factor structure
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-20](https://github.com/ArturSepp/factorlasso/commit/3a91426d6f1c93c1da08a02e70d592d14758078f)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
@@ -309,6 +309,57 @@ def penalty_path(x: pd.DataFrame, y: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).set_index("reg_lambda")
 ```
 
+
+### Partition share of the residuals
+
+The sphericity test says that something is left; the partition share says whether a named block
+carries it. The four series that load on the withheld factor are one group and the other four
+the second, so $K = 2$, $N = 8$ and the floor is $(K-1)/(N-1) = 1/7$. The script computes the
+adjusted share of every monthly cross-section of residuals, for this carrier partition and for
+one shuffled partition with the same group sizes:
+
+```python
+def partition_shares(
+    residual_panels: dict,
+    labels: pd.Series,
+    seed: int = SEED + 2,
+) -> pd.DataFrame:
+    """Per-date adjusted partition share of residual panels, for a partition and a shuffled one."""
+    rng = np.random.default_rng(seed)
+    shuffled = pd.Series(rng.permutation(labels.to_numpy()), index=labels.index)
+    columns = {}
+    for panel_name, panel in residual_panels.items():
+        for partition_name, partition in (("carriers", labels), ("shuffled", shuffled)):
+            share = fl.partition_variance_share(panel, partition)
+            columns[f"{panel_name}, {partition_name}"] = share["adjusted_share"]
+    return pd.DataFrame(columns)
+```
+
+```text
+Mean adjusted partition share of the residuals
+complete, carriers    0.01
+complete, shuffled    0.02
+withheld, carriers    0.21
+withheld, shuffled    0.04
+```
+
+With the factor withheld, the adjusted share of the carrier partition averages 0.21: the carriers
+move together in the residuals. With the complete factor set the same partition averages 0.01,
+and a shuffled partition stays near zero in both fits. The script checks the share of one
+cross-section against the $R^2$ of a regression on group indicators, and checks that the floor
+$1/7$ is the exact mean share over all 70 relabellings that keep the group sizes.
+
+![Mean and 10th to 90th percentile of the monthly adjusted partition share of the residuals for the carrier partition and a shuffled partition, with and without the withheld factor](images/residual_partition_share.png)
+
+*Synthetic teaching exhibit. Adjusted partition share of 240 monthly cross-sections of eight
+residual series from LASSO fits at `reg_lambda = 1e-4`, with all four factors and with the
+commodity factor withheld. Dots are means, bars the 10th to 90th percentiles. Produced by
+`tools/docs_analytics/covariance_residuals.py` from the example script.*
+
+A single cross-section of eight series is noisy: the bars span negative values in every case.
+The mean over many dates is what separates an informative partition from the mechanical effect
+of grouping.
+
 ## Implementation in factorlasso
 
 All names below are exported from the top-level package and documented in the
@@ -361,8 +412,8 @@ analytics runner described in the [documentation standard](documentation_standar
 identity and the hash of the image.
 
 `LassoModelDiagonalityCV` applies the same statistic to held-out residuals on expanding windows
-and selects the sparsest penalty that passes. It is documented in the
-[task-oriented guides](task-guides.rst).
+and selects the sparsest penalty that passes. It is documented, with a comparison against
+held-out $R^2$, in [penalty selection](penalty_selection.md).
 
 ## Interpretation and limitations
 
@@ -418,8 +469,8 @@ factors are priced, or whether residuals are independent in any sense beyond zer
 - [Sparse factor model](sparse_factor_model.md) for the fit that produces the residuals and for
   the numerical zeros that `effective_sparsity` counts.
 - [Quickstart](quickstart.md) for the test inside the full workflow.
-- [Task-oriented guides](task-guides.rst): model selection by prediction score and by residual
-  diagonality, and factor covariance assembly.
+- [Penalty selection](penalty_selection.md): model selection by prediction score and by held-out
+  residual diagonality.
 - [API reference](api.rst)
 - [Documentation standard](documentation_standard.md)
 

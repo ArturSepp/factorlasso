@@ -17,13 +17,15 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 
-# Validated on the light chart surface with adjacent-pair colour-vision-deficiency separation.
+# Validated on the light chart surface with colour-vision-deficiency separation; the three slots
+# pass the all-pairs check (worst CVD Delta E 9.2). The third slot is below 3:1 contrast on the
+# surface, so a chart that uses it labels its lines directly and ships its table.
 # Identity is never carried by colour alone: producers also vary the marker and label directly.
 SURFACE = "#fcfcfb"
 INK = "#1f1f1e"
 INK_MUTED = "#52514e"
 GRID = "#e4e3dd"
-SERIES = ("#2a78d6", "#eb6834")
+SERIES = ("#2a78d6", "#eb6834", "#1baf7a")
 
 
 def load_example(basename: str) -> dict:

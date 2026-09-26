@@ -173,7 +173,7 @@ def test_missing_local_link_is_reported(check_docs):
     page = REPOSITORY_ROOT / "docs" / "probe.md"
     issues = check_docs.check_local_links("[gone](no_such_page.md)\n", page, REPOSITORY_ROOT)
     assert any("Missing local link" in message for message in _messages(issues))
-    assert check_docs.check_local_links("[home](index.rst)\n", page, REPOSITORY_ROOT) == []
+    assert check_docs.check_local_links("[home](index.md)\n", page, REPOSITORY_ROOT) == []
 
 
 def test_implementation_section_is_isolated(check_docs):
@@ -288,6 +288,83 @@ def test_adopted_articles_name_their_symbols(check_docs):
             (REPOSITORY_ROOT / name).read_text(encoding="utf-8"))
         for symbol in inventory["symbols"].get(name, []):
             assert f"`{symbol}`" in section or f"`{symbol}()`" in section, (name, symbol)
+
+
+def test_every_lasso_parameter_has_exactly_one_owner(check_docs):
+    inventory, _ = check_docs.load_inventory(REPOSITORY_ROOT)
+    errors, owners = check_docs.check_parameter_ownership(inventory, REPOSITORY_ROOT)
+    configuration, fitted = check_docs.lasso_model_fields(REPOSITORY_ROOT)
+    assert errors == []
+    assert set(owners) == set(configuration)
+    assert fitted and all(name.endswith("_") for name in fitted)
+
+
+def test_unowned_or_unknown_parameter_fails(check_docs):
+    inventory, _ = check_docs.load_inventory(REPOSITORY_ROOT)
+    broken = copy.deepcopy(inventory)
+    article, names = next(iter(broken["parameters"].items()))
+    removed = names.pop()
+    names.append("not_a_parameter")
+    errors, _ = check_docs.check_parameter_ownership(broken, REPOSITORY_ROOT)
+    assert any(f"LassoModel parameter {removed} has no owning article" in e for e in errors)
+    assert any("not_a_parameter is not a LassoModel parameter" in e for e in errors)
+
+
+def _documented_parameters(docstring: str) -> dict:
+    """Map each numpydoc ``Parameters`` entry of a docstring to its description text."""
+    import re
+
+    section = docstring.split("Parameters\n    ----------\n", 1)[1]
+    section = re.split(r"\n    [A-Z][^\n]*\n    -{3,}", section, maxsplit=1)[0]
+    entries, current = {}, None
+    for line in section.splitlines():
+        header = re.match(r"^    ([A-Za-z_][\w, ]*?) :", line)
+        if header:
+            current = [name.strip() for name in header[1].split(",")]
+            for name in current:
+                entries[name] = ""
+        elif current and line.strip():
+            for name in current:
+                entries[name] += line.strip() + " "
+    return entries
+
+
+def test_every_lasso_parameter_is_described_in_the_docstring(check_docs):
+    """The generated API page shows the docstring, so a new parameter must be described there."""
+    import ast
+
+    source = (REPOSITORY_ROOT / "src" / "factorlasso" / "lasso_estimator.py").read_text(
+        encoding="utf-8")
+    model = next(node for node in ast.parse(source).body
+                 if isinstance(node, ast.ClassDef) and node.name == "LassoModel")
+    documented = _documented_parameters(ast.get_docstring(model, clean=False))
+    configuration, _ = check_docs.lasso_model_fields(REPOSITORY_ROOT)
+    assert [name for name in configuration if name not in documented] == []
+    assert [name for name in configuration if not documented[name].strip()] == []
+    # the parser itself must notice a missing description
+    probe = "    Parameters\n    ----------\n    alpha : float\n    beta : int\n        Text.\n"
+    assert _documented_parameters(probe) == {"alpha": "", "beta": "Text. "}
+
+
+def test_case_study_sections_are_enforced(check_docs):
+    sections = check_docs.CASE_STUDY_HEADINGS
+    body = ARTICLE.split("## Overview")[0] + "".join(f"## {name}\n\n" for name in sections)
+    assert check_docs.check_document(body, sections=sections) == []
+    swapped = body.replace("## Configuration\n\n## Results", "## Results\n\n## Configuration")
+    assert any("standard order" in message for message in _messages(
+        check_docs.check_document(swapped, sections=sections)))
+
+
+def test_retired_paper_title_fails(check_docs, tmp_path):
+    inventory, _ = check_docs.load_inventory(REPOSITORY_ROOT)
+    assert check_docs.check_paper_titles(
+        inventory, REPOSITORY_ROOT, sorted(check_docs.discover_pages(REPOSITORY_ROOT))) == []
+    retired = inventory["papers"]["jss"]["retired_titles"][0]
+    (tmp_path / "docs").mkdir()
+    wrapped = retired.replace(" with ", "\nwith ").lower()
+    (tmp_path / "docs" / "page.md").write_text(f"See *{wrapped}*.\n", encoding="utf-8")
+    errors = check_docs.check_paper_titles(inventory, tmp_path, ["docs/page.md"])
+    assert any("Retired title of paper jss" in error for error in errors)
 
 
 # --- exhibit registry -----------------------------------------------------------------------

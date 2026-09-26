@@ -9,7 +9,7 @@ myst:
 
 # Sparse multi-output factor model
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-22](https://github.com/ArturSepp/factorlasso/commit/fe2063860f701ac5a71951161bf391a1285d503d)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
@@ -129,6 +129,10 @@ For a balanced panel with common weight mass $S$, equivalent penalties satisfy
 $$
 \lambda_{\mathrm{normalized}} = \lambda_{\mathrm{sample}} T/S.
 $$
+
+The [EWMA weighting and ragged histories](ewma_weighting_and_ragged_histories.md) article
+measures the extra shrinkage of short histories under each convention and checks this
+conversion and the closed-form shrinkage of a one-factor fit.
 
 With unequal masses, the relative response weights change and a single lambda
 conversion cannot preserve every old fit. Calibration must therefore accompany
@@ -335,6 +339,11 @@ All names below are exported from the top-level package and documented in the
 | `solve_lasso_cvx_problem` | The CVXPY programme for NumPy inputs. `LassoModel` calls it after centring; it accepts `valid_mask`, `span`, `factors_beta_loading_signs`, `factors_beta_prior` and `penalty_weights`. |
 | `get_x_y_np` | Converts the panels to the arrays the solver receives: centred, zero-filled where missing, with the validity mask. With an EWMA span the first row is dropped. |
 
+The constructor parameters explained in this article are `model_type` (default
+`LassoModelType.LASSO`, which selects the penalty), `reg_lambda`, `demean`, `solver` and
+`solver_fallbacks`. The [API reference](api.rst) maps every other `LassoModel` parameter to
+the article that explains it.
+
 Fitted attributes carry a trailing underscore: `coef_`, `alpha_const_`, `intercept_`,
 `estimation_result_`, and the references `x_` and `y_` to the fitted panels. The low-level path
 reproduces the estimator:
@@ -381,8 +390,8 @@ and the hash of the image.
   [sign constraints and priors](sign_constraints_and_priors.md) treats an 85% correlated pair.
 - **Prediction and support need different penalties.** The penalty with the best held-out $R^2$
   keeps false loadings. `LassoModelCV` selects by held-out $R^2$ and `LassoModelDiagonalityCV`
-  by the diagonality of held-out residuals; both are described in the
-  [task guides](task-guides.rst).
+  by the diagonality of held-out residuals; both are described in
+  [penalty selection](penalty_selection.md).
 - **`reg_lambda` is in squared return units.** The default of $10^{-5}$ suits decimal returns of
   monthly to quarterly volatility. Rescale it by $c^2$ when the data are rescaled by $c$, and
   expect a different value for daily data.
@@ -411,11 +420,11 @@ and the hash of the image.
   optimization. *Journal of Machine Learning Research* 17(83), 1-5.
 - Goulart, P. J., and Chen, Y. (2024). Clarabel: an interior-point solver for convex conic
   programs. arXiv:2405.12762.
-- Sepp, A., and Kastenholz, M. (2026). factorlasso: hierarchical clustering group LASSO (HCGL)
-  with cluster-pooled sign derivation for multi-asset factor models in Python. Submitted to the
-  *Journal of Statistical Software*.
-- Sepp, A., Ossa, I., and Kastenholz, M. (2026). Robust optimization of strategic and tactical
-  asset allocation for multi-asset portfolios. *The Journal of Portfolio Management* 52(4),
+- Sepp, A., and Kastenholz, M. A. (2026). factorlasso: Sparse Multi-Output Regression with
+  Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
+  Software*. [Manuscript](../papers/jss_2026/paper/article.pdf).
+- Sepp, A., Ossa, I., and Kastenholz, M. (2026). Robust Optimization of Strategic and Tactical
+  Asset Allocation for Multi-Asset Portfolios. *The Journal of Portfolio Management* 52(4),
   86-120.
 - Tibshirani, R. (1996). Regression shrinkage and selection via the lasso. *Journal of the Royal
   Statistical Society: Series B* 58(1), 267-288. DOI 10.1111/j.2517-6161.1996.tb02080.x.

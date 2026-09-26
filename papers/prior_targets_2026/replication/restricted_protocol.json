@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "date": "2026-09-21",
+  "stage": "E3_restricted_target_sensitivity",
+  "profiles": [
+    "baseline",
+    "credit_removed",
+    "rates_dominant"
+  ],
+  "n": 112,
+  "confirmation_seeds": [
+    980000,
+    980049
+  ],
+  "test_size": 2000,
+  "lambda": {
+    "maximum": 10,
+    "minimum": 0.000001,
+    "positive_points": 36
+  },
+  "cohort": "Audited 17-credit-fund cohort only. All three original profiles; fresh 50 seeds each. Not pooled with previous confirmation.",
+  "design": "Identical E3 standardized per-asset L1 adapter and independent validation selector, targets zero, same-training Rates+Credit OLS, same-training Equity+Rates+Credit OLS. All other target coordinates zero. Uniform weights and intercept. No added independent economic information.",
+  "motivation": "Frozen after the original two-factor target underperformed, to test the previously recorded omitted-Equity explanation. Follow-up sensitivity, not original confirmatory hypothesis. No selection of favorable profiles.",
+  "metrics": "Credit MSE, 9-factor isolated one-SD scenario MSE/response variance, test MSE/response variance. Aggregate 17 assets per seed then paired Monte Carlo intervals. No covariance or oracle claim.",
+  "validation": "9 package-objective comparisons on separate seed979999, independent centred versus intercept restricted regressions, exact row counts, direct credit-error reconstruction, corrupt/missing rows rejected."
+}

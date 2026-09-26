@@ -1,0 +1,121 @@
+{
+  "checked_on": "2026-09-25",
+  "study_root": "C:\\Users\\artur\\AppData\\Local\\AgentWork\\ARTURDESKTOP\\FactorLasso\\analyses\\fi_current_refresh_20260925\\evidence",
+  "status": "Practical FI validation revision; not submitted",
+  "references": [
+    {
+      "key": "tibshirani1996",
+      "authors": "Tibshirani, R.",
+      "year": 1996,
+      "title": "Regression Shrinkage and Selection Via the Lasso",
+      "venue": "Journal of the Royal Statistical Society, Series B, 58(1), 267-288",
+      "doi": "10.1111/j.2517-6161.1996.tb02080.x",
+      "url": "https://academic.oup.com/jrsssb/article/58/1/267/7027929",
+      "review": "Publisher bibliographic record and abstract. Use issue year 1996, not the website migration date 2018.",
+      "scope": "Classical zero-centred sparsity penalty; no guarantee imported for data-dependent targets."
+    },
+    {
+      "key": "bastani2021",
+      "authors": "Bastani, H.",
+      "year": 2021,
+      "title": "Predicting with Proxies: Transfer Learning in High Dimension",
+      "venue": "Management Science, 67(5), 2964-2984",
+      "doi": "10.1287/mnsc.2020.3729",
+      "url": "https://pubsonline.informs.org/doi/10.1287/mnsc.2020.3729",
+      "review": "Publisher record/abstract and author manuscript introduction. Issue dated May 2021; first online October 2020.",
+      "scope": "Uses source/proxy information and sparse correction; our same-sample winner has no additional dataset."
+    },
+    {
+      "key": "takada2020",
+      "authors": "Takada, M., and Fujisawa, H.",
+      "year": 2020,
+      "title": "Transfer Learning via l1 Regularization",
+      "venue": "Advances in Neural Information Processing Systems, 33",
+      "url": "https://papers.nips.cc/paper/2020/hash/a4a83056b58ff983d12c72bb17996243-Abstract.html",
+      "fulltext": "https://papers.nips.cc/paper_files/paper/2020/file/a4a83056b58ff983d12c72bb17996243-Paper.pdf",
+      "review": "Official proceedings listing and paper abstract. Page range not verified and omitted.",
+      "scope": "Combines a coefficient L1 penalty with a source-deviation L1 penalty; the current experiment uses a single deviation penalty."
+    },
+    {
+      "key": "craig2026",
+      "authors": "Craig, E., et al.",
+      "year": 2026,
+      "title": "Pretraining and the lasso",
+      "venue": "Journal of the Royal Statistical Society, Series B, 88(1), 261-281",
+      "doi": "10.1093/jrsssb/qkaf050",
+      "url": "https://academic.oup.com/jrsssb/article/88/1/261/8226740",
+      "fulltext": "https://arxiv.org/html/2401.12911v3",
+      "review": "Publisher bibliographic record, abstract and section 2.4; author manuscript methods. First online August 2025, issue February 2026.",
+      "scope": "Transfers a first-stage fitted model into subsequent fits; this study does not implement or benchmark the complete pretrained-lasso pipeline."
+    },
+    {
+      "key": "chatterjee2025",
+      "authors": "Chatterjee, S., Hastie, T., and Tibshirani, R.",
+      "year": 2025,
+      "title": "Univariate-Guided Sparse Regression",
+      "venue": "Harvard Data Science Review, 7(3)",
+      "doi": "10.1162/99608f92.c79ff6db",
+      "url": "https://hdsr.mitpress.mit.edu/pub/3i97j340/release/1",
+      "fulltext": "https://arxiv.org/html/2501.18360v3",
+      "review": "Publisher metadata and author manuscript sections 2-3. Published August 21, 2025.",
+      "scope": "Leave-one-out univariate fits guide a nonnegative second stage. Highest-R2 targeting and the package's sign/adaptive ablation are distinct estimators."
+    },
+    {
+      "key": "meinshausen2007",
+      "authors": "Meinshausen, N.",
+      "year": 2007,
+      "title": "Relaxed Lasso",
+      "venue": "Computational Statistics & Data Analysis, 52(1), 374-393",
+      "doi": "10.1016/j.csda.2006.12.019",
+      "url": "https://www.sciencedirect.com/science/article/pii/S0167947306004956",
+      "review": "Publisher record and abstract.",
+      "scope": "Our post-LASSO comparator refits selected support; it does not tune the complete relaxed-LASSO family."
+    },
+    {
+      "key": "cosemans2016",
+      "authors": "Cosemans, M., Frehen, R., Schotman, P. C., and Bauer, R.",
+      "year": 2016,
+      "title": "Estimating Security Betas Using Prior Information Based on Firm Fundamentals",
+      "venue": "Review of Financial Studies, 29(4), 1072-1112",
+      "doi": "10.1093/rfs/hhv131",
+      "url": "https://academic.oup.com/rfs/article-abstract/29/4/1072/1896835",
+      "review": "Publisher metadata and abstract. Issue April 2016, first online December 2015.",
+      "scope": "Economically motivated firm-specific prior information is distinct from an estimated return-only target."
+    },
+    {
+      "key": "ledoit2003",
+      "authors": "Ledoit, O., and Wolf, M.",
+      "year": 2003,
+      "title": "Improved estimation of the covariance matrix of stock returns with an application to portfolio selection",
+      "venue": "Journal of Empirical Finance, 10(5), 603-621",
+      "doi": "10.1016/S0927-5398(03)00007-0",
+      "url": "https://www.sciencedirect.com/science/article/pii/S0927539803000070",
+      "fulltext": "https://www.ledoit.net/Improved_JEF2003.pdf",
+      "review": "Publisher record/abstract and author-hosted paper first page.",
+      "scope": "Direct covariance shrinkage toward a common single-index model; not equivalent to arbitrary per-response loading targets."
+    },
+    {
+      "key": "politis1994",
+      "authors": "Politis, D. N., and Romano, J. P.",
+      "year": 1994,
+      "title": "The Stationary Bootstrap",
+      "venue": "Journal of the American Statistical Association, 89(428), 1303-1313",
+      "doi": "10.1080/01621459.1994.10476870",
+      "url": "https://www.tandfonline.com/doi/abs/10.1080/01621459.1994.10476870",
+      "review": "Publisher record and abstract; algorithm previously independently checked in E4.",
+      "scope": "Stationary dependent-data resampling; no finite-sample coverage assurance for this 29-month nonstationary financial panel."
+    }
+  ],
+  "archived_study_root": "C:/Users/artur/AppData/Local/AgentWork/ARTURDESKTOP/FactorLasso/outputs/prior_targets_2026/20260921_evidence_v1",
+  "model": "MATF_CUSTOM_IG_HY",
+  "factor_specification": "Twelve MATF factors with Credit IG, Credit HY and Credit EM",
+  "previous_edition_study_root": "C:\\Users\\artur\\AppData\\Local\\AgentWork\\ARTURDESKTOP\\FactorLasso\\analyses\\fi_sign_validation_20260925",
+  "edition": "fi_validation_20260924",
+  "exhibit_root": "C:\\Users\\artur\\AppData\\Local\\AgentWork\\ARTURDESKTOP\\FactorLasso\\analyses\\fi_current_refresh_20260925\\evidence\\exhibits",
+  "exhibit_revision": "short names, systematic-risk frontier, FactorLasso dendrogram",
+  "stress_root": "C:\\Users\\artur\\AppData\\Local\\AgentWork\\ARTURDESKTOP\\FactorLasso\\analyses\\fi_current_refresh_20260925\\evidence\\stress",
+  "stress_revision": "shaded loading cells; descriptive policy names; six historical monthly factor shocks",
+  "calibration_revision": "current normalized CMA calibration and approved factor premia",
+  "monthly_penalty": 0.000104264890398061,
+  "loss_normalization": "weight_sum"
+}

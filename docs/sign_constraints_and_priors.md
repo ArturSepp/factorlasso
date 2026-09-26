@@ -9,7 +9,7 @@ myst:
 
 # Sign constraints and prior-centred penalties
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-22](https://github.com/ArturSepp/factorlasso/commit/fe2063860f701ac5a71951161bf391a1285d503d)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
@@ -374,8 +374,14 @@ and the hash of the image.
   intercepts.
 - [Group penalties: HCGL and FCGL](group_penalties_hcgl_fcgl.md), which uses zero entries of a
   sign matrix to refit a selected support without shrinkage.
+- [Prior targets](prior_targets.md) for how the centres $\beta_0$ can be estimated from the
+  fitting window, and how a centre's sign overrides a detected sign.
+- [Conventions: precedence of signs and priors](conventions.md#precedence-of-signs-and-priors)
+  for the order in which explicit, prior and detected signs apply, with a diagram.
+- [Credit attribution case study](app_multi_asset_credit_attribution.md) for signs and priors
+  in the JSS multi-asset study.
 - [Quickstart](quickstart.md) for data-derived signs in a full workflow.
-- [Task guides](task-guides.rst) for constrained-regression recipes.
+- [Examples and recipes](task-guides.md) for constrained-regression recipes.
 - [API reference](api.rst) for signatures.
 
 ## References
@@ -384,10 +390,11 @@ and the hash of the image.
   Journal* 48(5), 28-43. DOI 10.2469/faj.v48.n5.28.
 - Meinshausen, N. (2013). Sign-constrained least squares estimation for high-dimensional
   regression. *Electronic Journal of Statistics* 7. DOI 10.1214/13-EJS818.
-- Sepp, A., and Kastenholz, M. (2026). Gated cluster-pooled sign constraints for multi-output
-  sparse regression. Submitted to *Computational Statistics and Data Analysis*.
-- Sepp, A., Ossa, I., and Kastenholz, M. (2026). Robust optimization of strategic and tactical
-  asset allocation for multi-asset portfolios. *The Journal of Portfolio Management* 52(4),
+- Sepp, A., and Kastenholz, M. (2026). Gated Cluster-Pooled Sign Constraints for Multi-Output
+  Sparse Regression. Submitted to *Computational Statistics & Data Analysis*.
+  [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
+- Sepp, A., Ossa, I., and Kastenholz, M. (2026). Robust Optimization of Strategic and Tactical
+  Asset Allocation for Multi-Asset Portfolios. *The Journal of Portfolio Management* 52(4),
   86-120.
 - Slawski, M., and Hein, M. (2013). Non-negative least squares for high-dimensional linear
   models: consistency and sparse recovery without regularization. *Electronic Journal of

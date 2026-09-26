@@ -1,0 +1,375 @@
+{
+  "version": 2,
+  "date": "2026-09-21",
+  "stage": "E2_robustness",
+  "prerequisite": "20260921_evidence_v1/E2_confirmation",
+  "seeds": [
+    930000,
+    930199
+  ],
+  "test_size": 2000,
+  "quality_scales": [
+    0,
+    0.5,
+    1,
+    1.5,
+    2
+  ],
+  "quality_noise_sd": [
+    0,
+    0.25,
+    0.5
+  ],
+  "cells": [
+    {
+      "name": "quality_r0_b0_n60",
+      "family": "quality",
+      "rho": 0,
+      "beta": [
+        1,
+        0
+      ],
+      "n": 60,
+      "span": null
+    },
+    {
+      "name": "quality_r0_b0_n240",
+      "family": "quality",
+      "rho": 0,
+      "beta": [
+        1,
+        0
+      ],
+      "n": 240,
+      "span": null
+    },
+    {
+      "name": "quality_r0_b0.3_n60",
+      "family": "quality",
+      "rho": 0,
+      "beta": [
+        1,
+        0.3
+      ],
+      "n": 60,
+      "span": null
+    },
+    {
+      "name": "quality_r0_b0.3_n240",
+      "family": "quality",
+      "rho": 0,
+      "beta": [
+        1,
+        0.3
+      ],
+      "n": 240,
+      "span": null
+    },
+    {
+      "name": "quality_r0.95_b0_n60",
+      "family": "quality",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0
+      ],
+      "n": 60,
+      "span": null
+    },
+    {
+      "name": "quality_r0.95_b0_n240",
+      "family": "quality",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0
+      ],
+      "n": 240,
+      "span": null
+    },
+    {
+      "name": "quality_r0.95_b0.3_n60",
+      "family": "quality",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0.3
+      ],
+      "n": 60,
+      "span": null
+    },
+    {
+      "name": "quality_r0.95_b0.3_n240",
+      "family": "quality",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0.3
+      ],
+      "n": 240,
+      "span": null
+    },
+    {
+      "name": "null_n60",
+      "family": "structural",
+      "rho": 0.95,
+      "beta": [
+        0,
+        0
+      ],
+      "n": 60,
+      "span": null
+    },
+    {
+      "name": "null_n240",
+      "family": "structural",
+      "rho": 0.95,
+      "beta": [
+        0,
+        0
+      ],
+      "n": 240,
+      "span": null
+    },
+    {
+      "name": "negative_correlation",
+      "family": "structural",
+      "rho": -0.8,
+      "beta": [
+        1,
+        0.3
+      ],
+      "n": 60,
+      "span": null
+    },
+    {
+      "name": "opposing_exposures",
+      "family": "structural",
+      "rho": 0.8,
+      "beta": [
+        1,
+        -0.3
+      ],
+      "n": 60,
+      "span": null
+    },
+    {
+      "name": "irrelevant_third",
+      "family": "structural",
+      "sigma": [
+        [
+          1,
+          0.95,
+          0.6
+        ],
+        [
+          0.95,
+          1,
+          0.57
+        ],
+        [
+          0.6,
+          0.57,
+          1
+        ]
+      ],
+      "beta": [
+        1,
+        0.3,
+        0
+      ],
+      "n": 60,
+      "span": null
+    },
+    {
+      "name": "proxy_winner",
+      "family": "structural",
+      "sigma": [
+        [
+          1,
+          0.8,
+          0.94
+        ],
+        [
+          0.8,
+          1,
+          0.94
+        ],
+        [
+          0.94,
+          0.94,
+          1
+        ]
+      ],
+      "beta": [
+        1,
+        1,
+        0
+      ],
+      "n": 60,
+      "span": null
+    },
+    {
+      "name": "student_t3",
+      "family": "structural",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0.3
+      ],
+      "n": 240,
+      "span": null,
+      "residual": "t3"
+    },
+    {
+      "name": "stationary_spanuniform",
+      "family": "temporal",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0.3
+      ],
+      "beta_before": [
+        1,
+        0.3
+      ],
+      "break_index": null,
+      "n": 240,
+      "validation_n": 60,
+      "span": null
+    },
+    {
+      "name": "stationary_span36",
+      "family": "temporal",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0.3
+      ],
+      "beta_before": [
+        1,
+        0.3
+      ],
+      "break_index": null,
+      "n": 240,
+      "validation_n": 60,
+      "span": 36
+    },
+    {
+      "name": "stationary_span60",
+      "family": "temporal",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0.3
+      ],
+      "beta_before": [
+        1,
+        0.3
+      ],
+      "break_index": null,
+      "n": 240,
+      "validation_n": 60,
+      "span": 60
+    },
+    {
+      "name": "break_spanuniform",
+      "family": "temporal",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0
+      ],
+      "beta_before": [
+        1,
+        0.3
+      ],
+      "break_index": 180,
+      "n": 240,
+      "validation_n": 60,
+      "span": null
+    },
+    {
+      "name": "break_span36",
+      "family": "temporal",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0
+      ],
+      "beta_before": [
+        1,
+        0.3
+      ],
+      "break_index": 180,
+      "n": 240,
+      "validation_n": 60,
+      "span": 36
+    },
+    {
+      "name": "break_span60",
+      "family": "temporal",
+      "rho": 0.95,
+      "beta": [
+        1,
+        0
+      ],
+      "beta_before": [
+        1,
+        0.3
+      ],
+      "break_index": 180,
+      "n": 240,
+      "validation_n": 60,
+      "span": 60
+    }
+  ],
+  "lambda": {
+    "maximum": 10,
+    "minimum": 0.000001,
+    "positive_points": 36
+  },
+  "selection": "Independent next validation block; training fit only; no test selection or post-validation refit. Ties strongest lambda.",
+  "target_noise_units": "Population-standardised coefficient b_j * population_sd(X_j)/population_sd(Y_future). All factor variances are one. Add sd*sd(Y_future)*z to native coefficients, with z independent of every return sample. Truth-scaled targets are sensitivity diagnostics, not feasible external data.",
+  "weights": "Global weighted intercept and weighted training standardisation; normalised squared-loss EWMA powers, spans null/36/60. Verified against low-level factorlasso solver. This is not high-level rolling-mean LassoModel preprocessing.",
+  "streams": {
+    "train": 0,
+    "validation": 1,
+    "test": 2,
+    "previous": 3,
+    "target_noise": 4
+  },
+  "stream_pairing": "Temporal span cells share stream_id by regime so weight comparisons are paired. Other cells independent. All methods share each cell's draws and target-noise vector.",
+  "history": "Previous block has n observations from beta_before when supplied, otherwise current beta. M3_previous_ols uses only previous block. M6_pooled_zero pools previous and training with uniform weights as a disclosed extra-history control. Previous targets use uniform OLS even when current fitting uses EWMA.",
+  "break": "One transition in training at index180 of240: [1,.3] to [1,0]. Validation/test post-break. Noise variance held at pre-break signal variance (SNR1). No drift elsewhere.",
+  "null": "All beta=0, noise variance1. Null SNR=0; all nonnull cases baseline/pre-break SNR1.",
+  "scenarios": "Both signs of isolated unit factor shocks and an all-factors unit shock; mean squared error divided by future response variance. Joint shock construction generalises original two-factor scenarios.",
+  "comparators": [
+    "M0_ols",
+    "M1_zero",
+    "M2_auto",
+    "M4_free_winner",
+    "M5_post_lasso",
+    "M3_fixed",
+    "M3_same_ols",
+    "M3_previous_ols",
+    "M6_pooled_zero",
+    "M3_noisy_std025",
+    "M3_oracle"
+  ],
+  "quality_additions": "15 scale/noise targets, wrong secondary sign, and swapped first/second coefficients. Scale0 includes omitted secondary.",
+  "verification": {
+    "package_beta_tolerance": 0.0003,
+    "identity_tolerance": 1e-9,
+    "reference_seed": 929999,
+    "pointwise_ci": "paired seed mean +/-1.96*sd/sqrt(200); no multiple-comparison claims",
+    "negative_controls": [
+      "reversed_EWMA_weights",
+      "double_lambda",
+      "leaked_test_selection",
+      "corrupt_secondary_error",
+      "missing_method_row"
+    ]
+  },
+  "decision": "Freeze all cells before outcomes. Select next E3 geometry from this whole batch, not favourable cells. Theory remains deferred."
+}
