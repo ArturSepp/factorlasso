@@ -21,6 +21,25 @@ _BROAD_EQUITY_NAME = re.compile(
     r'north america|global equity)'
     r'(?: chf| xuk| xswiss| sli| msci| xjp| xasia| ex japan| ex asia| dm| hedged)*$'
 )
+_NON_EQUITY_NAME = re.compile(
+    r'\b(?:bonds?|credit|fixed income|treasury|cash|commodit(?:y|ies)|hedge fund)\b'
+)
+_BROAD_MSCI_MARKETS = frozenset({
+    'acwi', 'ac world', 'world', 'usa', 'us', 'uk', 'europe', 'emu', 'japan',
+    'switzerland', 'canada', 'france', 'germany', 'netherlands', 'italy',
+    'spain', 'norway', 'australia', 'hong kong', 'singapore free', 'china',
+    'brazil', 'saudi arabia', 'emerging', 'em asia', 'em ex asia',
+    'emerging latin america', 'emerging markets india',
+    'emerging markets korea', 'emerging markets taiwan',
+    'emerging markets mexico', 'emerging markets south africa',
+    'emerging markets poland', 'emerging markets europe middle east africa',
+    'europe ex uk ex switzerland', 'europe ex switzerland ex uk',
+    'ac asia pacific ex japan', 'pacific ex japan',
+})
+_MSCI_RETURN_MARKERS = (
+    ' net total return ', ' net return ', ' gross total return ',
+    ' 100 hedged to ', ' hedged to ', ' net ', ' index',
+)
 
 
 @dataclass(frozen=True)
@@ -53,18 +72,39 @@ def _normalise_ticker(value: object) -> str:
     return ' '.join(str(value).upper().split())
 
 
+def _is_equity_index_name(name: str) -> bool:
+    """Recognise broad equity benchmarks, leaving style and sectors automatic."""
+    if _BROAD_EQUITY_NAME.fullmatch(name):
+        return True
+    if _NON_EQUITY_NAME.search(name):
+        return False
+    if name.startswith('msci '):
+        description = name[len('msci '):]
+        for marker in _MSCI_RETURN_MARKERS:
+            if marker in description:
+                return description.split(marker, 1)[0] in _BROAD_MSCI_MARKETS
+    return bool(
+        re.search(r'\bunited kingdom large (?:and )?mid cap net return index\b', name)
+        or name == 'sli swiss leader perform'
+    )
+
+
 def _selection_from_name(name: str) -> tuple[str | tuple[str, str] | None, str]:
     """Recognise unambiguous fixed-income descriptions."""
-    il = bool(re.search(r'\b(?:il bonds?|inflation linked bonds?|tips)\b', name))
-    ig = bool(re.search(
-        r'\b(?:ig (?:agg|corp|global|sbi|bonds?)|investment grade)\b', name))
+    il = bool(re.search(r'\b(?:il bonds?|inflation linked|inflation notes?|tips)\b', name))
     hy = bool(re.search(r'\b(?:hy (?:global|us|europe|bonds?|credit)|high yield)\b', name))
     em = bool(re.search(
-        r'\b(?:em (?:hc )?bonds?|jpm em (?:latam )?corp|emerging markets? bonds?)\b',
-        name))
+        r'\b(?:em|emerging markets?|c?embi)\b', name))
+    explicit_ig = bool(re.search(
+        r'\b(?:ig (?:agg|corp|global|sbi|bonds?)|investment grade)\b', name))
+    descriptive_ig = bool(re.search(
+        r'\b(?:corporate|global (?:aggregate|agg)|aaa bbb)\b', name))
+    government = bool(re.search(r'\b(?:treasur(?:y|ies)|government|govt|sovereign)\b',
+                                name))
+    ig = explicit_ig or (descriptive_ig and not (il or hy or em or government))
     candidates = [
         (('Rates', 'Inflation'), 'inflation_linked', il),
-        ('Credit IG', 'investment_grade', ig),
+        ('Credit IG', 'investment_grade' if explicit_ig else 'investment_grade_index_name', ig),
         ('Credit HY', 'high_yield', hy),
         ('Credit EM', 'em_bonds', em),
     ]
@@ -150,7 +190,7 @@ def map_expert_factor_priors(
         if selected is None:
             category = '' if asset_class is None else _normalise_name(asset_class.loc[ticker])
             if ((category in ('equity', 'equities') or (not category and name.startswith('eq ')))
-                    and _BROAD_EQUITY_NAME.fullmatch(name)):
+                    and _is_equity_index_name(name)):
                 selected, rule, source = 'Equity', 'broad_equity_name', 'name'
             elif category in ('', 'bonds', 'bond', 'fixed income'):
                 selected, rule = _selection_from_name(name)

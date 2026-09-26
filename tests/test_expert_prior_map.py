@@ -74,3 +74,62 @@ def test_invalid_factor_names_and_colliding_override_tickers_rejected():
     with pytest.raises(ValueError, match='override tickers'):
         map_expert_factor_priors(
             names, FACTORS, ticker_overrides={'A': 'Equity', 'a': 'Equity'})
+
+
+@pytest.mark.parametrize(('name', 'asset_class', 'expected'), [
+    ('MSCI ACWI Net Total Return USD Index', 'Equities', 'Equity'),
+    ('MSCI UK Net Total Return Local Index', 'Equity', 'Equity'),
+    ('MSCI Europe Ex UK ex Switzerland Net EUR Index', 'Equity', 'Equity'),
+    ('MSCI Emerging Markets India Net Total Return Local Index', 'Equity', 'Equity'),
+    ('Bloomberg United Kingdom Large & Mid Cap Net Return Index Hedged CHF',
+     'Equity', 'Equity'),
+    ('SLI SWISS LEADER PERFORM', 'Equity', 'Equity'),
+    ('Bloomberg Global-Aggregate Total Return Index Value Hedged EUR',
+     'Bonds', 'Credit IG'),
+    ('Bloomberg Global Aggregate Corporate Total Return Index Hedged EUR',
+     'Fixed Income', 'Credit IG'),
+    ('Bloomberg Euro Corporate Unh EUR', 'Bonds', 'Credit IG'),
+    ('Bloomberg Global High Yield Corporate Total Return Index Hedged EUR',
+     'Bonds', 'Credit HY'),
+    ('Bloomberg EM Hard Currency Aggregate Total Return Index Hedged EUR',
+     'Bonds', 'Credit EM'),
+    ('J.P. Morgan EMBI Global Diversified Hedged EUR', 'Bonds', 'Credit EM'),
+    ('J.P. Morgan CEMBI Broad Diversified Composite Index Hedged EUR',
+     'Bonds', 'Credit EM'),
+    ('Bloomberg Global Inflation-Linked 1-10yrs Total Return Index Hedged EUR',
+     'Bonds', ('Rates', 'Inflation')),
+    ('Bloomberg US Treasury Inflation Notes TR Index Value Unhedged USD',
+     'Bonds', ('Rates', 'Inflation')),
+])
+def test_full_provider_index_names_select_economic_factors(name, asset_class, expected):
+    """Full reference names select the same economic priors as short labels."""
+    result = map_expert_factor_priors(
+        pd.Series({'asset': name}), FACTORS,
+        asset_class=pd.Series({'asset': asset_class}),
+    )
+    assert result.selection['asset'] == expected
+    assert result.audit.loc['asset', 'source'] == 'name'
+
+
+def test_full_names_do_not_force_mixed_credit_or_non_equity_indices():
+    """Economic class gates and mixed-credit rules remain conservative."""
+    names = pd.Series({
+        'BOND': 'MSCI World Bond Index',
+        'WRONG_CLASS': 'MSCI World Bond Index',
+        'GOVT': 'Bloomberg Series-E Euro Govt 5-10 Yr Bond Index',
+        'GOVT_AGG': 'Bloomberg Global Aggregate Treasuries Total Return Index Hedged EUR',
+        'MIXED': 'Emerging Markets High Yield Corporate Bond Index',
+        'ALT': 'HFRX Global Hedge Fund EUR Index',
+        'STYLE': 'MSCI World Momentum Net Total Return USD Index',
+        'SECTOR': 'MSCI EMU Banks Net Return EUR Index',
+        'SECTOR_DAILY': 'MSCI Daily TR EMU Net Chemicals Local',
+    })
+    classes = pd.Series({
+        'BOND': 'Fixed Income', 'WRONG_CLASS': 'Equity',
+        'GOVT': 'Fixed Income', 'GOVT_AGG': 'Bonds',
+        'MIXED': 'Bonds', 'ALT': 'Alternatives',
+        'STYLE': 'Equity', 'SECTOR': 'Equity', 'SECTOR_DAILY': 'Equity',
+    })
+    result = map_expert_factor_priors(names, FACTORS, asset_class=classes)
+    assert result.selection.isna().all()
+    assert result.audit.loc['MIXED', 'source'] == 'ambiguous'
