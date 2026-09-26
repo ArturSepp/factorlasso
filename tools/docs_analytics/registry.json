@@ -14,6 +14,13 @@
         "examples/docs/sparse_factor_model.py",
         "examples/docs/sign_constraints_and_priors.py",
         "examples/docs/group_penalties_hcgl_fcgl.py",
+        "examples/docs/prior_targets.py",
+        "examples/docs/ewma_weighting_and_ragged_histories.py",
+        "examples/docs/gated_cluster_pooled_signs.py",
+        "examples/docs/adaptive_penalty_weights.py",
+        "examples/docs/cooperative_lasso.py",
+        "examples/docs/unilasso.py",
+        "examples/docs/penalty_selection.py",
         "tools/docs_analytics/fixtures.py"
       ],
       "configuration": {
@@ -89,6 +96,130 @@
               "estimator": "LASSO, HIERARCHICAL_CLUSTER_GROUP_LASSO and FACTOR_CLUSTER_GROUP_LASSO at reg_lambda=1e-3, group_penalty='normalized', clusters discovered from the responses, no sign constraints.",
               "evaluation": "A loading counts as kept above 1e-3 in absolute value; false and missed are against the generating support."
             }
+          },
+          "prior_targets_paths.png": {
+            "example": "prior_targets",
+            "parameters": {
+              "seed": 20260926,
+              "n_obs": 360,
+              "rho": -0.8,
+              "factor_vol": 0.02,
+              "target_r2": 0.8
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "360 synthetic month-end observations from 1996-01-31; one inflation-linked response; Rates and Inflation factors with correlation -0.8 and equal volatility 0.02 per month; population R-squared 0.8.",
+              "returns": "Decimal per-period returns; loadings are dimensionless; nothing is annualised.",
+              "weighting": "Uniform observation weights (span=None); demean=True.",
+              "missing_data": "Complete panel.",
+              "estimator": "LassoModelType.LASSO with auto_sign_constraints=True on a 13-point grid from 1e-8 to 1e-2, CVXPY with CLARABEL; zero centre, apply_ols_prior=True (highest R-squared) and factor_for_prior with the joint Rates/Inflation centre.",
+              "evaluation": "Fitted loadings against the true loadings (0.9, 0.45), the sign-constrained least-squares fits and the centres."
+            }
+          },
+          "ewma_weighting_shrinkage.png": {
+            "example": "ewma_weighting_and_ragged_histories",
+            "parameters": {
+              "seed": 20260928,
+              "n_obs": 240,
+              "fit_span": 60
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; one zero-mean factor; four responses with a true loading of 0.8 and histories of 240, 120, 60 and 36 months.",
+              "returns": "Decimal per-period returns; factor volatility 0.04 and residual volatility 0.02 per month.",
+              "weighting": "Equal weights (span=None) and EWMA span 60; demean=False so that own-window fits see identical arrays.",
+              "missing_data": "Responses are missing before their first observation; the validity mask removes the cells from the loss.",
+              "estimator": "LassoModelType.LASSO with loss_normalization 'sample' at reg_lambda 1.6e-4 (equal weights) or 2e-5 (span 60), and 'weight_sum' at the converted penalty reg_lambda * T / W; CVXPY with CLARABEL.",
+              "evaluation": "Shrinkage of each loading below its own weighted least-squares loading, against the closed-form soft threshold."
+            }
+          },
+          "pooled_sign_recovery.png": {
+            "example": "gated_cluster_pooled_signs",
+            "parameters": {
+              "seed": 20260929,
+              "n_obs": 60,
+              "n_panels": 100,
+              "target_r2": 0.1
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example following the design of the sign-pooling paper; not market or paper-replication evidence.",
+              "sample": "100 redrawn panels of 60 dates; 24 responses in 4 clusters of 6; 8 independent standard-normal predictors, 3 active per cluster with cluster-shared signs and magnitudes from [0.5, 1.5].",
+              "returns": "Unit-variance predictors; residual variance set per response for a population R-squared of 0.10; panels demeaned.",
+              "weighting": "Equal weights (ewma_span=None); variance_estimator 'independent'.",
+              "missing_data": "Complete panels.",
+              "estimator": "derive_sign_constraints per response and pooled within the known clusters, gate thresholds 0.5 to 3.",
+              "evaluation": "Share of active cells with the population sign; share of null cells given a nonzero sign; 2 Phi(-tau) as the per-response null reference."
+            }
+          },
+          "adaptive_penalty_weights.png": {
+            "example": "adaptive_penalty_weights",
+            "parameters": {
+              "seed": 20260930,
+              "n_obs": 60,
+              "reg_lambda": 0.0002,
+              "floor": 0.5,
+              "gamma": 1.0
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "60 synthetic month-end observations from 2021-01-31; six responses, each with one loading of 1.0, one of 0.3 and four zeros on six independent factors.",
+              "returns": "Decimal per-period returns; factor volatility 0.04 and residual volatility 0.02 per month.",
+              "weighting": "Uniform observation weights (span=None); demean=True.",
+              "missing_data": "Complete panel.",
+              "estimator": "LassoModelType.LASSO at reg_lambda=2e-4 with auto_sign_constraints=True, gate tau=1.0, with and without auto_sign_adaptive_weights (gamma 1, floor 0.5); CVXPY with CLARABEL.",
+              "evaluation": "Weights against 1/max(|slope|, floor)^gamma; fitted loadings against the true loadings by class."
+            }
+          },
+          "cooperative_lasso_geometry.png": {
+            "example": "cooperative_lasso",
+            "parameters": {
+              "seed": 20261001,
+              "n_obs": 120,
+              "reg_lambda": 0.3
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "120 synthetic observations of two exactly orthonormal factors (X'X / T = I) and eight responses in two clusters of four; in the first cluster one member loads -0.3 on the first factor against +0.7 to +0.9 for the others.",
+              "returns": "Unitless synthetic responses with residual standard deviation 0.3; responses de-meaned.",
+              "weighting": "Uniform observation weights (span=None).",
+              "missing_data": "Complete panel.",
+              "estimator": "solve_group_lasso_cvx_problem with block_mode='cluster_factor', solve_cooperative_group_lasso_cvx_problem, and LassoModelType.FACTOR_CLUSTER_GROUP_LASSO with auto_sign_constraints=True and no gate, on the known clusters; 16 values of reg_lambda from 0.05 to 0.8; CVXPY with CLARABEL.",
+              "evaluation": "Unit level sets of the two block penalties for two loadings; the rogue member's fitted loading along the penalty grid, checked against the orthonormal-design closed forms in the example script."
+            }
+          },
+          "unilasso_two_stage.png": {
+            "example": "unilasso",
+            "parameters": {
+              "seed": 20261002,
+              "n_obs": 120,
+              "reg_lambda": 0.02
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "120 synthetic observations of six unit-variance factors, the first two with correlation 0.7, and 12 responses loading 0.6 to 1.2 on f1, -0.4 on f2 (a suppressor), -0.6 to 0.6 on f3 and zero on f4 to f6.",
+              "returns": "Unitless synthetic responses with residual standard deviation 0.6; factors and responses de-meaned.",
+              "weighting": "Unweighted stage-two loss (span=None).",
+              "missing_data": "Complete panel.",
+              "estimator": "LassoModelType.UNILASSO at reg_lambda=0.02 with unilasso_loo and unilasso_non_negative at their defaults, with unilasso_non_negative=False, and with unilasso_loo=False; 16 values of reg_lambda from 0.001 to 0.3; CVXPY with CLARABEL.",
+              "evaluation": "Final loadings against the stage-one univariate slopes; loadings kept on the 36 noise cells along the penalty grid; the solver is checked against an independent coordinate-descent stage two in the example script."
+            }
+          },
+          "penalty_selection_paths.png": {
+            "example": "penalty_selection",
+            "parameters": {
+              "seed": 20261003,
+              "n_obs": 240,
+              "n_splits": 4
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; four uncorrelated factors and 16 responses with one loading of 1.0 each and a second of 0.3 for every second response (24 non-zero loadings); a second panel adds an unobserved fifth factor with loading 0.8 on six responses.",
+              "returns": "Decimal per-period returns; factor volatility 0.04 and residual volatility 0.02 per month.",
+              "weighting": "Uniform observation weights (span=None); demean=True.",
+              "missing_data": "Complete panel.",
+              "estimator": "LassoModelType.LASSO under LassoModelCV and LassoModelDiagonalityCV with four expanding-window folds on 15 values of reg_lambda from 1e-6 to 10**-2.5; CVXPY with CLARABEL.",
+              "evaluation": "Held-out R-squared and held-out residual sphericity per penalty, mean over folds, against the chi-square threshold at size 0.05; the penalty each selector takes; the missing-factor report of the omitted-factor panel."
+            }
           }
         }
       }
@@ -98,6 +229,9 @@
       "fixture_files": [
         "examples/docs/residual_diagnostics.py",
         "examples/docs/factor_covariance_assembly.py",
+        "examples/docs/empirical_residual_correlation.py",
+        "examples/docs/residual_alpha_nowcasting.py",
+        "examples/docs/app_portfolio_risk_models.py",
         "tools/docs_analytics/fixtures.py"
       ],
       "configuration": {
@@ -139,6 +273,188 @@
               "missing_data": "Complete panel.",
               "estimator": "LassoModelType.LASSO at reg_lambda=1e-5; CurrentFactorCovarData.get_y_covar with the orthogonal residual type; the sample covariance as the reference.",
               "evaluation": "Against the population covariance of the generating process: relative Frobenius error, and the volatility under the population covariance of the fully invested minimum-variance portfolio."
+            }
+          },
+          "residual_partition_share.png": {
+            "example": "residual_diagnostics",
+            "parameters": {
+              "seed": 20260920,
+              "n_obs": 240,
+              "reg_lambda": 0.0001
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; 8 responses on 4 independent factors, of which 4 responses carry the factor that is withheld.",
+              "returns": "Decimal per-period returns; factor volatility 0.04 and idiosyncratic volatility 0.02 per month.",
+              "weighting": "Uniform observation weights (span=None); demean=True.",
+              "missing_data": "Complete panel.",
+              "estimator": "LassoModelType.LASSO at reg_lambda=1e-4, CVXPY with CLARABEL, with all four factors and with 'commodity' withheld.",
+              "evaluation": "Per-month adjusted partition share of the in-sample residuals for the partition into the four carriers of the withheld factor and the other four, and for one shuffled partition of the same sizes (seed 20260922)."
+            }
+          },
+          "residual_correlation_blocks.png": {
+            "example": "empirical_residual_correlation",
+            "parameters": {
+              "seed": 20261010,
+              "n_months": 122,
+              "within_block": 0.5,
+              "beta_span": 36
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "Monthly log-return residuals from 2016-01-31 to 2026-02-28 for eight responses in two blocks of four, correlated 0.5 within a block and 0 across; one response stored in percent.",
+              "returns": "Residual volatility 0.03 per month; residual variances assembled in annual units, 12 x 0.03^2.",
+              "weighting": "Quarterly common grid; EWMA span 12.0 quarters converted from the monthly beta span 36.",
+              "missing_data": "Complete panel; the incomplete first quarter of 2026 is excluded by the complete-period rule.",
+              "estimator": "estimate_residual_correlation with frequency QE and periods_per_year 4 at estimation date 2026-02-28; CurrentFactorCovarData.get_residual_covar with ResidualType.EMPIRICAL and residual_corr_weight 0, 0.5 and 1.",
+              "evaluation": "The residual block in correlation units and the residual volatility of an equal-weight portfolio of the first block at each retention."
+            }
+          },
+          "nowcast_alpha_tracking.png": {
+            "example": "residual_alpha_nowcasting",
+            "parameters": {
+              "seed": 20261009,
+              "n_obs": 240,
+              "alpha_span": 24,
+              "reg_lambda": 1e-05
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; six responses on three factors (volatility 0.04); true alphas 0.005 constant, 0 shifting to 0.01 at month 180, and 0; one response starts at month 60 and one misses five months.",
+              "returns": "Decimal per-period returns; residual volatility 0.02 per month; errors in basis points per month.",
+              "weighting": "Loadings with uniform weights (span=None); nowcast alpha with alpha_span 24.",
+              "missing_data": "Leading missing values for one response; five interior gaps for another; cutoffs with an incomplete final row are skipped because nowcast refuses them.",
+              "estimator": "LassoModelType.LASSO at reg_lambda=1e-5 on expanding windows ending at months 120 to 238; LassoModel.nowcast for the following month.",
+              "evaluation": "Nowcast alpha and economic intercept against the next month's true alpha; root mean squared error by response group."
+            }
+          },
+          "cma_decomposition.png": {
+            "example": "app_portfolio_risk_models",
+            "parameters": {
+              "seed": 20261011,
+              "n_obs": 120,
+              "reg_lambda": 1e-06,
+              "risk_free": 0.03
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "120 synthetic month-end observations from 2016-01-31; eight asset-class sleeves on three factors (Equity, Rates, Credit) with stated loadings.",
+              "returns": "Decimal monthly returns; factor volatilities 16%, 5% and 7% a year, Equity-Credit correlation 0.6; moments annualised by 12.",
+              "weighting": "Uniform observation weights; sample factor covariance and residual variances.",
+              "missing_data": "Complete panel.",
+              "estimator": "LassoModelType.LASSO at reg_lambda=1e-6; CurrentFactorCovarData.get_y_covar; illustrative premia 5.0%, 1.0% and 1.5%, risk-free rate 3%, declared adjustments 2.0% (private equity) and 1.5% (hedge funds).",
+              "evaluation": "CMA components per sleeve and variance shares per sleeve from the fitted loadings; the audit identity is checked in the example script."
+            }
+          }
+        }
+      }
+    },
+    "clustering": {
+      "status": "implemented",
+      "fixture_files": [
+        "examples/docs/cluster_discovery.py",
+        "examples/docs/common_mode_removal.py",
+        "examples/docs/rolling_cluster_smoothing.py",
+        "examples/docs/cluster_stability_and_pooled_scoring.py",
+        "tools/docs_analytics/fixtures.py"
+      ],
+      "configuration": {
+        "exhibits": {
+          "cluster_discovery_dendrograms.png": {
+            "example": "cluster_discovery",
+            "parameters": {
+              "seed": 20261004,
+              "n_obs": 240,
+              "n_clusters": 3
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; 12 responses in three blocks of four, each block with its own factor (volatility 0.015), all loading 0.5 on a common factor (volatility 0.02); six joint shocks of 0.25 on the eight responses of blocks b and c.",
+              "returns": "Decimal per-period returns; residual volatility 0.02 per month.",
+              "weighting": "Uniform observation weights (span=None); responses de-meaned.",
+              "missing_data": "Complete panel.",
+              "estimator": "compute_dependence_matrix (Pearson, Spearman, Gerber with threshold 0.5) and compute_clusters_from_corr_matrix with Ward linkage, cut at three clusters or at cutoff_fraction from 0.05 to 1.0 under the three distance transforms.",
+              "evaluation": "Partitions against the three true blocks; cluster counts by cut fraction; the Gerber matrix against a pair-by-pair count in the example script."
+            }
+          },
+          "common_mode_spectrum.png": {
+            "example": "common_mode_removal",
+            "parameters": {
+              "seed": 20261005,
+              "n_obs": 240,
+              "market_vol": 0.06,
+              "n_panels": 50
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; 12 responses in three sectors of four, each sector with its own factor (volatility 0.02); all responses load on a market factor with betas 0.4, 0.8, 1.2 and 1.6 inside each sector; market volatility 0.06 for the spectrum and 0 to 0.1 for the sweep, 50 panels per level.",
+              "returns": "Decimal per-period returns; residual volatility 0.02 per month.",
+              "weighting": "Uniform observation weights; Pearson correlation.",
+              "missing_data": "Complete panel.",
+              "estimator": "remove_first_principal_component and compute_clusters_from_corr_matrix with Ward linkage on 1 - rho, cut at three clusters.",
+              "evaluation": "Eigenvalues before and after the removal; share of panels whose three clusters equal the three sectors; the residual matrix against the deflation formula in the example script."
+            }
+          },
+          "rolling_smoothing_churn.png": {
+            "example": "rolling_cluster_smoothing",
+            "parameters": {
+              "seed": 20261006,
+              "n_obs": 240,
+              "span": 36,
+              "n_clusters": 3,
+              "n_panels": 10
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; 12 responses in three blocks of four (block volatility 0.03); response a4 moves linearly from block a to block b between months 60 and 180; ten panels for the means.",
+              "returns": "Decimal per-period returns; residual volatility 0.02 per month.",
+              "weighting": "EWMA correlation with span 36 (cluster_correlation_span defaults to span); demean=True.",
+              "missing_data": "Complete panel.",
+              "estimator": "compute_rolling_smoothed_clusters with Ward linkage on 1 - rho cut at three clusters, monthly from month 36, under NONE, HOLD (recluster_freq QE), PARTITION_BONUS (delta 0.05 and 0.14) and SIMILARITY_EWMA (lambda 0.7).",
+              "evaluation": "Cluster of a4 at each estimation date; switches of a4 and the lag of its final switch after the date of equal loadings, by co-membership rather than labels."
+            }
+          },
+          "stability_weights_heatmap.png": {
+            "example": "cluster_stability_and_pooled_scoring",
+            "parameters": {
+              "seed": 20261007,
+              "n_obs": 240,
+              "span": 36,
+              "stability_span": 12,
+              "min_history": 12
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; 12 responses in three blocks of four (block volatility 0.03) and two bridge responses loading half on two adjacent blocks.",
+              "returns": "Decimal per-period returns; residual volatility 0.02 per month; the signal is the trailing 12-month return.",
+              "weighting": "Partitions from a 36-month EWMA correlation; stability weights with a 12-date EWMA and a 12-date warm-up.",
+              "missing_data": "Complete panel.",
+              "estimator": "compute_rolling_smoothed_clusters without smoothing (Ward on 1 - rho, three clusters), compute_cluster_stability_statistics, and score_with_stability_pooled_clusters with min_cluster_size 3 under NONE and ASSET_VARIANCE.",
+              "evaluation": "Stability weights by response and date; mean absolute score change from pooling against mean weight; weights recomputed by counting peers in the example script."
+            }
+          }
+        }
+      }
+    },
+    "lineage": {
+      "status": "implemented",
+      "fixture_files": ["examples/docs/cluster_lineage.py", "tools/docs_analytics/fixtures.py"],
+      "configuration": {
+        "exhibits": {
+          "cluster_lineage_tracks.png": {
+            "example": "cluster_lineage",
+            "parameters": {
+              "seed": 20261008,
+              "n_dates": 24
+            },
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "sample": "24 synthetic month-end snapshots from 2024-01-31 over three factors (Equity, Rates, Credit) with an annualised factor covariance; equity-like, rates-like and credit-like groups of four responses and, from 2025-01-31, a high-yield group of three; raw labels shuffled each date, equity and credit share one raw cluster on 2024-09-30, one credit response joins the equity group from 2025-05-31.",
+              "returns": "Betas stated directly as prototypes plus perturbations of standard deviation 0.03; residual variance 0.01.",
+              "weighting": "Equal member weights in the fingerprints.",
+              "missing_data": "The high-yield responses are absent before 2025-01-31.",
+              "estimator": "analyze_cluster_lineage with the default gate (overlap band 0.15 to 0.60, spread-vol cut 0.015), bridge window 6 and decay 0.5, joint (mcf) and per-transition matchers.",
+              "evaluation": "Raw label and derived track of each group's first response per date; identities, events and classification checked in the example script."
             }
           }
         }
@@ -207,10 +523,259 @@
       "producer_script": "papers/jss_2026/applications/run_etf_study.py",
       "replication_command": "python replicate.py --full  (from papers/jss_2026; stage 5)",
       "study": "JSS manuscript, Figure etf-credit: mean Credit loading of seventeen IG/HY/EM bond ETFs against normalised regularisation strength on the frozen 2017-2026 excess-return panel.",
-      "documents": ["README.md"],
-      "planned_for": ["docs/group_penalties_hcgl_fcgl.md"],
+      "documents": ["README.md", "docs/app_multi_asset_credit_attribution.md"],
+      "planned_for": [],
       "caption_class": "Paper exhibit",
       "alt": "Mean Credit loading of bond ETFs against regularisation strength for shrink-to-zero HCGL, prior-centred HCGL and prior-centred FCGL."
+    },
+    {
+      "id": "prior_targets_paths",
+      "kind": "synthetic",
+      "path": "docs/images/prior_targets_paths.png",
+      "producer": "estimation",
+      "documents": ["docs/prior_targets.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "Rates and Inflation loadings of an inflation-linked response along the penalty grid for a zero, an automatic highest-R-squared and a joint Rates/Inflation prior centre."
+    },
+    {
+      "id": "jss_prior_sensitivity_sweep",
+      "kind": "paper",
+      "path": "papers/jss_2026/paper/figures/prior_sensitivity_sweep.png",
+      "documents": ["docs/app_multi_asset_credit_attribution.md"],
+      "caption_class": "Paper exhibit",
+      "alt": "Recovered credit loading, loading error and systematic-covariance error as the credit prior is scaled from the wrong sign to twice the truth.",
+      "producer_script": "papers/jss_2026/applications/plot_prior_sensitivity.py",
+      "replication_command": "python applications/prior_sensitivity_study.py; python applications/plot_prior_sensitivity.py  (from papers/jss_2026)",
+      "study": "JSS manuscript, Figure prior-sweep: calibrated 102-ETF data-generating process, oracle-selected penalty, T = 112, fifteen seeds."
+    },
+    {
+      "id": "jss_tau_sweep",
+      "kind": "paper",
+      "path": "papers/jss_2026/paper/figures/tau_sweep.png",
+      "documents": ["docs/app_multi_asset_credit_attribution.md"],
+      "caption_class": "Paper exhibit",
+      "alt": "Support F1, sign agreement, loading error and abstention rate as the noise-floor threshold tau is swept.",
+      "producer_script": "papers/jss_2026/applications/tau_sweep_study.py",
+      "replication_command": "python applications/tau_sweep_study.py  (from papers/jss_2026)",
+      "study": "JSS manuscript, Figure tau-sweep: calibrated 102-ETF data-generating process, HCGL+SIGN+PRIOR held fixed, T = 112, ten seeds."
+    },
+    {
+      "id": "jss_usage_signs_heatmap",
+      "kind": "paper",
+      "path": "papers/jss_2026/paper/figures/usage_signs_heatmap.png",
+      "documents": [],
+      "planned_for": ["docs/gated_cluster_pooled_signs.md"],
+      "caption_class": "Paper exhibit",
+      "alt": "Derived sign matrix of the synthetic usage example: fifty assets by nine factors.",
+      "producer_script": "papers/jss_2026/usage_example.py",
+      "replication_command": "python replicate.py  (from papers/jss_2026; stage 0)",
+      "study": "JSS manuscript, usage example: seeded synthetic panel of fifty assets and nine factors."
+    },
+    {
+      "id": "csda_figs2_gate_roc",
+      "kind": "paper",
+      "path": "papers/sign_pooling_2026/paper/figures/figS2_gate_roc.png",
+      "documents": ["docs/gated_cluster_pooled_signs.md"],
+      "planned_for": [],
+      "caption_class": "Paper exhibit",
+      "alt": "Sign recovery against false-sign rate as the gate threshold varies.",
+      "producer_script": "papers/sign_pooling_2026/replication/exhibits.py",
+      "replication_command": "make sims  (from papers/sign_pooling_2026)",
+      "study": "Sign-pooling manuscript, simulation study: gate operating characteristic."
+    },
+    {
+      "id": "csda_figs5_correlated",
+      "kind": "paper",
+      "path": "papers/sign_pooling_2026/paper/figures/figS5_correlated.png",
+      "documents": ["docs/gated_cluster_pooled_signs.md"],
+      "planned_for": [],
+      "caption_class": "Paper exhibit",
+      "alt": "Recovery, flip and false-sign rates of pooled signs against predictor correlation.",
+      "producer_script": "papers/sign_pooling_2026/replication/exhibits.py",
+      "replication_command": "make sims  (from papers/sign_pooling_2026)",
+      "study": "Sign-pooling manuscript, simulation study: correlated predictors."
+    },
+    {
+      "id": "csda_fige1_clusters",
+      "kind": "paper",
+      "path": "papers/sign_pooling_2026/paper/figures/figE1_clusters.png",
+      "documents": ["docs/app_sign_pooling_genomics.md"],
+      "planned_for": [],
+      "caption_class": "Paper exhibit",
+      "alt": "Correlation matrix of 64 yeast MAPK genes ordered by discovered cluster.",
+      "producer_script": "papers/sign_pooling_2026/replication/eqtl_exhibits.py",
+      "replication_command": "make eqtl  (from papers/sign_pooling_2026); the PNG was rasterised from the tracked PDF with pdftoppm -r 150",
+      "study": "Sign-pooling manuscript, yeast eQTL application: 64 MAPK genes, 202 markers, T = 112 segregants."
+    },
+    {
+      "id": "csda_fige2_signs",
+      "kind": "paper",
+      "path": "papers/sign_pooling_2026/paper/figures/figE2_signs.png",
+      "documents": ["docs/app_sign_pooling_genomics.md"],
+      "planned_for": [],
+      "caption_class": "Paper exhibit",
+      "alt": "Gated sign matrix of the yeast genes along the genome.",
+      "producer_script": "papers/sign_pooling_2026/replication/eqtl_exhibits.py",
+      "replication_command": "make eqtl  (from papers/sign_pooling_2026); the PNG was rasterised from the tracked PDF with pdftoppm -r 150",
+      "study": "Sign-pooling manuscript, yeast eQTL application: 64 MAPK genes, 202 markers, T = 112 segregants."
+    },
+    {
+      "id": "csda_fige3_hotspots",
+      "kind": "paper",
+      "path": "papers/sign_pooling_2026/paper/figures/figE3_hotspots.png",
+      "documents": ["docs/app_sign_pooling_genomics.md"],
+      "planned_for": [],
+      "caption_class": "Paper exhibit",
+      "alt": "Number of genes loaded per genetic marker along the genome.",
+      "producer_script": "papers/sign_pooling_2026/replication/eqtl_exhibits.py",
+      "replication_command": "make eqtl  (from papers/sign_pooling_2026); the PNG was rasterised from the tracked PDF with pdftoppm -r 150",
+      "study": "Sign-pooling manuscript, yeast eQTL application: 64 MAPK genes, 202 markers, T = 112 segregants."
+    },
+    {
+      "id": "prior_targets_fi_il_path",
+      "kind": "paper",
+      "path": "papers/prior_targets_2026/paper/figures/fi_il_path.png",
+      "documents": ["docs/prior_targets.md"],
+      "caption_class": "Paper exhibit",
+      "alt": "Quarterly Inflation loadings of the Global IL index and the iShares TIPS fund under the zero, Max-R2, expert and conditional prior policies.",
+      "producer_script": "papers/prior_targets_2026/replication/fi_validation_paper.py",
+      "replication_command": "python -m papers.prior_targets_2026.replication.refresh_current (licensed index histories required; see the paper README)",
+      "study": "Fixed-income prior note, Figure 4: quarterly refits at EWMA span 60 with FCGL and a fixed monthly penalty on licensed index and fund histories."
+    },
+    {
+      "id": "residual_partition_share",
+      "kind": "synthetic",
+      "path": "docs/images/residual_partition_share.png",
+      "producer": "covariance_residuals",
+      "documents": ["docs/residual_diagnostics.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "Mean and 10th to 90th percentile of the monthly adjusted partition share of the residuals for the carrier partition and a shuffled partition, with and without the withheld factor."
+    },
+    {
+      "id": "ewma_weighting_shrinkage",
+      "kind": "synthetic",
+      "path": "docs/images/ewma_weighting_shrinkage.png",
+      "producer": "estimation",
+      "documents": ["docs/ewma_weighting_and_ragged_histories.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "EWMA weight profiles of three spans, and the shrinkage of a loading for histories of 36 to 240 months under the sample and weight-sum normalisations."
+    },
+    {
+      "id": "pooled_sign_recovery",
+      "kind": "synthetic",
+      "path": "docs/images/pooled_sign_recovery.png",
+      "producer": "estimation",
+      "documents": ["docs/gated_cluster_pooled_signs.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "Sign recovery on active cells and false signs on null cells against the gate threshold, per response and pooled within known clusters."
+    },
+    {
+      "id": "adaptive_penalty_weights",
+      "kind": "synthetic",
+      "path": "docs/images/adaptive_penalty_weights.png",
+      "producer": "estimation",
+      "documents": ["docs/adaptive_penalty_weights.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "The adaptive weight as a function of the univariate slope for three exponents and two floors, and the fitted loadings of a plain and an adaptive LASSO grouped by true loading."
+    },
+    {
+      "id": "cooperative_lasso_geometry",
+      "kind": "synthetic",
+      "path": "docs/images/cooperative_lasso_geometry.png",
+      "producer": "estimation",
+      "documents": ["docs/cooperative_lasso.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "Unit level sets of the group and cooperative penalties for two loadings, and the loading of a cluster's rogue member along the penalty grid under three penalties"
+    },
+    {
+      "id": "unilasso_two_stage",
+      "kind": "synthetic",
+      "path": "docs/images/unilasso_two_stage.png",
+      "producer": "estimation",
+      "documents": ["docs/unilasso.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "Final UniLasso loadings against their univariate slopes with and without non-negative stage-two coefficients, and the noise loadings kept along the penalty grid under three settings"
+    },
+    {
+      "id": "penalty_selection_paths",
+      "kind": "synthetic",
+      "path": "docs/images/penalty_selection_paths.png",
+      "producer": "estimation",
+      "documents": ["docs/penalty_selection.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "Held-out R-squared and held-out residual sphericity along one penalty grid for a complete panel and a panel with an omitted factor, with the penalty each selector takes"
+    },
+    {
+      "id": "cluster_discovery_dendrograms",
+      "kind": "synthetic",
+      "path": "docs/images/cluster_discovery_dendrograms.png",
+      "producer": "clustering",
+      "documents": ["docs/cluster_discovery.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "Ward dendrograms of the shocked three-block panel under Pearson and Spearman dependence cut at three clusters, and the cluster count against the cutoff fraction under three distance transforms"
+    },
+    {
+      "id": "common_mode_spectrum",
+      "kind": "synthetic",
+      "path": "docs/images/common_mode_spectrum.png",
+      "producer": "clustering",
+      "documents": ["docs/common_mode_removal.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "The eigenvalues of the response correlation matrix before and after the dominant mode is removed, and the share of panels clustered by sector against the market volatility with and without the removal"
+    },
+    {
+      "id": "rolling_smoothing_churn",
+      "kind": "synthetic",
+      "path": "docs/images/rolling_smoothing_churn.png",
+      "producer": "clustering",
+      "documents": ["docs/rolling_cluster_smoothing.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "The cluster of a migrating response at each monthly estimation date under four causal smoothers, and the mean number of its cluster switches over ten panels with the lag of its final switch"
+    },
+    {
+      "id": "stability_weights_heatmap",
+      "kind": "synthetic",
+      "path": "docs/images/stability_weights_heatmap.png",
+      "producer": "clustering",
+      "documents": ["docs/cluster_stability_and_pooled_scoring.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "The co-cluster stability weight of every response at every monthly partition date, and the mean change of a within-cluster score under stability pooling against the mean weight of each response"
+    },
+    {
+      "id": "cluster_lineage_tracks",
+      "kind": "synthetic",
+      "path": "docs/images/cluster_lineage_tracks.png",
+      "producer": "lineage",
+      "documents": ["docs/cluster_lineage.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "The raw cluster label of each group of responses at each date and the persistent track assigned to each group, with the per-transition matcher for comparison"
+    },
+    {
+      "id": "residual_correlation_blocks",
+      "kind": "synthetic",
+      "path": "docs/images/residual_correlation_blocks.png",
+      "producer": "covariance_residuals",
+      "documents": ["docs/empirical_residual_correlation.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "The residual covariance of eight responses in correlation units at three retentions of the estimated residual correlation, with the residual volatility of an equal-weight block portfolio"
+    },
+    {
+      "id": "nowcast_alpha_tracking",
+      "kind": "synthetic",
+      "path": "docs/images/nowcast_alpha_tracking.png",
+      "producer": "covariance_residuals",
+      "documents": ["docs/residual_alpha_nowcasting.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "The nowcast alpha and the economic intercept of a response whose alpha shifts, against its true alpha, over expanding fits, and the error of each alpha estimate by response group against the EWMA noise floor"
+    },
+    {
+      "id": "cma_decomposition",
+      "kind": "synthetic",
+      "path": "docs/images/cma_decomposition.png",
+      "producer": "covariance_residuals",
+      "documents": ["docs/app_portfolio_risk_models.md", "docs/analytics_gallery.md"],
+      "caption_class": "Synthetic teaching exhibit",
+      "alt": "The capital market assumption of each sleeve split into the risk-free rate, factor premia and declared adjustment, and its variance split into factor contributions and residual variance"
     }
   ],
   "non_analytics": [

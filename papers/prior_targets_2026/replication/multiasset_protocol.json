@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "date": "2026-09-21",
+  "stage": "E3_L1_transfer",
+  "prerequisite": "E2_robustness_v1",
+  "sizes": [
+    60,
+    112,
+    240
+  ],
+  "profiles": [
+    "baseline",
+    "credit_removed",
+    "rates_dominant"
+  ],
+  "pilot_seeds": [
+    940000,
+    940004
+  ],
+  "confirmation_seeds": [
+    950000,
+    950049
+  ],
+  "test_size": 2000,
+  "lambda": {
+    "maximum": 10,
+    "minimum": 0.000001,
+    "positive_points": 36
+  },
+  "methods": [
+    "M0_ols",
+    "M1_zero",
+    "M2_auto",
+    "M3_economic",
+    "M3_economic_noisy",
+    "M3_small_model",
+    "M3_oracle",
+    "M4_free_winner",
+    "M5_post_lasso"
+  ],
+  "geometry": "Per-asset standardised L1; uniform weights; no signs or groups. Each asset/method lambda selected by independent validation return MSE. No post-validation refit.",
+  "profiles_detail": "Start from audited legacy B and covariance; baseline unchanged. credit_removed sets Credit loading to zero for the 17 credit-cohort ETFs only. rates_dominant multiplies their Rates loading by four. Other coefficients and residual variances unchanged; SNR can differ across profiles.",
+  "targets": "Economic prior is legacy Credit-only vector: .20 IG/.40 HY/.30 EM. Economic_noisy adds independent native Credit-beta noise SD .10 on these 17 assets; zero elsewhere. Small_model estimates training-only Rates+Credit OLS for these assets and zero target elsewhere. Oracle is exact current-profile beta, explicitly infeasible.",
+  "streams": "SeedSequence([seed,n,stream]); 0 training n, 1 validation n, 2 test2000, 3 target noise. Same innovations shared across profiles and methods. No legacy seeds changed.",
+  "covariance": "CurrentFactorCovarData assembly. Feasible factor covariance estimated from training with ddof1; residual variance is mean squared training residual (MLE-style, unadjusted for fitted degrees of freedom). Systematic and full covariance Frobenius relative errors scored against known DGP. Attribution-only covariance uses true factor covariance/true residual variance, labelled oracle-components.",
+  "metrics": "Per-asset native Credit beta error and standardised total loading error; fixed +/- isolated one-population-factor-SD scenario MSE normalised by population response variance; test MSE/response variance. Aggregate assets within each seed, then paired Monte Carlo intervals across seeds. Never treat 102 assets as independent repetitions.",
+  "pilot_gate": "5 seeds per size/profile. Require no failures, all 102 assets and 9 methods, numerical validation, and no outcomes-based removal. Then execute all 50 fresh confirmation seeds without pooling pilot.",
+  "verification": "Reconstruct selected rows and CVXPY checks on the first credit asset at pilot seed940000 for every size/profile. Independent residual scoring/covariance reference. Future-data perturbation must preserve fits/selection. Deliberately corrupt beta metric/omit row and require rejection. Hash prerequisites and source.",
+  "completion_boundary": "E3 fixed-geometry target transfer only. HCGL/FCGL, sign/adaptive and known/learned-group ablations require a separately frozen extension. E4 and paper decision pending; no theory."
+}

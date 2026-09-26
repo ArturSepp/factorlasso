@@ -30,5 +30,9 @@ paper/figures/*
 !paper/figures/tau_sweep.pdf
 !paper/figures/etf_credit_beta_vs_lambda.pdf
 !paper/figures/etf_credit_beta_vs_lambda.png
+# Raster twins displayed in place by the documentation (tools/docs_analytics/registry.json)
+!paper/figures/usage_signs_heatmap.png
+!paper/figures/prior_sensitivity_sweep.png
+!paper/figures/tau_sweep.png
 !applications/data/
 !paper/article.pdf

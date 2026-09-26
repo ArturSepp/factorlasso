@@ -246,6 +246,20 @@ def test_unilasso_rejects_an_unsupported_prior_flag():
         LassoModel(model_type=LassoModelType.UNILASSO, apply_ols_prior=True)
 
 
+def test_unilasso_rejects_an_explicit_prior():
+    """UniLasso has no beta prior: an explicit one is rejected, including after set_params."""
+    x, y = panel()
+    prior = pd.DataFrame(0.5, index=y.columns, columns=x.columns)
+    with pytest.raises(ValueError, match='factors_beta_prior'):
+        LassoModel(model_type=LassoModelType.UNILASSO, factors_beta_prior=prior)
+    model = LassoModel(model_type=LassoModelType.UNILASSO).set_params(factors_beta_prior=prior)
+    with pytest.raises(ValueError, match='factors_beta_prior'):
+        model.fit(x, y)
+    # the prior-aware modes still accept it
+    LassoModel(model_type=LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
+               factors_beta_prior=prior).fit(x, y)
+
+
 @pytest.mark.parametrize('span', [None, 12., 36., 7.5])
 def test_highest_r2_uses_full_slope_not_largest_absolute_beta(span):
     """The sole winner receives its full slope, checked with residual-based WLS R2."""

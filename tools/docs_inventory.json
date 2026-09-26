@@ -1,40 +1,45 @@
 {
   "schema_version": 1,
   "project": "factorlasso",
-  "description": "Explicit ownership of reader-facing pages and of every name in factorlasso.__all__. Read by tools/check_docs.py. 'retained' marks README and legacy RST pages kept in their native format; 'planned' lists methodology articles that are not written yet. An optional 'example' names the canonical script of a page: every Python block of the page must be a verbatim excerpt of it unless marked as a fragment. Move an article from 'planned' to 'pages' when its file is created, and mark it 'adopted' only after the verification in docs/documentation_standard.md.",
+  "description": "Explicit ownership of reader-facing pages, of every name in factorlasso.__all__ and of every LassoModel configuration parameter, plus the paper citation ledger. Read by tools/check_docs.py and by docs/conf.py, which generates the API reference from 'symbols' and 'parameters' in the order given here (the order of the sidebar). 'retained' marks README and legacy RST pages kept in their native format; 'planned' lists pages that are not written yet. An optional 'example' names the canonical script of a page: every Python block of the page must be a verbatim excerpt of it unless marked as a fragment. Move a page from 'planned' to 'pages' when its file is created, and mark it 'adopted' only after the verification in docs/documentation_standard.md. Paper titles are taken from the LaTeX source of each manuscript; a retired title may not appear on any reader-facing page, in CITATION.cff or in a paper README.",
   "pages": {
     "README.md": {"form": "utility", "status": "retained"},
-    "docs/index.rst": {"form": "utility", "status": "retained"},
-    "docs/getting-started.rst": {"form": "utility", "status": "retained"},
-    "docs/task-guides.rst": {"form": "utility", "status": "retained"},
-    "docs/interoperability.rst": {"form": "utility", "status": "retained"},
-    "docs/comparison.rst": {"form": "utility", "status": "retained"},
-    "docs/scientific-replication.rst": {"form": "utility", "status": "retained"},
+    "docs/index.md": {"form": "utility", "status": "adopted"},
+    "docs/getting-started.md": {"form": "utility", "status": "adopted", "example": "examples/docs/getting_started.py"},
+    "docs/quickstart.md": {"form": "utility", "status": "adopted", "example": "examples/docs/quickstart.py"},
+    "docs/conventions.md": {"form": "utility", "status": "adopted"},
+    "docs/analytics_gallery.md": {"form": "utility", "status": "adopted"},
+    "docs/task-guides.md": {"form": "utility", "status": "adopted", "example": "examples/docs/task_guides.py"},
+    "docs/sparse_factor_model.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/sparse_factor_model.py"},
+    "docs/ewma_weighting_and_ragged_histories.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/ewma_weighting_and_ragged_histories.py"},
+    "docs/sign_constraints_and_priors.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/sign_constraints_and_priors.py"},
+    "docs/gated_cluster_pooled_signs.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/gated_cluster_pooled_signs.py"},
+    "docs/prior_targets.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/prior_targets.py"},
+    "docs/adaptive_penalty_weights.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/adaptive_penalty_weights.py"},
+    "docs/group_penalties_hcgl_fcgl.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/group_penalties_hcgl_fcgl.py"},
+    "docs/cooperative_lasso.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/cooperative_lasso.py"},
+    "docs/unilasso.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/unilasso.py"},
+    "docs/residual_diagnostics.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/residual_diagnostics.py"},
+    "docs/penalty_selection.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/penalty_selection.py"},
+    "docs/cluster_discovery.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/cluster_discovery.py"},
+    "docs/common_mode_removal.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/common_mode_removal.py"},
+    "docs/rolling_cluster_smoothing.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/rolling_cluster_smoothing.py"},
+    "docs/cluster_stability_and_pooled_scoring.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/cluster_stability_and_pooled_scoring.py"},
+    "docs/cluster_lineage.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/cluster_lineage.py"},
+    "docs/factor_covariance_assembly.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/factor_covariance_assembly.py"},
+    "docs/empirical_residual_correlation.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/empirical_residual_correlation.py"},
+    "docs/residual_alpha_nowcasting.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/residual_alpha_nowcasting.py"},
+    "docs/app_multi_asset_credit_attribution.md": {"form": "case_study", "status": "adopted", "example": "examples/docs/app_multi_asset_credit_attribution.py"},
+    "docs/app_sign_pooling_genomics.md": {"form": "case_study", "status": "adopted", "example": "examples/docs/app_sign_pooling_genomics.py"},
+    "docs/app_portfolio_risk_models.md": {"form": "case_study", "status": "adopted", "example": "examples/docs/app_portfolio_risk_models.py"},
+    "docs/software_design.md": {"form": "utility", "status": "adopted"},
+    "docs/interoperability.md": {"form": "utility", "status": "adopted"},
+    "docs/comparison.md": {"form": "utility", "status": "adopted"},
+    "docs/scientific-replication.md": {"form": "utility", "status": "adopted"},
     "docs/api.rst": {"form": "api", "status": "api"},
-    "docs/documentation_standard.md": {"form": "utility", "status": "adopted"},
-    "docs/quickstart.md": {"form": "utility", "status": "pending", "example": "examples/docs/quickstart.py"},
-    "docs/analytics_gallery.md": {"form": "utility", "status": "pending"},
-    "docs/sparse_factor_model.md": {"form": "methodology", "status": "pending", "example": "examples/docs/sparse_factor_model.py"},
-    "docs/sign_constraints_and_priors.md": {"form": "methodology", "status": "pending", "example": "examples/docs/sign_constraints_and_priors.py"},
-    "docs/group_penalties_hcgl_fcgl.md": {"form": "methodology", "status": "pending", "example": "examples/docs/group_penalties_hcgl_fcgl.py"},
-    "docs/factor_covariance_assembly.md": {"form": "methodology", "status": "pending", "example": "examples/docs/factor_covariance_assembly.py"},
-    "docs/residual_diagnostics.md": {"form": "methodology", "status": "pending", "example": "examples/docs/residual_diagnostics.py"}
+    "docs/documentation_standard.md": {"form": "utility", "status": "adopted"}
   },
-  "planned": {
-    "docs/ewma_weighting_and_ragged_histories.md": {"id": "M02", "title": "EWMA weighting and ragged histories"},
-    "docs/gated_cluster_pooled_signs.md": {"id": "M04", "title": "Gated cluster-pooled sign derivation"},
-    "docs/adaptive_penalty_weights.md": {"id": "M05", "title": "Adaptive penalty weights"},
-    "docs/cooperative_lasso.md": {"id": "M07", "title": "Cooperative LASSO"},
-    "docs/unilasso.md": {"id": "M08", "title": "UniLasso"},
-    "docs/penalty_selection.md": {"id": "M09", "title": "Regularisation path and penalty selection"},
-    "docs/cluster_discovery.md": {"id": "M10", "title": "Cluster discovery: dependence, distance, linkage and cut"},
-    "docs/common_mode_removal.md": {"id": "M11", "title": "Dominant common-mode removal"},
-    "docs/rolling_cluster_smoothing.md": {"id": "M12", "title": "Causal smoothing of rolling clusters"},
-    "docs/cluster_stability_and_pooled_scoring.md": {"id": "M13", "title": "Cluster stability statistics and stability-pooled scoring"},
-    "docs/cluster_lineage.md": {"id": "M14", "title": "Offline cluster lineage"},
-    "docs/residual_alpha_nowcasting.md": {"id": "M17", "title": "Residual-alpha nowcasting"},
-    "docs/empirical_residual_correlation.md": {"id": "M18", "title": "Empirical residual correlation"}
-  },
+  "planned": {},
   "symbols": {
     "docs/sparse_factor_model.md": [
       "LassoModel", "LassoModelType", "LassoEstimationResult", "solve_lasso_cvx_problem", "get_x_y_np"
@@ -56,6 +61,12 @@
     ],
     "docs/penalty_selection.md": [
       "LassoModelCV", "LassoModelDiagonalityCV", "solve_group_lasso_path"
+    ],
+    "docs/residual_diagnostics.md": [
+      "ResidualDiagnostics", "Sparsity", "diagnose_residuals", "effective_sparsity",
+      "marchenko_pastur_edge", "missing_factor_components", "null_threshold",
+      "raw_offdiagonal_mass", "residual_correlation", "suggest_tolerance",
+      "partition_variance_share"
     ],
     "docs/cluster_discovery.md": [
       "compute_clusters_from_corr_matrix", "DistanceTransform", "DependenceMeasure",
@@ -81,17 +92,118 @@
       "CurrentFactorCovarData", "RollingFactorCovarData", "VarianceColumns", "ResidualType",
       "get_linkage_array", "get_clusters_by_freq", "get_linkages_by_freq", "get_cutoffs_by_freq"
     ],
-    "docs/residual_diagnostics.md": [
-      "ResidualDiagnostics", "Sparsity", "diagnose_residuals", "effective_sparsity",
-      "marchenko_pastur_edge", "missing_factor_components", "null_threshold",
-      "raw_offdiagonal_mass", "residual_correlation", "suggest_tolerance",
-      "partition_variance_share"
+    "docs/empirical_residual_correlation.md": [
+      "ResidualCorrelationData", "estimate_residual_correlation"
+    ],
+    "docs/prior_targets.md": [
+      "ExpertPriorResolution", "map_expert_factor_priors"
     ],
     "docs/residual_alpha_nowcasting.md": [
       "LassoNowcastResult"
-    ],
-    "docs/empirical_residual_correlation.md": [
-      "ResidualCorrelationData", "estimate_residual_correlation"
     ]
+  },
+  "parameters": {
+    "docs/sparse_factor_model.md": [
+      "model_type", "reg_lambda", "demean", "solver", "solver_fallbacks"
+    ],
+    "docs/ewma_weighting_and_ragged_histories.md": [
+      "span", "span_freq_dict", "warmup_period", "loss_normalization"
+    ],
+    "docs/sign_constraints_and_priors.md": [
+      "nonneg", "factors_beta_loading_signs", "factors_beta_prior"
+    ],
+    "docs/gated_cluster_pooled_signs.md": [
+      "auto_sign_constraints", "auto_sign_threshold_t", "auto_sign_excluded_factors",
+      "auto_sign_ewma_span", "auto_sign_use_fit_span", "auto_sign_variance"
+    ],
+    "docs/prior_targets.md": [
+      "apply_ols_prior", "prior_selection_type", "factor_for_prior"
+    ],
+    "docs/adaptive_penalty_weights.md": [
+      "auto_sign_adaptive_weights", "auto_sign_adaptive_gamma", "auto_sign_adaptive_floor"
+    ],
+    "docs/group_penalties_hcgl_fcgl.md": [
+      "group_data", "group_penalty", "l1_weight"
+    ],
+    "docs/unilasso.md": [
+      "unilasso_loo", "unilasso_non_negative"
+    ],
+    "docs/cluster_discovery.md": [
+      "cutoff_fraction", "linkage_method", "distance_transform", "dependence_measure",
+      "gerber_threshold", "n_clusters", "cluster_correlation_span",
+      "cluster_correlation_span_freq_dict"
+    ],
+    "docs/common_mode_removal.md": [
+      "cluster_correlation_transform"
+    ],
+    "docs/rolling_cluster_smoothing.md": [
+      "cluster_smoother_type", "smoother_delta", "smoother_lambda", "recluster_freq"
+    ]
+  },
+  "papers": {
+    "jss": {
+      "title": "factorlasso: Sparse Multi-Output Regression with Cluster-Grouped Sign Constraints in Python",
+      "authors": "Sepp, A. and Kastenholz, M. A.",
+      "status": "Submitted to the Journal of Statistical Software",
+      "source": "papers/jss_2026/paper/article.tex",
+      "retired_titles": [
+        "factorlasso: Hierarchical Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for Multi-Asset Factor Models in Python",
+        "factorlasso: a Python package for sign-constrained sparse group LASSO with cluster discovery",
+        "factorlasso: Constrained Factor Model Estimation in Python"
+      ]
+    },
+    "sign_pooling": {
+      "title": "Gated Cluster-Pooled Sign Constraints for Multi-Output Sparse Regression",
+      "authors": "Sepp, A. and Kastenholz, M.",
+      "status": "Submitted to Computational Statistics & Data Analysis",
+      "source": "papers/sign_pooling_2026/paper/article.tex",
+      "doi": "10.5281/zenodo.21000294",
+      "retired_titles": [
+        "Sign-Constrained Clustered Group-Lasso Estimation of Multi-Asset Factor Loadings"
+      ]
+    },
+    "prior_targets": {
+      "title": "Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market Assumptions",
+      "authors": "Sepp, A.",
+      "status": "Working paper, revised 26 September 2026",
+      "source": "papers/prior_targets_2026/paper/article.tex"
+    },
+    "rosaa": {
+      "title": "Robust Optimization of Strategic and Tactical Asset Allocation for Multi-Asset Portfolios",
+      "authors": "Sepp, A., Ossa, I. and Kastenholz, M.",
+      "status": "The Journal of Portfolio Management, 52(4), 86-120",
+      "url": "https://www.pm-research.com/content/iijpormgmt/52/4/86"
+    },
+    "matf_cma": {
+      "title": "Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors",
+      "authors": "Sepp, A., Hansen, E. and Kastenholz, M.",
+      "status": "Working paper",
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6785958",
+      "source": "OptimalPortfolios/papers/matf_cma_jpm_2026/paper/matf_cma_paper.tex"
+    },
+    "cluster_lineage": {
+      "title": "Rolling-Ward clustering: noise-calibrated stability for rolling correlation-based clusters",
+      "authors": "Sepp, A.",
+      "status": "Working paper; link to be added",
+      "source": "OptimalPortfolios/papers/cluster_lineage_2026/paper/paper.tex"
+    },
+    "achievable_sharpe": {
+      "title": "Achievable Sharpe and Universe Selection: A Closed-Form Factor Decomposition",
+      "authors": "Sepp, A. and Kastenholz, M. A.",
+      "status": "Working paper; link to be added",
+      "source": "OptimalPortfolios/papers/achievable_sharpe_faj_2026/paper/faj_paper.tex"
+    },
+    "equity_factors": {
+      "title": "Sparse equity factors: explanation, covariance and portfolio evidence",
+      "authors": "Sepp, A.",
+      "status": "Working paper; link to be added",
+      "source": "OptimalPortfolios/papers/equity_factors/docs/study_report.md (no LaTeX manuscript yet)"
+    },
+    "layer_attribution": {
+      "title": "Model-Layer Attribution: Risk, Signal, and Integration Alpha",
+      "authors": "Sepp, A.",
+      "status": "Working paper; link to be added",
+      "source": "OptimalPortfolios/papers/layer_attribution_2026/main.tex"
+    }
   }
 }

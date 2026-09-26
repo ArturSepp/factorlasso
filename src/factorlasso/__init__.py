@@ -96,6 +96,10 @@ from factorlasso.ewm_utils import (
     compute_expanding_power,
     set_group_loadings,
 )
+from factorlasso.expert_prior_map import (
+    ExpertPriorResolution,
+    map_expert_factor_priors,
+)
 from factorlasso.factor_covar import (
     CurrentFactorCovarData,
     ResidualType,
@@ -157,6 +161,8 @@ __all__ = [
     "solve_cooperative_group_lasso_cvx_problem",
     "solve_unilasso_cvx_problem",
     "get_x_y_np",
+    "ExpertPriorResolution",
+    "map_expert_factor_priors",
     # Factor covariance assembly
     "CurrentFactorCovarData",
     "ResidualType",

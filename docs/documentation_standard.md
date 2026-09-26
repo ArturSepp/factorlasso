@@ -2,13 +2,14 @@
 myst:
   html_meta:
     description: >-
-      Authoring rules for factorlasso methodology articles: structure, attribution, portable
-      mathematics, verified references, executable examples, and figure provenance.
+      Authoring rules for factorlasso documentation: page forms, attribution, portable
+      mathematics, the paper ledger, verified references, parameter ownership, executable
+      examples, and figure and diagram provenance.
 ---
 
 # Documentation standard
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-20](https://github.com/ArturSepp/factorlasso/commit/3a91426d6f1c93c1da08a02e70d592d14758078f)*
 
 This standard applies to [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
@@ -30,11 +31,22 @@ carries the author-only byline; the linked first-recorded date is added after a 
 Articles whose method comes from a co-authored paper cite that paper under References; the byline
 names the author of the article.
 
-The API entry `api.rst` and the utility pages that predate this standard (`index`,
-`getting-started`, `task-guides`, `interoperability`, `comparison`, `scientific-replication`) stay
-RST and use native RST syntax. They are recorded as `retained` in the
-[page inventory](../tools/docs_inventory.json). A retained page is not a reviewed article. Do not
-keep a Markdown and an RST source with the same basename.
+Three page forms exist, each recorded in the [page inventory](../tools/docs_inventory.json):
+
+- A **methodology article** has the eight H2 sections of the shared template, in order.
+- A **case study** reports a study from one of the papers. Its H2 sections are, in order:
+  Overview; Study design and data; Configuration; Results; What the study does and does not show;
+  Reproduce; See also; References. Results are paper exhibits captioned with the study design, and
+  numbers are quoted from the paper by section, not recomputed. The Python blocks are excerpts of a
+  canonical offline script that builds the study's configuration on a synthetic panel and asserts
+  the qualitative mechanism, never the paper's numbers.
+- A **utility page** (home, installation, conventions, gallery, reference and project pages) has a
+  byline, the software-citation line and a metadata description, and no empty sections.
+
+The API entry `api.rst` stays RST; `docs/conf.py` generates its body at build time (see
+[Public API and docstrings](#public-api-and-docstrings)). Every other page is Markdown. A page
+converted from RST keeps its basename, so its URL does not change, and its byline links the commit that first
+recorded the RST page. Do not keep a Markdown and an RST source with the same basename.
 
 ## Mathematics and notation
 
@@ -68,11 +80,28 @@ window nor a half-life. State the return convention, the observation frequency, 
 warmup and the missing-data policy wherever data enter an article. Covariance assembly does not
 annualise: say whether the inputs are per-period or annualised.
 
-## References
+## Papers and references
 
-A reference is admissible when it is an entry in
-[the JSS bibliography](../papers/jss_2026/paper/refs.bib) or
-[the sign-pooling bibliography](../papers/sign_pooling_2026/paper/refs.bib), when it is already
+The package's own papers are cited with one title each, recorded in the `papers` ledger of the
+[page inventory](../tools/docs_inventory.json). The title is the title in the paper's LaTeX
+source; the ledger also records the authors and the status. Titles used in earlier drafts are
+listed as `retired_titles`, and `tools/check_docs.py` fails when one appears on a reader-facing
+page, in `CITATION.cff` or in a paper README. The papers fall into three groups:
+
+- manuscripts with source in this repository (`papers/jss_2026`, `papers/sign_pooling_2026`,
+  `papers/prior_targets_2026`), which articles cite by section and whose tracked exhibits they
+  may display;
+- published papers and public working papers, cited with their publisher or SSRN link;
+- working papers without a public copy, cited with the status "Working paper; link to be added"
+  until a link exists. Their figures are not displayed and their numbers are not quoted.
+
+The [research papers page](scientific-replication.md) lists every paper and the articles that
+use it.
+
+A reference to other literature is admissible when it is an entry in
+[the JSS bibliography](../papers/jss_2026/paper/refs.bib),
+[the sign-pooling bibliography](../papers/sign_pooling_2026/paper/refs.bib) or
+[the prior-targets bibliography](../papers/prior_targets_2026/paper/refs.bib), when it is already
 cited in the `References` section of a module docstring, or when it has been checked against the
 publisher or DOI landing page and that check is recorded in the working audit. Authors, year,
 title, venue, volume, pages and DOI are checked against the primary source.
@@ -80,16 +109,24 @@ title, venue, volume, pages and DOI are checked against the primary source.
 For every statistic or estimator taken from the literature, state what the package's adaptation
 does not inherit from the source. The `References` section of `residual_diagnostics.py` is the
 model. Separate three kinds of statement: a published method, an implementation choice made in
-this package, and an experimental result from one of the two accompanying papers. A paper result
-is quoted with its study design and is not restated as a general performance claim.
+this package, and an experimental result from one of the papers. A paper result is quoted with
+its study design and is not restated as a general performance claim.
 
 ## Public API and docstrings
 
 The public surface is `factorlasso.__all__`. The inventory assigns every public name to exactly
 one methodology article, and an adopted article names each symbol it owns under
-`Implementation in factorlasso`. Verify signatures, keyword names and enum members against the
-installed package before writing an example. Names outside `__all__` are labelled internal or
-omitted.
+`Implementation in factorlasso`. The inventory also assigns every `LassoModel` configuration
+parameter to exactly one article, and an adopted article names each parameter it owns. The
+checker reads the dataclass fields from source, so a new constructor parameter without an owner
+fails the test suite. Fields that end with an underscore hold fitted state and are not owned.
+Verify signatures, keyword names and enum members against the installed package before writing
+an example. Names outside `__all__` are labelled internal or omitted.
+
+The API page is generated when the documentation is built: `docs/conf.py` writes
+`docs/_generated/api_reference.rst` (git-ignored) from `__all__` and the inventory, with one
+section per owning article in the order of the sidebar and a table of the `LassoModel` parameters
+by article. The objects stay on `api.html`, so their anchors do not change.
 
 Docstrings use numpydoc, because the package follows scikit-learn conventions and its readers
 arrive from that ecosystem. This is a per-package exception within the stack. Do not convert
@@ -114,8 +151,10 @@ Scripts assert their claims. Structural and algebraic contracts are asserted exa
 tolerance, and every number quoted in an article is compared inside the script with a reference
 computed a different way. Articles quote at most three significant figures and name the solver.
 [The example test](../tests/test_examples.py) runs every script under `examples/` with network
-access blocked. The `testcode` blocks retained in `task-guides.rst` are executed by the Sphinx
-`doctest` builder in the documentation workflow.
+access blocked. The recipes of [examples and recipes](task-guides.md) are excerpts of
+`examples/docs/task_guides.py` under the same rule. No page carries `testcode` blocks any more,
+and `doctest_test_doctest_blocks` is off, so the Sphinx `doctest` builder currently runs no tests;
+the step is kept so that a future `testcode` block is executed.
 
 ## Figures and analytical provenance
 
@@ -124,7 +163,15 @@ Two classes of exhibit are displayed, and captions label them differently.
 A **paper exhibit** is a figure already committed under `papers/*/paper/figures/` with its
 producer and frozen inputs in the same tree. It is displayed in place, registered with its
 producer script and replication command, and never regenerated by documentation tooling. Its
-caption states the study design.
+caption states the study design. A manuscript usually embeds the PDF of a figure; the displayed
+file is its PNG twin, un-ignored by name in the paper's `.gitignore`. A twin that the producer
+did not write is rasterised from the tracked PDF at the producer's resolution, and the registry
+records that.
+
+A **diagram** is Mermaid source in a fenced `mermaid` block. It renders natively on GitHub and,
+through `sphinxcontrib-mermaid`, on the site; VS Code needs an extension, so each diagram is
+followed by a sentence that states its content in words. A diagram carries no data, is reviewed
+as source and is not registered as an image.
 
 A **synthetic teaching exhibit** is generated by a registered producer in
 `tools/docs_analytics/` from the canonical script of its article: the producer loads the script,
@@ -175,7 +222,7 @@ python -m sphinx -E -W -b linkcheck docs <output>/linkcheck
 | `test_examples.py` | Every example script runs offline and its assertions hold. |
 | `docs_analytics.run --list` | Every displayed image is registered with its consumers. |
 | `docs_analytics.run --verify` | Committed previews match the committed manifest. |
-| Strict Sphinx HTML, doctest, linkcheck | The site builds without warnings, retained `testcode` blocks pass, and external links resolve. |
+| Strict Sphinx HTML, doctest, linkcheck | The site builds without warnings, any `testcode` block passes, and external links resolve. |
 
 These gates answer different questions. None of them establishes mathematical correctness,
 bibliographic accuracy or rendered layout. Mark a page `adopted` in the inventory only after its
@@ -185,9 +232,9 @@ in the viewers named in the working audit. Working audits and roadmaps live in t
 
 ## See also
 
-- [Documentation home](index.rst)
-- [Task-oriented guides](task-guides.rst)
-- [Scientific replication](scientific-replication.rst)
+- [Documentation home](index.md)
+- [Examples and recipes](task-guides.md)
+- [Research papers and replication](scientific-replication.md)
 - [Contributor guidance](https://github.com/ArturSepp/factorlasso/blob/main/AGENTS.md)
 
 ## References

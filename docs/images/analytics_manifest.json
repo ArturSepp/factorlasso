@@ -3,18 +3,192 @@
   "environment": {
     "dependencies": {
       "cvxpy": "1.9.2",
-      "factorlasso": "0.20.0.dev2",
+      "factorlasso": "0.21.0.dev0",
       "matplotlib": "3.11.1",
       "numpy": "2.5.2",
       "pandas": "3.0.5",
       "scipy": "1.18.1"
     },
-    "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
-    "python": "3.12.14"
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.7"
   },
-  "generated_at_utc": "2026-09-21T20:45:10+00:00",
+  "generated_at_utc": "2026-09-26T17:36:56+00:00",
   "kind": "factorlasso_documentation_analytics",
   "producers": {
+    "clustering": {
+      "checks": {
+        "bridges_are_least_stable": true,
+        "default_fraction_isolates_every_response": true,
+        "every_panel_switches_at_least_once": true,
+        "pearson_misses_the_blocks": true,
+        "pooling_changes_bridges_most": true,
+        "raw_correlation_fails_under_a_dominant_mode": true,
+        "removal_hurts_without_a_common_mode": true,
+        "removal_recovers_sectors_under_a_dominant_mode": true,
+        "smoothers_reduce_switches": true,
+        "spearman_recovers_the_blocks": true
+      },
+      "configuration": {
+        "exhibits": {
+          "cluster_discovery_dendrograms.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "compute_dependence_matrix (Pearson, Spearman, Gerber with threshold 0.5) and compute_clusters_from_corr_matrix with Ward linkage, cut at three clusters or at cutoff_fraction from 0.05 to 1.0 under the three distance transforms.",
+              "evaluation": "Partitions against the three true blocks; cluster counts by cut fraction; the Gerber matrix against a pair-by-pair count in the example script.",
+              "missing_data": "Complete panel.",
+              "returns": "Decimal per-period returns; residual volatility 0.02 per month.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; 12 responses in three blocks of four, each block with its own factor (volatility 0.015), all loading 0.5 on a common factor (volatility 0.02); six joint shocks of 0.25 on the eight responses of blocks b and c.",
+              "weighting": "Uniform observation weights (span=None); responses de-meaned."
+            },
+            "example": "cluster_discovery",
+            "parameters": {
+              "n_clusters": 3,
+              "n_obs": 240,
+              "seed": 20261004
+            }
+          },
+          "common_mode_spectrum.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "remove_first_principal_component and compute_clusters_from_corr_matrix with Ward linkage on 1 - rho, cut at three clusters.",
+              "evaluation": "Eigenvalues before and after the removal; share of panels whose three clusters equal the three sectors; the residual matrix against the deflation formula in the example script.",
+              "missing_data": "Complete panel.",
+              "returns": "Decimal per-period returns; residual volatility 0.02 per month.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; 12 responses in three sectors of four, each sector with its own factor (volatility 0.02); all responses load on a market factor with betas 0.4, 0.8, 1.2 and 1.6 inside each sector; market volatility 0.06 for the spectrum and 0 to 0.1 for the sweep, 50 panels per level.",
+              "weighting": "Uniform observation weights; Pearson correlation."
+            },
+            "example": "common_mode_removal",
+            "parameters": {
+              "market_vol": 0.06,
+              "n_obs": 240,
+              "n_panels": 50,
+              "seed": 20261005
+            }
+          },
+          "rolling_smoothing_churn.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "compute_rolling_smoothed_clusters with Ward linkage on 1 - rho cut at three clusters, monthly from month 36, under NONE, HOLD (recluster_freq QE), PARTITION_BONUS (delta 0.05 and 0.14) and SIMILARITY_EWMA (lambda 0.7).",
+              "evaluation": "Cluster of a4 at each estimation date; switches of a4 and the lag of its final switch after the date of equal loadings, by co-membership rather than labels.",
+              "missing_data": "Complete panel.",
+              "returns": "Decimal per-period returns; residual volatility 0.02 per month.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; 12 responses in three blocks of four (block volatility 0.03); response a4 moves linearly from block a to block b between months 60 and 180; ten panels for the means.",
+              "weighting": "EWMA correlation with span 36 (cluster_correlation_span defaults to span); demean=True."
+            },
+            "example": "rolling_cluster_smoothing",
+            "parameters": {
+              "n_clusters": 3,
+              "n_obs": 240,
+              "n_panels": 10,
+              "seed": 20261006,
+              "span": 36
+            }
+          },
+          "stability_weights_heatmap.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "compute_rolling_smoothed_clusters without smoothing (Ward on 1 - rho, three clusters), compute_cluster_stability_statistics, and score_with_stability_pooled_clusters with min_cluster_size 3 under NONE and ASSET_VARIANCE.",
+              "evaluation": "Stability weights by response and date; mean absolute score change from pooling against mean weight; weights recomputed by counting peers in the example script.",
+              "missing_data": "Complete panel.",
+              "returns": "Decimal per-period returns; residual volatility 0.02 per month; the signal is the trailing 12-month return.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; 12 responses in three blocks of four (block volatility 0.03) and two bridge responses loading half on two adjacent blocks.",
+              "weighting": "Partitions from a 36-month EWMA correlation; stability weights with a 12-date EWMA and a 12-date warm-up."
+            },
+            "example": "cluster_stability_and_pooled_scoring",
+            "parameters": {
+              "min_history": 12,
+              "n_obs": 240,
+              "seed": 20261007,
+              "span": 36,
+              "stability_span": 12
+            }
+          }
+        }
+      },
+      "images": {
+        "cluster_discovery_dendrograms.png": {
+          "bytes": 119844,
+          "sha256": "17948fca93c2fc64654656f09c7fd54bf2e2f2371fc1bb97a1a4324dfb4c962a"
+        },
+        "common_mode_spectrum.png": {
+          "bytes": 107740,
+          "sha256": "33ce644541ee4a8228381839a5beb1d61e3f17ce0ebe841d364f73abfd057f69"
+        },
+        "rolling_smoothing_churn.png": {
+          "bytes": 89380,
+          "sha256": "53b5212014d8f7ad975a89a2f925036276f0acc5ef65bec0d4f7691316245424"
+        },
+        "stability_weights_heatmap.png": {
+          "bytes": 87789,
+          "sha256": "0901d2d179c34ee81566a38b0a3c840e4896d1cd86102c0f63f0c641bd9f2b7c"
+        }
+      },
+      "tables": {
+        "cluster_discovery_block_correlations": {
+          "sha256": "81e4ee74b162cb8fd2dbea7678d3ed3c4f270eaaa4a994f89805285347ffe10e",
+          "shape": [
+            3,
+            2
+          ]
+        },
+        "cluster_discovery_counts": {
+          "sha256": "856179195287def3c71ef530e649c8e5db0c4909dbbd24bc9925515ae14867d2",
+          "shape": [
+            20,
+            3
+          ]
+        },
+        "cluster_discovery_partitions": {
+          "sha256": "48170b7c87cdf290ef23db4069d062207284734e958c3452dc050e0e60a417fa",
+          "shape": [
+            12,
+            2
+          ]
+        },
+        "common_mode_recovery": {
+          "sha256": "864b6f6f3e4e2964b3d14ad3cdcbe4c672ce284d7fcaff9ea6e9f7b8c55f0ea3",
+          "shape": [
+            10,
+            3
+          ]
+        },
+        "common_mode_spectra": {
+          "sha256": "2504c2721bf592a327284b52e56d957747710c8617e500d37a8b8f4cda488579",
+          "shape": [
+            12,
+            2
+          ]
+        },
+        "rolling_smoothing_churn": {
+          "sha256": "34e658475134f47c50eded9912da51f39a5b95d44ca13d95e9542a4fcaabd777",
+          "shape": [
+            5,
+            4
+          ]
+        },
+        "rolling_smoothing_tracks": {
+          "sha256": "ba8d9d94682c29b262db59d0a9d8d460c64f018ec542839d2bbdd64fe3cac002",
+          "shape": [
+            204,
+            5
+          ]
+        },
+        "stability_pooling_change": {
+          "sha256": "58d1b6b4ca10389d66263dff8bfa8718c59f13337b121f235c0e51c6e8258bb1",
+          "shape": [
+            14,
+            2
+          ]
+        },
+        "stability_weights": {
+          "sha256": "7f105eeea7fb53b96b9d5a10b87e8c960416a77b340347ba895cf69035f42057",
+          "shape": [
+            204,
+            14
+          ]
+        }
+      }
+    },
     "covariance_residuals": {
       "checks": {
         "assembly_better_conditioned_at_every_history": true,
@@ -22,16 +196,43 @@
         "assembly_error_falls_with_history": true,
         "assembly_realised_risk_between_optimum_and_sample": true,
         "complete_factor_set_passes": true,
+        "components_sum_to_the_cma": true,
+        "diagonal_is_unchanged": true,
+        "economic_intercept_wins_when_alpha_is_constant": true,
         "edge_matches_closed_form": true,
         "eigenvalues_sum_to_series_count": true,
         "no_penalty_passes_without_the_factor": true,
+        "nowcast_wins_under_the_shift": true,
+        "partition_share_carriers_form_a_block_when_withheld": true,
+        "partition_share_shuffled_partition_near_floor": true,
+        "partition_share_vanishes_with_the_complete_factor_set": true,
         "plotted_top_eigenvalue_is_reported_value": true,
+        "portfolio_vol_rises_with_rho": true,
         "sphericity_matches_direct_sum": true,
         "threshold_matches_scipy_chi2": true,
+        "variance_shares_sum_to_one": true,
         "withheld_factor_fails": true
       },
       "configuration": {
         "exhibits": {
+          "cma_decomposition.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "LassoModelType.LASSO at reg_lambda=1e-6; CurrentFactorCovarData.get_y_covar; illustrative premia 5.0%, 1.0% and 1.5%, risk-free rate 3%, declared adjustments 2.0% (private equity) and 1.5% (hedge funds).",
+              "evaluation": "CMA components per sleeve and variance shares per sleeve from the fitted loadings; the audit identity is checked in the example script.",
+              "missing_data": "Complete panel.",
+              "returns": "Decimal monthly returns; factor volatilities 16%, 5% and 7% a year, Equity-Credit correlation 0.6; moments annualised by 12.",
+              "sample": "120 synthetic month-end observations from 2016-01-31; eight asset-class sleeves on three factors (Equity, Rates, Credit) with stated loadings.",
+              "weighting": "Uniform observation weights; sample factor covariance and residual variances."
+            },
+            "example": "app_portfolio_risk_models",
+            "parameters": {
+              "n_obs": 120,
+              "reg_lambda": 1e-06,
+              "risk_free": 0.03,
+              "seed": 20261011
+            }
+          },
           "factor_covariance_assembly_history.png": {
             "conventions": {
               "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
@@ -56,6 +257,42 @@
               "seed": 20260925
             }
           },
+          "nowcast_alpha_tracking.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "LassoModelType.LASSO at reg_lambda=1e-5 on expanding windows ending at months 120 to 238; LassoModel.nowcast for the following month.",
+              "evaluation": "Nowcast alpha and economic intercept against the next month's true alpha; root mean squared error by response group.",
+              "missing_data": "Leading missing values for one response; five interior gaps for another; cutoffs with an incomplete final row are skipped because nowcast refuses them.",
+              "returns": "Decimal per-period returns; residual volatility 0.02 per month; errors in basis points per month.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; six responses on three factors (volatility 0.04); true alphas 0.005 constant, 0 shifting to 0.01 at month 180, and 0; one response starts at month 60 and one misses five months.",
+              "weighting": "Loadings with uniform weights (span=None); nowcast alpha with alpha_span 24."
+            },
+            "example": "residual_alpha_nowcasting",
+            "parameters": {
+              "alpha_span": 24,
+              "n_obs": 240,
+              "reg_lambda": 1e-05,
+              "seed": 20261009
+            }
+          },
+          "residual_correlation_blocks.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "estimate_residual_correlation with frequency QE and periods_per_year 4 at estimation date 2026-02-28; CurrentFactorCovarData.get_residual_covar with ResidualType.EMPIRICAL and residual_corr_weight 0, 0.5 and 1.",
+              "evaluation": "The residual block in correlation units and the residual volatility of an equal-weight portfolio of the first block at each retention.",
+              "missing_data": "Complete panel; the incomplete first quarter of 2026 is excluded by the complete-period rule.",
+              "returns": "Residual volatility 0.03 per month; residual variances assembled in annual units, 12 x 0.03^2.",
+              "sample": "Monthly log-return residuals from 2016-01-31 to 2026-02-28 for eight responses in two blocks of four, correlated 0.5 within a block and 0 across; one response stored in percent.",
+              "weighting": "Quarterly common grid; EWMA span 12.0 quarters converted from the monthly beta span 36."
+            },
+            "example": "empirical_residual_correlation",
+            "parameters": {
+              "beta_span": 36,
+              "n_months": 122,
+              "seed": 20261010,
+              "within_block": 0.5
+            }
+          },
           "residual_diagnostics_spectrum.png": {
             "conventions": {
               "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
@@ -75,25 +312,79 @@
               "significance": 0.05,
               "withheld_factor": "commodity"
             }
+          },
+          "residual_partition_share.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "LassoModelType.LASSO at reg_lambda=1e-4, CVXPY with CLARABEL, with all four factors and with 'commodity' withheld.",
+              "evaluation": "Per-month adjusted partition share of the in-sample residuals for the partition into the four carriers of the withheld factor and the other four, and for one shuffled partition of the same sizes (seed 20260922).",
+              "missing_data": "Complete panel.",
+              "returns": "Decimal per-period returns; factor volatility 0.04 and idiosyncratic volatility 0.02 per month.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; 8 responses on 4 independent factors, of which 4 responses carry the factor that is withheld.",
+              "weighting": "Uniform observation weights (span=None); demean=True."
+            },
+            "example": "residual_diagnostics",
+            "parameters": {
+              "n_obs": 240,
+              "reg_lambda": 0.0001,
+              "seed": 20260920
+            }
           }
         }
       },
       "images": {
+        "cma_decomposition.png": {
+          "bytes": 69394,
+          "sha256": "5990c43a6dde55f55d9dbb6a5f69a95b55535399850d3cb603c572c62b9d9b84"
+        },
         "factor_covariance_assembly_history.png": {
-          "bytes": 128148,
-          "sha256": "b5c15f3cc2fbf393676d12d076042885ca6d43ecd44b3024209e1433a6bdd814"
+          "bytes": 116693,
+          "sha256": "bd3243a0880c09a9c23cddcc754f9d77dc8e4b78e416c5491a73c0fe88eeb2f6"
+        },
+        "nowcast_alpha_tracking.png": {
+          "bytes": 146681,
+          "sha256": "63f50398577bac5b9e4667add0c416fd3ba1a22850ffb8ffd50b03c9553caac2"
+        },
+        "residual_correlation_blocks.png": {
+          "bytes": 68592,
+          "sha256": "9e70b403bcca9d413df6a1dd111f6d3607f0ed2b374375cdd83906aca892ac55"
         },
         "residual_diagnostics_spectrum.png": {
-          "bytes": 139582,
-          "sha256": "3ec1a7449e40842b3f5dc4b569adb71d2d7e1f10cac743804a7e1712c8cfe423"
+          "bytes": 126420,
+          "sha256": "41400572d64c29138e84ec9ca935bda54a4ae3707bbdd0ebd4441aff3eeb31aa"
+        },
+        "residual_partition_share.png": {
+          "bytes": 57984,
+          "sha256": "10a6bec318b81052e9c8e6741c3953d28337b1bd02b6960e59d2f43e0a3ac62c"
         }
       },
       "tables": {
+        "cma_components": {
+          "sha256": "5cc10a6bc0fea558746c4dc7c9d31b25cc55b7dc2822f243f3c43f0afe1fea56",
+          "shape": [
+            8,
+            5
+          ]
+        },
         "factor_covariance_assembly_history": {
-          "sha256": "0db4689414f272c1b45d3ce5bf8f504db2a2e5ee7fc8011a2ef737bff9ee0574",
+          "sha256": "2b859b0b71ae2e096274ebd423a2c9f63dea0bb595b35357bde01890147eed54",
           "shape": [
             8,
             4
+          ]
+        },
+        "nowcast_alpha_path": {
+          "sha256": "e6bf619f0b5b01315b49b1dc2394dddbfd9665771e02af00605510dd4473bc2a",
+          "shape": [
+            117,
+            3
+          ]
+        },
+        "nowcast_alpha_rmse": {
+          "sha256": "9727c4cdc7cdc388f8b85e77734cf6e13d7f1dfe72a245a70c33466baee85fbe",
+          "shape": [
+            3,
+            3
           ]
         },
         "null_rejection_rates": {
@@ -117,6 +408,34 @@
             6
           ]
         },
+        "residual_block_portfolio_vol": {
+          "sha256": "a17328370d0281430bf0e074f34e569c1b8f213e52f530805a7df51350ce8eed",
+          "shape": [
+            3,
+            1
+          ]
+        },
+        "residual_block_rho_0_0": {
+          "sha256": "1cdb9e75d8f11d1eed0778edbc9b324fa6804902ede134ba5b652deff2384211",
+          "shape": [
+            8,
+            8
+          ]
+        },
+        "residual_block_rho_0_5": {
+          "sha256": "3018eda883d61023f5c5a63fecb42cc7d81d3fd3522c45daad77e7ce650ee755",
+          "shape": [
+            8,
+            8
+          ]
+        },
+        "residual_block_rho_1_0": {
+          "sha256": "3e48f762cc46150f8586ce5b3ae09f5dbad93cd240ce294b35e3e4c3270741b4",
+          "shape": [
+            8,
+            8
+          ]
+        },
         "residual_diagnostics": {
           "sha256": "0a60dc2cbd9556e46138d0889267aaf98c2eaa6334e8ae33d616c97c32e0c919",
           "shape": [
@@ -130,14 +449,48 @@
             8,
             2
           ]
+        },
+        "residual_partition_share": {
+          "sha256": "01b2f1ff4f0b21cac0deaff30e7b2720aa3999c312ba50a94acd71ec26e2b15c",
+          "shape": [
+            4,
+            3
+          ]
+        },
+        "variance_shares": {
+          "sha256": "6751fd4c055fa0bc39e3ccc644c97a47e370f014227b9af3020a4ae1c0c04b09",
+          "shape": [
+            8,
+            4
+          ]
         }
       }
     },
     "estimation": {
       "checks": {
+        "adaptive_weights_bounded_by_floor": true,
+        "adaptive_weights_remove_loadings_on_zeros": true,
+        "cooperative_rogue_reaches_zero": true,
+        "cooperative_shrinks_the_rogue_faster": true,
+        "diagonality_is_sparser_on_the_complete_panel": true,
+        "ewma_closed_form_shrinkage_sample": true,
+        "ewma_closed_form_shrinkage_weight_sum": true,
+        "ewma_sample_shrinks_short_histories_harder": true,
+        "ewma_weight_sum_is_indifferent_to_history": true,
+        "free_signs_reverse_the_suppressor": true,
         "group_penalties_fcgl_recovers_the_support": true,
         "group_penalties_lasso_misses_small_loadings": true,
         "group_penalties_row_penalty_keeps_dense_rows": true,
+        "hard_sign_holds_the_rogue_at_zero": true,
+        "missing_component_is_the_hidden_block": true,
+        "no_penalty_passes_with_an_omitted_factor": true,
+        "per_response_null_retention_matches_normal_reference": true,
+        "pooled_signs_never_flip": true,
+        "pooled_signs_recover_more_at_default": true,
+        "prior_targets_detected_signs_hold_inflation_at_zero": true,
+        "prior_targets_joint_centre_flips_the_detected_sign": true,
+        "prior_targets_joint_centre_restores_positive_inflation": true,
+        "prior_targets_zero_centre_returns_zero": true,
         "quickstart_plotted_loadings_are_the_fitted_model": true,
         "quickstart_selected_penalty_maximises_mean_score": true,
         "quickstart_three_clusters_recovered": true,
@@ -147,10 +500,65 @@
         "signs_and_priors_large_penalty_returns_zero": true,
         "sparse_factor_model_interior_minimum_beats_ols": true,
         "sparse_factor_model_support_grows_as_penalty_falls": true,
-        "sparse_factor_model_unpenalised_end_is_ols": true
+        "sparse_factor_model_unpenalised_end_is_ols": true,
+        "unilasso_drops_the_suppressor": true,
+        "unilasso_keeps_univariate_signs": true
       },
       "configuration": {
         "exhibits": {
+          "adaptive_penalty_weights.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "LassoModelType.LASSO at reg_lambda=2e-4 with auto_sign_constraints=True, gate tau=1.0, with and without auto_sign_adaptive_weights (gamma 1, floor 0.5); CVXPY with CLARABEL.",
+              "evaluation": "Weights against 1/max(|slope|, floor)^gamma; fitted loadings against the true loadings by class.",
+              "missing_data": "Complete panel.",
+              "returns": "Decimal per-period returns; factor volatility 0.04 and residual volatility 0.02 per month.",
+              "sample": "60 synthetic month-end observations from 2021-01-31; six responses, each with one loading of 1.0, one of 0.3 and four zeros on six independent factors.",
+              "weighting": "Uniform observation weights (span=None); demean=True."
+            },
+            "example": "adaptive_penalty_weights",
+            "parameters": {
+              "floor": 0.5,
+              "gamma": 1.0,
+              "n_obs": 60,
+              "reg_lambda": 0.0002,
+              "seed": 20260930
+            }
+          },
+          "cooperative_lasso_geometry.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "solve_group_lasso_cvx_problem with block_mode='cluster_factor', solve_cooperative_group_lasso_cvx_problem, and LassoModelType.FACTOR_CLUSTER_GROUP_LASSO with auto_sign_constraints=True and no gate, on the known clusters; 16 values of reg_lambda from 0.05 to 0.8; CVXPY with CLARABEL.",
+              "evaluation": "Unit level sets of the two block penalties for two loadings; the rogue member's fitted loading along the penalty grid, checked against the orthonormal-design closed forms in the example script.",
+              "missing_data": "Complete panel.",
+              "returns": "Unitless synthetic responses with residual standard deviation 0.3; responses de-meaned.",
+              "sample": "120 synthetic observations of two exactly orthonormal factors (X'X / T = I) and eight responses in two clusters of four; in the first cluster one member loads -0.3 on the first factor against +0.7 to +0.9 for the others.",
+              "weighting": "Uniform observation weights (span=None)."
+            },
+            "example": "cooperative_lasso",
+            "parameters": {
+              "n_obs": 120,
+              "reg_lambda": 0.3,
+              "seed": 20261001
+            }
+          },
+          "ewma_weighting_shrinkage.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "LassoModelType.LASSO with loss_normalization 'sample' at reg_lambda 1.6e-4 (equal weights) or 2e-5 (span 60), and 'weight_sum' at the converted penalty reg_lambda * T / W; CVXPY with CLARABEL.",
+              "evaluation": "Shrinkage of each loading below its own weighted least-squares loading, against the closed-form soft threshold.",
+              "missing_data": "Responses are missing before their first observation; the validity mask removes the cells from the loss.",
+              "returns": "Decimal per-period returns; factor volatility 0.04 and residual volatility 0.02 per month.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; one zero-mean factor; four responses with a true loading of 0.8 and histories of 240, 120, 60 and 36 months.",
+              "weighting": "Equal weights (span=None) and EWMA span 60; demean=False so that own-window fits see identical arrays."
+            },
+            "example": "ewma_weighting_and_ragged_histories",
+            "parameters": {
+              "fit_span": 60,
+              "n_obs": 240,
+              "seed": 20260928
+            }
+          },
           "group_penalties_selection.png": {
             "conventions": {
               "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
@@ -167,6 +575,60 @@
               "n_obs": 48,
               "seed": 20260924,
               "zero_tolerance": 0.001
+            }
+          },
+          "penalty_selection_paths.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "LassoModelType.LASSO under LassoModelCV and LassoModelDiagonalityCV with four expanding-window folds on 15 values of reg_lambda from 1e-6 to 10**-2.5; CVXPY with CLARABEL.",
+              "evaluation": "Held-out R-squared and held-out residual sphericity per penalty, mean over folds, against the chi-square threshold at size 0.05; the penalty each selector takes; the missing-factor report of the omitted-factor panel.",
+              "missing_data": "Complete panel.",
+              "returns": "Decimal per-period returns; factor volatility 0.04 and residual volatility 0.02 per month.",
+              "sample": "240 synthetic month-end observations from 2006-01-31; four uncorrelated factors and 16 responses with one loading of 1.0 each and a second of 0.3 for every second response (24 non-zero loadings); a second panel adds an unobserved fifth factor with loading 0.8 on six responses.",
+              "weighting": "Uniform observation weights (span=None); demean=True."
+            },
+            "example": "penalty_selection",
+            "parameters": {
+              "n_obs": 240,
+              "n_splits": 4,
+              "seed": 20261003
+            }
+          },
+          "pooled_sign_recovery.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example following the design of the sign-pooling paper; not market or paper-replication evidence.",
+              "estimator": "derive_sign_constraints per response and pooled within the known clusters, gate thresholds 0.5 to 3.",
+              "evaluation": "Share of active cells with the population sign; share of null cells given a nonzero sign; 2 Phi(-tau) as the per-response null reference.",
+              "missing_data": "Complete panels.",
+              "returns": "Unit-variance predictors; residual variance set per response for a population R-squared of 0.10; panels demeaned.",
+              "sample": "100 redrawn panels of 60 dates; 24 responses in 4 clusters of 6; 8 independent standard-normal predictors, 3 active per cluster with cluster-shared signs and magnitudes from [0.5, 1.5].",
+              "weighting": "Equal weights (ewma_span=None); variance_estimator 'independent'."
+            },
+            "example": "gated_cluster_pooled_signs",
+            "parameters": {
+              "n_obs": 60,
+              "n_panels": 100,
+              "seed": 20260929,
+              "target_r2": 0.1
+            }
+          },
+          "prior_targets_paths.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "LassoModelType.LASSO with auto_sign_constraints=True on a 13-point grid from 1e-8 to 1e-2, CVXPY with CLARABEL; zero centre, apply_ols_prior=True (highest R-squared) and factor_for_prior with the joint Rates/Inflation centre.",
+              "evaluation": "Fitted loadings against the true loadings (0.9, 0.45), the sign-constrained least-squares fits and the centres.",
+              "missing_data": "Complete panel.",
+              "returns": "Decimal per-period returns; loadings are dimensionless; nothing is annualised.",
+              "sample": "360 synthetic month-end observations from 1996-01-31; one inflation-linked response; Rates and Inflation factors with correlation -0.8 and equal volatility 0.02 per month; population R-squared 0.8.",
+              "weighting": "Uniform observation weights (span=None); demean=True."
+            },
+            "example": "prior_targets",
+            "parameters": {
+              "factor_vol": 0.02,
+              "n_obs": 360,
+              "rho": -0.8,
+              "seed": 20260926,
+              "target_r2": 0.8
             }
           },
           "quickstart_workflow.png": {
@@ -222,28 +684,115 @@
               "seed": 20260922,
               "zero_tolerance": 0.001
             }
+          },
+          "unilasso_two_stage.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "LassoModelType.UNILASSO at reg_lambda=0.02 with unilasso_loo and unilasso_non_negative at their defaults, with unilasso_non_negative=False, and with unilasso_loo=False; 16 values of reg_lambda from 0.001 to 0.3; CVXPY with CLARABEL.",
+              "evaluation": "Final loadings against the stage-one univariate slopes; loadings kept on the 36 noise cells along the penalty grid; the solver is checked against an independent coordinate-descent stage two in the example script.",
+              "missing_data": "Complete panel.",
+              "returns": "Unitless synthetic responses with residual standard deviation 0.6; factors and responses de-meaned.",
+              "sample": "120 synthetic observations of six unit-variance factors, the first two with correlation 0.7, and 12 responses loading 0.6 to 1.2 on f1, -0.4 on f2 (a suppressor), -0.6 to 0.6 on f3 and zero on f4 to f6.",
+              "weighting": "Unweighted stage-two loss (span=None)."
+            },
+            "example": "unilasso",
+            "parameters": {
+              "n_obs": 120,
+              "reg_lambda": 0.02,
+              "seed": 20261002
+            }
           }
         }
       },
       "images": {
+        "adaptive_penalty_weights.png": {
+          "bytes": 120894,
+          "sha256": "3690d6ad676ad4a7e72db77dd4e4b94a01c45bd10441cd634941052e3a356b5a"
+        },
+        "cooperative_lasso_geometry.png": {
+          "bytes": 134370,
+          "sha256": "29276045636ebfa150e9a16ee62ce9bae207d9c5f92dec2b2ce6a07be70b9903"
+        },
+        "ewma_weighting_shrinkage.png": {
+          "bytes": 155861,
+          "sha256": "a6835e81d98820d0377b7934b7b2c95af24b698291e929bb7dc12d1bc791dd67"
+        },
         "group_penalties_selection.png": {
-          "bytes": 143853,
-          "sha256": "f88c40ac3f8d1d06590be3c51d20b7ec1252f5cc0fa1beed03ca3195caa1dd94"
+          "bytes": 126818,
+          "sha256": "08958b139339108eb1cc1aaed83362941cc8acfcdd313fc56e58f0d4c65d46ba"
+        },
+        "penalty_selection_paths.png": {
+          "bytes": 124924,
+          "sha256": "82317c7fcac61491bb66cabf7cc449335d2d2c8466ece8afd16ef28057abf504"
+        },
+        "pooled_sign_recovery.png": {
+          "bytes": 129129,
+          "sha256": "7b315a91ddf21bffbfb6ad11ff3e0be158793355dcfcad0a6f12d2931ded81fc"
+        },
+        "prior_targets_paths.png": {
+          "bytes": 90930,
+          "sha256": "fec7d27e3aa78ad8a16ca8d3744c0aec394c9a1dba4dd577335278ef65f505b3"
         },
         "quickstart_workflow.png": {
-          "bytes": 167953,
-          "sha256": "b0f8ceea56f83c140ab6bfd983cc3c61f1fcebb61ddd494e27df8c9798b7a57f"
+          "bytes": 154502,
+          "sha256": "f97ff24064bb3ae7763ed9f124a6ba4382a5012150348a3edb72de73823a9d82"
         },
         "sign_constraints_and_priors_error.png": {
-          "bytes": 117491,
-          "sha256": "73ef38b025ec10c366c3f04dafccd7fc29d0486c461200c3964c0dca58646e41"
+          "bytes": 103353,
+          "sha256": "89fcd6bcd6a8a0f09fe34b53e3ed0db40f0243a4e881d23b8bdc5062b9c41fdb"
         },
         "sparse_factor_model_path.png": {
-          "bytes": 148041,
-          "sha256": "d31e5933f07b840434602c66ed9bbe5238998984751264621294b845e5932b49"
+          "bytes": 133501,
+          "sha256": "de335e7e0c1d82a642c903b917e54eda280ea7e0aa20f781fc32d65eb23d9c01"
+        },
+        "unilasso_two_stage.png": {
+          "bytes": 113699,
+          "sha256": "e6b25b152cb28290aff45bdcd6f2eb306b6feade5bd317254cc57dda5619e936"
         }
       },
       "tables": {
+        "adaptive_weights_cells": {
+          "sha256": "e4937b1d3e3def8e067b18c96af43f8ef2889f2ea822617c0118f69edbea327c",
+          "shape": [
+            6,
+            6
+          ]
+        },
+        "adaptive_weights_summary": {
+          "sha256": "1b0720f286f9c05cb18be7582ecf20c362e524c4beeaf1bff8d43e7d877332f6",
+          "shape": [
+            3,
+            2
+          ]
+        },
+        "cooperative_rogue_path": {
+          "sha256": "71ff61fde5139367b043f3689c4392bef4b3fbd532948bb6761ca726092b466e",
+          "shape": [
+            48,
+            2
+          ]
+        },
+        "ewma_shrinkage_equal_weights": {
+          "sha256": "30f32fae4e92b8a13f267002796949fa74668a570b798651d63bcaa946527a04",
+          "shape": [
+            4,
+            6
+          ]
+        },
+        "ewma_shrinkage_span": {
+          "sha256": "18ac89ab821b806bb6405d4252a057ab764c26e0a16cdbd559f977ca68572ed9",
+          "shape": [
+            4,
+            6
+          ]
+        },
+        "ewma_weight_profiles": {
+          "sha256": "03ab0e2eaee2712337127ea16fde1dd99a1c9b11e6a2599e7141081f757a7e52",
+          "shape": [
+            121,
+            3
+          ]
+        },
         "group_penalties_loadings_fcgl": {
           "sha256": "36072a9971d6bab2322b7f43e152f7fdddcc82e6d1934f56adbb5831ab264c65",
           "shape": [
@@ -272,15 +821,50 @@
             4
           ]
         },
+        "penalty_selection_choices": {
+          "sha256": "b4c18caf2ae01268b96816dd53680a418d9000a6752e535804944801e966a1f2",
+          "shape": [
+            2,
+            3
+          ]
+        },
+        "penalty_selection_curves": {
+          "sha256": "9fcc42f9fa307fda908285d69d8c9db1f94ffddb136e0dd087472c0fc2545ae4",
+          "shape": [
+            30,
+            4
+          ]
+        },
+        "pooled_sign_rates": {
+          "sha256": "ab1d26778ed612f7e54bf7434fc8a305a669806b9e1fd81a74312f3e629cf7db",
+          "shape": [
+            14,
+            4
+          ]
+        },
+        "prior_targets_paths": {
+          "sha256": "885c1c5bd6b9da316454b0b447c8b3b0f19a0897865f93f29c7a0f9cd84a42b4",
+          "shape": [
+            39,
+            2
+          ]
+        },
+        "prior_targets_signs": {
+          "sha256": "d465fad7f5bb1b972591a69517ddeccd20a75ba938db964d276a16ef86c9fe6c",
+          "shape": [
+            3,
+            2
+          ]
+        },
         "quickstart_cv_scores": {
-          "sha256": "354055102eaa3c84ddf721c340d31206af906799f9e5a5b2d7edef5cdc12428e",
+          "sha256": "3263457551a9b538779e9de87ad845cc18a22d94ad6c6508d42cbcad9357759a",
           "shape": [
             9,
             4
           ]
         },
         "quickstart_estimated_loadings": {
-          "sha256": "3d8a11ca392b9eb19dcd4f64ad9b4c084a523dfda2f99135833f43726ea76aba",
+          "sha256": "830c6a742ad93f9bccd665a45d86ed52e58109580c9d05430ea8114b90cf65ef",
           "shape": [
             12,
             4
@@ -320,6 +904,75 @@
             17,
             5
           ]
+        },
+        "unilasso_final_loadings": {
+          "sha256": "8e190657f92cf892ca763ee7e26e3b00db4689f44c13ee1b2b8e68261218e0ae",
+          "shape": [
+            24,
+            6
+          ]
+        },
+        "unilasso_settings_path": {
+          "sha256": "ada643da4ec176d257b49d34bfaf8cdc3f13de024aefcc61b704e74c428d2696",
+          "shape": [
+            48,
+            2
+          ]
+        }
+      }
+    },
+    "lineage": {
+      "checks": {
+        "each_group_keeps_one_track_outside_the_merge": true,
+        "per_transition_matcher_fragments_credit": true
+      },
+      "configuration": {
+        "exhibits": {
+          "cluster_lineage_tracks.png": {
+            "conventions": {
+              "data_kind": "Synthetic teaching example; not market or paper-replication evidence.",
+              "estimator": "analyze_cluster_lineage with the default gate (overlap band 0.15 to 0.60, spread-vol cut 0.015), bridge window 6 and decay 0.5, joint (mcf) and per-transition matchers.",
+              "evaluation": "Raw label and derived track of each group's first response per date; identities, events and classification checked in the example script.",
+              "missing_data": "The high-yield responses are absent before 2025-01-31.",
+              "returns": "Betas stated directly as prototypes plus perturbations of standard deviation 0.03; residual variance 0.01.",
+              "sample": "24 synthetic month-end snapshots from 2024-01-31 over three factors (Equity, Rates, Credit) with an annualised factor covariance; equity-like, rates-like and credit-like groups of four responses and, from 2025-01-31, a high-yield group of three; raw labels shuffled each date, equity and credit share one raw cluster on 2024-09-30, one credit response joins the equity group from 2025-05-31.",
+              "weighting": "Equal member weights in the fingerprints."
+            },
+            "example": "cluster_lineage",
+            "parameters": {
+              "n_dates": 24,
+              "seed": 20261008
+            }
+          }
+        }
+      },
+      "images": {
+        "cluster_lineage_tracks.png": {
+          "bytes": 185396,
+          "sha256": "be0e50c41e8ba2c557a6171b1fdbdb2266ec3658f4f5eb1f31014b642fe4bf37"
+        }
+      },
+      "tables": {
+        "lineage_raw_labels": {
+          "sha256": "cd62dd1979ed609c685319f513bd1c89dbc8a82250e4b840e220c604b8746e76",
+          "shape": [
+            24,
+            4
+          ]
+        },
+        "lineage_tracks": {
+          "sha256": "97fa970b4dd577294b16f66d9336f7d9e086532cbd953f016dedeb7ed5e70097",
+          "shape": [
+            24,
+            4
+          ]
+        },
+        "lineage_tracks_per_transition": {
+          "sha256": "a68280a4e3492007cbbf264587ab3c512b46c74160a7367800c938323e638c19",
+          "shape": [
+            24,
+            4
+          ]
         }
       }
     }
@@ -329,34 +982,43 @@
     "font_family": "DejaVu Sans"
   },
   "review": {
-    "inspected_at_utc": "2026-09-21",
-    "inspected_by": "Claude (agent session), not the maintainer",
-    "note": "All six full-resolution previews were checked for labels, units, legends, clipping, overlap and contrast, and four were redrawn after the check. Maintainer visual review remains outstanding.",
-    "status": "inspected_by_agent_owner_review_pending",
-    "views": {
-      "article_width_sphinx_furo_736px": false,
-      "full_resolution": true,
-      "live_github_page": false,
-      "vs_code_application": false
-    }
+    "note": "The revised residual-correlation preview was inspected at full resolution for labels, units, clipping and contrast; the other 21 previews are byte-identical to the prior bundle. Maintainer review remains outstanding.",
+    "status": "inspected_by_agent_owner_review_pending"
   },
   "schema_version": 1,
   "source": {
-    "commit": null,
-    "dirty": null,
+    "commit": "496e388a6acdbfe32443ffb35b65b1e60753f972",
+    "dirty": true,
     "files": {
-      "examples/docs/factor_covariance_assembly.py": "6e71b6842461493d67d8673f21381f6c049ec7ab4684a348f3ae108235a24afe",
+      "examples/docs/adaptive_penalty_weights.py": "f14fcff908cea8fb44ab6f581fc4bb289e8a2e8ebdf010b5afcf4fc2758020aa",
+      "examples/docs/app_portfolio_risk_models.py": "dbd89fb30ffef5005b90c4f3dea61ab5e22f7afe7a69f631984bab069752ed82",
+      "examples/docs/cluster_discovery.py": "e84c68f877396f85f43d58656047cd8dc979decb26125335196f9d602eaf77a8",
+      "examples/docs/cluster_lineage.py": "80d3ab0a3042378d59ee8b1bba829947bc585e2b26dbb48215b26669a9f5f4c3",
+      "examples/docs/cluster_stability_and_pooled_scoring.py": "0be43aff55496a19ac95f278e211713001b7a403fdcf5330facf830f15a6314b",
+      "examples/docs/common_mode_removal.py": "554a393f4c2c31b2135df6abdd462a0a5d85f34fbd859402864bacc629dff2eb",
+      "examples/docs/cooperative_lasso.py": "ce9303e3979db35a7761f1fb6f20c316682fb07489277d53b31960878090b4d0",
+      "examples/docs/empirical_residual_correlation.py": "a07f9e1468b8a75243be933ae59dbfd51d72424851fd05ca97928f9acbd8694e",
+      "examples/docs/ewma_weighting_and_ragged_histories.py": "f209bdff980a730683171c7924fc295dd7ac94182e4097fe7c5f97ad04be3819",
+      "examples/docs/factor_covariance_assembly.py": "fa98b22064b5156b16c1837b03f32a46086a208e3a8d4f2975194c52a0007196",
+      "examples/docs/gated_cluster_pooled_signs.py": "b31b122aa13f1858253474d38ef28c5918713c6add047709b2dc396f557192ca",
       "examples/docs/group_penalties_hcgl_fcgl.py": "f8761cf3647ce85dd52060d9b208c4f0ad6a819079647b17c0f0316681846d2b",
-      "examples/docs/quickstart.py": "a55ed27306b387c5711a5b39e4be81e22948d4c7a8457374a1cc141d21416ff3",
-      "examples/docs/residual_diagnostics.py": "8cff4db181609bb8ef4e8ec521ec055423bbc88292487b5db24238f9ff70169f",
+      "examples/docs/penalty_selection.py": "33120ec619045364f14cffd2bc191a3b33d997c34df009f9ab480cbe19c3fe35",
+      "examples/docs/prior_targets.py": "6845b9729dc2e0a4d0d934092bab9bbff2e4051f50ff31417f4a152f23c43cde",
+      "examples/docs/quickstart.py": "02a2f72729229252e863d5d26a36037d2631ac98404415b9d81cf8880fc8d469",
+      "examples/docs/residual_alpha_nowcasting.py": "2e723a0cd6e923795fde1c39cf279cf19ec33675f519fd32eb2f798112551c53",
+      "examples/docs/residual_diagnostics.py": "03a47dedb079ab4d5150c6ee2d84b923119228ca05044ae28a1be32f9a06fe27",
+      "examples/docs/rolling_cluster_smoothing.py": "4cabb9695b213f494b3da2bfa6b100fb3186e191aa4db4be5d2ba158fd900301",
       "examples/docs/sign_constraints_and_priors.py": "65f0e8de0cadf421ae63447536de16db19c3552597b6b4e4883c276682f58b6b",
       "examples/docs/sparse_factor_model.py": "087b189c5c039facdd911b9e7ec83e9edc13293ae591fac5d15596cf1da1f7c3",
-      "tools/docs_analytics/covariance_residuals.py": "210e7fd0d9121d7da6ec6c7a99a1308c252082dc3285aae3f9107d85e0575078",
-      "tools/docs_analytics/estimation.py": "268639918e61eba700d0f55df2425468dea00cb61afda8bcef7ec6bda3b29b15",
-      "tools/docs_analytics/fixtures.py": "244846a857337724705087a0636a88a910a454a02667fba8a24ba4945f7728e0",
-      "tools/docs_analytics/registry.json": "49e72c5fa94d312a26c7f91590b550918074ecaeab71925ed5fbbb857f6c78e3",
+      "examples/docs/unilasso.py": "c53c88993b09fd832197ac7b296d44eeebe7b2b3a930c1bb6dfcba282545f4e6",
+      "tools/docs_analytics/clustering.py": "3ad02ec5502baffb365d5a2adff10350ec4ecbf62cde1d41a9a4807d7ce94085",
+      "tools/docs_analytics/covariance_residuals.py": "eed66d66b2e2438652db4a27ff20f23e9ce2717dcbce01316b8f0ff6e1202942",
+      "tools/docs_analytics/estimation.py": "63ab02020ef53a261552bde00b66d792b9ca438e0e53dd230a6cc3b550fee9ee",
+      "tools/docs_analytics/fixtures.py": "27e5c4562ba9217066597d44f2826d4b09c7c0f60e9b42d05279a9f4e477a16f",
+      "tools/docs_analytics/lineage.py": "ca06b8f63e724fdd92696db6d59e32d44501b857556f7e67d6e20078ded80776",
+      "tools/docs_analytics/registry.json": "5ee83936a5c7d84e4792c237ba93e44c9c578144868416d27b6ea0c83c9b2d56",
       "tools/docs_analytics/run.py": "b409304109f55de5629213fb4bb3c76bc87367fee1b1338c5d9bc7f950eb5b97"
     },
-    "package_source_sha256": "dd18a28f8084fbf6f26d0ed5a1225eb85182b9dce83845cf23c29be9ddcad9e5"
+    "package_source_sha256": "1900fa6b94c22b7ad8ecec4fb6bac2178228979d19bf83f54a1c30c39e082ff5"
   }
 }

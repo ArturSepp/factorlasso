@@ -21,6 +21,13 @@ paper/*.toc
 
 # Regenerated raster previews. The manuscript embeds the .pdf figures.
 paper/figures/*.png
+# Raster twins displayed in place by the documentation (tools/docs_analytics/registry.json).
+# figE1-figE3 were rasterised from the tracked PDFs at 150 dpi, the resolution of the producer.
+!paper/figures/figS2_gate_roc.png
+!paper/figures/figS5_correlated.png
+!paper/figures/figE1_clusters.png
+!paper/figures/figE2_signs.png
+!paper/figures/figE3_hotspots.png
 
 # Elsevier CAS template (CTAN: els-cas-templates)
 paper/cas-sc.cls

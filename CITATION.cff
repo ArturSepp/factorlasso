@@ -13,8 +13,8 @@ authors:
 repository-code: "https://github.com/ArturSepp/factorlasso"
 url: "https://github.com/ArturSepp/factorlasso"
 license: GPL-3.0-or-later
-version: "0.20.0"
-date-released: "2026-09-25"
+version: "0.21.0.dev0"
+date-released: "2026-09-26"
 keywords:
   - lasso
   - group-lasso
@@ -37,12 +37,12 @@ preferred-citation:
       orcid: "https://orcid.org/0000-0002-7038-1748"
     - given-names: Mika
       family-names: Kastenholz
-  title: "factorlasso: Hierarchical Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for Multi-Asset Factor Models in Python"
+  title: "factorlasso: Sparse Multi-Output Regression with Cluster-Grouped Sign Constraints in Python"
   journal: "Journal of Statistical Software"
   year: 2026
   notes: "Software paper describing the package; submitted."
 references:
-  - type: article
+  - type: report
     authors:
       - given-names: Artur
         family-names: Sepp
@@ -51,9 +51,12 @@ references:
       - given-names: Mika
         family-names: Kastenholz
     title: "Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors"
-    journal: "Journal of Portfolio Management"
+    institution:
+      name: "SSRN"
+    number: "6785958"
     year: 2026
-    notes: "Methodology paper documenting the framework in which factorlasso is deployed; forthcoming."
+    url: "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6785958"
+    notes: "Working paper. Methodology paper documenting the framework in which factorlasso is deployed."
   - type: article
     authors:
       - given-names: Artur

@@ -30,9 +30,10 @@ def _kwargs(model_type, x, y, production):
     kw = dict(model_type=model_type, reg_lambda=0.01, span=None)
     if production:
         kw.update(_PROD)
-        kw['factors_beta_prior'] = pd.DataFrame(
-            [[0.1, 0.0, 0.0, 0.0]], index=y.columns, columns=x.columns,
-        )
+        if model_type != LassoModelType.UNILASSO:  # UniLasso takes no beta prior
+            kw['factors_beta_prior'] = pd.DataFrame(
+                [[0.1, 0.0, 0.0, 0.0]], index=y.columns, columns=x.columns,
+            )
     if model_type in (LassoModelType.GROUP_LASSO,
                       LassoModelType.COOPERATIVE_GROUP_LASSO):
         kw['group_data'] = pd.Series({'asset0': 'grpA'})

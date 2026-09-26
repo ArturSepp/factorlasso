@@ -1129,6 +1129,9 @@ class LassoModel:
         old fit. This option does not change signs, targets or diagnostic SSE units.
         UniLasso retains its separate unweighted loss and rejects ``weight_sum``.
     reg_lambda : float, default 1e-5
+        Penalty strength multiplying the L1 and group terms. Its scale depends
+        on ``loss_normalization``, the observation frequency and the return
+        units; ``LassoModelCV`` selects it on expanding time-series splits.
     span : float, optional
         EWMA span for observation weighting.  Must be ≥ 1 when provided.
         Float accepted — integer is the common case, but the recursion
@@ -1251,14 +1254,25 @@ class LassoModel:
         ``GROUP_LASSO``, ``HIERARCHICAL_CLUSTER_GROUP_LASSO``, or
         ``FACTOR_CLUSTER_GROUP_LASSO``; ignored for pure
         ``LASSO`` since L1 is the only penalty already.
+    nonneg : bool, default False
+        If True, every loading is constrained to be non-negative. Rejected
+        with ``ValueError`` by ``UNILASSO`` and the two cooperative modes,
+        whose solvers take no sign constraint.
     factors_beta_loading_signs : pd.DataFrame, optional
+        Hard sign matrix indexed by response and factor: ``1`` non-negative,
+        ``-1`` non-positive, ``0`` fixed at zero, NaN free. Non-NaN entries
+        take precedence over prior and automatically detected signs. Enforced
+        by ``LASSO``, ``GROUP_LASSO``, ``HIERARCHICAL_CLUSTER_GROUP_LASSO`` and
+        ``FACTOR_CLUSTER_GROUP_LASSO``; rejected with ``ValueError`` by
+        ``UNILASSO`` and the cooperative modes.
     factors_beta_prior : pd.DataFrame, optional
         Explicit penalty centres, indexed by response and factor. With
         ``apply_ols_prior=True``, NaN defers to the computed prior and finite
         entries override it, including zero. A finite nonzero prior overrides
         a conflicting automatically detected sign or zero gate. Explicit hard
         signs still win; with OLS enabled their incompatible priors are zeroed.
-        With the flag off, NaN retains its legacy zero meaning.
+        With the flag off, NaN retains its legacy zero meaning. Rejected with
+        ``ValueError`` by ``UNILASSO``, whose solver takes no beta prior.
     apply_ols_prior : bool, default False
         Derive per-response weighted one-factor OLS priors on original inputs
         with an intercept and the effective LASSO squared-loss span. Use
@@ -1308,6 +1322,38 @@ class LassoModel:
         Excluded factor columns remain exempt. Non-NaN entries of
         ``factors_beta_loading_signs`` take precedence over both prior and
         detected signs. Adaptive weights retain the original detected values.
+    auto_sign_threshold_t : float, optional, default 0.75
+        Noise-floor gate on the pooled univariate t-statistic: cells whose
+        absolute statistic falls below it are pinned to zero, the others
+        receive the slope's sign. ``None`` disables the gate. It is a
+        screening rule, not a calibrated significance test; 0.75 corresponds
+        to a two-sided p of about 0.45 under a normal reference. Used only
+        with ``auto_sign_constraints=True``.
+    auto_sign_ewma_span : float, optional
+        EWMA span of the univariate slopes and scores behind derived signs.
+        ``None`` (the default) weights dates equally. Mutually exclusive with
+        ``auto_sign_use_fit_span=True``.
+    auto_sign_use_fit_span : bool, default False
+        If True, derive signs with the effective squared-loss span of the fit,
+        including a span passed to ``fit``.
+    auto_sign_variance : {"independent", "date"}, default "independent"
+        Variance estimator of the gate's t-statistic. ``"independent"`` treats
+        the responses of a pool as independent observations (the historical
+        gate). ``"date"`` sums the scores by date, a sandwich variance under
+        which duplicated or correlated responses do not inflate the evidence.
+        Both are screening rules, not calibrated t tests.
+    auto_sign_adaptive_weights : bool, default False
+        If True, together with ``auto_sign_constraints=True``, each cell's L1
+        penalty is weighted by ``1 / max(|b|, floor) ** gamma`` of its pooled
+        univariate slope ``b`` (Zou, 2006); with ``l1_weight=0`` the weights
+        enter the group norms by root-mean-square row aggregation (Wang and
+        Leng, 2008). Cells pinned to zero by the gate stay at zero.
+    auto_sign_adaptive_gamma : float, default 1.0
+        Exponent ``gamma`` of the adaptive weights; 1 is the adaptive-LASSO
+        default and larger values strengthen the reweighting.
+    auto_sign_adaptive_floor : float, default 1e-3
+        Floor applied to ``|b|`` before inversion, so near-zero slopes do not
+        produce exploding weights.
     auto_sign_excluded_factors : list or tuple of str, optional
         Factor columns exempt from automatic signs and their t-stat zero gate.
         Explicit non-NaN ``factors_beta_loading_signs`` still apply; supply NaN
@@ -1315,8 +1361,30 @@ class LassoModel:
         weights are unchanged. Names must be unique and present in the fitted
         factor panel. None or an empty sequence preserves the existing fit.
     demean : bool, default True
+        If True, each series is demeaned before estimation, with its EWMA
+        mean when ``span`` is set and its sample mean otherwise;
+        ``alpha_const_`` then holds the intercept consistent with the fitted
+        loadings.
     solver : str, default 'CLARABEL'
-    warmup_period : int, default 12
+        CVXPY solver of the primary solve.
+    solver_fallbacks : sequence of str, optional
+        Solver names tried in order only when the primary solver raises or
+        returns a non-optimal status. ``None`` (the default) runs the primary
+        solver once and lets its error propagate.
+    warmup_period : int, optional, default 12
+        Minimum number of valid observations of a response. A response with
+        fewer receives zero loadings, NaN diagnostics and a warning, and is
+        left out of the cluster assignment. It also sets the minimum sample,
+        ``max(3, warmup_period)``, of the OLS prior regressions. ``None``
+        disables the check.
+    unilasso_loo : bool, default True
+        ``UNILASSO`` only. If True, stage two uses leave-one-out
+        (prevalidated) univariate fits, as in the published method; False
+        uses in-sample univariate fits.
+    unilasso_non_negative : bool, default True
+        ``UNILASSO`` only. If True, the stage-two coefficients are
+        non-negative, so each final loading keeps the sign of its univariate
+        slope.
 
     Attributes (fitted, set by ``fit()``)
     --------------------------------------
@@ -1696,8 +1764,15 @@ class LassoModel:
                 raise ValueError('factor_for_prior response labels must be unique')
             for _, value in self.factor_for_prior.items():
                 _selected_prior_factors(value)
-        if self.apply_ols_prior and self.model_type == LassoModelType.UNILASSO:
-            raise ValueError('apply_ols_prior is not supported by the UNILASSO solver')
+        if self.model_type == LassoModelType.UNILASSO:
+            if self.apply_ols_prior:
+                raise ValueError('apply_ols_prior is not supported by the UNILASSO solver')
+            # The UniLasso solver takes no beta prior; reject rather than ignore it silently.
+            if self.factors_beta_prior is not None:
+                raise ValueError(
+                    'factors_beta_prior is not supported by the UNILASSO solver, '
+                    'which takes no beta prior'
+                )
 
     # ── Backward-compatible property aliases ─────────────────────────
 

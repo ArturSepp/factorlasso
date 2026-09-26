@@ -9,7 +9,7 @@ myst:
 
 # Factor covariance assembly
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-22](https://github.com/ArturSepp/factorlasso/commit/fe2063860f701ac5a71951161bf391a1285d503d)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
@@ -319,7 +319,8 @@ and the hash of the image.
 - [Residual diagnostics](residual_diagnostics.md) for the test of a diagonal $D$.
 - [Group penalties: HCGL and FCGL](group_penalties_hcgl_fcgl.md) for the clusters stored with a
   snapshot.
-- [Task guides](task-guides.rst) for the empirical residual correlation and rolling estimation.
+- [Empirical residual correlation](empirical_residual_correlation.md) and
+  [residual-alpha nowcasting](residual_alpha_nowcasting.md) for the residual block and the alpha.
 - [API reference](api.rst) for signatures.
 
 ## References
@@ -332,10 +333,10 @@ and the hash of the image.
 - Rosenberg, B., and McKibben, W. (1973). The prediction of systematic and specific risk in
   common stocks. *Journal of Financial and Quantitative Analysis* 8(2), 317-333.
   DOI 10.2307/2330027.
-- Sepp, A., Hansen, E., and Kastenholz, M. (2026). Capital market assumptions and strategic asset
-  allocation using multi-asset tradable factors. *The Journal of Portfolio Management*,
-  forthcoming.
-- Sepp, A., Ossa, I., and Kastenholz, M. (2026). Robust optimization of strategic and tactical
-  asset allocation for multi-asset portfolios. *The Journal of Portfolio Management* 52(4),
+- Sepp, A., Hansen, E., and Kastenholz, M. (2026). Capital Market Assumptions and Strategic Asset
+  Allocation Using Multi-Asset Tradable Factors. Working paper,
+  [SSRN 6785958](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6785958).
+- Sepp, A., Ossa, I., and Kastenholz, M. (2026). Robust Optimization of Strategic and Tactical
+  Asset Allocation for Multi-Asset Portfolios. *The Journal of Portfolio Management* 52(4),
   86-120.
 - [factorlasso software citation](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

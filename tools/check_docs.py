@@ -9,9 +9,14 @@ mathematics, local links) are adapted from ``OptimalPortfolios/tools/check_docs.
     part of factorlasso, is distributed under GPL-3.0-or-later.
 
 Local additions are the ``retained`` page status for legacy RST pages, the ``planned`` article
-list, and the symbol-coverage check: every name in ``factorlasso.__all__`` is owned by exactly
-one methodology article, and an adopted article must name each symbol it owns under its
-"Implementation in factorlasso" heading.
+list, the ``case_study`` page form, and three ownership checks:
+
+* every name in ``factorlasso.__all__`` is owned by exactly one methodology article, and an adopted
+  article must name each symbol it owns under its "Implementation in factorlasso" heading;
+* every ``LassoModel`` configuration parameter is owned by exactly one methodology article, and an
+  adopted article names each parameter it owns;
+* the paper ledger records one citation title per paper, taken from the LaTeX source, and no
+  reader-facing page may carry a retired title.
 
 Default: validate adopted pages and report what is pending. ``--files`` checks a selected batch
 regardless of adoption status. ``--all`` is the completion gate and fails while any article is
@@ -43,9 +48,22 @@ ARTICLE_HEADINGS = (
     "See also",
     "References",
 )
+CASE_STUDY_HEADINGS = (
+    "Overview",
+    "Study design and data",
+    "Configuration",
+    "Results",
+    "What the study does and does not show",
+    "Reproduce",
+    "See also",
+    "References",
+)
+FORM_SECTIONS = {"methodology": ARTICLE_HEADINGS, "case_study": CASE_STUDY_HEADINGS}
 PAGE_STATES = {
     ("methodology", "pending"),
     ("methodology", "adopted"),
+    ("case_study", "pending"),
+    ("case_study", "adopted"),
     ("utility", "pending"),
     ("utility", "adopted"),
     ("utility", "retained"),
@@ -251,15 +269,23 @@ def _headings(visible: list[tuple[int, str]]) -> list[tuple[int, int, str]]:
     ]
 
 
-def check_document(text: str, *, methodology: bool) -> list[Issue]:
+def check_document(
+    text: str,
+    *,
+    methodology: bool = False,
+    sections: Optional[Sequence[str]] = None,
+) -> list[Issue]:
     """Check one Markdown page's metadata, structure, byline, software links and math source.
 
     Parameters
     ----------
     text : str
         Complete Markdown source.
-    methodology : bool
+    methodology : bool, default False
         Whether the eight methodology H2 sections are required, once each and in order.
+    sections : sequence of str, optional
+        Required H2 sections of another page form, such as a case study; overrides
+        ``methodology``.
 
     Returns
     -------
@@ -296,10 +322,13 @@ def check_document(text: str, *, methodology: bool) -> list[Issue]:
         issues.append(Issue(1, "Link to the factorlasso project repository in prose."))
     if CITATION_URL.lower() not in links:
         issues.append(Issue(1, "Link to the canonical factorlasso CITATION.cff in prose."))
-    if methodology:
-        sections = [title for _, level, title in headings if level == 2]
-        if sections != list(ARTICLE_HEADINGS):
-            issues.append(Issue(1, "Use each required methodology H2 once, in the standard order."))
+    required = list(sections) if sections is not None else (
+        list(ARTICLE_HEADINGS) if methodology else None
+    )
+    if required is not None:
+        found = [title for _, level, title in headings if level == 2]
+        if found != required:
+            issues.append(Issue(1, "Use each required H2 once, in the standard order."))
     return issues
 
 
@@ -418,6 +447,115 @@ def public_symbols(root: Path) -> list[str]:
     raise ValueError("factorlasso.__all__ was not found.")
 
 
+def lasso_model_fields(root: Path) -> tuple[list[str], list[str]]:
+    """Read the ``LassoModel`` dataclass fields from source with ``ast``; nothing is imported.
+
+    Returns
+    -------
+    configuration : list of str
+        Constructor fields without a trailing underscore, in declaration order.
+    fitted : list of str
+        Constructor fields with a trailing underscore; they hold fitted state.
+    """
+    source = (root / "src" / "factorlasso" / "lasso_estimator.py").read_text(encoding="utf-8")
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.ClassDef) and node.name == "LassoModel":
+            configuration, fitted = [], []
+            for item in node.body:
+                if not (isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name)):
+                    continue
+                value = item.value
+                excluded = (
+                    isinstance(value, ast.Call)
+                    and getattr(value.func, "id", getattr(value.func, "attr", "")) == "field"
+                    and any(
+                        keyword.arg == "init"
+                        and isinstance(keyword.value, ast.Constant)
+                        and keyword.value.value is False
+                        for keyword in value.keywords
+                    )
+                )
+                if excluded:
+                    continue
+                name = item.target.id
+                (fitted if name.endswith("_") else configuration).append(name)
+            return configuration, fitted
+    raise ValueError("class LassoModel was not found in lasso_estimator.py.")
+
+
+def check_parameter_ownership(inventory: dict, root: Path) -> tuple[list[str], dict[str, str]]:
+    """Require every ``LassoModel`` configuration parameter to have exactly one owning article.
+
+    Returns
+    -------
+    errors : list of str
+        Ownership defects; like unowned exports they fail every run.
+    owners : dict
+        Parameter name mapped to its owning article path.
+    """
+    pages, planned = inventory["pages"], inventory["planned"]
+    parameters = inventory.get("parameters")
+    if not isinstance(parameters, dict):
+        return ["tools/docs_inventory.json:1: Provide a parameters mapping."], {}
+    errors = []
+    owners: dict[str, str] = {}
+    for article, names in parameters.items():
+        is_methodology = article in planned or pages.get(article, {}).get("form") == "methodology"
+        if not is_methodology:
+            errors.append(f"{article}:1: Parameter owners must be planned or methodology articles.")
+        if not isinstance(names, list) or not all(isinstance(name, str) for name in names):
+            errors.append(f"{article}:1: Owned parameters must be a list of names.")
+            continue
+        for name in names:
+            if name in owners:
+                errors.append(f"{article}:1: Parameter {name} is already owned by {owners[name]}.")
+            owners[name] = article
+    configuration, _ = lasso_model_fields(root)
+    for name in configuration:
+        if name not in owners:
+            errors.append(
+                f"tools/docs_inventory.json:1: LassoModel parameter {name} has no owning article."
+            )
+    for name in sorted(set(owners) - set(configuration)):
+        errors.append(f"{owners[name]}:1: Owned parameter {name} is not a LassoModel parameter.")
+    return errors, owners
+
+
+def check_paper_titles(inventory: dict, root: Path, pages: Sequence[str]) -> list[str]:
+    """Reject a retired paper title on any reader-facing page or citation file.
+
+    The ledger in ``tools/docs_inventory.json`` records one title per paper, taken from the LaTeX
+    source of the manuscript. Retired titles are matched case-insensitively after whitespace is
+    collapsed, so a title wrapped across lines is still found.
+    """
+    papers = inventory.get("papers", {})
+    if not isinstance(papers, dict):
+        return ["tools/docs_inventory.json:1: 'papers' must map a key to a title record."]
+    errors = []
+    retired: list[tuple[str, str]] = []
+    for key, record in papers.items():
+        if not isinstance(record, dict) or not record.get("title") or not record.get("status"):
+            errors.append(f"tools/docs_inventory.json:1: Paper {key} needs a title and a status.")
+            continue
+        retired.extend((key, title) for title in record.get("retired_titles", []))
+    targets = set(pages) | {"CITATION.cff"}
+    targets.update(
+        path.relative_to(root).as_posix() for path in (root / "papers").glob("*/README.md")
+    )
+    for name in sorted(targets):
+        path = root / name
+        if not path.is_file():
+            continue
+        text = " ".join(path.read_text(encoding="utf-8").split()).lower()
+        for key, title in retired:
+            if " ".join(title.split()).lower() in text:
+                errors.append(
+                    f"{name}:1: Retired title of paper {key}; use "
+                    f"'{papers[key]['title']}' from the LaTeX source."
+                )
+    return errors
+
+
 def implementation_section(text: str) -> str:
     """Return the prose under the implementation H2, or an empty string when it is absent."""
     visible, _, _ = prose_lines(text)
@@ -534,7 +672,7 @@ def discover_pages(root: Path) -> set[str]:
     for path in (root / "docs").rglob("*"):
         if path.is_file() and path.suffix in {".md", ".rst"}:
             relative = path.relative_to(root / "docs")
-            if relative.parts[0] != "_build":
+            if relative.parts[0] not in {"_build", "_generated"}:
                 found.add(path.relative_to(root).as_posix())
     return found
 
@@ -569,6 +707,9 @@ def run(root: Path, files: Optional[Sequence[Path]], require_all: bool) -> tuple
             stems[stem] = name
     ownership_errors, owners = check_symbol_ownership(inventory, root)
     errors.extend(ownership_errors)
+    parameter_errors, parameter_owners = check_parameter_ownership(inventory, root)
+    errors.extend(parameter_errors)
+    errors.extend(check_paper_titles(inventory, root, sorted(discovered)))
 
     adopted = {name for name, entry in pages.items() if entry["status"] == "adopted"}
     pending = {name for name, entry in pages.items() if entry["status"] == "pending"}
@@ -589,7 +730,7 @@ def run(root: Path, files: Optional[Sequence[Path]], require_all: bool) -> tuple
     for name in sorted(selected):
         path = root / name
         source = path.read_text(encoding="utf-8")
-        issues = check_document(source, methodology=pages[name]["form"] == "methodology")
+        issues = check_document(source, sections=FORM_SECTIONS.get(pages[name]["form"]))
         issues.extend(check_local_links(source, path, root))
         example = pages[name].get("example")
         if example:
@@ -604,6 +745,9 @@ def run(root: Path, files: Optional[Sequence[Path]], require_all: bool) -> tuple
                 errors.append(
                     f"{name}:1: Name `{symbol}` under the heading '{IMPLEMENTATION_HEADING}'."
                 )
+        for parameter in inventory.get("parameters", {}).get(name, []):
+            if not re.search(rf"`{re.escape(parameter)}(?:=[^`]*)?`", source):
+                errors.append(f"{name}:1: Name the owned LassoModel parameter `{parameter}`.")
     if not files:
         for name in sorted(adopted - selected):
             documented.update(inventory["symbols"].get(name, []))
@@ -623,6 +767,10 @@ def run(root: Path, files: Optional[Sequence[Path]], require_all: bool) -> tuple
         report.append(
             f"SYMBOLS: {len(owners)} public names owned; {len(owners) - len(undocumented)} "
             f"documented by the checked articles; {len(undocumented)} awaiting their article."
+        )
+        report.append(
+            f"PARAMETERS: {len(parameter_owners)} LassoModel configuration parameters owned by "
+            f"{len(set(parameter_owners.values()))} articles."
         )
         if planned:
             ordered = sorted(planned, key=lambda name: planned[name]["id"])

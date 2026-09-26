@@ -16,9 +16,9 @@ It provides LASSO, Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering
 [![Downloads](https://static.pepy.tech/badge/factorlasso)](https://pepy.tech/project/factorlasso)
 [![Monthly](https://static.pepy.tech/badge/factorlasso/month)](https://pepy.tech/project/factorlasso)
 
-**Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Hierarchical
-Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for
-Multi-Asset Factor Models in Python*, submitted to the *Journal of Statistical
+**Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Sparse
+Multi-Output Regression with Cluster-Grouped Sign Constraints in Python*,
+submitted to the *Journal of Statistical
 Software*. The manuscript is available [here](papers/jss_2026/paper/article.pdf).
 See [Citation](#citation) for the BibTeX entry. The replication
 material for the paper is in [`papers/jss_2026/`](papers/jss_2026/).
@@ -417,8 +417,8 @@ to avoid overclaiming:
   evidence first, then regularize.
 
 References:
-* Sepp, A., & Kastenholz, M. (2026). Gated cluster-pooled sign constraints
-  for multi-output sparse regression. *Computational Statistics and Data
+* Sepp, A., & Kastenholz, M. (2026). Gated Cluster-Pooled Sign Constraints
+  for Multi-Output Sparse Regression. *Computational Statistics & Data
   Analysis*. Submitted. (The method implemented in this section.)
 * Chatterjee, S., Hastie, T., & Tibshirani, R. (2025). Univariate-
   guided sparse regression. *Harvard Data Science Review* 7(3).
@@ -1177,9 +1177,8 @@ software itself:
 ```bibtex
 @article{SeppKastenholz2026factorlasso,
   author  = {Sepp, Artur and Kastenholz, Mika},
-  title   = {{factorlasso}: Hierarchical Clustering Group {LASSO} ({HCGL})
-             with Cluster-Pooled Sign Derivation for Multi-Asset Factor
-             Models in {Python}},
+  title   = {{factorlasso}: Sparse Multi-Output Regression with
+             Cluster-Grouped Sign Constraints in {Python}},
   journal = {Journal of Statistical Software},
   year    = {2026},
   note    = {Submitted.}
@@ -1194,13 +1193,13 @@ software itself:
   note    = {Submitted.}
 }
 
-@article{SeppHansenKastenholz2026MATF,
-  author  = {Sepp, Artur and Hansen, Emilie and Kastenholz, Mika},
-  title   = {Capital Market Assumptions and Strategic Asset Allocation Using
-             Multi-Asset Tradable Factors},
-  journal = {Journal of Portfolio Management},
-  year    = {2026},
-  note    = {Forthcoming.}
+@misc{SeppHansenKastenholz2026MATF,
+  author       = {Sepp, Artur and Hansen, Emilie and Kastenholz, Mika},
+  title        = {Capital Market Assumptions and Strategic Asset Allocation Using
+                  Multi-Asset Tradable Factors},
+  year         = {2026},
+  howpublished = {Working paper, SSRN 6785958},
+  url          = {https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6785958}
 }
 
 @article{SeppOssaKastenholz2026,
@@ -1219,7 +1218,7 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {0.20.0},
+  version = {0.21.0.dev0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

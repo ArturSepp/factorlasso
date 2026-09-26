@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "date": "2026-09-21",
+  "stage": "E4_rolling_snapshot",
+  "prerequisite": "E2_robustness_v1",
+  "lanes": [
+    "production_snapshot",
+    "public_etf_proxies"
+  ],
+  "spans": [
+    null,
+    36
+  ],
+  "credit_assets": [
+    "LQD",
+    "VCIT",
+    "VCSH",
+    "USIG",
+    "IGIB",
+    "VCLT",
+    "HYG",
+    "JNK",
+    "SHYG",
+    "ANGL",
+    "SJNK",
+    "EMB",
+    "VWOB",
+    "PCY",
+    "EMLC",
+    "EBND",
+    "EMHY"
+  ],
+  "controls": {
+    "TLT": "Rates",
+    "SHY": "Rates",
+    "VEA": "Equity",
+    "VWO": "Equity"
+  },
+  "proxy_factors": {
+    "Equity": "SPY",
+    "Rates": "IEF",
+    "Credit": "HYG"
+  },
+  "proxy_overlap_rule": "Exclude HYG,SPY,IEF from every proxy response set; do not infer independence of underlying holdings. These are mixed ETF excess-return proxies, especially HYG, not pure Credit/term factors.",
+  "window": 84,
+  "inner_train_ends": [
+    60,
+    72
+  ],
+  "inner_validation_size": 12,
+  "evaluation": "29 monthly outer tests: 2024-02 through2026-06, determined by frozen common113 months. Each window84 months ends before test. Inner expanding trains60/72, next12-month validation; pooled24 validation losses choose lambda; refit84 then score exactly one subsequent month. All history already retrospectively inspectable; exploratory pseudo-out-of-sample, not untouched confirmation.",
+  "lambda": {
+    "maximum": 10,
+    "minimum": 0.000001,
+    "positive_points": 36
+  },
+  "methods": [
+    "M0_ols",
+    "M1_zero",
+    "M2_auto",
+    "M3_fixed",
+    "M3_small2",
+    "M3_small3",
+    "M4_free_winner",
+    "M5_post_lasso"
+  ],
+  "targets": "Production fixed prior: legacy Credit-only .20 IG/.40 HY/.30 EM; zero for controls. Proxy fixed target: one unit on HYG for credit responses, one unit on IEF for treasury controls, one unit on SPY for equity controls. The latter is a class-proxy anchor, not a transported economic Credit-beta target. Small2/Small3: fold-local weighted OLS on Rates+Credit or Equity+Rates+Credit for credit funds; own Rates/Equity factor for controls, remaining targets zero. Different native factor units across lanes prohibit level comparisons.",
+  "weights": "Same audited global weighted-intercept L1 adapter as E2; spans uniform/36. Fold-local weighted standardisation; final-fit inputs only past84 months. This is not production rolling-mean preprocessing.",
+  "scores": "Conditional reconstruction of held-out ETF returns using contemporaneous realised factor returns. No tradable forecast or strategy claim. Normalise losses by each asset's first60-month response variance, frozen before evaluation. No empirical true-loading error.",
+  "scenarios": "Fixed +/- isolated factor shocks of one factor SD estimated on first60 months, plus equal-sign joint shock; compare consecutive fitted scenario responses (stability, not accuracy). Save raw betas and target distances. Use same response scale.",
+  "uncertainty": {
+    "method": "Politis-Romano stationary bootstrap on paired cohort-mean monthly loss differences; all assets/methods use same date indices",
+    "mean_block_lengths": [
+      3,
+      6,
+      12
+    ],
+    "replications": 5000,
+    "seed": 990001,
+    "interval": "percentile 2.5/97.5 for mean paired NMSE difference",
+    "caveat": "29 months, overlapping training windows, stationarity assumption and historical data revisions limit inference; intervals are exploratory and pointwise",
+    "reference": "https://doi.org/10.1080/01621459.1994.10476870"
+  },
+  "verification": "Check every train/validation/test cutoff and all28 transition dates; mutate all future data including current test and rerun selected earlier fits; truncate at cutoff and require same coefficients/choices. Independently check weighted small-regression targets and direct prediction. Compare two stationary-bootstrap index algorithms exactly, including forced circular wrap and a deliberate no-wrap defect. Missing rows/corrupt losses must fail.",
+  "provenance": "Use immutable public-price-derived response snapshot, production NAV snapshot and frozen universe. Production-factor composition/vintages lack public-rebuild certification. Proxy lane uses only public-price-derived ETF response columns with documented existing Yahoo/^IRX rebuild recipe; no fresh download or historical-vintage guarantee. No independent dated holdings/duration/spread reference is available.",
+  "scope": "No new package dependency, core change, optimiser/backtest or empirical recovered-truth claim. Preserve all prior runs. E5 must separate completion of these eligible snapshot lanes from unavailable independent exposure validation."
+}
