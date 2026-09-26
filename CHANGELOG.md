@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.21.0.dev0 — 2026-09-26
+
+- Add the public `map_expert_factor_priors` metadata helper and `ExpertPriorResolution` audit
+  result. It accepts factor-name collections rather than a consumer model object, with optional
+  caller-owned ticker overrides and policy version. No estimator default, solver or fitted
+  numerical path changes.
+
 ## 0.20.0 - 2026-09-25
 
 - Consolidate automatic highest-R-squared and named/joint OLS prior targets,
