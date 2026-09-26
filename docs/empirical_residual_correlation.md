@@ -92,8 +92,9 @@ The canonical script
 [`examples/docs/empirical_residual_correlation.py`](../examples/docs/empirical_residual_correlation.py)
 simulates monthly residuals from January 2016 to February 2026 for eight responses in two blocks
 of four, correlated at 0.5 within a block and not across, with 3% monthly volatility; one response
-stores its residuals in percent. The fit date is 28 February 2026, and the correlation is
-estimated on a quarterly grid:
+stores its residuals in percent. A Cholesky factor fixes the synthetic draw's covariance
+basis across platforms. The fit date is 28 February 2026, and the correlation is estimated
+on a quarterly grid:
 
 ```python
 def estimate(residuals: pd.DataFrame, metadata: pd.DataFrame) -> fl.ResidualCorrelationData:
@@ -105,8 +106,8 @@ def estimate(residuals: pd.DataFrame, metadata: pd.DataFrame) -> fl.ResidualCorr
 
 The monthly span of 36 becomes 12.0 quarters. The observation date is 31 December 2025, the last
 complete quarter, and the correlation is available from 28 February 2026; a request for 31
-January raises. The estimate uses 40 quarters, including the anchor. Its mean correlation is 0.41
-within block $a$, against 0.5 in the population, and $-0.05$ across the blocks; 39 centred
+January raises. The estimate uses 40 quarters, including the anchor. Its mean correlation is 0.49
+within block $a$, against 0.5 in the population, and $-0.29$ across the blocks; 39 centred
 quarters with a 12-quarter span leave that much sampling error. The script reproduces the matrix
 from quarterly sums and pandas EWMA means with explicit weights, and confirms that a single missing
 month fails the estimate.
@@ -116,8 +117,8 @@ The residual block, assembled with annual variances of $12 \times 0.03^2$:
 | Retention $\rho$ | Off-diagonal entries | Residual volatility of an equal-weight portfolio of block $a$ |
 |---|---|---|
 | 0 | Zero: the orthogonal block exactly | 5.20% |
-| 0.5 | Half the correlation | 6.61% |
-| 1 | The full correlation | 7.77% |
+| 0.5 | Half the correlation | 6.84% |
+| 1 | The full correlation | 8.15% |
 
 The diagonal is the stored variance, bit for bit, at every $\rho$, and every block is positive
 definite. The script checks each block against $S[(1 - \rho) I + \rho R]S$ computed by NumPy.
@@ -156,7 +157,7 @@ python examples/docs/empirical_residual_correlation.py
 - **The retention is a policy weight.** $\rho$ is chosen, not estimated. It shrinks the estimated
   correlation toward zero, and with it the concentration penalty a portfolio pays.
 - **Sampling error is large on coarse grids.** Few common periods and a short span make $R$
-  noisy, as the example's 0.41 against 0.5 shows; partial retention limits the damage.
+  noisy, as the example's across-block mean of $-0.29$ shows; partial retention limits the damage.
 - **Strict data rules.** Gaps, non-nested periods and fewer than two complete common periods fail
   rather than degrade silently; the caller decides which responses to exclude.
 

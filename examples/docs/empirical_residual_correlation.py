@@ -28,7 +28,10 @@ def make_residuals(seed: int = SEED) -> tuple[pd.DataFrame, pd.DataFrame]:
     rng = np.random.default_rng(seed)
     block = np.full((4, 4), WITHIN_BLOCK) + (1.0 - WITHIN_BLOCK) * np.eye(4)
     corr = np.kron(np.eye(2), block)
-    draws = rng.multivariate_normal(np.zeros(8), RESIDUAL_VOL**2 * corr, size=N_MONTHS)
+    # Cholesky fixes the basis when the equicorrelation blocks have repeated eigenvalues.
+    draws = rng.multivariate_normal(
+        np.zeros(8), RESIDUAL_VOL**2 * corr, size=N_MONTHS, method="cholesky",
+    )
     dates = pd.date_range("2016-01-31", periods=N_MONTHS, freq="ME")
     residuals = pd.DataFrame(draws, index=dates, columns=NAMES)
     metadata = pd.DataFrame({"frequency": "ME", "beta_span": float(BETA_SPAN),
@@ -134,8 +137,8 @@ def main() -> None:
 
     # quoted values
     assert round(prepared.span, 1) == 12.0
-    assert [round(within, 2), round(across, 2)] == [0.41, -0.05]
-    assert [round(100 * portfolio[rho], 2) for rho in RHOS] == [5.2, 6.61, 7.77]
+    assert [round(within, 2), round(across, 2)] == [0.49, -0.29]
+    assert [round(100 * portfolio[rho], 2) for rho in RHOS] == [5.2, 6.84, 8.15]
 
 
 if __name__ == "__main__":

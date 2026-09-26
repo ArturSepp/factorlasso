@@ -55,7 +55,7 @@ def cluster_table(clusters: pd.DataFrame) -> pd.DataFrame:
         counts = members["module"].value_counts()
         rows[cluster] = {"genes": len(members), "dominant": counts.index[0],
                          "purity": counts.iloc[0] / len(members)}
-    return pd.DataFrame(rows).T
+    return pd.DataFrame.from_dict(rows, orient="index")
 
 
 def main() -> None:

@@ -12,7 +12,7 @@
     "platform": "Windows-11-10.0.26200-SP0",
     "python": "3.12.7"
   },
-  "generated_at_utc": "2026-09-26T10:17:59+00:00",
+  "generated_at_utc": "2026-09-26T17:36:56+00:00",
   "kind": "factorlasso_documentation_analytics",
   "producers": {
     "clustering": {
@@ -346,8 +346,8 @@
           "sha256": "63f50398577bac5b9e4667add0c416fd3ba1a22850ffb8ffd50b03c9553caac2"
         },
         "residual_correlation_blocks.png": {
-          "bytes": 67242,
-          "sha256": "b4a3d0f955408b57dc97ecd951d0b57f198636e15fbcbdf200b074f21aaf4b25"
+          "bytes": 68592,
+          "sha256": "9e70b403bcca9d413df6a1dd111f6d3607f0ed2b374375cdd83906aca892ac55"
         },
         "residual_diagnostics_spectrum.png": {
           "bytes": 126420,
@@ -409,7 +409,7 @@
           ]
         },
         "residual_block_portfolio_vol": {
-          "sha256": "2c9c5b206d6a9f5bc0b5d3c52e4a5489009afd45de26615d15e0164db1328d06",
+          "sha256": "a17328370d0281430bf0e074f34e569c1b8f213e52f530805a7df51350ce8eed",
           "shape": [
             3,
             1
@@ -423,14 +423,14 @@
           ]
         },
         "residual_block_rho_0_5": {
-          "sha256": "567f5ffd6417aacab58c2726447263bf1b74d344a151edef595a3d83f11dc9e4",
+          "sha256": "3018eda883d61023f5c5a63fecb42cc7d81d3fd3522c45daad77e7ce650ee755",
           "shape": [
             8,
             8
           ]
         },
         "residual_block_rho_1_0": {
-          "sha256": "e275c565a4dfad36ded53115155966b7cad2234a33c754411cfe53acda49d51d",
+          "sha256": "3e48f762cc46150f8586ce5b3ae09f5dbad93cd240ce294b35e3e4c3270741b4",
           "shape": [
             8,
             8
@@ -982,33 +982,25 @@
     "font_family": "DejaVu Sans"
   },
   "review": {
-    "inspected_at_utc": "2026-09-26",
-    "inspected_by": "Claude (agent session), not the maintainer",
-    "note": "All twenty-two full-resolution previews were checked for labels, units, legends, clipping, overlap and contrast. Twenty-one are byte-identical to the previous bundle of the same day; cma_decomposition.png is new and was redrawn after review. Maintainer visual review remains outstanding.",
-    "status": "inspected_by_agent_owner_review_pending",
-    "views": {
-      "article_width_sphinx_furo_736px": false,
-      "full_resolution": true,
-      "live_github_page": false,
-      "vs_code_application": false
-    }
+    "note": "The revised residual-correlation preview was inspected at full resolution for labels, units, clipping and contrast; the other 21 previews are byte-identical to the prior bundle. Maintainer review remains outstanding.",
+    "status": "inspected_by_agent_owner_review_pending"
   },
   "schema_version": 1,
   "source": {
-    "commit": null,
-    "dirty": null,
+    "commit": "496e388a6acdbfe32443ffb35b65b1e60753f972",
+    "dirty": true,
     "files": {
-      "examples/docs/adaptive_penalty_weights.py": "b3bdf5698508389f255d39f8bd4212cbfd6247fcc9f144a0bfa8696d61e6b075",
+      "examples/docs/adaptive_penalty_weights.py": "f14fcff908cea8fb44ab6f581fc4bb289e8a2e8ebdf010b5afcf4fc2758020aa",
       "examples/docs/app_portfolio_risk_models.py": "dbd89fb30ffef5005b90c4f3dea61ab5e22f7afe7a69f631984bab069752ed82",
       "examples/docs/cluster_discovery.py": "e84c68f877396f85f43d58656047cd8dc979decb26125335196f9d602eaf77a8",
       "examples/docs/cluster_lineage.py": "80d3ab0a3042378d59ee8b1bba829947bc585e2b26dbb48215b26669a9f5f4c3",
-      "examples/docs/cluster_stability_and_pooled_scoring.py": "9628eb154c582cb5b78eaa4017c8bd88493fba5b380d385914d1869696b4ec88",
+      "examples/docs/cluster_stability_and_pooled_scoring.py": "0be43aff55496a19ac95f278e211713001b7a403fdcf5330facf830f15a6314b",
       "examples/docs/common_mode_removal.py": "554a393f4c2c31b2135df6abdd462a0a5d85f34fbd859402864bacc629dff2eb",
-      "examples/docs/cooperative_lasso.py": "b212f3fcaf0079ceab196a3454b253dd4b9a9864a78287fd58c37d65c91e37cf",
-      "examples/docs/empirical_residual_correlation.py": "b048e5e90c03938bf862e7da6613700869381747f86fa7a3e66afbe24c45bca6",
-      "examples/docs/ewma_weighting_and_ragged_histories.py": "6d66b2e5b3e16c43a26fbf49c0dc46349c46bc76d797b82d77f1e402c13cb1c6",
+      "examples/docs/cooperative_lasso.py": "ce9303e3979db35a7761f1fb6f20c316682fb07489277d53b31960878090b4d0",
+      "examples/docs/empirical_residual_correlation.py": "a07f9e1468b8a75243be933ae59dbfd51d72424851fd05ca97928f9acbd8694e",
+      "examples/docs/ewma_weighting_and_ragged_histories.py": "f209bdff980a730683171c7924fc295dd7ac94182e4097fe7c5f97ad04be3819",
       "examples/docs/factor_covariance_assembly.py": "fa98b22064b5156b16c1837b03f32a46086a208e3a8d4f2975194c52a0007196",
-      "examples/docs/gated_cluster_pooled_signs.py": "c83d0ab2d65b07a14df6a2a0083adf15162630c8657a84f62af88cbe5b2901a6",
+      "examples/docs/gated_cluster_pooled_signs.py": "b31b122aa13f1858253474d38ef28c5918713c6add047709b2dc396f557192ca",
       "examples/docs/group_penalties_hcgl_fcgl.py": "f8761cf3647ce85dd52060d9b208c4f0ad6a819079647b17c0f0316681846d2b",
       "examples/docs/penalty_selection.py": "33120ec619045364f14cffd2bc191a3b33d997c34df009f9ab480cbe19c3fe35",
       "examples/docs/prior_targets.py": "6845b9729dc2e0a4d0d934092bab9bbff2e4051f50ff31417f4a152f23c43cde",
@@ -1021,12 +1013,12 @@
       "examples/docs/unilasso.py": "c53c88993b09fd832197ac7b296d44eeebe7b2b3a930c1bb6dfcba282545f4e6",
       "tools/docs_analytics/clustering.py": "3ad02ec5502baffb365d5a2adff10350ec4ecbf62cde1d41a9a4807d7ce94085",
       "tools/docs_analytics/covariance_residuals.py": "eed66d66b2e2438652db4a27ff20f23e9ce2717dcbce01316b8f0ff6e1202942",
-      "tools/docs_analytics/estimation.py": "d119a6fb72df798b4ba2ba079fdb075e60a1620d39273dd891be0139e4267c88",
+      "tools/docs_analytics/estimation.py": "63ab02020ef53a261552bde00b66d792b9ca438e0e53dd230a6cc3b550fee9ee",
       "tools/docs_analytics/fixtures.py": "27e5c4562ba9217066597d44f2826d4b09c7c0f60e9b42d05279a9f4e477a16f",
       "tools/docs_analytics/lineage.py": "ca06b8f63e724fdd92696db6d59e32d44501b857556f7e67d6e20078ded80776",
-      "tools/docs_analytics/registry.json": "d73246b871001037e73d5ac1f5172a81d22d4885d28fa22cd440aed08339f07f",
+      "tools/docs_analytics/registry.json": "5ee83936a5c7d84e4792c237ba93e44c9c578144868416d27b6ea0c83c9b2d56",
       "tools/docs_analytics/run.py": "b409304109f55de5629213fb4bb3c76bc87367fee1b1338c5d9bc7f950eb5b97"
     },
-    "package_source_sha256": "6a63dfd757a9c147872d03328889c80cd924e92a9e03a1dd088ad67a03ceb485"
+    "package_source_sha256": "1900fa6b94c22b7ad8ecec4fb6bac2178228979d19bf83f54a1c30c39e082ff5"
   }
 }

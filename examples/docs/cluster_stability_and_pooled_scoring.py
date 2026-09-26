@@ -117,7 +117,7 @@ def main() -> None:
     mean_w = stats.w_i.mean()
     print(mean_w.round(2).to_dict())
     print(boundary[["mean_w_reassigned", "mean_w_stable", "reassignment_rate_bottom_w_quartile",
-                    "reassignment_rate_top_w_quartile"]].round(2).to_dict())
+                    "reassignment_rate_top_w_quartile"]].astype(float).round(2).to_dict())
     switches = (membership != membership.shift()).iloc[1:].sum()
     moved = switches[NAMES[:12]]
     assert moved.sum() == 2 and moved["c3"] == 2             # c3 strays for two months only
