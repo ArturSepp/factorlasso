@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "project": "factorlasso",
+  "description": "Explicit ownership of reader-facing pages and of every name in factorlasso.__all__. Read by tools/check_docs.py. 'retained' marks README and legacy RST pages kept in their native format; 'planned' lists methodology articles that are not written yet. An optional 'example' names the canonical script of a page: every Python block of the page must be a verbatim excerpt of it unless marked as a fragment. Move an article from 'planned' to 'pages' when its file is created, and mark it 'adopted' only after the verification in docs/documentation_standard.md.",
+  "pages": {
+    "README.md": {"form": "utility", "status": "retained"},
+    "docs/index.rst": {"form": "utility", "status": "retained"},
+    "docs/getting-started.rst": {"form": "utility", "status": "retained"},
+    "docs/task-guides.rst": {"form": "utility", "status": "retained"},
+    "docs/interoperability.rst": {"form": "utility", "status": "retained"},
+    "docs/comparison.rst": {"form": "utility", "status": "retained"},
+    "docs/scientific-replication.rst": {"form": "utility", "status": "retained"},
+    "docs/api.rst": {"form": "api", "status": "api"},
+    "docs/documentation_standard.md": {"form": "utility", "status": "adopted"},
+    "docs/quickstart.md": {"form": "utility", "status": "pending", "example": "examples/docs/quickstart.py"},
+    "docs/analytics_gallery.md": {"form": "utility", "status": "pending"},
+    "docs/sparse_factor_model.md": {"form": "methodology", "status": "pending", "example": "examples/docs/sparse_factor_model.py"},
+    "docs/sign_constraints_and_priors.md": {"form": "methodology", "status": "pending", "example": "examples/docs/sign_constraints_and_priors.py"},
+    "docs/group_penalties_hcgl_fcgl.md": {"form": "methodology", "status": "pending", "example": "examples/docs/group_penalties_hcgl_fcgl.py"},
+    "docs/factor_covariance_assembly.md": {"form": "methodology", "status": "pending", "example": "examples/docs/factor_covariance_assembly.py"},
+    "docs/residual_diagnostics.md": {"form": "methodology", "status": "pending", "example": "examples/docs/residual_diagnostics.py"}
+  },
+  "planned": {
+    "docs/ewma_weighting_and_ragged_histories.md": {"id": "M02", "title": "EWMA weighting and ragged histories"},
+    "docs/gated_cluster_pooled_signs.md": {"id": "M04", "title": "Gated cluster-pooled sign derivation"},
+    "docs/adaptive_penalty_weights.md": {"id": "M05", "title": "Adaptive penalty weights"},
+    "docs/cooperative_lasso.md": {"id": "M07", "title": "Cooperative LASSO"},
+    "docs/unilasso.md": {"id": "M08", "title": "UniLasso"},
+    "docs/penalty_selection.md": {"id": "M09", "title": "Regularisation path and penalty selection"},
+    "docs/cluster_discovery.md": {"id": "M10", "title": "Cluster discovery: dependence, distance, linkage and cut"},
+    "docs/common_mode_removal.md": {"id": "M11", "title": "Dominant common-mode removal"},
+    "docs/rolling_cluster_smoothing.md": {"id": "M12", "title": "Causal smoothing of rolling clusters"},
+    "docs/cluster_stability_and_pooled_scoring.md": {"id": "M13", "title": "Cluster stability statistics and stability-pooled scoring"},
+    "docs/cluster_lineage.md": {"id": "M14", "title": "Offline cluster lineage"},
+    "docs/residual_alpha_nowcasting.md": {"id": "M17", "title": "Residual-alpha nowcasting"},
+    "docs/empirical_residual_correlation.md": {"id": "M18", "title": "Empirical residual correlation"}
+  },
+  "symbols": {
+    "docs/sparse_factor_model.md": [
+      "LassoModel", "LassoModelType", "LassoEstimationResult", "solve_lasso_cvx_problem", "get_x_y_np"
+    ],
+    "docs/ewma_weighting_and_ragged_histories.md": [
+      "compute_ewm", "compute_ewm_covar", "compute_expanding_power"
+    ],
+    "docs/gated_cluster_pooled_signs.md": [
+      "derive_sign_constraints", "validate_cluster_signs"
+    ],
+    "docs/group_penalties_hcgl_fcgl.md": [
+      "solve_group_lasso_cvx_problem", "set_group_loadings"
+    ],
+    "docs/cooperative_lasso.md": [
+      "solve_cooperative_group_lasso_cvx_problem"
+    ],
+    "docs/unilasso.md": [
+      "solve_unilasso_cvx_problem"
+    ],
+    "docs/penalty_selection.md": [
+      "LassoModelCV", "LassoModelDiagonalityCV", "solve_group_lasso_path"
+    ],
+    "docs/cluster_discovery.md": [
+      "compute_clusters_from_corr_matrix", "DistanceTransform", "DependenceMeasure",
+      "compute_dependence_matrix", "compute_gerber_matrix"
+    ],
+    "docs/common_mode_removal.md": [
+      "ClusterCorrelationTransform", "ClusterCorrelationTransformResult",
+      "apply_cluster_correlation_transform", "remove_first_principal_component"
+    ],
+    "docs/rolling_cluster_smoothing.md": [
+      "ClusterSmootherType", "RollingClusterData", "compute_rolling_smoothed_clusters",
+      "smooth_similarity_ewma", "apply_partition_distance_bonus"
+    ],
+    "docs/cluster_stability_and_pooled_scoring.md": [
+      "compute_co_association_panel", "ClusterStabilityStatistics",
+      "compute_cluster_stability_statistics", "StabilityPoolingType",
+      "score_with_stability_pooled_clusters"
+    ],
+    "docs/cluster_lineage.md": [
+      "RiskClusterReport", "TaxonomyConfig", "analyze_cluster_lineage", "run_cluster_lineage_report"
+    ],
+    "docs/factor_covariance_assembly.md": [
+      "CurrentFactorCovarData", "RollingFactorCovarData", "VarianceColumns", "ResidualType",
+      "get_linkage_array", "get_clusters_by_freq", "get_linkages_by_freq", "get_cutoffs_by_freq"
+    ],
+    "docs/residual_diagnostics.md": [
+      "ResidualDiagnostics", "Sparsity", "diagnose_residuals", "effective_sparsity",
+      "marchenko_pastur_edge", "missing_factor_components", "null_threshold",
+      "raw_offdiagonal_mass", "residual_correlation", "suggest_tolerance",
+      "partition_variance_share"
+    ],
+    "docs/residual_alpha_nowcasting.md": [
+      "LassoNowcastResult"
+    ],
+    "docs/empirical_residual_correlation.md": [
+      "ResidualCorrelationData", "estimate_residual_correlation"
+    ]
+  }
+}

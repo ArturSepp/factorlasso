@@ -14,7 +14,7 @@
 \usepackage[authoryear,longnamesfirst]{natbib}
 \usepackage{amssymb}
 \usepackage{bm}
-\usepackage{booktabs}
+\usepackage{booktabs,placeins}
 
 %% theorem tooling (CAS provides \newtheorem/\newdefinition/\newproof)
 \newtheorem{theorem}{Theorem}
@@ -53,28 +53,28 @@
 \cortext[1]{Corresponding author}
 
 \begin{abstract}
-	In sparse multi-output regression, a predictor's marginal sign for a response is informative, but unstable when estimated one response at a time.
-	Existing univariate sign guidance acts on a single response and imposes
-	the marginal sign without testing whether the signal exceeds the noise. We pool
-	the univariate slope across a data-driven cluster of responses, impose the
-	pooled sign as a constraint, and abstain from the constraint through a
-	closed-form noise-floor gate. With known clusters, pooling recovers 99\% of coefficient signs against 68\%
-	per-response in simulation. With discovered clusters the gain is smaller and
-	grows with cluster recoverability. On yeast eQTL data the discovered clusters
-	agree on the marginal sign in 93\% of significant cells. We prove that the gated
-	pooled signs are sign-consistent on the true support under a within-cluster
-	sign-coherence condition. We leave the oracle limiting distribution as a
-	conjecture. Pooling over a size-$m$ cluster raises the gate's effective sample
-	toward $mT$, sharpening the sign-recovery rate by up to a factor $\sqrt{m}$. The
-	gate abstains rather than assert an unsupported sign, so the recovered structure
-	is safe to use in models where a wrong sign reverses the decision.
+In sparse multi-output regression, a predictor's marginal sign can be unstable
+when estimated one response at a time. We pool marginal slopes across response
+clusters and screen weak evidence before imposing coefficient restrictions.
+The revised procedure preserves missing-history masks, offers optional recency
+weighting and accounts for contemporaneous response dependence through date-level
+scores. Identical response copies cannot inflate its screening statistic.
+Archived independent-gate simulations and the yeast eQTL application illustrate
+pooling and cluster recoverability; a separately identified validation adds 6,000
+paired designs with overlap, missingness, heteroskedasticity and changing signs.
+An independent-residual model supports sign-consistency and square-root cluster-size
+gains under the stated assumptions. Those rates do not transfer automatically to
+dependent responses or fixed-span weighting. Financial validation shows improved
+conditional return reconstruction after the sign repair, with limits exposed by
+target-only and zero-penalty controls. The gate is a screening rule, not a calibrated
+significance test or a guarantee of correct conditional signs.
 \end{abstract}
 
 \begin{highlights}
 	\item Pool univariate signs across data-driven response clusters in sparse regression
 	\item A closed-form noise-floor gate abstains when the pooled marginal signal is weak
 	\item Sign consistency proved under a within-cluster sign-coherence condition
-	\item Pooling a size-$m$ cluster sharpens the sign-recovery rate by up to $\sqrt{m}$
+	\item Date-score uncertainty prevents duplicate responses from inflating the gate
 	\item Sign-recovery gain over per-response derivation grows with cluster recoverability
 \end{highlights}
 
@@ -124,7 +124,7 @@ regression. An elementary residual-sum-of-squares identity reduces the gate to a
 single matrix product. We prove that the gated pooled signs are sign-consistent
 on the true support in the sense of \citet{Zhao+Yu:2006}, under a within-cluster
 sign-coherence condition. We leave the oracle limiting distribution as a
-conjecture. We show that pooling over a cluster of size $m$ raises the gate's
+conjecture. For independent within-cluster residuals in the unweighted model, pooling over a cluster of size $m$ raises the gate's
 effective sample toward $mT$, sharpening the sign-recovery rate by up to a factor
 $\sqrt{m}$. The within-cluster residual correlation sets how much of the gain is
 realized. In simulation, pooling over known clusters recovers 99\% of coefficient
@@ -239,7 +239,7 @@ unconstrained fit produces when it minimizes in-sample residual variance.
 
 \subsection{The noise-floor gate} \label{sec:gate}
 
-We filter signs driven by sampling noise with a closed-form test. We compute the
+For the archived independent-response screen, we compute the
 univariate $t$~statistic from a residual sum-of-squares identity that avoids
 forming the per-cell residuals,
 %
@@ -273,6 +273,62 @@ signs and keeps moderate-evidence signals. The gate operates at cluster
 granularity. When $|t_{j, \mathcal{C}}| < \tau$ it sets $s_{kj} = 0$ for every
 member $k \in \mathcal{C}$, which forces $\beta_{kj} = 0$ for the whole cluster on
 predictor $j$ and preserves within-cluster sign coherence as a strict invariant.
+
+
+\subsection{Missing histories, recency and response dependence}\label{sec:weighted-gate}
+
+The revised default separates the pooled slope from its uncertainty. A validity
+indicator $v_{tkj}$ is one only when response $k$ and predictor $j$ are both
+observed. Missing pre-inception returns must not be passed as observed zeros.
+For weights $w_t$, define
+\begin{equation}
+D_j=\sum_{t,k\in\mathcal C}w_tv_{tkj}x_{tj}^{2},\qquad
+\widehat b_j=D_j^{-1}\sum_{t,k\in\mathcal C}w_tv_{tkj}x_{tj}y_{tk}.
+\end{equation}
+Equal weights remain the default of the optional \texttt{ewma\_span=None}
+analytics. A finite span $s\geq1$ uses $w_t=(1-2/(s+1))^{T-t}$ on the original
+row grid before masking. Gaps do not compress time. Inputs retain their caller's
+centering convention; the sign routine introduces no extra intercept.
+
+For overlapping response histories, use the date score
+\begin{equation}
+u_{tj}=w_tx_{tj}\sum_{k\in\mathcal C}v_{tkj}(y_{tk}-\widehat b_jx_{tj}),\qquad
+\widehat V_j=\frac{n_{\mathrm{eff},j}}{n_{\mathrm{eff},j}-1}
+\frac{\sum_tu_{tj}^{2}}{D_j^{2}}.\label{eq:date-score}
+\end{equation}
+Here $n_{\mathrm{eff},j}=(\sum_tw_ta_{tj})^2/\sum_tw_t^2a_{tj}$, where
+$a_{tj}$ marks a date with the predictor and at least one response observed.
+This effective count is over dates, not response cells. The score-sandwich
+construction retains contemporaneous residual covariance \citep{CameronMiller2015};
+using the effective-date multiplier is our finite-sample screening convention.
+We apply Equation~\eqref{eq:gate} with $t_j=\widehat b_j/\sqrt{\widehat V_j}$.
+Fewer than two effective dates cannot pass a positive gate. This statistic is
+not asserted to have an exact Student distribution or multiplicity-adjusted
+error control. Independent dates are assumed; serial dependence would require
+an additional HAC or block treatment.
+
+Repeating every response $c$ times multiplies $D_j$ and $u_{tj}$ by $c$, so it
+leaves both the slope and Equation~\eqref{eq:date-score} unchanged. In contrast,
+the archived independent-cell standard error treats copies as added information.
+Duplicating only one member of a heterogeneous cluster may change its weighting
+and hence the pooled estimand; no invariance is claimed in that case.
+
+The familiar design effect $1+(m-1)\rho_e$ and effective member count
+$m/[1+(m-1)\rho_e]$ describe the balanced equal-variance special case, with
+$\rho_e$ a residual correlation. Unequal histories and recency weights require
+the masked scores rather than a return-correlation adjustment. The consistency
+arguments in Section~\ref{sec:theory} concern their stated unweighted model.
+They are not an extension to fixed-span EWMA: its effective temporal sample size
+stays bounded as more history is stored. Marginal-versus-conditional sign
+disagreement also remains possible after the variance repair.
+
+The estimator restores both factor and response masks before sign analytics.
+Its optional fit-horizon routing uses each native observation frequency. The
+same slopes determine signs and adaptive penalty magnitudes. Explicit hard
+constraints remain authoritative; finite nonzero prior targets can override
+automatic signs only on otherwise unrestricted coordinates. Diagnostics retain
+the raw detector evidence separately from the final solver signs. The public
+solver default remains CLARABEL; the revised financial fits use MOSEK.
 
 \subsection{Cluster discovery} \label{sec:hcgl}
 
@@ -405,6 +461,11 @@ every sign would require a diverging threshold. The formal conditions, the
 oracle-distribution conjecture, and the proof are in Appendix~\ref{app:theory}.
 \section{Simulation study} \label{sec:simulation}
 
+The original experiments in this section retain their archived independent gate
+for an identifiable comparison. Section~\ref{sec:revised-validation} reports the
+new date-score gate separately; old results are not relabelled as revised results.
+
+
 We use simulation to locate where cluster-pooled sign derivation recovers
 coefficient signs better than a per-response derivation, and to show how the
 gate controls false signs. The mechanism is direct. Pooling the univariate
@@ -497,7 +558,7 @@ estimated-cluster pooling and the per-response derivation measures how clearly
 the data reveal the clusters. The gap is near zero when the clusters are
 invisible and widens as they emerge.
 
-\begin{figure}[t]
+\begin{figure}[pos=htbp]
 	\centering
 	\includegraphics[width=0.72\linewidth]{figures/figS1_recoverability.pdf}
 	\caption{Sign-pooling's gain over per-response derivation tracks cluster
@@ -540,7 +601,7 @@ we read as the useful operating range for a final sign report. The package
 default of $0.75$ is permissive by design, since it suits a screening step that
 removes the worst noise-driven constraints before regularization.
 
-\begin{figure}[t]
+\begin{figure}[pos=htbp]
 	\centering
 	\includegraphics[width=0.72\linewidth]{figures/figS2_gate_roc.pdf}
 	\caption{The gate trades sensitivity for false-sign control along a smooth
@@ -562,10 +623,10 @@ $0.45$, known-cluster pooling recovers $0.988$ against $0.683$ for the per-respo
 derivation, so the recovery advantage does not come from the higher false-sign
 rate. The correction leaves the flip rate
 unchanged, because the marginal-versus-partial disagreement of
-Section~\ref{sec:sim-correlated} is a bias rather than a variance. We keep the
-uncorrected gate as the default screen before regularization, and recommend the
-design-effect-corrected gate when the signs are reported as a final, calibrated
-result.
+Section~\ref{sec:sim-correlated} is a bias rather than a variance. This is an
+archived balanced-panel correction experiment. The revised default is the masked
+date-score screen in Section~\ref{sec:weighted-gate}; neither screen is claimed
+to deliver calibrated significance inference.
 
 The design effect also bounds the realized pooling gain. The base design draws
 independent within-cluster residuals, for which $\bar{\rho} \approx 0$. We
@@ -615,7 +676,7 @@ derivation needs $T = 640$ to reach $0.979$. Pooling attains consistency at
 roughly a quarter of the sample size. Appendix~\ref{app:theory} states the rate
 that this curve illustrates.
 
-\begin{figure}[t]
+\begin{figure}[pos=htbp]
 	\centering
 	\includegraphics[width=0.72\linewidth]{figures/figS4_consistency.pdf}
 	\caption{Pooling reaches sign consistency at far smaller samples. Sign recovery
@@ -639,7 +700,7 @@ blocks. The per-response matrix is fragmented, with isolated cells and
 within-cluster sign alternations on the active predictors. Pooling removes the
 alternations by sharing one decision across each cluster.
 
-\begin{figure}[t]
+\begin{figure}[pos=htbp]
 	\centering
 	\includegraphics[width=\linewidth]{figures/figS3_sign_matrices.pdf}
 	\caption{Pooling suppresses spurious within-cluster sign alternations.
@@ -718,7 +779,7 @@ The eQTL application of Section~\ref{sec:eqtl} sits below the adversarial regime
 The screened markers retain some linkage correlation. We collapse tight-linkage
 runs to reduce it, so the design correlation is modest rather than extreme.
 
-\begin{figure}[t]
+\begin{figure}[pos=htbp]
 	\centering
 	\includegraphics[width=\linewidth]{figures/figS5_correlated.pdf}
 	\caption{Cluster-pooled sign derivation degrades under correlated predictors.
@@ -741,7 +802,92 @@ pooling, governs the false-sign rate, so a user tunes the two concerns
 separately. A user with a known grouping gains the most, and a user relying on
 discovered clusters gains in proportion to how clearly the data reveal them.
 
+
+\subsection{Validation of the revised gate}\label{sec:revised-validation}
+
+We add 6,000 paired synthetic designs: six cases, equal weighting and EWMA span
+60, with 500 replications each. Each design has 240 dates, eight responses, one
+active predictor and one null predictor. Residual correlation is zero in the
+independent case, 0.8 in the overlapping case and one for exact copies. Other
+cases introduce unequal inception dates and predictor gaps, heteroskedastic
+noise, or a loading that changes from positive to negative. For that last case,
+the recovery target is the positive full-history average for equal weighting
+and the negative recent loading for span 60. Data and seeds are paired across
+gates. No fitted financial coefficient is used as simulation truth.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Revised gate validation at threshold one. False sign means any admission
+on the null predictor; recovery means admission with the correct active sign.
+Percentages over 500 paired replications per row. Equal denotes equal weighting;
+60 is the EWMA span.}\label{tab:revised-gate}
+\begin{tabular}{llrrrr}\toprule
+ & & \multicolumn{2}{c}{Independent gate} & \multicolumn{2}{c}{Date-score gate}\\
+Design & Span & False & Recovery & False & Recovery\\\midrule
+Independent residuals & Equal & 33.4 & 100.0 & 30.6 & 100.0 \\
+Independent residuals & 60 & 34.4 & 98.6 & 33.0 & 98.8 \\
+Correlated residuals & Equal & 71.8 & 98.4 & 35.6 & 94.8 \\
+Correlated residuals & 60 & 75.6 & 82.4 & 36.8 & 64.6 \\
+Duplicate responses & Equal & 73.6 & 97.0 & 35.0 & 90.2 \\
+Duplicate responses & 60 & 77.4 & 80.8 & 36.4 & 61.2 \\
+Unequal histories & Equal & 65.6 & 96.2 & 31.6 & 91.2 \\
+Unequal histories & 60 & 72.8 & 82.2 & 35.4 & 63.6 \\
+Heteroskedastic residuals & Equal & 70.6 & 70.2 & 35.6 & 42.0 \\
+Heteroskedastic residuals & 60 & 73.0 & 56.6 & 39.2 & 37.4 \\
+Changing sign & Equal & 69.8 & 89.8 & 36.0 & 69.6 \\
+Changing sign & 60 & 70.6 & 96.0 & 34.2 & 89.4 \\
+\bottomrule\end{tabular}
+\end{table}
+
+The dependence correction reduces null admission under overlap and exact
+duplication. At threshold one it remains a deliberately loose screen; a lower
+false-sign rate alone is not sufficient evidence of a better operating point.
+Table~\ref{tab:revised-matched} therefore uses disjoint calibration and
+evaluation draws to compare approximately matched null-admission rates. The
+comparison retains heteroskedastic and changing-sign cases rather than selecting
+only favourable cells.
+\begin{table}[htbp]\centering\small
+\caption{Separate threshold calibration and evaluation, EWMA span 60. The first
+250 draws calibrate each threshold to 20\% null admission; the other 250 assess
+false-sign and active-recovery percentages. This compares operating points,
+not a claim of exact error control.}\label{tab:revised-matched}
+\begin{tabular}{lrrrr}\toprule
+ & \multicolumn{2}{c}{Independent gate} & \multicolumn{2}{c}{Date-score gate}\\
+Design & False & Recovery & False & Recovery\\\midrule
+Independent residuals & 26.0 & 98.8 & 20.0 & 98.0 \\
+Correlated residuals & 19.6 & 52.4 & 19.6 & 52.4 \\
+Duplicate responses & 19.6 & 46.8 & 19.6 & 46.8 \\
+Unequal histories & 20.8 & 53.6 & 19.6 & 52.0 \\
+Heteroskedastic residuals & 19.2 & 22.8 & 19.2 & 25.2 \\
+Changing sign & 20.0 & 77.2 & 19.6 & 77.2 \\
+\bottomrule\end{tabular}\end{table}
+
+\begin{figure}[pos=htbp]\centering
+\includegraphics[width=0.98\linewidth]{figures/revised_gate_roc.pdf}
+\caption{Revised gate trade-offs at EWMA span 60. Each panel uses 500 paired
+replications and thresholds 0.5, 0.75, 1, 1.5, 2 and 3. Smaller null admission
+can trade off against active recovery; neither axis alone establishes superiority.}
+\label{fig:revised-gate}
+\end{figure}
+
+Deterministic checks separately verify exact-copy invariance at one, two and ten
+copies, original-grid weighting through missing periods, scalar-versus-bulk
+agreement, and restoration of the actual estimator's observation masks. Financial
+validation refits thirty fixed-income indices and twelve funds over 28 quarterly
+hold-outs using matched monthly factors and returns. With the Rates-conditioned
+prior and span 60, monthly RMSE changes from 1.357\% to 1.330\% for indices and
+from 1.499\% to 1.470\% for funds. These are conditional return-reconstruction
+scores on a fixed-vintage sample, not expected-return forecast accuracy.
+Mask repair alone changes adaptive penalties even when no signs change. A
+sign-constrained zero-penalty control is slightly better for funds, which limits
+any claim that the specified penalty itself explains every gain.
+
 \section{Application to yeast eQTL data} \label{sec:eqtl}
+
+This application is retained as the archived equal-weight, independent-gate
+reference. Strains have no temporal ordering, so EWMA is not applied. The new
+date-score gate is not claimed to have produced these archived eQTL fits.
+
 
 We apply the method to a yeast expression quantitative trait locus (eQTL) data
 set, where the responses are gene expression levels and the predictors are
@@ -809,7 +955,7 @@ colors each gene by its sub-pathway.
 	\input{tableE1_clusters}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[pos=htbp]
 	\centering
 	\includegraphics[width=0.78\linewidth]{figures/figE1_clusters.pdf}
 	\caption{Recovered clusters are coherent co-expression groups that partially
@@ -829,7 +975,7 @@ horizontal blocks within each cluster, the structure that the agreement
 statistic measures. The gate leaves many cells at zero, where the pooled
 evidence falls below $\tau$.
 
-\begin{figure}[t]
+\begin{figure}[pos=htbp]
 	\centering
 	\includegraphics[width=\linewidth]{figures/figE2_signs.pdf}
 	\caption{Cluster-pooled signs are coherent within recovered gene clusters.
@@ -847,7 +993,7 @@ $12$, $3$, and $5$ each load more than $30$. The peaks recover the trans-acting
 eQTL hotspots that regulate many genes at once, a documented feature of this
 cross \citep{Brem+Kruglyak:2005}.
 
-\begin{figure}[t]
+\begin{figure}[pos=htbp]
 	\centering
 	\includegraphics[width=\linewidth]{figures/figE3_hotspots.pdf}
 	\caption{A few loci regulate many genes, the eQTL hotspots. Number of genes
@@ -1203,6 +1349,15 @@ even when the adjusted Rand index against a reference grouping is moderate.
 %% =====================================================================
 \section{Computation and reproducibility} \label{app:computation}
 
+The 25 September 2026 revision uses FactorLasso 0.20.0.dev5. Its new gate
+experiments are reproduced by \texttt{weighted\_gate\_validation.py}; the
+financial replay is \texttt{sign\_revision.py} in the FI note\textquotesingle s replication directory.
+The previously archived 0.7.2 bundle remains unchanged. Working replication
+scripts request the independent gate explicitly for archived experiments, while
+the new validation selects the date-score gate. Numerical loss normalization and
+the archived penalty calibration have not been silently changed.
+
+
 The method is implemented in the open-source Python package \texttt{factorlasso}
 \citep{factorlasso}, which expresses the sign-constrained sparse group LASSO of
 Equation~\eqref{eq:sgl-sign} as a convex cone program. The simulation study of
@@ -1219,8 +1374,9 @@ archived with a permanent identifier at
 \url{https://doi.org/10.5281/zenodo.21000294}, and developed at
 \url{https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026}.
 A pinned \texttt{requirements.txt} fixes every dependency,
-including \texttt{factorlasso} version 0.7.2, so the reported
-tables and figures regenerate from the fixed seed under the recorded environment.
+including \texttt{factorlasso} version 0.7.2, for the archived experiments.
+The new revision requires version 0.20.0.dev5 and is supplied with this
+working draft; it has not yet been added to that permanent archive.
 
 %% =====================================================================
 %% Back matter -- these sit BEFORE the reference list (CSDA guide, Article structure).
@@ -1235,14 +1391,16 @@ public, commercial, or not-for-profit sectors.
 
 \section*{Data availability}
 The yeast eQTL data are publicly available \citep{Brem+Kruglyak:2005}. The
-simulated data and the code that regenerates every table and figure are openly
-available in the reproduction bundle at
+original simulated data and replication code are openly
+available in the archived reproduction bundle at
 \url{https://doi.org/10.5281/zenodo.21000294}, described in
-Appendix~\ref{app:computation}.
+Appendix~\ref{app:computation}. The new sign-gate simulations and the
+updated manuscript source accompany this draft. The financial replay uses
+licensed return histories, which are not redistributed.
 
 %% AI-use disclosure -- Elsevier requires this given AI-assisted drafting.
 \section*{Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}
-During the preparation of this work the authors used Anthropic's Claude Opus 4.8.
+During the preparation of this work the authors used Anthropic's Claude Opus 4.8. The September revision also used OpenAI Codex for implementation, numerical checks and drafting support.
 The model was used to assist with the design and development of the analysis
 code (including the design of the implementation, drafting code, and reviewing and
 debugging it) and, additionally, to draft and edit prose. After using this tool the
@@ -1255,6 +1413,7 @@ The authors thank colleagues at LGT Bank for feedback on the methodology
 and its application to portfolio optimization and multi-asset capital market assumption estimation.
 
 %% =====================================================================
+\FloatBarrier
 \bibliographystyle{cas-model2-names}
 \bibliography{refs}
 

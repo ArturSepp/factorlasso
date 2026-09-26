@@ -88,7 +88,8 @@ def test_full_data_reproduces_nominal_T_formula():
     Y = X @ beta.T + 0.3 * rng.standard_normal((T, N))
 
     tau = 0.75
-    signs = _compute_sign_matrix_per_response(X, Y, auto_sign_threshold_t=tau)
+    signs = _compute_sign_matrix_per_response(
+        X, Y, auto_sign_threshold_t=tau, variance_estimator="independent")
 
     # Reference: old nominal-T behaviour (df = T-1, denom = x'x).
     xx = (X * X).sum(axis=0)

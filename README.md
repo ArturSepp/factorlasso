@@ -100,9 +100,9 @@ Y = pd.DataFrame(
 
 model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-5).fit(x=X, y=Y)
 
-print(model.coef_.shape)       # (N, M) estimated β
-print(model.intercept_.shape)  # (N,) estimated α
-print(model.predict(X).shape)  # fitted response panel
+print(model.coef_.shape)         # (N, M) estimated β
+print(model.alpha_const_.shape)  # (N,) estimated α, the regression intercept
+print(model.predict(X).shape)    # fitted response panel
 ```
 
 ```text
@@ -449,12 +449,82 @@ model = LassoModel(
 ).fit(x=X, y=Y)
 ```
 
+For an empirical prior, set `apply_ols_prior=True` (default `False`):
+
+```python
+model = LassoModel(
+    span=36, apply_ols_prior=True, prior_selection_type="highest_r2",
+).fit(x=X, y=Y)
+model.ols_betas_             # one-factor OLS slopes, response by factor
+model.ols_r2_                # centred weighted R-squared
+model.ols_beta_prior_        # selected centres before constraints and overrides
+model.effective_beta_prior_  # centres actually supplied to the solver
+```
+
+Each response is regressed separately on each factor with an intercept.
+`factor_for_prior={"IG index": "IG factor"}` optionally chooses the factor
+for a response while estimating its prior magnitude from that factor's weighted
+OLS slope. A list or tuple, such as `{"IL index": ["Rates", "Inflation"]}`,
+uses both slopes from one joint weighted regression with an intercept.
+Complete finite rows retain their original time-grid weights. Rank-deficient
+joint regressions give neutral zero centres. Unmapped responses (or missing
+map values) retain automatic selection.
+The selected row has zero centres on other factors; finite explicit priors
+and sign filtering still apply afterward. An unestimable selected slope gives
+a zero row. The map requires `apply_ols_prior=True` and is refitted within each
+training window, including cross-validation.
+
+`prior_selection_type="highest_r2"` is the default and only supported selector.
+It selects the factor with the highest
+EWMA-weighted R-squared and assigns its full OLS beta as the prior; other
+automatic priors are zero. R-squared is one minus weighted residual sum of
+squares divided by weighted total sum of squares about the weighted mean.
+
+For response $i$ and factor $f$, the selected prior before overrides and sign filtering is
+
+$$
+\beta^{\mathrm{prior}}_{if} =
+\widehat\beta^{\mathrm{OLS}}_{if}\mathbf{1}_{f=\arg\max_g R^2_{ig}}.
+$$
+
+Ties use factor-column order. The winning factor is invariant to nonzero
+factor rescaling before sign constraints and overrides are applied; its
+beta changes inversely with the factor's units.
+The regressions use the effective LASSO **squared-loss span**, including
+fit-time overrides, with weights `(1 - 2 / (span + 1)) ** age`. `span=None`
+gives equal weights. Inputs are the original observations with a fitted
+intercept, before the LASSO's rolling-mean preprocessing. Missing pairs retain
+their original time-grid age; constant or insufficient pairs receive no automatic prior.
+No annualisation or volatility standardisation is applied.
+
+Selection is per asset, even for clustered models. After selection and any
+explicit prior overrides, a positive-only factor loses a negative prior, a
+negative-only factor loses a positive prior, and a forced-zero factor always
+gets zero. A prohibited PE exposure therefore cannot acquire a PE prior.
+Blocked priors are not reassigned. The existing sign-selection and t-statistic
+gate still apply. With this flag enabled, finite `factors_beta_prior` entries
+(including zero) override automatic values, and NaN defers to the automatic
+value; with it disabled, the historical NaN-as-zero behavior is preserved.
+
+This is a package heuristic for penalty centres, not a posterior estimate or
+a guaranteed loading. Absolute-beta selection depends on factor units, and
+correlated factors can compete for the same explanation. All prior-aware
+LASSO variants support it; UNILASSO rejects the flag. Grouped lambda paths
+compute the prior once, and cross-validation recomputes it inside each
+training fold. The offline [example](examples/ols_prior.py) checks weighted
+OLS against an independent least-squares calculation and demonstrates PE
+exclusion.
+
 ### 4. Hierarchical Clustering Group LASSO (HCGL)
 
 The groups in classical group LASSO are user-specified. HCGL discovers them
 from the data: EWMA correlation of the response matrix → Ward's linkage →
-dendrogram cut at `cutoff_fraction × max(pdist)` → block-sparse penalty on
-the resulting clusters.
+dendrogram cut at `cutoff_fraction × max(pdist)` → row-grouped penalty on
+the resulting clusters. The penalty is the L2 norm of each response's loading
+row, weighted by the size of its cluster: it removes whole responses and
+shrinks kept rows, and the cluster enters through the weight (and through the
+pooled sign derivation below). For a penalty that selects a factor for a whole
+cluster, see FCGL in section 6.
 
 ```python
 model = LassoModel(
@@ -852,6 +922,110 @@ instrument.
 
 ---
 
+### 10. Empirical residual correlation
+
+`CurrentFactorCovarData.get_y_covar` and `RollingFactorCovarData.get_y_covars` assemble
+`B F B' + w D`, where `w` is `residual_var_weight`. With `residual_type="orthogonal"` (the
+default) `D` is the diagonal of stored residual variances. With `residual_type="empirical"` the
+same diagonal is kept and residual dependence is added:
+
+$$
+D = S \left[(1 - \rho) I + \rho R\right] S
+$$
+
+`S` is the diagonal matrix of current residual standard deviations, `R` is a prepared
+common-period EWMA residual correlation, and ρ is `residual_corr_weight` in `[0, 1]` (default
+`1`). At ρ = 0 the result equals the orthogonal matrix exactly, and at every ρ the diagonal of `D`
+equals the stored residual variances. `ResidualType.ORTHOGONAL` and `ResidualType.EMPIRICAL` are
+the equivalent enum values. Both modes assume zero factor-residual cross covariance. `w` scales
+the whole residual block, so `w = 0` removes all residual risk. Passing a `residual_corr_weight`
+other than `1` with orthogonal residuals raises `ValueError`.
+
+Prepare `R` with `estimate_residual_correlation` and pass the returned
+`ResidualCorrelationData` to the snapshot:
+
+```python
+import numpy as np
+import pandas as pd
+
+import factorlasso as fl
+
+rng = np.random.default_rng(3)
+dates = pd.date_range("2015-01-31", periods=96, freq="ME")
+assets = ["asset_a", "asset_b", "asset_c"]
+common = 0.01 * rng.standard_normal(96)
+residuals = pd.DataFrame(
+    0.02 * rng.standard_normal((96, 3)) + common[:, None], index=dates, columns=assets
+)
+metadata = pd.DataFrame(
+    {"frequency": "ME", "beta_span": 36.0, "annualisation_factor": 12.0, "residual_scale": 1.0},
+    index=assets,
+)
+prepared = fl.estimate_residual_correlation(residuals, metadata, estimation_date=dates[-1])
+
+snapshot = fl.CurrentFactorCovarData(
+    x_covar=pd.DataFrame([[0.04]], index=["market"], columns=["market"]),
+    y_betas=pd.DataFrame([[1.0], [0.8], [0.5]], index=assets, columns=["market"]),
+    y_variances=pd.DataFrame(
+        {fl.VarianceColumns.RESIDUAL_VARS.value: [0.010, 0.012, 0.008]}, index=assets
+    ),
+    estimation_date=dates[-1],
+    residual_correlation=prepared,
+)
+orthogonal = snapshot.get_y_covar()
+empirical = snapshot.get_y_covar(residual_type="empirical", residual_corr_weight=0.5)
+
+print(np.allclose(np.diag(empirical), np.diag(orthogonal)))
+print(np.allclose(
+    snapshot.get_y_covar(residual_type="empirical", residual_corr_weight=0.0), orthogonal
+))
+```
+
+```text
+True
+True
+```
+
+`metadata` is indexed by asset and declares `frequency`, `beta_span`, `annualisation_factor` and
+`residual_scale`. The input residuals are additive log-return residuals at their native
+frequencies. The stored multiplier `residual_scale` is undone first, and complete native
+intervals are then summed to the common grid. The default grid is the lowest compatible native
+frequency: monthly plus quarterly assets use `QE`. The default span is the beta span of that
+lowest-frequency bucket, so monthly span 36 with quarterly span 12 gives quarterly span 12. A
+`frequency` coarser than every native grid needs `periods_per_year`, which converts the decay as
+`lambda_common = lambda_native ** (A_native / A_common)`; it converts decay, not covariance units.
+An explicit `span` counts common-grid observations. Differing or unweighted beta spans within the
+lowest-frequency bucket require an explicit `span`.
+
+A causal EWMA mean is removed before the EWMA second moment is normalised to a correlation.
+Positive constant scaling of any asset cancels, and no annual covariance multiplier is applied to
+`R`. The native residual panel and the alpha computed from it are unchanged.
+
+Leading and trailing incomplete common periods are excluded, and an interior gap fails. Nothing is
+zero-filled, interpolated, prorated or extrapolated. Native interval boundaries must nest exactly
+within the common grid: weekly residuals that cross quarter ends have to be rebuilt from finer
+source returns first. Business-day panels use the declared pandas business-day calendar. A
+residual series with zero variance fails, because its correlation is undefined.
+
+Each `ResidualCorrelationData` records its last complete `observation_date` and its
+`estimation_date`, the date it became available. `get_corr(date)` refuses a date before the
+`estimation_date`, so a correlation refitted with today's betas is never backdated. A rolling
+producer may hold `R` between completed common periods while loadings, factor covariance and
+residual variances update at every fit. `RollingFactorCovarData.get_residual_correlations()`
+returns the distinct `R` vintages keyed by availability date,
+`get_residual_covars(residual_type="empirical")` assembles `D` at every fit or query date, and
+`get_y_covars(dates=requested_dates, ...)` selects the latest available snapshot without
+refitting. The correlation, its common-period returns and the native metadata survive ticker
+filtering and Excel save/load.
+
+Correlation is the only prepared empirical state. There is no residual-covariance class, no
+migration API and no span or scale override on the getters; snapshots written by earlier
+development builds are rebuilt from source returns and saved betas. A positive semi-definite `R`
+with non-negative residual variances and weights gives a positive semi-definite `D`. `D` is a
+model of residual risk. It is not claimed to equal an annualised common-period empirical
+covariance. In OptimalPortfolios, `FactorCovarEstimator(residual_type="empirical")` prepares the
+correlation during fitting.
+
 ## When to use it — and when not
 
 **Use it when:**
@@ -1045,7 +1219,7 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {0.18.1},
+  version = {0.20.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

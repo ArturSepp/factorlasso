@@ -9,6 +9,21 @@ table.
 
 Archived release: [10.5281/zenodo.21000294](https://doi.org/10.5281/zenodo.21000294)
 
+## Working revision, 25 September 2026
+
+The current draft adds masked EWMA sign slopes and a date-score sandwich
+gate, with a separate 6,000-design validation. The original simulation and
+eQTL exhibits remain explicitly identified as archived independent-gate
+results. The Zenodo archive and its pinned 0.7.2 requirements are unchanged.
+The revised gate requires FactorLasso 0.20.0.dev5. Research fits explicitly
+select MOSEK; the public FactorLasso default remains CLARABEL.
+
+Run `replication/weighted_gate_validation.py --out <C-local-output>` for
+the new paired gate experiment. The FI replay and refreshed prior note are
+in `../prior_targets_2026/replication/`. The working legacy replication
+scripts explicitly request the independent gate under the new API; exact
+old-environment replication uses the archived bundle.
+
 ## Layout
 
 ```

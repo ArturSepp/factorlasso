@@ -23,7 +23,8 @@ columns are factors. In ``factors_beta_loading_signs`` the values mean:
 * ``NaN``: coefficient unconstrained.
 
 ``factors_beta_prior`` has the same shape and centres the penalty on the supplied coefficient
-matrix rather than on zero. A missing prior cell is treated as zero. When automatic and explicit
+matrix rather than on zero. With ``apply_ols_prior=False`` (the default), a missing prior cell
+is treated as zero. When automatic and explicit
 signs are both enabled, non-missing explicit cells override the derived layer and missing cells
 inherit it. The actual solver-facing matrix is retained in ``derived_signs_``.
 
@@ -80,6 +81,64 @@ inherit it. The actual solver-facing matrix is retained in ``derived_signs_``.
    (79, 3)
    True
    True
+
+Automatic OLS prior centres
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``apply_ols_prior=True`` fits a separate weighted one-factor regression with
+an intercept for every response and factor. The default and only supported
+selector, ``prior_selection_type="highest_r2"``, selects the factor with the highest
+EWMA-weighted R-squared and assign its full OLS beta as the prior. All other
+automatic prior cells are zero. Weighted R-squared is one minus the weighted
+residual sum of squares divided by the weighted total sum of squares about
+the response's weighted mean.
+
+Ties follow input column order. This is a package selection heuristic,
+not a posterior estimate. The winning factor is invariant to nonzero factor
+rescaling before sign constraints and overrides are applied; its beta
+changes inversely with the factor's units. Unsupported selectors raise a
+ValueError rather than being silently mapped to a different rule.
+
+The span is the effective squared-loss span used by the LASSO, including a
+``fit(span=...)`` override, and is independent of the clustering span. For
+span ``s``, observation age ``a`` has weight ``(1 - 2 / (s + 1)) ** a``;
+``None`` gives equal weights. OLS uses original inputs and an intercept,
+before rolling-mean preprocessing. Pairwise missing values keep their age on
+the input time grid. Constant series and pairs with fewer than the greater
+of three and ``warmup_period`` observations receive no automatic prior.
+
+The selected prior is checked against the final assembled sign matrix:
+wrong-sign values and forced-zero cells become zero, without selecting
+replacement factors. This includes automatic sign selection and its
+zero gate. With the flag enabled, finite explicit prior cells override the
+automatic values, including explicit zero; NaN leaves the automatic value.
+The input matrices are not modified. Priors are fitted per response, never
+pooled by cluster. Grouped lambda paths share their prior calculation and
+cross-validation estimates it separately inside each training fold.
+
+.. testcode:: constrained
+
+   auto = fl.LassoModel(
+       span=20, apply_ols_prior=True, prior_selection_type="highest_r2",
+       factors_beta_loading_signs=signs,
+   ).fit(x=x, y=y, span=16)
+   print(auto.ols_prior_span_ == auto.effective_span_ == 16)
+   print(auto.ols_betas_.shape == auto.coef_.shape)
+   print(auto.effective_beta_prior_.loc["asset_b", "rates"] == 0.0)
+
+.. testoutput:: constrained
+
+   True
+   True
+   True
+
+``ols_betas_`` and ``ols_r2_`` retain the marginal regression results;
+``ols_beta_prior_`` retains the selected centres before constraints and
+manual overrides, and ``effective_beta_prior_`` retains the solver centres.
+These diagnostics are cleared on a subsequent fit with the flag disabled.
+The option is supported by prior-aware LASSO variants; UNILASSO rejects it
+because its solver does not use beta priors. See the self-contained
+`OLS prior example <https://github.com/ArturSepp/factorlasso/blob/main/examples/ols_prior.py>`_.
 
 Ragged histories are not imputed into the objective. Missing response cells, and every response on
 a row where all factors are missing, receive zero weight through ``valid_mask_``. Demeaning happens
@@ -236,7 +295,8 @@ material common residual component, so it can be the wrong selection criterion f
 selects the sparsest penalty on the supplied grid that passes. If none passes, it selects the
 minimum-statistic candidate and exposes the missing residual components in ``missing_factors_``.
 For a one-off in-sample diagnostic, :func:`~factorlasso.diagnose_residuals` is available, but its
-own documentation warns about in-sample optimism.
+own documentation warns about in-sample optimism. :doc:`residual_diagnostics` gives the statistics,
+their sources, a worked example and their limitations.
 
 Both selectors are time-series procedures: they use expanding training windows followed by held-out
 windows, never shuffled folds. CV solver failures are stored as ``NaN`` for the affected fold;
@@ -293,6 +353,39 @@ annualised and per-period inputs.
    True
 
 The container checks that the loading and residual-variance row indices agree before assembly.
-``residual_var_weight`` scales only the diagonal residual term; it is a deliberate sensitivity
-parameter, not an annualisation control. :class:`~factorlasso.RollingFactorCovarData` stores dated
+``residual_var_weight`` scales the entire selected residual covariance; it is a deliberate
+sensitivity parameter, not an annualisation control. :class:`~factorlasso.RollingFactorCovarData` stores dated
 snapshots and provides panel accessors without changing those conventions.
+
+
+Common-period residual dependence
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``residual_type="orthogonal"`` remains the default. The opt-in ``"empirical"``
+uses ``D = S [(1-rho) I + rho R] S``, where S contains the current stored residual
+standard deviations and R is prepared common-period EWMA correlation.
+``residual_corr_weight`` supplies rho in [0, 1], independently of the multiplier
+on the entire residual block. At zero retention the orthogonal result is exact;
+at every retention setting the MATF residual diagonal is preserved.
+
+Prepare R with ``estimate_residual_correlation(residuals, metadata, estimation_date)``
+and attach the returned ``ResidualCorrelationData`` to ``residual_correlation``.
+Metadata declares frequency, beta_span, annualisation_factor and residual_scale
+per asset. Complete native log-return intervals are summed to the lowest compatible
+grid. Monthly/quarterly data use quarters, with the quarterly beta span; an explicit
+coarser grid converts decay using ``periods_per_year``. Gaps, crossing intervals and
+undefined residual correlations fail rather than being filled or prorated.
+Positive constant scaling cancels; no annual covariance multiplier is applied to R.
+Native residuals and alpha remain unchanged.
+
+Rolling producers may retain R between completed periods, while assembly uses the
+latest available residual variances. ``get_residual_correlations()`` reports unique
+R vintages; ``get_residual_covars(residual_type="empirical")`` assembles D at every
+fit/query date. Availability follows the fit date, never an earlier observation date.
+
+Correlation is the only prepared empirical state. Rebuild earlier development
+covariance snapshots from source returns and saved betas. There is no legacy
+covariance class, migration API or getter span/scale override. Neither mode
+includes a factor-residual cross-covariance term. A PSD common-period R combined
+with nonnegative marginal variances and weights gives PSD risk; this is a model,
+not a claim of equality to annualized common-period empirical covariance.

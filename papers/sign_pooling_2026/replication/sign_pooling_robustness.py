@@ -14,9 +14,9 @@ The correlated study stresses the marginal-sign-agreement condition (A6): with
 correlated predictors the marginal pooled slope can disagree in sign with the
 partial coefficient, which turns a derived sign into a wrong hard constraint.
 
-The gate-correction study divides the pooled standard error by the design effect
-1 + (|C|-1) rho_bar, where rho_bar is the within-cluster residual correlation. The
-uncorrected gate reproduces ``factorlasso`` element-for-element (asserted in
+The archived gate-correction study multiplies the pooled standard error by the square
+root of the design effect 1 + (|C|-1) rho_bar, where rho_bar is the within-cluster residual correlation. The
+uncorrected gate reproduces the explicit independent gate element-for-element (asserted in
 ``validate_gate``); the correction removes the null over-dispersion.
 
 Run: python sign_pooling_robustness.py
@@ -287,15 +287,10 @@ def _fit_coop(X: np.ndarray, Y: np.ndarray, labels: np.ndarray,
             B = P - Nn
             pen = cp.sum(cp.norm(P, 2, axis=1)) + cp.sum(cp.norm(Nn, 2, axis=1))
             prob = cp.Problem(cp.Minimize(cp.sum_squares(Yc - X @ B) + lam * pen))
-            try:
-                prob.solve(solver=cp.ECOS, abstol=1e-4, reltol=1e-4, max_iters=80)
-            except Exception:
-                try:
-                    prob.solve(solver=cp.SCS, eps=1e-3)
-                except Exception:
-                    pass
-            if B.value is not None:
-                Bh[mem, :] = B.value.T
+            prob.solve(solver=cp.MOSEK)
+            if prob.status != cp.OPTIMAL or B.value is None:
+                raise RuntimeError(f"MOSEK cooperative fit failed: {prob.status}")
+            Bh[mem, :] = B.value.T
         e = float(np.mean((Bh - Bt) ** 2))
         if best is None or e < best[0]:
             best = (e, Bh)

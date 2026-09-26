@@ -145,7 +145,7 @@ def fast_derive_signs(method: SignMethod,
     """
     if method is SignMethod.LASSO:
         return _compute_sign_matrix_per_response(
-            x.values, y.values, auto_sign_threshold_t=threshold_t)
+            x.values, y.values, auto_sign_threshold_t=threshold_t, variance_estimator="independent")
     if method is SignMethod.GROUP_FIXED:
         resp = pd.Series(list(labels), index=list(y.columns))
     elif method is SignMethod.HCGL:
@@ -158,7 +158,7 @@ def fast_derive_signs(method: SignMethod,
     for c in pd.unique(resp_vals):
         members = [i for i, cc in enumerate(resp_vals) if cc == c]
         pooled = np.asarray(derive_sign_constraints(
-            x, y.iloc[:, members], clusters=None, auto_sign_threshold_t=threshold_t))
+            x, y.iloc[:, members], clusters=None, auto_sign_threshold_t=threshold_t, variance_estimator="independent"))
         for m in members:
             out[m] = pooled[0]          # pooled rows are identical within a cluster
     return out
@@ -180,7 +180,7 @@ def derive_signs(method: SignMethod,
     """
     group_data = pd.Series([f"c{l}" for l in labels], index=list(y.columns))
     common = dict(reg_lambda=reg_lambda, demean=True,
-                  auto_sign_constraints=True, auto_sign_threshold_t=threshold_t)
+                  auto_sign_constraints=True, auto_sign_threshold_t=threshold_t, auto_sign_variance="independent", solver="MOSEK")
     # The three sign-distinct methods take the solve-free path (identical result).
     if method in (SignMethod.LASSO, SignMethod.GROUP_FIXED, SignMethod.HCGL):
         return fast_derive_signs(method, x, y, labels,

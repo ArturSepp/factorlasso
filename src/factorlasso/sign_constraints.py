@@ -30,7 +30,8 @@ Two derivation modes share the same entry point:
   regressor groups.
 
 No preprocessing is done on ``x`` or ``y`` — any centering, standardization,
-EWMA-weighting, residualization etc. is the caller's responsibility.
+residualization etc. is the caller's responsibility. Optional ``ewma_span``
+weights observations on their original row grid; it does not demean the data.
 
 References
 ----------
@@ -53,6 +54,13 @@ multivariate fit goes back to Zou (2006)'s adaptive Lasso. The
 Fan & Lv (2008)'s Sure Independence Screening; it is not part of
 uniLasso, which achieves smoother noise downweighting via its
 leave-one-out stage-2 reparameterization.
+
+The date-score sandwich follows the one-way cluster-score construction of
+Cameron, A. C., and Miller, D. L. (2015), A Practitioner's Guide to
+Cluster-Robust Inference, Journal of Human Resources 50(2), 317-372,
+doi:10.3368/jhr.50.2.317. Kish effective-date scaling for EWMA is an
+implementation convention, not a calibrated significance theorem; temporal
+serial dependence is not covered.
 """
 from __future__ import annotations
 
@@ -63,6 +71,94 @@ import numpy as np
 import pandas as pd
 
 
+
+
+def _sign_observation_weights(size, ewma_span):
+    """Build decay on the original grid; missing rows never compress time."""
+    if ewma_span is None:
+        return np.ones(size, dtype=float)
+    if not np.isscalar(ewma_span) or not np.isfinite(ewma_span) or ewma_span < 1:
+        raise ValueError("ewma_span must be finite and >= 1, or None")
+    return (1.0 - 2.0 / (ewma_span + 1.0)) ** np.arange(size - 1, -1, -1)
+
+
+def _pooled_sign_statistics(x_arr, y_arr, ewma_span=None, variance_estimator="independent"):
+    """Masked WLS slopes and score variances, without implicit centering.
+
+    ``date`` sums response scores within a date before squaring (one-way
+    sandwich), retaining contemporaneous covariance. Its HC1-style correction
+    uses Kish effective *dates*, never the number of response cells. It assumes
+    independence across dates; it is not HAC or a calibrated Student t test.
+
+    ``independent`` is a reproduction/ablation option: unweighted data use the
+    historical pooled homoskedastic formula. Weighted data use independent-cell
+    score variance, not an inverse-variance interpretation of recency weights.
+    """
+    if variance_estimator not in ("date", "independent"):
+        raise ValueError("variance_estimator must be 'date' or 'independent'")
+    x_arr = np.asarray(x_arr, dtype=float)
+    y_arr = np.asarray(y_arr, dtype=float)
+    if x_arr.ndim != 2 or y_arr.ndim != 2 or len(x_arr) != len(y_arr):
+        raise ValueError("x and y must be 2-D arrays with the same number of rows")
+    if np.isinf(x_arr).any() or np.isinf(y_arr).any():
+        raise ValueError("sign analytics require finite observations or NaN")
+    weights = _sign_observation_weights(len(x_arr), ewma_span)
+    vx, vy = ~np.isnan(x_arr), ~np.isnan(y_arr)
+    x = np.nan_to_num(x_arr, nan=0.)
+    y = np.nan_to_num(y_arr, nan=0.)
+    count = vy.sum(axis=1)
+    y_sum = y.sum(axis=1)
+    denominator = (x*x).T @ (weights * count)
+    numerator = x.T @ (weights * y_sum)
+    slopes = np.divide(numerator, denominator, out=np.zeros(x.shape[1]),
+                       where=denominator > 0)
+    present = vx & (count[:, None] > 0)
+    weighted_dates = weights[:, None] * present
+    weight_mass = weighted_dates.sum(axis=0)
+    weight_sq_mass = (weighted_dates**2).sum(axis=0)
+    effective_n = np.divide(weight_mass**2, weight_sq_mass,
+                            out=np.zeros_like(weight_mass), where=weight_sq_mass > 0)
+    n_obs = vx.astype(float).T @ count
+    if variance_estimator == "date":
+        # u_tj = w_t x_tj sum_k v_tjk (y_tk - beta_j x_tj).
+        scores = weights[:, None]*x*(y_sum[:, None]-x*slopes*count[:, None])
+        meat = np.sum(scores*scores, axis=0)
+        correction = np.divide(effective_n, effective_n-1.,
+                               out=np.ones_like(effective_n),
+                               where=effective_n > 1.+1e-12)
+        variance = np.divide(meat*correction, denominator**2,
+                             out=np.full_like(slopes, np.inf), where=denominator > 0)
+    else:
+        q_eff = np.sum((vx.astype(float).T @ vy.astype(float)) > 0, axis=1)
+        if ewma_span is None:
+            y_ss = vx.astype(float).T @ (y*y).sum(axis=1)
+            ssr = np.maximum(y_ss-slopes*slopes*denominator, 0.)
+            variance = np.divide(ssr, np.maximum(n_obs-q_eff, 1.)*denominator,
+                                 out=np.full_like(slopes, np.inf), where=denominator > 0)
+        else:
+            # Sum squared *cell* scores: deliberately omits within-date covariance.
+            residual_ss = ((y*y).sum(axis=1)[:, None]
+                           - 2.*x*slopes*y_sum[:, None]
+                           + x*x*slopes*slopes*count[:, None])
+            meat = np.sum(weights[:, None]**2*x*x*np.maximum(residual_ss, 0.), axis=0)
+            sw = vx.astype(float).T @ (weights*count)
+            sw2 = vx.astype(float).T @ (weights**2*count)
+            cell_ess = np.divide(sw*sw, sw2, out=np.zeros_like(sw), where=sw2 > 0)
+            correction = np.divide(cell_ess, cell_ess-q_eff,
+                                   out=np.ones_like(sw), where=cell_ess > q_eff+1e-12)
+            variance = np.divide(meat*correction, denominator**2,
+                                 out=np.full_like(slopes, np.inf), where=denominator > 0)
+    sufficient = (effective_n > 1.+1e-12) & (denominator > 0)
+    variance[~sufficient] = np.inf
+    se = np.sqrt(np.maximum(variance, 0.))
+    t_stats = np.divide(slopes, se, out=np.zeros_like(slopes), where=se > 0)
+    # A nonzero exact signal has no residual noise; a zero/absent factor has no evidence.
+    perfect = sufficient & (se == 0) & (slopes != 0)
+    t_stats[perfect] = np.sign(slopes[perfect])*np.inf
+    return dict(slopes=slopes, t_stats=t_stats, standard_errors=se,
+                effective_n=effective_n, n_obs=n_obs, weight_mass=weight_mass)
+
+
 def _compute_sign_vector(
     x_arr: np.ndarray,
     y_arr: np.ndarray,
@@ -70,176 +166,37 @@ def _compute_sign_vector(
     master_constraints: Optional[dict] = None,
     col_names: Optional[list] = None,
     auto_sign_threshold_t: Optional[float] = None,
+    ewma_span: Optional[float] = None,
+    variance_estimator: str = "independent",
+    return_diagnostics: bool = False,
 ) -> tuple:
+    """Derive pooled marginal signs, retaining masks and optional recency weights.
+
+    Factor clusters use their complete-row mean; response columns are pooled.
+    ``date`` variance treats rows as independent and responses as dependent.
+    ``independent`` reproduces the historical equal-weight gate for ablation.
+    Master constraints override the automatic gate. With diagnostics requested,
+    append a dictionary of pre-override slopes, score statistics and sample sizes.
     """
-    Pure-numpy core of sign derivation. Shared by the user-facing
-    :func:`derive_sign_constraints` wrapper and by ``LassoModel.fit`` when
-    ``auto_sign_constraints=True``.
-
-    Parameters
-    ----------
-    x_arr : ndarray (T, M)
-    y_arr : ndarray (T, N)   — already reshaped to 2-D if originally 1-D
-    clusters : ndarray (M,), optional
-    master_constraints : dict {name_or_index: sign}, optional
-        sign ∈ {-1, 0, +1} | NaN | None
-    col_names : list of length M, optional
-        Required only if ``master_constraints`` uses string keys.
-    auto_sign_threshold_t : float, optional
-        When set (>0), the data-derived sign for a column is enforced only
-        if the univariate t-statistic of the pooled slope satisfies
-        ``|t_j| >= auto_sign_threshold_t``.  Columns failing the threshold
-        are pinned to ``0`` (β forced to zero) so the downstream LASSO
-        solver excludes them from the regression entirely.
-
-        Rationale: when the univariate marginal signal is weak (small ``|t|``)
-        the sign of the slope is dominated by sampling noise.  Propagating a
-        noise-driven sign into the multivariate constraint set lets the
-        solver fit residual variance using offsetting loadings (Credit ↔
-        Inflation, etc.) that L1 regularization may not be strong enough to
-        discipline.  Hard-zeroing weak-evidence columns enforces parsimony
-        directly and is robust to the choice of ``reg_lambda``.
-
-        Recommended values for typical financial panels: 0.5 (very loose —
-        only the most negligible signals removed) to 1.0 (moderate).
-        ``None`` (default) preserves the previous behaviour of always
-        enforcing the slope-sign for every column.
-
-    Returns
-    -------
-    sign_vec : ndarray (M,) float in {-1.0, 0.0, +1.0, NaN}
-    slopes   : ndarray (M,) float
-    """
-    T, M = x_arr.shape
-    if y_arr.shape[0] != T:
-        raise ValueError(
-            f"x has {T} rows but y has {y_arr.shape[0]} rows"
-        )
-
-    # NaN handling. We zero-fill (x, y) for the arithmetic but FIRST record
-    # the per-cell validity mask so every reduction below ranges over genuine
-    # observations only. Zero-filling alone is *not* equivalent to a valid-row
-    # fit for a pooled estimator with heterogeneous inception dates: a missing
-    # y_{tk} contributes 0 to the cross-asset sum (harmless), but it must not
-    # be counted in the slope denominator Σ x_{tj}², the SSR, or the degrees
-    # of freedom. Treating zero-filled cells as real observations deflates the
-    # residual variance and inflates |t| (anticonservative). We therefore
-    # carry the valid mask explicitly and weight every reduction by it.
-    valid_y = ~np.isnan(y_arr)                 # (T, q) genuine response cells
-    valid_x = ~np.isnan(x_arr)                 # (T, M) genuine factor cells
-    if np.isnan(x_arr).any():
-        x_arr = np.nan_to_num(x_arr, nan=0.0)
-    if np.isnan(y_arr).any():
-        y_arr = np.nan_to_num(y_arr, nan=0.0)
-
-    y_sum = y_arr.sum(axis=1)
-    # Per-response-cell count of valid (row) observations entering each
-    # (factor, response) inner product. A row contributes to factor j and
-    # response k only when both x_{tj} and y_{tk} are present.
-    slopes = np.zeros(M, dtype=float)
-
+    x_arr = np.asarray(x_arr, dtype=float)
+    y_arr = np.asarray(y_arr, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x must be 2-D")
+    m = x_arr.shape[1]
     if clusters is None:
-        # Pooled denominator Σ_k Σ_t v_{tk} x_{tj}² uses the per-response
-        # valid mask, NOT q · Σ_t x_{tj}². When y is fully observed these
-        # coincide; under leading-NaN they diverge.
-        x2 = x_arr ** 2                         # (T, M)
-        # (M,): Σ_j over rows where x valid, summed across responses where y valid
-        numerator = x_arr.T @ y_sum             # (M,) — missing y already 0
-        # denominator[j] = Σ_k Σ_t (x_valid_{tj} & y_valid_{tk}) x_{tj}²
-        denominator = (x2 * valid_x).T @ valid_y.sum(axis=1)  # (M,)
-        safe = denominator > 0
-        slopes[safe] = numerator[safe] / denominator[safe]
+        diag = _pooled_sign_statistics(x_arr, y_arr, ewma_span, variance_estimator)
     else:
         clusters_arr = np.asarray(clusters)
-        if len(clusters_arr) != M:
-            raise ValueError(
-                f"clusters length {len(clusters_arr)} != M={M}"
-            )
-        for c in np.unique(clusters_arr):
-            idx = np.where(clusters_arr == c)[0]
-            x_agg = x_arr[:, idx].mean(axis=1)          # (T,)
-            x_agg_valid = valid_x[:, idx].all(axis=1)   # (T,) agg defined
-            # The aggregated regressor is defined only on rows where EVERY
-            # cluster member is observed; on other rows the zero-filled mean
-            # is a biased (shrunken) value. Numerator and denominator must
-            # range over the SAME valid rows — masking only the denominator
-            # (the pre-fix behaviour) inflates the slope whenever cluster
-            # members carry heterogeneous NaN patterns.
-            x_agg_m = x_agg * x_agg_valid                # (T,) masked agg
-            xa2 = (x_agg ** 2) * x_agg_valid             # (T,)
-            denom = float(xa2 @ valid_y.sum(axis=1))     # Σ_k Σ_t v x_agg²
-            if denom > 0:
-                slopes[idx] = float(x_agg_m @ y_sum) / denom
-
-    sign_vec = np.sign(slopes).astype(float)
-
-    # Optional t-stat gating: pin weak-evidence columns to sign=0 (β forced
-    # to zero by the solver).
-    if auto_sign_threshold_t is not None and auto_sign_threshold_t > 0.0:
-        # No-intercept pooled fit on the demeaned inputs. The SSR has a
-        # closed form that avoids materialising residuals; we evaluate every
-        # reduction over valid (row, response) cells so the variance and dof
-        # reflect the true sample size under heterogeneous inception dates:
-        #   SSR_j = Σ_{k,t: x_j and y_k valid} (y_{tk} − β_j x_{tj})²
-        #         = ‖Y‖²_{F,(j)} − β_j² · D_j,   (‖Y‖²_{F,(j)} over x_j-valid rows)
-        #   D_j = Σ_k Σ_t v_{tk} x_{tj}²  (the same valid denominator above),
-        # using the slope identity x_j' y_sum = β_j · D_j. The degrees of
-        # freedom charge one parameter per response column actually present:
-        #   df_j = n_valid_j − q_eff,  n_valid_j = Σ_k Σ_t (x_valid & y_valid),
-        # with q_eff the number of responses contributing ≥1 valid row.
-        # The per-factor SS must be masked by valid_x exactly as D_j and df_j are;
-        # a single global Σ y² over-counts rows where factor j is missing. The two
-        # coincide when every factor is fully observed (the fast path below).
-        y2_rowsum = (y_arr * y_arr).sum(axis=1)          # (T,) Σ_k v_{tk} y_{tk}²
-        t_stats = np.zeros(M, dtype=float)
-        n_valid_per_resp = valid_y.sum(axis=0)           # (q,) rows valid per k
-        q_eff = int((n_valid_per_resp > 0).sum())
-        if clusters is None:
-            x2 = x_arr ** 2
-            vy_rowcount = valid_y.sum(axis=1)            # (T,) #valid responses per row
-            D = (x2 * valid_x).T @ vy_rowcount           # (M,) valid denominator
-            # n_valid_j = Σ_t valid_x_{tj} · (#valid responses in row t)
-            n_valid = (valid_x.astype(float).T @ vy_rowcount)  # (M,) valid (t,k) cells
-            df = np.maximum(n_valid - q_eff, 1.0)
-            if valid_x.all():
-                # complete factors: bit-identical to prior global
-                Y_ss = np.full(M, float((y_arr * y_arr).sum()))
-            else:
-                Y_ss = valid_x.astype(float).T @ y2_rowsum  # (M,) Σ_t v_x·(Σ_k v_y y²)
-            ssr = Y_ss - slopes * slopes * D             # (M,)
-            sigma2 = np.maximum(ssr, 0.0) / df
-            with np.errstate(divide="ignore", invalid="ignore"):
-                se = np.where(
-                    (sigma2 > 0) & (D > 0),
-                    np.sqrt(sigma2 / np.where(D > 0, D, 1.0)),
-                    np.inf,
-                )
-                t_stats = np.where(se > 0, slopes / se, 0.0)
-        else:
-            clusters_arr = np.asarray(clusters)
-            for c in np.unique(clusters_arr):
-                idx = np.where(clusters_arr == c)[0]
-                x_agg = x_arr[:, idx].mean(axis=1)
-                x_agg_valid = valid_x[:, idx].all(axis=1)
-                xa2 = (x_agg ** 2) * x_agg_valid
-                D_c = float(xa2 @ valid_y.sum(axis=1))
-                if D_c <= 0.0:
-                    continue
-                slope_c = float(slopes[idx[0]])
-                # valid (t,k) cells for this aggregated factor
-                n_valid_c = float((x_agg_valid[:, None] & valid_y).sum())
-                df_c = max(n_valid_c - q_eff, 1.0)
-                Y_ss_c = float(x_agg_valid.astype(float) @ y2_rowsum)  # x_agg-valid rows
-                ssr_c = Y_ss_c - slope_c * slope_c * D_c
-                sigma2 = max(ssr_c, 0.0) / df_c
-                se_c = np.sqrt(sigma2 / D_c) if (sigma2 > 0 and D_c > 0) else np.inf
-                t_c = slope_c / se_c if se_c > 0 else 0.0
-                t_stats[idx] = t_c
-
-        # Pin columns failing the threshold to sign=0 (β forced to zero).
-        weak = np.abs(t_stats) < auto_sign_threshold_t
-        sign_vec[weak] = 0.0
-
+        if clusters_arr.ndim != 1 or len(clusters_arr) != m:
+            raise ValueError(f"clusters length {len(clusters_arr)} != M={m}")
+        ids, inverse = np.unique(clusters_arr, return_inverse=True)
+        aggregated = np.column_stack([x_arr[:, clusters_arr == c].mean(axis=1) for c in ids])
+        base = _pooled_sign_statistics(aggregated, y_arr, ewma_span, variance_estimator)
+        diag = {key: value[inverse] for key, value in base.items()}
+    slopes = diag["slopes"]
+    signs = np.sign(slopes).astype(float)
+    if auto_sign_threshold_t is not None and auto_sign_threshold_t > 0:
+        signs[np.abs(diag["t_stats"]) < auto_sign_threshold_t] = 0.
     if master_constraints:
         for key, s in master_constraints.items():
             if s is None or (isinstance(s, float) and np.isnan(s)):
@@ -248,29 +205,22 @@ def _compute_sign_vector(
                 s_val = float(s)
             else:
                 raise ValueError(
-                    f"master_constraints[{key!r}]={s}; "
-                    f"must be in {{-1, 0, +1}}, NaN, or None"
-                )
+                    f"master_constraints[{key!r}]={s}; must be in {{-1, 0, +1}}, NaN, or None")
             if isinstance(key, str):
                 if col_names is None:
                     raise ValueError(
-                        f"name {key!r} in master_constraints but no column "
-                        f"names were available"
-                    )
+                        f"name {key!r} in master_constraints but no column names were available")
                 if key not in col_names:
-                    raise KeyError(
-                        f"master_constraints key {key!r} not found in col_names"
-                    )
+                    raise KeyError(f"master_constraints key {key!r} not found in col_names")
                 idx = col_names.index(key)
             else:
                 idx = int(key)
-                if not 0 <= idx < M:
-                    raise IndexError(
-                        f"master_constraints index {idx} out of range for M={M}"
-                    )
-            sign_vec[idx] = s_val
-
-    return sign_vec, slopes
+                if not 0 <= idx < m:
+                    raise IndexError(f"master_constraints index {idx} out of range for M={m}")
+            signs[idx] = s_val
+    if return_diagnostics:
+        return signs, slopes, diag
+    return signs, slopes
 
 
 def _compute_sign_matrix_per_response(
@@ -278,89 +228,55 @@ def _compute_sign_matrix_per_response(
     y_arr: np.ndarray,
     auto_sign_threshold_t: Optional[float] = None,
     return_slopes: bool = False,
+    ewma_span: Optional[float] = None,
+    variance_estimator: str = "independent",
+    return_diagnostics: bool = False,
 ) -> Union[np.ndarray, tuple]:
+    """Vectorized single-response WLS/score statistics, returning (N, M) arrays.
+
+    Response-independent fits have one score per date. Polynomial moment
+    expansions avoid materialising a T-by-N-by-M residual tensor. Diagnostic
+    mode returns signs, slopes and a dictionary, regardless of return_slopes.
     """
-    Vectorised bulk equivalent of N calls to ``_compute_sign_vector`` with
-    ``clusters=None`` and ``y_arr[:, k:k+1]`` — i.e. per-y-column independent
-    univariate sign derivation. Used by ``LassoModel.fit`` in LASSO mode to
-    avoid an N-deep Python loop.
-
-    Computes the full ``(N, M)`` slope and t-stat matrix in a single
-    matrix-product + closed-form SSR (q = 1 per row). Returns the
-    threshold-gated ``(N, M)`` sign matrix, and optionally the underlying
-    univariate slope matrix for downstream adaptive-weight derivation.
-
-    Parameters
-    ----------
-    x_arr : ndarray (T, M)
-    y_arr : ndarray (T, N)
-    auto_sign_threshold_t : float, optional
-        Threshold-gate parameter; see ``_compute_sign_vector``.
-    return_slopes : bool, default False
-        If True, returns ``(signs, slopes)``; otherwise returns ``signs`` only.
-        Slopes are the raw univariate estimates β̂_kj before thresholding —
-        i.e. the magnitudes consumed by the Zou (2006) adaptive-weight
-        formula ``λ · |β_kj| / |β̂_kj|`` when paired with
-        ``LassoModel.auto_sign_adaptive_weights=True``.
-
-    Returns
-    -------
-    signs : ndarray (N, M) of float in {-1, 0, +1}
-    slopes : ndarray (N, M), only when ``return_slopes=True``
-    """
-    # NaN handling (same contract as _compute_sign_vector): record validity
-    # masks before zero-filling so the slope denominator, SSR, and dof range
-    # over genuine observations only — never over zero-filled rows.
-    valid_x = ~np.isnan(x_arr)                     # (T, M)
-    valid_y = ~np.isnan(y_arr)                     # (T, N)
-    if np.isnan(x_arr).any():
-        x_arr = np.nan_to_num(x_arr, nan=0.0)
-    if np.isnan(y_arr).any():
-        y_arr = np.nan_to_num(y_arr, nan=0.0)
-
-    x2 = x_arr * x_arr                             # (T, M)
-    y2 = y_arr * y_arr                             # (T, N) zero-filled y adds 0
-    xy = x_arr.T @ y_arr                           # (M, N)
-
-    # Per-(response k, factor j) valid-row count and denominator. A row t
-    # enters cell (k, j) only when both x_{tj} and y_{tk} are present.
-    # n_valid[k, j] = Σ_t valid_x_{tj} & valid_y_{tk}
-    n_valid = (valid_y.astype(float).T @ valid_x.astype(float))   # (N, M)
-    # denom[k, j] = Σ_t (valid_x_{tj} & valid_y_{tk}) x_{tj}²
-    denom_kj = (valid_y.astype(float).T @ (x2 * valid_x))         # (N, M)
-
-    # β[k, j] = (x_j' y_k) / denom[k, j]  (valid-row denominator)
-    safe = denom_kj > 0
-    slopes = np.zeros((y_arr.shape[1], x_arr.shape[1]), dtype=float)  # (N, M)
-    slopes[safe] = (xy.T)[safe] / denom_kj[safe]
-    signs = np.sign(slopes).astype(float)          # (N, M)
-
-    if auto_sign_threshold_t is not None and auto_sign_threshold_t > 0.0:
-        # df = n_valid − 1 (one slope per (k, j) univariate fit), evaluated
-        # on the valid-row count rather than nominal T.
-        df = np.maximum(n_valid - 1.0, 1.0)
-        # Y-SS per (response k, factor j) over rows where x_j is observed, matching
-        # the valid_x masking on denom_kj and n_valid. A per-response Σ_t y²
-        # (independent of j) over-counts when factor j carries NaN rows; the two
-        # are equal only when every factor is fully observed (the fast path).
-        if valid_x.all():
-            yss = (y2.sum(axis=0))[:, None]                 # (N,1) complete-factor fast path
-        else:
-            yss = y2.T @ valid_x.astype(float)              # (N,M) Σ_t v_x v_y y²
-        ssr = yss - slopes * slopes * denom_kj              # (N, M)
-        sigma2 = np.maximum(ssr, 0.0) / df
-        with np.errstate(divide="ignore", invalid="ignore"):
-            se = np.where(
-                (sigma2 > 0) & (denom_kj > 0),
-                np.sqrt(sigma2 / np.where(denom_kj > 0, denom_kj, 1.0)),
-                np.inf,
-            )
-            t_stats = np.where(se > 0, slopes / se, 0.0)
-        signs[np.abs(t_stats) < auto_sign_threshold_t] = 0.0
-
-    if return_slopes:
-        return signs, slopes
-    return signs
+    if variance_estimator not in ('date', 'independent'):
+        raise ValueError("variance_estimator must be 'date' or 'independent'")
+    x_arr, y_arr = np.asarray(x_arr, dtype=float), np.asarray(y_arr, dtype=float)
+    if x_arr.ndim != 2 or y_arr.ndim != 2 or len(x_arr) != len(y_arr):
+        raise ValueError("x and y must be 2-D arrays with the same number of rows")
+    if np.isinf(x_arr).any() or np.isinf(y_arr).any():
+        raise ValueError("sign analytics require finite observations or NaN")
+    w = _sign_observation_weights(len(x_arr), ewma_span)[:, None]
+    vx, vy = (~np.isnan(x_arr)).astype(float), (~np.isnan(y_arr)).astype(float)
+    x, y = np.nan_to_num(x_arr, nan=0.), np.nan_to_num(y_arr, nan=0.)
+    d = vy.T @ (w*x*x)
+    slopes = np.divide(y.T @ (w*x), d, out=np.zeros_like(d), where=d > 0)
+    sw = vy.T @ (w*vx)
+    sw2 = vy.T @ (w*w*vx)
+    ess = np.divide(sw*sw, sw2, out=np.zeros_like(d), where=sw2 > 0)
+    n_obs = vy.T @ vx
+    if variance_estimator == 'independent' and ewma_span is None:
+        ssr = np.maximum((y*y).T @ vx-slopes*slopes*d, 0.)
+        variance = np.divide(ssr, np.maximum(n_obs-1., 1.)*d,
+                             out=np.full_like(d, np.inf), where=d > 0)
+    else:
+        meat = ((y*y).T @ (w*w*x*x) - 2.*slopes*(y.T @ (w*w*x*x*x))
+                + slopes*slopes*(vy.T @ (w*w*x*x*x*x)))
+        correction = np.divide(ess, ess-1., out=np.ones_like(d), where=ess > 1.+1e-12)
+        variance = np.divide(np.maximum(meat, 0.)*correction, d*d,
+                             out=np.full_like(d, np.inf), where=d > 0)
+    sufficient = (ess > 1.+1e-12) & (d > 0)
+    variance[~sufficient] = np.inf
+    se = np.sqrt(variance)
+    t_stats = np.divide(slopes, se, out=np.zeros_like(slopes), where=se > 0)
+    perfect = sufficient & (se == 0) & (slopes != 0)
+    t_stats[perfect] = np.sign(slopes[perfect])*np.inf
+    signs = np.sign(slopes)
+    if auto_sign_threshold_t is not None and auto_sign_threshold_t > 0:
+        signs[np.abs(t_stats) < auto_sign_threshold_t] = 0.
+    if return_diagnostics:
+        return signs, slopes, dict(slopes=slopes, t_stats=t_stats,
+            standard_errors=se, effective_n=ess, n_obs=n_obs, weight_mass=sw)
+    return (signs, slopes) if return_slopes else signs
 
 
 def derive_sign_constraints(
@@ -370,9 +286,19 @@ def derive_sign_constraints(
     master_constraints: Optional[dict] = None,
     auto_sign_threshold_t: Optional[float] = 0.75,
     return_slopes: bool = False,
+    ewma_span: Optional[float] = None,
+    variance_estimator: str = "independent",
 ) -> Union[pd.DataFrame, np.ndarray, tuple]:
     """
-    Compute pooled univariate sign constraints for downstream LASSO estimation.
+    Compute masked, optionally recency-weighted marginal sign constraints.
+
+    ``ewma_span=None`` gives equal observation weights; finite spans >= 1
+    apply EWMA decay before masking. ``variance_estimator="date"`` uses
+    a date-score sandwich with a Kish-date HC1 correction; it accounts
+    for contemporaneous response dependence, not serial correlation.
+    The gate is a screening statistic, not a Student t significance test.
+    ``"independent"`` retains the former equal-weight gate for replication.
+    Fewer than two effective dates cannot pass a positive threshold.
 
     For each regressor column ``x_j``::
 
@@ -488,6 +414,7 @@ def derive_sign_constraints(
         master_constraints=master_constraints,
         col_names=col_names,
         auto_sign_threshold_t=auto_sign_threshold_t,
+        ewma_span=ewma_span, variance_estimator=variance_estimator,
     )
 
     # ------------------------------------------------------------------ #
@@ -521,6 +448,7 @@ def validate_cluster_signs(
     y: Union[pd.DataFrame, pd.Series, np.ndarray],
     clusters: Union[np.ndarray, pd.Series, list],
     warn: bool = True,
+    ewma_span: Optional[float] = None,
 ) -> np.ndarray:
     """
     Detect cluster misspecification by comparing column- vs cluster-level signs.
@@ -547,9 +475,9 @@ def validate_cluster_signs(
         Indices of regressors whose column-level and cluster-level signs
         disagree. Empty array if the clustering is internally consistent.
     """
-    _, slopes_col = derive_sign_constraints(x, y, return_slopes=True)
+    _, slopes_col = derive_sign_constraints(x, y, return_slopes=True, ewma_span=ewma_span)
     _, slopes_clu = derive_sign_constraints(
-        x, y, clusters=clusters, return_slopes=True
+        x, y, clusters=clusters, return_slopes=True, ewma_span=ewma_span
     )
 
     col_arr = slopes_col.values[0] if isinstance(slopes_col, pd.DataFrame) else slopes_col

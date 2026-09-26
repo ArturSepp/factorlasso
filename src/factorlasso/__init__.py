@@ -98,6 +98,7 @@ from factorlasso.ewm_utils import (
 )
 from factorlasso.factor_covar import (
     CurrentFactorCovarData,
+    ResidualType,
     RollingFactorCovarData,
     VarianceColumns,
 )
@@ -113,6 +114,9 @@ from factorlasso.lasso_estimator import (
     solve_lasso_cvx_problem,
     solve_unilasso_cvx_problem,
 )
+from factorlasso.residual_covar import (
+    ResidualCorrelationData, estimate_residual_correlation,
+)
 from factorlasso.residual_diagnostics import (
     ResidualDiagnostics,
     Sparsity,
@@ -121,6 +125,7 @@ from factorlasso.residual_diagnostics import (
     marchenko_pastur_edge,
     missing_factor_components,
     null_threshold,
+    partition_variance_share,
     raw_offdiagonal_mass,
     residual_correlation,
     suggest_tolerance,
@@ -154,6 +159,9 @@ __all__ = [
     "get_x_y_np",
     # Factor covariance assembly
     "CurrentFactorCovarData",
+    "ResidualType",
+    "ResidualCorrelationData",
+    "estimate_residual_correlation",
     "RollingFactorCovarData",
     "VarianceColumns",
     # Offline cluster lineage
@@ -202,4 +210,5 @@ __all__ = [
     "raw_offdiagonal_mass",
     "residual_correlation",
     "suggest_tolerance",
+    "partition_variance_share",
 ]

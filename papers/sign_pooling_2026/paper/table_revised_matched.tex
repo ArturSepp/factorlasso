@@ -1,0 +1,16 @@
+\begin{table}[htbp]\centering\small
+    \caption{Separate threshold calibration and evaluation, EWMA span 60. The first
+    250 draws calibrate each threshold to 20\% null admission; the other 250 assess
+    false-sign and active-recovery percentages. This compares operating points,
+    not a claim of exact error control.}\label{tab:revised-matched}
+    \begin{tabular}{lrrrr}\toprule
+     & \multicolumn{2}{c}{Independent gate} & \multicolumn{2}{c}{Date-score gate}\\
+    Design & False & Recovery & False & Recovery\\\midrule
+    Independent residuals & 26.0 & 98.8 & 20.0 & 98.0 \\
+Correlated residuals & 19.6 & 52.4 & 19.6 & 52.4 \\
+Duplicate responses & 19.6 & 46.8 & 19.6 & 46.8 \\
+Unequal histories & 20.8 & 53.6 & 19.6 & 52.0 \\
+Heteroskedastic residuals & 19.2 & 22.8 & 19.2 & 25.2 \\
+Changing sign & 20.0 & 77.2 & 19.6 & 77.2 \\
+    \bottomrule\end{tabular}\end{table}
+    

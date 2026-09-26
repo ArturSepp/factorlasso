@@ -31,7 +31,7 @@ def _fit(Xc, Yc, prior, signs, model):
     kw = dict(model_type=model, reg_lambda=LAM, demean=False, warmup_period=None,
               factors_beta_prior=prior)
     if model != MT.LASSO:
-        kw.update(cutoff_fraction=S.PROD_CUTOFF, auto_sign_constraints=True,
+        kw.update(cutoff_fraction=S.PROD_CUTOFF, auto_sign_constraints=True, auto_sign_variance='independent',
                   auto_sign_threshold_t=1.0, **S.PROD_ADAPT)
     if signs is not None:
         kw["factors_beta_loading_signs"] = signs

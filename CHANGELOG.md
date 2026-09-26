@@ -1,11 +1,160 @@
 # Changelog
 
+## 0.20.0 - 2026-09-25
+
+- Consolidate automatic highest-R-squared and named/joint OLS prior targets,
+  prior-sign precedence, missing-data repairs, optional EWMA date-pooled signs,
+  per-response weight-sum loss normalization and partition variance diagnostics.
+- Public defaults remain CLARABEL, opt-in priors, equal-weight independent
+  sign screening and sample-normalized loss. Private production callers select
+  revised settings explicitly and calibrate penalties for their horizons.
+- The development entries below record the individual changes in this release.
+
+## 0.20.0.dev8 — 2026-09-25
+
+- Add `partition_variance_share(returns, labels)` to `residual_diagnostics`. Per date it
+  reports the share of cross-sectional variance that demeaning within a static or date-varying
+  partition removes, the size-preserving permutation floor `(K - 1)/(N - 1)` (exact for every
+  cross-section and group-size profile), and the floor-adjusted share, equal to the one-way
+  ANOVA adjusted R^2. Additive: one new public name, no existing signature, default or
+  numerical path changed. Assigned to `docs/residual_diagnostics.md`; tested against a
+  hand computation, an OLS-on-indicators reference and exact permutation enumeration.
+
+## 0.20.0.dev7 — 2026-09-25
+
+- Restore independent pooled screening as the public default pending the submitted-paper
+  revision. Date-score screening remains an explicit option; missing-data repairs remain.
+- Pin JSS legacy and revised sign-study conventions explicitly. Public CLARABEL and
+  loss-normalization defaults are unchanged.
+
+## 0.20.0.dev6 — 2026-09-25
+
+- Add opt-in `loss_normalization="weight_sum"` to LASSO, group/cluster and
+  cooperative estimators and their regularization paths. Each response's loss
+  uses its valid EWMA weight mass, eliminating shrinkage from missing pre-history.
+  The historical `"sample"` objective and public CLARABEL default remain unchanged.
+- Record `loss_weight_mass_`, `loss_denominator_` and `n_loss_rows_` on fitted models.
+  Switching conventions requires penalty conversion/calibration; unequal histories
+  change relative response weights. UniLasso's separate unweighted objective is
+  unchanged and explicitly rejects the new option.
+
+## 0.20.0.dev5 — 2026-09-25
+
+- Restore missing response and factor masks before automatic sign derivation.
+- Add optional `ewma_span=None` sign analytics and estimator sign-horizon controls;
+  private callers can follow the effective fit span without changing public weighting defaults.
+- Default the pooled gate to a date-score sandwich: duplicate responses no longer
+  inflate screening evidence. `variance_estimator="independent"` (model:
+  `auto_sign_variance="independent"`) retains the old equal-weight gate for replication.
+  The date gate allows contemporaneous dependence, assumes independent dates and
+  is a screening rule, not a calibrated Student t test. Existing numerical results
+  using the gate can change. Loss normalization is unchanged.
+- Expose detected signs, slopes, score statistics, effective dates and adaptive
+  weights separately from the final prior/explicit-constraint sign matrix.
+- Public solver defaults remain CLARABEL; MOSEK is selected by private callers.
+
+
 All notable changes to `factorlasso` are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+- 2026-09-24 (`0.20.0.dev4`): `factor_for_prior` also accepts ordered
+  factor lists/tuples. Their joint weighted OLS slopes with intercept become
+  soft prior centres on each fit window. Preserve original-grid missing-data
+  weights, single-factor results, automatic fallback, explicit overrides and
+  prior-sign precedence; unidentified joint regressions yield zero centres.
+
+- 2026-09-24: finite nonzero prior centres now override conflicting automatic
+  sign detection, including automatic t-statistic zero gates, per response and
+  factor. This applies to supplied, mapped OLS and automatic OLS priors. Explicit
+  hard sign/zero constraints and automatic-sign exclusions retain precedence;
+  zero or missing priors leave detection unchanged. Adaptive penalty weights
+  remain based on the original detection. Direct fits and lambda paths expose
+  the final solver signs through `derived_signs_`. No public signature changed.
+
+- 2026-09-23: development version `0.20.0.dev3` adds optional
+  `LassoModel(factor_for_prior=...)`, a response-to-factor map selecting
+  which weighted OLS slope supplies the soft prior. Unmapped responses
+  retain highest-R-squared selection. Explicit-centre precedence and sign
+  filtering are unchanged; the default `None` preserves existing fits.
+
+### Added
+
+- Added opt-in `LassoModel(apply_ols_prior=True)` for fast, per-response
+  univariate OLS penalty centres. The highest EWMA-weighted R-squared factor
+  receives its full slope; other automatic priors are zero. OLS includes an
+  intercept and uses the effective squared-loss span, including fit-time
+  overrides, independently of clustering span.
+- Zero selected priors that conflict with explicit hard sign constraints, including
+  forced-zero exposures, without reallocating blocked priors. Finite explicit
+  prior entries override automatic values; NaN defers to the automatic prior.
+- Retain raw OLS betas, R-squared, selected and effective priors, and the span as
+  fitted diagnostics. Grouped lambda paths reuse the calculation; CV recomputes
+  it using each training fold. UNILASSO rejects this unsupported option.
+  The default `apply_ols_prior=False` preserves previous numerical behavior.
+- Added the documentation quickstart, the analytics gallery and four methodology
+  articles (sparse factor model, sign constraints and priors, group penalties,
+  factor covariance assembly), each with a canonical offline script under
+  `examples/docs/` that asserts its quoted numbers and a registered synthetic
+  exhibit. `tools/check_docs.py` now requires every Python block of an article to
+  be a verbatim excerpt of its canonical script unless marked as a fragment. The
+  documentation copyright notice reads "2026, Artur Sepp". No package code changed.
+
+### Fixed
+
+- `LassoModel` rejects `factors_beta_loading_signs` and `nonneg=True` with
+  `ValueError`, at construction and at fit, for `UNILASSO`,
+  `COOPERATIVE_GROUP_LASSO` and `COOPERATIVE_CLUSTER_GROUP_LASSO`, whose solvers
+  take no sign constraint; previously the inputs were dropped silently and the
+  fit was unconstrained. With `auto_sign_constraints=True` these modes still fit
+  and `derived_signs_` is now `None`, since the derived signs never reach the
+  solver. Fits in the other modes are unchanged.
+- `CurrentFactorCovarData.get_snapshot` names the fallback alpha column
+  `stat_alpha` when no residuals are stored, so the table no longer carries two
+  `insample_alpha` columns, and raises `ValueError` naming the missing column
+  when `y_variances` lacks `r2` or `insample_alpha`.
+- README: the quickstart reads the regression intercept from `alpha_const_`, not
+  from the solver diagnostic `intercept_`; the HCGL section describes the
+  row-grouped penalty instead of calling it block-sparse.
+
+### Changed
+
+- Development version `0.20.0.dev2` removes the experimental
+  `prior_selection_type="highest_r2_and_abs_beta"` selector. `"highest_r2"`
+  is now the default and only supported value. Explicit use of the removed
+  selector raises `ValueError` at construction and fit; replace it with
+  `"highest_r2"`. Absolute-beta ranking depended on factor units.
+  `apply_ols_prior=False` and explicitly selected `"highest_r2"` fits retain
+  their numerical behavior.
+
+## [0.19.0] - 2026-09-20
+
+### Added
+
+- Added opt-in empirical residual risk through `ResidualType`,
+  `ResidualCorrelationData`, and `estimate_residual_correlation`. Common-period
+  causal EWMA correlation is combined with current MATF marginal residual
+  variances; the orthogonal default, residual diagonal, and native alpha remain
+  unchanged, and both modes assume zero factor-residual cross covariance.
+- Added independent `residual_corr_weight` retention, rolling as-of covariance
+  queries, distinct correlation-vintage history, current residual-covariance
+  history, filtering, and Excel persistence. Invalid units, incomplete histories,
+  internal gaps, and nonnested period boundaries fail closed.
+- Added opt-in `LassoModel.auto_sign_excluded_factors` so selected factor columns
+  can remain free of automatic sign and t-stat zero constraints. Explicit signs
+  still apply; adaptive weights, clustering, and default fits are unchanged.
+- Added the Markdown methodology framework, public-symbol and image ownership
+  checks, offline example execution, Sphinx testcode execution, and the first
+  methodology article and reproducible exhibit for residual diagnostics.
+
+### Changed
+
+- Documented how `effective_sparsity` treats fully collapsed fits and the absolute
+  tolerance remedy, and documented the final residual-correlation API throughout
+  the README and task guide.
 
 ## [0.18.1] - 2026-09-08
 

@@ -86,7 +86,7 @@ SR_PRIOR = np.array([0.45, 0.30, 0.30, 0.30, 0.10, 0.10, 0.60, 0.30, 0.00])
 # Reference rows (OLS, FL LASSO, the true-cluster oracle) and external
 # competitors are untouched.
 PROD_CUTOFF = 0.40
-PROD_SIGN = dict(auto_sign_constraints=True, auto_sign_threshold_t=1.0)
+PROD_SIGN = dict(auto_sign_constraints=True, auto_sign_variance='independent', auto_sign_threshold_t=1.0)
 PROD_ADAPT = dict(auto_sign_adaptive_weights=True, auto_sign_adaptive_gamma=1.0,
                   auto_sign_adaptive_floor=0.5)
 L1_ANCHORED = {"OLS", "sklearn_lasso", "factorlasso_lasso"}

@@ -36,7 +36,7 @@ DPI = 150
 def prod_kwargs(tau, d):
     return dict(model_type=MT.HIERARCHICAL_CLUSTER_GROUP_LASSO,
                 cutoff_fraction=S.PROD_CUTOFF,
-                auto_sign_constraints=True, auto_sign_threshold_t=tau,
+                auto_sign_constraints=True, auto_sign_variance='independent', auto_sign_threshold_t=tau,
                 **S.PROD_ADAPT,
                 factors_beta_loading_signs=d["sign"], factors_beta_prior=d["prior"])
 
