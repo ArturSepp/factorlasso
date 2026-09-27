@@ -198,7 +198,7 @@ python examples/docs/adaptive_penalty_weights.py
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
-  Software*. [Manuscript](../papers/jss_2026/paper/article.pdf).
+  Software*. Manuscript retained locally; not distributed in this checkout.
 - Wang, H., and Leng, C. (2008). A note on adaptive group lasso. *Computational Statistics & Data
   Analysis* 52(12), 5277-5286. DOI 10.1016/j.csda.2008.05.006.
 - Zou, H. (2006). The adaptive lasso and its oracle properties. *Journal of the American

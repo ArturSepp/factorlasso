@@ -126,41 +126,11 @@ recovers it only by not regularising, at the largest loading error in the table.
 configurations recover 0.31 to 0.32 with the lowest loading errors. The paper reports the full
 table, including asgl, adelie and the BIC-selected penalties.
 
-The next exhibit tests how much the result depends on the prior being right.
-
-![Recovered credit loading, loading error and covariance error as the credit prior is scaled from the wrong sign to twice the truth](../papers/jss_2026/paper/figures/prior_sensitivity_sweep.png)
-
-*Paper exhibit. JSS manuscript, Figure prior-sweep: calibrated 102-fund design, oracle-selected
-penalty, $T = 112$, mean over fifteen seeds with one-standard-error bands. The shaded region is a
-credit prior of the wrong sign.*
-
-The recovered credit loading follows the prior, but the loading error and the covariance error
-stay bounded across the whole range, including a prior of the wrong sign: a misspecified prior
-costs attribution, not a collapse of the fit. The second robustness exhibit holds the prior-centred
-HCGL configuration fixed and varies only the gate threshold.
-
-![Support F1, sign agreement, loading error and abstention rate as the gate threshold is swept](../papers/jss_2026/paper/figures/tau_sweep.png)
-
-*Paper exhibit. JSS manuscript, Figure tau-sweep: calibrated 102-fund design, HCGL with signs and
-prior held fixed, penalty selected once per seed at $\tau = 1$, $T = 112$, ten seeds.*
-
-Support recovery, sign agreement and loading error are flat from $\tau = 0$ to 3, while the share
-of cells the gate leaves unconstrained rises slowly, so the result does not hinge on the
-production value of $\tau$.
-
-**Market data.** The seventeen credit-bearing bond funds have a mean OLS Credit loading of 0.82.
-As the penalty grows, the shrink-to-zero HCGL fit drives it to zero and raises their mean Equity
-loading from about zero to 0.11 at a moderate penalty. The prior-centred HCGL fit holds the Credit
-loading at the sleeve-weighted prior of 0.29, and the prior-centred FCGL fit keeps the high-yield
-and emerging-market sleeves above the prior. At a moderate penalty the Credit loading of HYG falls
-from 0.85 to 0.04 under shrink-to-zero against 0.41 with the prior; EMB from 1.16 to 0.08 against
-0.35; and LQD from 0.60 to 0.04 against 0.22.
-
-![Mean Credit loading of bond ETFs against regularisation strength for shrink-to-zero HCGL, prior-centred HCGL and prior-centred FCGL](../papers/jss_2026/paper/figures/etf_credit_beta_vs_lambda.png)
-
-*Paper exhibit. JSS manuscript, Figure etf-credit: mean Credit loading of seventeen IG/HY/EM bond
-ETFs against normalised regularisation strength on the frozen 2017-2026 excess-return panel;
-stronger shrinkage to the left.*
+The JSS prior-sensitivity, gate-threshold and market-data exhibits are retained
+in the local paper workspace and are not distributed here. The table above is
+a previously documented result from that study, not a result of the public
+synthetic teaching script. The public example demonstrates the attribution
+mechanism without reproducing the manuscript's empirical panels.
 
 ## What the study does and does not show
 
@@ -190,10 +160,9 @@ The synthetic mechanism runs offline after `pip install factorlasso`:
 python examples/docs/app_multi_asset_credit_attribution.py
 ```
 
-The paper's tables and figures are reproduced from `papers/jss_2026` in a source checkout; the
-[research papers page](scientific-replication.md) gives the commands and the data requirements.
-The calibrated benchmark is Stage 3 and the market-data figure Stage 5 of `replicate.py`; both
-need the committed factor panel in `applications/data/`.
+The JSS replication workspace is local-only. The public checkout includes the
+synthetic teaching script above; it does not reproduce the manuscript tables.
+The [research papers page](scientific-replication.md) records availability.
 
 ## See also
 
@@ -206,7 +175,7 @@ need the committed factor panel in `applications/data/`.
 
 - Sepp, A., and Kastenholz, M. A. (2026). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
-  Software*. [Manuscript](../papers/jss_2026/paper/article.pdf).
+  Software*. Manuscript retained locally; not distributed in this checkout.
 - Sepp, A., Hansen, E., and Kastenholz, M. (2026). Capital Market Assumptions and Strategic Asset
   Allocation Using Multi-Asset Tradable Factors. Working paper,
   [SSRN 6785958](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6785958).

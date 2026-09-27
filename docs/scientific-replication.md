@@ -4,7 +4,7 @@ myst:
     description: >-
       The research papers behind factorlasso: citation titles taken from the LaTeX sources,
       publication status, the documentation articles each paper supports, and how to reproduce
-      the JSS, sign-pooling and fixed-income prior studies.
+      the public sign-pooling study; other paper workspaces remain local.
 ---
 
 # Research papers and replication
@@ -27,12 +27,11 @@ Each title below is the title in the paper's LaTeX source, and the documentation
 Methods are cited to these papers; the software itself is cited through
 [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
-**Manuscripts with source in this repository**
+**Companion manuscripts and availability**
 
 - Sepp, A. and Kastenholz, M. A. (2026). *factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python*. Submitted to the Journal of Statistical Software.
-  [Manuscript](../papers/jss_2026/paper/article.pdf) and
-  [replication tree](https://github.com/ArturSepp/factorlasso/tree/main/papers/jss_2026).
+  Manuscript and replication workspace retained locally; not distributed here.
 - Sepp, A. and Kastenholz, M. (2026). *Gated Cluster-Pooled Sign Constraints for Multi-Output
   Sparse Regression*. Submitted to Computational Statistics & Data Analysis.
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf),
@@ -40,9 +39,7 @@ Methods are cited to these papers; the software itself is cited through
   and archived research bundle [10.5281/zenodo.21000294](https://doi.org/10.5281/zenodo.21000294).
 - Sepp, A. (2026). *Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market
   Assumptions*. Working paper, revised 26 September 2026.
-  [Manuscript](../papers/prior_targets_2026/paper/article.pdf) and
-  editorial source `papers/prior_targets_2026/manuscript.md`. The PDF predates the
-  26 September revision of the editorial source, and several tables are still marked for a rerun.
+  Manuscript and replication workspace retained locally; not distributed here.
 
 **Published and public working papers**
 
@@ -83,53 +80,35 @@ its study design and is not restated as a general performance claim.
 | Sparse equity factors | Planned: empirical residual correlation |
 | Model-layer attribution | Context for the factor-covariance workflow only |
 
-## JSS software-paper replication
+## Public sign-pooling replication
 
-The [JSS replication tree](https://github.com/ArturSepp/factorlasso/tree/main/papers/jss_2026)
-accompanies the software paper. Its committed 2026-06 ETF and factor panels are the canonical
-inputs, so current network data are not part of the reproduced result. From `papers/jss_2026` in
-a source checkout:
+Only the [CSDA workspace](https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026) is tracked. It
+includes the current approved manuscript, public yeast eQTL inputs, frozen
+reference results in `replication/data/reference/`, replication code and tests.
+Use its README for current commands and external output-directory settings.
 
-```console
-python -m pip install -r requirements.txt
-python replicate.py --log replication_output.txt
-```
+The current working revision requires FactorLasso 0.20.0.dev5. The archived
+Zenodo release and `replication/requirements.txt` preserve the historical 0.7.2
+environment. Use the archived bundle for exact historical reproduction; do not
+install that pin over the working development environment and claim equivalence.
+LaTeX compilation additionally requires the Elsevier CAS template.
 
-The default is the quick smoke path. `python replicate.py --full` uses the full manuscript seed
-set and is the command for exact manuscript numbers; it takes materially longer. The comparison
-stage also needs the compiled or platform-specific packages named in that tree's README. Install
-failures for those research dependencies do not imply that the core factorlasso wheel is broken.
+## Local paper workspaces
 
-## Sign-pooling replication
+The JSS and fixed-income prior workspaces are retained locally and excluded from
+Git. Their manuscript files, empirical figures and replication commands are not
+part of the public checkout. This availability decision does not change the
+package API or the published citation metadata.
 
-The
-[sign-pooling replication tree](https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026)
-includes the public yeast eQTL inputs and cached result tables. From `papers/sign_pooling_2026` in
-a source checkout:
+The public offline teaching scripts remain available:
 
 ```console
-python -m pip install -r replication/requirements.txt
-make sims
-make eqtl
+python examples/docs/app_multi_asset_credit_attribution.py
+python examples/docs/prior_targets.py
 ```
 
-`make paper` additionally needs the Elsevier CAS LaTeX template from CTAN. The replication pins
-the historical factorlasso version used by that manuscript; do not silently substitute the newest
-package and call changed output a reproduction.
-
-## Fixed-income prior replication
-
-The empirical stages of the fixed-income prior study use licensed index histories and the private
-portfolio stack, so they cannot be rerun from a public checkout. The known-truth experiments need
-only the public package. From the repository root:
-
-```console
-python -m papers.prior_targets_2026.replication.fi_validation_synthetic --output-root <new-directory> --examples
-```
-
-`--examples` runs the two small offline demonstrations; without it the full Monte Carlo design
-runs. The paper README, `papers/prior_targets_2026/paper/README.md`, describes the empirical
-orchestration and its evidence records.
+These examples demonstrate the methodology, not a reproduction of the local
+manuscripts' numerical tables. See the [paper index](https://github.com/ArturSepp/factorlasso/blob/main/papers/README.md).
 
 ## Evidence and provenance
 

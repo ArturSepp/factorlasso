@@ -231,17 +231,9 @@ The exhibit separates the two channels through which a centre acts:
 A last check in the script adds an explicit non-positive sign on Inflation to the joint policy.
 The explicit sign wins, the Inflation centre becomes zero and the Rates centre stays 0.929.
 
-The same mechanism appears in the fixed-income study. Figure 4 of that paper, reproduced below,
-tracks the quarterly Inflation loading of an inflation-linked index and a TIPS fund. The automatic
-(Max-R2) and zero policies leave it at or near zero; the policies with a Rates/Inflation centre
-recover a positive loading.
-
-![Quarterly Inflation loadings of the Global IL index and the iShares TIPS fund under four prior policies](../papers/prior_targets_2026/paper/figures/fi_il_path.png)
-
-*Paper exhibit. Sepp (2026), Figure 4: quarterly refits with FCGL, EWMA span 60 and a fixed
-monthly penalty on licensed index and fund histories. The expert and conditional policies use the
-same Rates/Inflation centre for inflation-linked assets. The figure cannot be regenerated without
-the licensed data.*
+The fixed-income study and its empirical exhibits are retained in a local
+workspace. They are not distributed with this checkout; the synthetic example
+above remains available and does not require licensed market histories.
 
 ## Implementation in factorlasso
 
@@ -337,10 +329,10 @@ python examples/docs/prior_targets.py
   Series B* 88(1), 261-281. DOI 10.1093/jrsssb/qkaf050.
 - Sepp, A. (2026). Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market
   Assumptions. Working paper, revised 26 September 2026.
-  [Manuscript](../papers/prior_targets_2026/paper/article.pdf).
+  Manuscript retained locally; not distributed in this checkout.
 - Sepp, A., and Kastenholz, M. A. (2026). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
-  Software*. [Manuscript](../papers/jss_2026/paper/article.pdf).
+  Software*. Manuscript retained locally; not distributed in this checkout.
 - Takada, M., and Fujisawa, H. (2020). Transfer learning via l1 regularization. *Advances in Neural
   Information Processing Systems* 33.
 - Tibshirani, R. (1996). Regression shrinkage and selection via the lasso. *Journal of the Royal

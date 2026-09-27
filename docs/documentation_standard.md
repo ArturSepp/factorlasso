@@ -88,9 +88,9 @@ source; the ledger also records the authors and the status. Titles used in earli
 listed as `retired_titles`, and `tools/check_docs.py` fails when one appears on a reader-facing
 page, in `CITATION.cff` or in a paper README. The papers fall into three groups:
 
-- manuscripts with source in this repository (`papers/jss_2026`, `papers/sign_pooling_2026`,
-  `papers/prior_targets_2026`), which articles cite by section and whose tracked exhibits they
-  may display;
+- the approved manuscript source in `papers/sign_pooling_2026`, whose tracked
+  exhibits articles may display; JSS and prior-targets sources remain local, and
+  public pages must not embed or link their workspace files;
 - published papers and public working papers, cited with their publisher or SSRN link;
 - working papers without a public copy, cited with the status "Working paper; link to be added"
   until a link exists. Their figures are not displayed and their numbers are not quoted.
@@ -99,9 +99,9 @@ The [research papers page](scientific-replication.md) lists every paper and the 
 use it.
 
 A reference to other literature is admissible when it is an entry in
-[the JSS bibliography](../papers/jss_2026/paper/refs.bib),
-[the sign-pooling bibliography](../papers/sign_pooling_2026/paper/refs.bib) or
-[the prior-targets bibliography](../papers/prior_targets_2026/paper/refs.bib), when it is already
+[the public sign-pooling bibliography](../papers/sign_pooling_2026/paper/refs.bib),
+when it was verified against the local JSS or prior-targets bibliography with the
+verification recorded in the working audit, when it is already
 cited in the `References` section of a module docstring, or when it has been checked against the
 publisher or DOI landing page and that check is recorded in the working audit. Authors, year,
 title, venue, volume, pages and DOI are checked against the primary source.

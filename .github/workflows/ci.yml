@@ -86,6 +86,9 @@ jobs:
         assert not any('tests' in name.split('/') for name in wheel_names);
         assert not any(forbidden.intersection(name.split('/')) for name in wheel_names + sdist_names)"
 
+    - name: Check paper exclusions in both distributions
+      run: python .github/scripts/check_paper_policy.py --artifacts dist
+
     - name: Install wheel in a clean core environment
       run: |
         uv venv --python 3.12 "$RUNNER_TEMP/factorlasso-wheel"

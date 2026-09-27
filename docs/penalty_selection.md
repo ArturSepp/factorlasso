@@ -204,5 +204,5 @@ python examples/docs/penalty_selection.py
   DOI 10.1016/j.jeconom.2019.06.001.
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
-  Software*. [Manuscript](../papers/jss_2026/paper/article.pdf).
+  Software*. Manuscript retained locally; not distributed in this checkout.
 - [factorlasso software citation](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

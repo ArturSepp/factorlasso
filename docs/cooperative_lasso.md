@@ -177,7 +177,7 @@ python examples/docs/cooperative_lasso.py
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
-  Software*. [Manuscript](../papers/jss_2026/paper/article.pdf).
+  Software*. Manuscript retained locally; not distributed in this checkout.
 - Yuan, M., and Lin, Y. (2006). Model selection and estimation in regression with grouped
   variables. *Journal of the Royal Statistical Society: Series B* 68(1), 49-67.
   DOI 10.1111/j.1467-9868.2005.00532.x.

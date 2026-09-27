@@ -355,7 +355,11 @@ def study_sign_consistency(cfg: DgpConfig,
 # -------------------------------------------------------------- dispatcher
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_OUT = os.path.join(_HERE, 'results')
+if __package__:
+    from .paths import RESULTS_DIR
+else:
+    from paths import RESULTS_DIR
+_OUT = str(RESULTS_DIR)
 # The sign derivation is invariant to the coefficient penalty, so on the sign metric
 # LASSO-adaptive coincides with LASSO, SGL-fixed with GROUP-fixed, and FCGL with HCGL.
 # We therefore report the three sign-distinct methods: per-response, pooled-known, pooled-estimated.

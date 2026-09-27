@@ -245,7 +245,7 @@ python examples/docs/cluster_discovery.py
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
-  Software*. [Manuscript](../papers/jss_2026/paper/article.pdf).
+  Software*. Manuscript retained locally; not distributed in this checkout.
 - Ward, J. H. (1963). Hierarchical grouping to optimize an objective function. *Journal of the
   American Statistical Association* 58(301), 236-244. DOI 10.1080/01621459.1963.10500845.
 - [factorlasso software citation](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

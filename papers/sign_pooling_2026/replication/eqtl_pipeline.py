@@ -37,7 +37,11 @@ from sklearn.metrics import adjusted_rand_score
 from factorlasso import LassoModel, LassoModelType
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_OUT = os.path.join(_HERE, 'results')
+if __package__:
+    from .paths import RESULTS_DIR
+else:
+    from paths import RESULTS_DIR
+_OUT = str(RESULTS_DIR)
 _DATA = os.path.join(_HERE, 'data')
 
 # KEGG MAPK sce04011 four-module membership (standard gene names)

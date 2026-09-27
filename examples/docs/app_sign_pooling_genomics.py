@@ -2,7 +2,8 @@
 
 The sign-pooling paper (Section 5) applies HCGL with gated cluster-pooled signs to the yeast
 eQTL cross of Brem and Kruglyak (2005): 64 MAPK genes, 202 screened markers, 112 segregants. The
-fit is archived: its results are committed under ``papers/sign_pooling_2026/replication/results``
+fit is archived: its results are committed under
+``papers/sign_pooling_2026/replication/data/reference``
 and were produced by ``eqtl_pipeline.py`` with the versions pinned in its ``requirements.txt``.
 This script does not refit. It reads the committed results and recomputes the statistics the
 case study quotes: cluster sizes and purity, the adjusted Rand index (by its formula, not a
@@ -15,7 +16,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-RESULTS = Path(__file__).resolve().parents[2] / "papers/sign_pooling_2026/replication/results"
+RESULTS = (Path(__file__).resolve().parents[2]
+           / "papers/sign_pooling_2026/replication/data/reference")
 CONFIGURATION = {                        # eqtl_pipeline.fit_model, as archived in the paper
     "model_type": "HIERARCHICAL_CLUSTER_GROUP_LASSO",
     "reg_lambda": 0.3,

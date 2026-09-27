@@ -38,6 +38,7 @@ ENV/
 # ─── IDE / editor metadata ──────────────────────────────────────
 .idea/
 .vscode/
+.claude/
 *~
 *.swp
 *.swo
@@ -61,31 +62,22 @@ Desktop.ini
 # Local agent roadmaps and operational reports
 /agents/
 
-# ─── papers/jss_2026/ — regenerable artefacts only ──────────────
-# The paper source, reproduction scripts, embedded figures, and the
-# committed reproduction data inputs (etf_excess_logreturns.csv,
-# futures_risk_factors.csv, riskfree_monthly.csv, etf_universe.csv)
-# ARE tracked. Only regenerable outputs and build artefacts are ignored.
+# Paper publication boundary: CSDA is the only approved workspace.
+/papers/*
+!/papers/AGENTS.md
+!/papers/README.md
+!/papers/sign_pooling_2026/
 
-# Simulation-harness outputs (parquet/csv); regenerated via
-# `python -m papers.jss_2026.simulations.run` and the study scripts.
-papers/jss_2026/simulations/results/
-papers/jss_2026/simulations/results_calibrated/
+# Private sections cannot be published through nested exceptions.
+/papers/**/drafts/
+/papers/**/private/
+/papers/**/agents/
+/papers/**/paper/**
+/papers/**/presentations/**
+/papers/**/replication/data/**
+/papers/**/replication/outputs/
+/papers/**/replication/results/
+/papers/**/replication/data/local/
 
-# The replication bundle is a build output of make_replication_zip.py.
-papers/jss_2026/factorlasso_jss_replication.zip
-
-# LaTeX build artefacts (keep article.tex, refs.bib, *.cls, *.bst,
-# jsslogo.jpg, and the committed article.pdf).
-papers/jss_2026/paper/*.aux
-papers/jss_2026/paper/*.bbl
-papers/jss_2026/paper/*.blg
-papers/jss_2026/paper/*.log
-papers/jss_2026/paper/*.out
-papers/jss_2026/paper/*.toc
-papers/jss_2026/paper/*.synctex.gz
-
-# Local backup dirs
+# Local backup directories
 factorlasso-backup/
-papers/jss_2026_v0.zip
-papers/cluster_lineage_2026/data

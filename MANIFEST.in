@@ -1,0 +1,3 @@
+# Research workspaces are source-checkout material, not Python distributions.
+prune papers
+prune agents

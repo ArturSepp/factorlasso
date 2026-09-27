@@ -18,11 +18,18 @@ from matplotlib.colors import ListedColormap, BoundaryNorm
 from scipy.stats import norm
 from scipy.optimize import curve_fit
 # project
-import sign_pooling_simulation as S
+if __package__:
+    from . import sign_pooling_simulation as S
+else:
+    import sign_pooling_simulation as S
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_RES = os.path.join(_HERE, 'results')
-_PAPER = os.path.join(_HERE, '..', 'paper')
+if __package__:
+    from .paths import EXHIBITS_DIR, REFERENCE_DIR, RESULTS_DIR
+else:
+    from paths import EXHIBITS_DIR, REFERENCE_DIR, RESULTS_DIR
+_RES = str(REFERENCE_DIR)
+_PAPER = str(EXHIBITS_DIR)
 _FIG = os.path.join(_PAPER, 'figures')   # figures live in paper/figures/
 _TAB = _PAPER                            # table fragments live in paper/
 
@@ -258,6 +265,13 @@ def table_coop() -> str:
 
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--from-run', action='store_true',
+                        help='read external run results instead of frozen reference inputs')
+    args = parser.parse_args()
+    if args.from_run:
+        _RES = str(RESULTS_DIR)
     os.makedirs(_FIG, exist_ok=True)
     os.makedirs(_TAB, exist_ok=True)
     fig_recoverability()

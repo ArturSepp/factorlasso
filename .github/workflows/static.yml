@@ -23,6 +23,12 @@ jobs:
       with:
         python-version: "3.12"
 
+    - name: Check paper publication policy
+      run: |
+        python .github/scripts/check_paper_policy.py
+        python .github/scripts/paper_policy_test.py
+        python -m unittest discover -s papers/sign_pooling_2026/replication/tests -p 'test_*.py'
+
     - name: Check lint and stack invariants
       run: uv run --locked --only-group lint ruff check src/factorlasso tests
 

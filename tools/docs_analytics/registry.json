@@ -517,18 +517,6 @@
       "alt": "Covariance error and realised minimum-variance volatility of the assembled factor covariance and the sample covariance for histories of 48 to 240 months."
     },
     {
-      "id": "jss_etf_credit_beta_vs_lambda",
-      "kind": "paper",
-      "path": "papers/jss_2026/paper/figures/etf_credit_beta_vs_lambda.png",
-      "producer_script": "papers/jss_2026/applications/run_etf_study.py",
-      "replication_command": "python replicate.py --full  (from papers/jss_2026; stage 5)",
-      "study": "JSS manuscript, Figure etf-credit: mean Credit loading of seventeen IG/HY/EM bond ETFs against normalised regularisation strength on the frozen 2017-2026 excess-return panel.",
-      "documents": ["README.md", "docs/app_multi_asset_credit_attribution.md"],
-      "planned_for": [],
-      "caption_class": "Paper exhibit",
-      "alt": "Mean Credit loading of bond ETFs against regularisation strength for shrink-to-zero HCGL, prior-centred HCGL and prior-centred FCGL."
-    },
-    {
       "id": "prior_targets_paths",
       "kind": "synthetic",
       "path": "docs/images/prior_targets_paths.png",
@@ -536,40 +524,6 @@
       "documents": ["docs/prior_targets.md", "docs/analytics_gallery.md"],
       "caption_class": "Synthetic teaching exhibit",
       "alt": "Rates and Inflation loadings of an inflation-linked response along the penalty grid for a zero, an automatic highest-R-squared and a joint Rates/Inflation prior centre."
-    },
-    {
-      "id": "jss_prior_sensitivity_sweep",
-      "kind": "paper",
-      "path": "papers/jss_2026/paper/figures/prior_sensitivity_sweep.png",
-      "documents": ["docs/app_multi_asset_credit_attribution.md"],
-      "caption_class": "Paper exhibit",
-      "alt": "Recovered credit loading, loading error and systematic-covariance error as the credit prior is scaled from the wrong sign to twice the truth.",
-      "producer_script": "papers/jss_2026/applications/plot_prior_sensitivity.py",
-      "replication_command": "python applications/prior_sensitivity_study.py; python applications/plot_prior_sensitivity.py  (from papers/jss_2026)",
-      "study": "JSS manuscript, Figure prior-sweep: calibrated 102-ETF data-generating process, oracle-selected penalty, T = 112, fifteen seeds."
-    },
-    {
-      "id": "jss_tau_sweep",
-      "kind": "paper",
-      "path": "papers/jss_2026/paper/figures/tau_sweep.png",
-      "documents": ["docs/app_multi_asset_credit_attribution.md"],
-      "caption_class": "Paper exhibit",
-      "alt": "Support F1, sign agreement, loading error and abstention rate as the noise-floor threshold tau is swept.",
-      "producer_script": "papers/jss_2026/applications/tau_sweep_study.py",
-      "replication_command": "python applications/tau_sweep_study.py  (from papers/jss_2026)",
-      "study": "JSS manuscript, Figure tau-sweep: calibrated 102-ETF data-generating process, HCGL+SIGN+PRIOR held fixed, T = 112, ten seeds."
-    },
-    {
-      "id": "jss_usage_signs_heatmap",
-      "kind": "paper",
-      "path": "papers/jss_2026/paper/figures/usage_signs_heatmap.png",
-      "documents": [],
-      "planned_for": ["docs/gated_cluster_pooled_signs.md"],
-      "caption_class": "Paper exhibit",
-      "alt": "Derived sign matrix of the synthetic usage example: fifty assets by nine factors.",
-      "producer_script": "papers/jss_2026/usage_example.py",
-      "replication_command": "python replicate.py  (from papers/jss_2026; stage 0)",
-      "study": "JSS manuscript, usage example: seeded synthetic panel of fifty assets and nine factors."
     },
     {
       "id": "csda_figs2_gate_roc",
@@ -630,17 +584,6 @@
       "producer_script": "papers/sign_pooling_2026/replication/eqtl_exhibits.py",
       "replication_command": "make eqtl  (from papers/sign_pooling_2026); the PNG was rasterised from the tracked PDF with pdftoppm -r 150",
       "study": "Sign-pooling manuscript, yeast eQTL application: 64 MAPK genes, 202 markers, T = 112 segregants."
-    },
-    {
-      "id": "prior_targets_fi_il_path",
-      "kind": "paper",
-      "path": "papers/prior_targets_2026/paper/figures/fi_il_path.png",
-      "documents": ["docs/prior_targets.md"],
-      "caption_class": "Paper exhibit",
-      "alt": "Quarterly Inflation loadings of the Global IL index and the iShares TIPS fund under the zero, Max-R2, expert and conditional prior policies.",
-      "producer_script": "papers/prior_targets_2026/replication/fi_validation_paper.py",
-      "replication_command": "python -m papers.prior_targets_2026.replication.refresh_current (licensed index histories required; see the paper README)",
-      "study": "Fixed-income prior note, Figure 4: quarterly refits at EWMA span 60 with FCGL and a fixed monthly penalty on licensed index and fund histories."
     },
     {
       "id": "residual_partition_share",

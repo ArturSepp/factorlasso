@@ -131,5 +131,80 @@ def test_full_names_do_not_force_mixed_credit_or_non_equity_indices():
         'STYLE': 'Equity', 'SECTOR': 'Equity', 'SECTOR_DAILY': 'Equity',
     })
     result = map_expert_factor_priors(names, FACTORS, asset_class=classes)
-    assert result.selection.isna().all()
+    assert result.selection.loc[['GOVT', 'GOVT_AGG']].eq('Rates').all()
+    assert result.selection.drop(['GOVT', 'GOVT_AGG']).isna().all()
     assert result.audit.loc['MIXED', 'source'] == 'ambiguous'
+
+
+@pytest.mark.parametrize(('name', 'category', 'expected'), [
+    ('Global IG corporates, USD hedged', 'Fixed Income', 'Credit IG'),
+    ('Global IG corporates 1-3 years, USD hedged', 'Bonds', 'Credit IG'),
+    ('Global HY CoCos, USD hedged', 'Fixed Income', 'Credit HY'),
+    ('Global IG CoCos, USD hedged', 'Hybrids', 'Credit IG'),
+    ('EM hard-currency aggregate, USD hedged', 'Fixed Income', 'Credit EM'),
+    ('Global government bonds, USD unhedged', 'Bonds', 'Rates'),
+    ('US municipal bonds', 'Fixed Income', 'Rates'),
+    ('US securitized bonds: MBS/ABS/CMBS/covered', 'Fixed Income', 'Rates'),
+    ('Global convertibles, USD hedged', 'Hybrids', ('Rates', 'Equity')),
+    ('Global convertible bonds, USD hedged', 'Fixed Income', ('Rates', 'Equity')),
+    ('US preferred and hybrid securities (PFF)', 'Fixed Income', ('Rates', 'Equity')),
+    ('Preferred stock index', 'Hybrids', ('Rates', 'Equity')),
+    ('MSCI Emerging Markets net total return, USD', 'Equity', 'Equity'),
+    ('MSCI World Real Estate net total return, USD', 'Equity', ('Rates', 'Equity')),
+    ('Global listed REIT index', 'Equities', ('Rates', 'Equity')),
+    ('SPDR Gold Shares (GLD)', 'Commodities', 'Gold'),
+    ('United States Oil Fund (USO)', 'Commodities', 'Oil'),
+    ('Bloomberg Gold Subindex Total Return', 'Commodity', 'Gold'),
+    ('Bloomberg WTI Crude Oil Subindex Total Return', 'Commodity', 'Oil'),
+])
+def test_bond_hybrid_equity_and_commodity_metadata_coverage(name, category, expected):
+    """Economic mandates resolve without per-security overrides or return data."""
+    result = map_expert_factor_priors(
+        pd.Series({'asset': name}), FACTORS + ['Gold', 'Oil', 'Commodities'],
+        asset_class=pd.Series({'asset': category}),
+    )
+    assert result.selection['asset'] == expected
+    assert result.audit.loc['asset', 'source'] == 'name'
+
+
+@pytest.mark.parametrize(('name', 'category'), [
+    ('EM local-currency government IG, USD unhedged', 'Fixed Income'),
+    ('Emerging Markets Local Currency Government Index', 'Bonds'),
+    ('Global HY and IG CoCos', 'Hybrids'),
+    ('Global contingent convertible bonds', 'Fixed Income'),
+    ('US floating-rate preferred securities', 'Hybrids'),
+    ('Government and corporate bonds', 'Fixed Income'),
+    ('US Treasury floating rate notes', 'Fixed Income'),
+    ('Global convertible arbitrage', 'Hybrids'),
+    ('High Yield Municipal Bonds', 'Bonds'),
+    ('MSCI World Real Estate Debt Index', 'Equity'),
+    ('Private Real Estate Fund', 'Alternatives'),
+    ('Gold Mining Equity Fund', 'Commodities'),
+    ('Oil and Gas Producers Fund', 'Commodities'),
+    ('Gold and Silver Fund', 'Commodity'),
+    ('Gold and Oil Basket', 'Commodity'),
+    ('SPDR Gold Shares', 'Equity'),
+    ('Invesco DB Agriculture Fund', 'Commodities'),
+    ('Invesco DB Base Metals Fund', 'Commodities'),
+])
+def test_new_rules_leave_conflicting_or_unsupported_exposures_automatic(name, category):
+    """Do not turn name coverage into false economic certainty."""
+    result = map_expert_factor_priors(
+        pd.Series({'asset': name}), FACTORS + ['Gold', 'Oil', 'Commodities'],
+        asset_class=pd.Series({'asset': category}),
+    )
+    assert pd.isna(result.selection['asset'])
+
+
+def test_joint_metadata_rule_requires_every_factor_and_override_still_wins():
+    """An incomplete joint target falls back as a whole; explicit review wins."""
+    names = pd.Series({'asset': 'Global convertible bonds'})
+    classes = pd.Series({'asset': 'Hybrids'})
+    with pytest.warns(UserWarning, match='absent from this model'):
+        result = map_expert_factor_priors(names, ['Equity'], asset_class=classes)
+    assert pd.isna(result.selection['asset'])
+    assert result.audit.loc['asset', 'source'] == 'unavailable'
+    result = map_expert_factor_priors(
+        names, FACTORS, asset_class=classes, ticker_overrides={'ASSET': 'Credit HY'})
+    assert result.selection['asset'] == 'Credit HY'
+    assert result.audit.loc['asset', 'source'] == 'override'

@@ -32,13 +32,21 @@ from dataclasses import replace
 from typing import List, Tuple
 from sklearn.linear_model import Lasso
 # project
-import sign_pooling_simulation as S
-from sign_pooling_simulation import DgpConfig, simulate, _zscore, SignMethod, fast_derive_signs, score_signs
+if __package__:
+    from . import sign_pooling_simulation as S
+else:
+    import sign_pooling_simulation as S
+DgpConfig, simulate, _zscore = S.DgpConfig, S.simulate, S._zscore
+SignMethod, fast_derive_signs, score_signs = S.SignMethod, S.fast_derive_signs, S.score_signs
 # factorlasso
 from factorlasso.cluster_utils import compute_clusters_from_corr_matrix
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_RES = os.path.join(_HERE, 'results')
+if __package__:
+    from .paths import RESULTS_DIR
+else:
+    from paths import RESULTS_DIR
+_RES = str(RESULTS_DIR)
 
 _METHODS = (SignMethod.LASSO, SignMethod.GROUP_FIXED, SignMethod.HCGL)
 

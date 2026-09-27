@@ -18,11 +18,18 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 # project
-import eqtl_pipeline as E
+if __package__:
+    from . import eqtl_pipeline as E
+else:
+    import eqtl_pipeline as E
 from factorlasso import LassoModelType
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_PAPER = os.path.join(_HERE, '..', 'paper')
+if __package__:
+    from .paths import EXHIBITS_DIR, REFERENCE_DIR, RESULTS_DIR
+else:
+    from paths import EXHIBITS_DIR, REFERENCE_DIR, RESULTS_DIR
+_PAPER = str(EXHIBITS_DIR)
 _FIG = os.path.join(_PAPER, 'figures')   # figures live in paper/figures/
 _TAB = _PAPER                            # table fragments live in paper/
 _CUTOFF = 0.7

@@ -267,10 +267,10 @@ python examples/docs/ewma_weighting_and_ragged_histories.py
   Statistics* 20(3), 339-350. DOI 10.1198/073500102288618487.
 - Sepp, A. (2026). Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market
   Assumptions. Working paper, revised 26 September 2026.
-  [Manuscript](../papers/prior_targets_2026/paper/article.pdf).
+  Manuscript retained locally; not distributed in this checkout.
 - Sepp, A., and Kastenholz, M. A. (2026). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
-  Software*. [Manuscript](../papers/jss_2026/paper/article.pdf).
+  Software*. Manuscript retained locally; not distributed in this checkout.
 - Zakamulin, V. (2015). A test of covariance-matrix forecasting methods. *The Journal of Portfolio
   Management* 41(3), 97-108. DOI 10.3905/jpm.2015.41.3.097.
 - [factorlasso software citation](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

@@ -22,14 +22,14 @@ _BROAD_EQUITY_NAME = re.compile(
     r'(?: chf| xuk| xswiss| sli| msci| xjp| xasia| ex japan| ex asia| dm| hedged)*$'
 )
 _NON_EQUITY_NAME = re.compile(
-    r'\b(?:bonds?|credit|fixed income|treasury|cash|commodit(?:y|ies)|hedge fund)\b'
+    r'\b(?:bonds?|debt|credit|fixed income|treasury|cash|commodit(?:y|ies)|hedge fund)\b'
 )
 _BROAD_MSCI_MARKETS = frozenset({
     'acwi', 'ac world', 'world', 'usa', 'us', 'uk', 'europe', 'emu', 'japan',
     'switzerland', 'canada', 'france', 'germany', 'netherlands', 'italy',
     'spain', 'norway', 'australia', 'hong kong', 'singapore free', 'china',
     'brazil', 'saudi arabia', 'emerging', 'em asia', 'em ex asia',
-    'emerging latin america', 'emerging markets india',
+    'emerging markets', 'emerging latin america', 'emerging markets india',
     'emerging markets korea', 'emerging markets taiwan',
     'emerging markets mexico', 'emerging markets south africa',
     'emerging markets poland', 'emerging markets europe middle east africa',
@@ -89,19 +89,52 @@ def _is_equity_index_name(name: str) -> bool:
     )
 
 
-def _selection_from_name(name: str) -> tuple[str | tuple[str, str] | None, str]:
-    """Recognise unambiguous fixed-income descriptions."""
+def _is_listed_real_estate_name(name: str) -> bool:
+    """Recognise listed property equity without treating private/debt funds as REITs."""
+    if _NON_EQUITY_NAME.search(name) or re.search(r'\b(?:private|mortgage)\b', name):
+        return False
+    return bool(
+        re.search(r'\b(?:listed|equity) reits?\b', name)
+        or any(name.startswith('msci world real estate' + marker)
+               for marker in _MSCI_RETURN_MARKERS)
+    )
+
+
+def _commodity_selection(name: str) -> tuple[str | None, str]:
+    """Select dedicated gold/oil factors only for unmixed commodity mandates."""
+    if re.search(r'\b(?:mining|miners?|producers?|equity|gas|silver|agriculture|metals)\b', name):
+        return None, 'unsupported_or_mixed_commodity'
+    matches = [factor for token, factor in (('gold', 'Gold'), ('oil', 'Oil'))
+               if re.search(rf'\b{token}\b', name)]
+    if len(matches) > 1:
+        return None, 'mixed_factor_name'
+    return (matches[0], 'dedicated_commodity') if matches else (None, 'no_rule')
+
+
+def _selection_from_name(name: str) -> tuple[str | tuple[str, ...] | None, str]:
+    """Recognise fixed-income/hybrid mandates, retaining incomplete or mixed cases."""
     il = bool(re.search(r'\b(?:il bonds?|inflation linked|inflation notes?|tips)\b', name))
-    hy = bool(re.search(r'\b(?:hy (?:global|us|europe|bonds?|credit)|high yield)\b', name))
-    em = bool(re.search(
-        r'\b(?:em|emerging markets?|c?embi)\b', name))
-    explicit_ig = bool(re.search(
-        r'\b(?:ig (?:agg|corp|global|sbi|bonds?)|investment grade)\b', name))
+    hy = bool(re.search(r'\b(?:hy|high yield)\b', name))
+    em = bool(re.search(r'\b(?:em|emerging markets?|c?embi)\b', name))
+    explicit_ig = bool(re.search(r'\b(?:ig|investment grade)\b', name))
     descriptive_ig = bool(re.search(
-        r'\b(?:corporate|global (?:aggregate|agg)|aaa bbb)\b', name))
+        r'\b(?:corporates?|global (?:aggregate|agg)|aaa bbb)\b', name))
     government = bool(re.search(r'\b(?:treasur(?:y|ies)|government|govt|sovereign)\b',
                                 name))
-    ig = explicit_ig or (descriptive_ig and not (il or hy or em or government))
+    municipal = bool(re.search(r'\b(?:municipal|muni) bonds?\b', name))
+    securitized = bool(re.search(r'\bsecuriti[sz]ed bonds?\b', name))
+    coco = bool(re.search(r'\b(?:cocos?|contingent convertibles?)\b', name))
+    convertible = bool(re.search(r'\bconvertibles?\b', name)) and not coco
+    preferred = bool(re.search(r'\bpreferred\b', name))
+    floating = bool(re.search(r'\b(?:floating rate|floaters?)\b', name))
+    # Hard-currency EM credit is not a local-rates/FX mandate, even at IG quality.
+    if em and re.search(r'\blocal (?:currency|rates?)\b', name):
+        return None, 'unsupported_em_local_currency'
+    if ((government and re.search(r'\bcorporates?\b', name))
+            or ((municipal or securitized) and (hy or em))):
+        return None, 'mixed_factor_name'
+    ig = explicit_ig or (descriptive_ig and not (
+        il or hy or em or government or municipal or securitized or convertible or preferred))
     candidates = [
         (('Rates', 'Inflation'), 'inflation_linked', il),
         ('Credit IG', 'investment_grade' if explicit_ig else 'investment_grade_index_name', ig),
@@ -109,11 +142,26 @@ def _selection_from_name(name: str) -> tuple[str | tuple[str, str] | None, str]:
         ('Credit EM', 'em_bonds', em),
     ]
     matches = [(selection, rule) for selection, rule, matched in candidates if matched]
-    credit_tokens = sum(bool(re.search(rf'\b{token}\b', name))
-                        for token in ('ig', 'hy', 'em'))
-    if len(matches) > 1 or (matches and credit_tokens > 1):
+    if len(matches) > 1:
         return None, 'mixed_factor_name'
-    return matches[0] if matches else (None, 'no_rule')
+    # A CoCo needs its rating; ordinary convertibles/preferreds have equity optionality.
+    # Do not infer IG quality from "preferred" or fixed duration from floating coupons.
+    if coco:
+        return matches[0] if matches else (None, 'coco_rating_unspecified')
+    if convertible or preferred:
+        if matches or floating or re.search(r'\barbitrage\b', name):
+            return None, 'mixed_factor_name'
+        return ('Rates', 'Equity'), 'convertible' if convertible else 'preferred'
+    if matches:
+        return matches[0]
+    if floating:
+        return None, 'floating_rate_quality_unspecified'
+    # Rates is a prior centre, not a claim that muni/securitized spread risk is zero.
+    if government or municipal or securitized:
+        rule = 'government_rates' if government else (
+            'municipal_rates_proxy' if municipal else 'securitized_rates_proxy')
+        return 'Rates', rule
+    return None, 'no_rule'
 
 
 def map_expert_factor_priors(
@@ -135,7 +183,8 @@ def map_expert_factor_priors(
         pass ``x.columns`` or a consumer model's factor-name list directly.
     asset_class : pd.Series, optional
         Response-indexed broad asset classes. When supplied, name rules are
-        gated to equity or fixed-income classes.
+        gated to equity, fixed-income/hybrid or commodity classes. Missing
+        classes retain the legacy fixed-income and explicit "EQ" name rules.
     ticker_overrides : mapping, optional
         Explicit response-to-factor selection, taking precedence over names.
         A scalar selects univariate OLS; an ordered list or tuple selects joint OLS.
@@ -189,13 +238,17 @@ def map_expert_factor_priors(
         rule = 'reviewed_override' if selected is not None else 'no_rule'
         if selected is None:
             category = '' if asset_class is None else _normalise_name(asset_class.loc[ticker])
-            if ((category in ('equity', 'equities') or (not category and name.startswith('eq ')))
-                    and _is_equity_index_name(name)):
-                selected, rule, source = 'Equity', 'broad_equity_name', 'name'
-            elif category in ('', 'bonds', 'bond', 'fixed income'):
+            if category in ('equity', 'equities') or (not category and name.startswith('eq ')):
+                if _is_equity_index_name(name):
+                    selected, rule = 'Equity', 'broad_equity_name'
+                elif _is_listed_real_estate_name(name):
+                    selected, rule = ('Rates', 'Equity'), 'listed_real_estate'
+            elif category in ('', 'bonds', 'bond', 'fixed income', 'hybrid', 'hybrids'):
                 selected, rule = _selection_from_name(name)
-                source = 'name' if selected is not None else (
-                    'ambiguous' if rule == 'mixed_factor_name' else 'automatic')
+            elif category in ('commodity', 'commodities'):
+                selected, rule = _commodity_selection(name)
+            source = 'name' if selected is not None else (
+                'ambiguous' if rule == 'mixed_factor_name' else 'automatic')
         if isinstance(selected, (list, tuple)):
             if (not selected or any(not isinstance(factor, str) or not factor.strip()
                                     for factor in selected)

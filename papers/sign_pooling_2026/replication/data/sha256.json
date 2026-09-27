@@ -1,0 +1,20 @@
+{
+  "reference/base_table.csv": "a1529469c047b02715c9a0cd389d9bfd77a9811df5f752afba81388f4e103e03",
+  "reference/clusters.csv": "d70270c3ef98f0e5efffe2f2c8663dbcda3a9a18691ad4ce9acacfc33f23ba3c",
+  "reference/coop_benchmark.csv": "aa40943722e9d7f6860ca04dd628ba5ad7114435f01945ff514ba9ce92901c59",
+  "reference/correlated_predictors.csv": "486efacc05f49cb23ad47def9b7355f09d38871d855b07af131d14578d2ab13c",
+  "reference/derived_signs.csv": "9b0afecf62f6b669262bf8dbd7112803a306e542eb42d415d19fc68ecc662d9e",
+  "reference/fit.npz": "749958d3802465a2f478608ce350d2df572b5a1468a310faadba59f500af390e",
+  "reference/gate_correction.csv": "1d39835714a29d88a8ef1df634cd9b04569bd8aabefc85efdc18bf5b2429dc43",
+  "reference/gate_roc.csv": "b036184edcfa0d0b480e862d97a676c0d5e5faf94400b8931c1d89c193e9138e",
+  "reference/hotspots.csv": "2bf447224f499ed4018f7bfc4147d30b1001bb43b69b3dd6d37df6bb17776e4e",
+  "reference/parity.csv": "53ac9c584a61db545d98aa87bd453323c016e71ff3faa2e4212b09f5015157f9",
+  "reference/recoverability.csv": "c50f8bffd111b2f1e6609a835d23b2ae5ea3040769905ace70b628af8d547172",
+  "reference/regime_map.csv": "39cfc1c2a7d42d31c44aadee20d13f47ea90ba88cc24f00424f68e8eb67f784b",
+  "reference/rho_resid_attenuation.csv": "0e190bd05ea5a3d418cc6722c24350f8fc9bcb4dafe051fd99ba09893be0337f",
+  "reference/rhocut_sensitivity.csv": "603e106243696d392760a9137d58389317ccd5859ff378586c632227d4e48714",
+  "reference/sign_consistency.csv": "5850a897312dc18e3f64208bc6f05dacc99a5d30cf4bdc4f266910663024b30a",
+  "reference/summary.csv": "6213d4a33192cd1e8cb4b8ab31c6f900b83383b6131ad44ced3b56b5d7aa3891",
+  "yeast.rda": "5991586650ecaa1109604187f3b028baae4bb604e35c1570c1752704ef20d0eb",
+  "yeast_full.npz": "7d5a9a87daedefb7da0240ee5e40dd08752cd67d1fce361f8d57be572d9cfec8"
+}

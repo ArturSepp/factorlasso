@@ -145,7 +145,8 @@
       "title": "factorlasso: Sparse Multi-Output Regression with Cluster-Grouped Sign Constraints in Python",
       "authors": "Sepp, A. and Kastenholz, M. A.",
       "status": "Submitted to the Journal of Statistical Software",
-      "source": "papers/jss_2026/paper/article.tex",
+      "availability": "local-only",
+      "local_source": "papers/jss_2026/paper/article.tex",
       "retired_titles": [
         "factorlasso: Hierarchical Clustering Group LASSO (HCGL) with Cluster-Pooled Sign Derivation for Multi-Asset Factor Models in Python",
         "factorlasso: a Python package for sign-constrained sparse group LASSO with cluster discovery",
@@ -166,7 +167,8 @@
       "title": "Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market Assumptions",
       "authors": "Sepp, A.",
       "status": "Working paper, revised 26 September 2026",
-      "source": "papers/prior_targets_2026/paper/article.tex"
+      "availability": "local-only",
+      "local_source": "OptimalPortfolios/papers/prior_targets_2026/paper/manuscript.md"
     },
     "rosaa": {
       "title": "Robust Optimization of Strategic and Tactical Asset Allocation for Multi-Asset Portfolios",

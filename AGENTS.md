@@ -96,6 +96,19 @@ OCA never imports StochVolModels or the private SigmaStrats consumer. Exact
 maintainer-tool exceptions are recorded in `.github/stack-policy.json`; they do
 not authorise adding those dependencies to core or importing them at package root.
 
+## Paper publication policy (FL override)
+
+Read `papers/AGENTS.md` before working in a paper workspace. Only
+`papers/sign_pooling_2026/` (CSDA) is approved for tracking. JSS, prior-targets
+and any future paper folders stay entirely local until explicitly approved.
+Public docs must not embed or link files from those local workspaces.
+
+Paper-specific roadmaps and reports belong in `papers/<paper_id>/agents/`,
+strictly ignored. This explicitly overrides the generated shared core's
+root-only agent-record location for paper work. Repository-wide records remain
+in root `agents/`. Keep drafts, private material and new run outputs out of Git.
+The staged publication checker and both distribution checks must pass.
+
 ## Repository layout
 
 ```
@@ -120,7 +133,7 @@ docs/images/                  reviewed exhibit previews and analytics_manifest.j
 examples/                     runnable examples; examples/docs/ holds the articles' canonical scripts
 tools/                        check_docs.py, docs_inventory.json, docs_analytics/ (exhibit registry)
 benchmarks/                   performance benchmarks
-papers/jss_2026/              JSS paper source, replication scripts, simulations
+papers/jss_2026/              local-only JSS workspace (ignored)
 papers/sign_pooling_2026/     sign-pooling paper source and replication
 agents/                       local, git-ignored roadmaps, audits and reports
 COMPARISON.md                 empirical comparison against competing packages
@@ -159,7 +172,7 @@ uv run --no-sync python -m sphinx -E -W -b doctest docs <output>/doctest
 `tools/check_docs.py --all` is the completion gate and fails while any article is planned or
 pending. The uv rules at the top of this file apply to these commands as to every other.
 
-Optional extras: `docs`, `simulations` (for `papers/jss_2026/simulations/`). Development tools
+Optional extras: `docs`, `simulations` (for the local JSS simulation harness). Development tools
 live in the `test`, `lint`, and `audit` dependency groups. Supported Python is >= 3.10; CI runs
 3.10 – 3.14 on Linux and preserves the repository's full cross-platform product matrix.
 
@@ -284,8 +297,9 @@ command passes; its out-of-scope list is binding.
 
 ## Replication contract
 
-`papers/jss_2026/` contains the paper source, replication scripts, and the simulation
-harness. Numbers in the paper, in `COMPARISON.md`, and in the JSS submission must
+`papers/sign_pooling_2026/` is the public CSDA replication workspace; its README
+separates the working revision from the archived environment. The JSS manuscript
+and simulation harness remain in the ignored local `papers/jss_2026/` workspace. Numbers in the paper, in `COMPARISON.md`, and in the JSS submission must
 reproduce exactly. Any change to estimator internals, cross-validation, or covariance
 assembly requires re-running the replication scripts and diffing the output against the
 published tables. Report differences rather than updating the tables to match new

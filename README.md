@@ -19,9 +19,9 @@ It provides LASSO, Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering
 **Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Sparse
 Multi-Output Regression with Cluster-Grouped Sign Constraints in Python*,
 submitted to the *Journal of Statistical
-Software*. The manuscript is available [here](papers/jss_2026/paper/article.pdf).
-See [Citation](#citation) for the BibTeX entry. The replication
-material for the paper is in [`papers/jss_2026/`](papers/jss_2026/).
+Software*. Its manuscript and replication workspace are retained locally.
+See [Citation](#citation) for the BibTeX entry and the
+[paper index](papers/README.md) for public availability.
 
 **Methodology:** The cluster-pooled sign derivation and the noise-floor gate
 are developed in Sepp, A. and Kastenholz, M. (2026), *Gated Cluster-Pooled Sign
@@ -1057,45 +1057,13 @@ project; it is not a popularity or speed ranking. The repository pointer is
 
 ---
 
-## Empirical illustration
+## Credit-attribution example
 
-The figure below is from the accompanying paper. It shows the mean Credit
-loading of seventeen investment-grade, high-yield, and emerging-market bond
-ETFs as a function of regularisation strength, on a 2017–2026 excess-return
-panel where the Credit and Equity factors are 0.84 correlated.
-
-![Credit attribution versus regularisation strength](papers/jss_2026/paper/figures/etf_credit_beta_vs_lambda.png)
-
-These instruments are, by construction, credit exposures. Under that
-collinearity an unconstrained sparse or group penalty (red) shrinks the
-weakly identified Credit loading to zero and books the exposure as Equity
-instead — a misattribution that no choice of penalty strength repairs. The
-prior-centered HCGL estimator (green) holds the loading at its economic prior.
-The prior-centered FCGL estimator (blue) retains more credit attribution under
-shrinkage, because its cluster-by-factor penalty keeps the high-signal
-high-yield and emerging-market sleeves above the prior rather than pulling
-every sleeve to it.
-
-The benefit for this class of factor model is concrete. A capital market
-assumptions engine, or any system that decomposes portfolio risk by factor,
-needs the credit risk to stay on the credit factor. `factorlasso` provides
-the three mechanisms that hold the attribution in place where an
-off-the-shelf LASSO cannot: cell-level sign constraints that forbid the sign
-flip into Equity, prior-centered shrinkage that pulls a weakly identified
-loading toward an economic target rather than toward zero, and the
-cluster-grouped penalties that share signal across economically similar
-assets. The loadings stay interpretable and stable enough to feed a portfolio
-optimiser, which is the property a deployed factor-risk system requires and an
-unconstrained penalty does not deliver.
-
-The paper quantifies this on a calibrated 102-asset universe with known true loadings. In that
-study, the reported generic metrics — support recovery, out-of-sample R², and systematic covariance
-error — were comparable across `factorlasso`, scikit-learn, skglm, and asgl. Under the study's 0.84
-credit–equity collinearity, the compared unconstrained configurations shrink the weakly identified
-credit loading toward zero and book it as equity. The tested sign- and prior-constrained
-configuration recovers it: **a mean Credit loading of 0.32 against a true 0.36, versus at most 0.08
-for the competing configurations.** This is a result for the documented calibrated experiment, not
-a universal performance claim.
+The [credit-attribution case study](docs/app_multi_asset_credit_attribution.md)
+explains how sign constraints, prior centres and grouped penalties affect factor
+attribution. Its [offline synthetic example](examples/docs/app_multi_asset_credit_attribution.py)
+is included in this checkout. The JSS manuscript and its empirical exhibits are
+retained locally; see the [research availability page](docs/scientific-replication.md).
 
 ---
 
