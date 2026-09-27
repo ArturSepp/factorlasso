@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.21.0.dev0 — 2026-09-26
+## 0.21.0 — 2026-09-27
 
 - Add the public `map_expert_factor_priors` metadata helper and `ExpertPriorResolution` audit
   result. It accepts factor-name collections rather than a consumer model object, with optional
@@ -10,7 +10,12 @@
   at fit. The prior was accepted and silently ignored, because the UniLasso solver takes no beta
   prior; fits without a prior are unchanged.
 
-## Unreleased - documentation
+- Extend expert prior mapping to government and municipal rates proxies, hybrid credit,
+  listed real estate, and dedicated gold and oil; ambiguous mandates stay unresolved.
+- Keep JSS and prior-targets paper workspaces local-only, move the public sign-pooling
+  reference tables to frozen inputs, and check paper exclusions in built distributions.
+
+### Documentation and papers
 
 - Read the Docs site restructured on the qis pattern: a Markdown home page grouped by the
   estimation pipeline, with a Mermaid overview diagram; `getting-started`, `interoperability`,
@@ -44,8 +49,8 @@
 - `tools/check_docs.py` now also enforces one owning article per `LassoModel` configuration
   parameter, the case-study page form, and the paper ledger: the JSS paper is cited everywhere,
   including `README.md` and `CITATION.cff`, by the title in its LaTeX source.
-- `papers/prior_targets_2026` is tracked, without its working records, backups, build artifacts
-  and derived-data bundle. No package code, default or numerical result changed.
+- Public documentation cites the prior-targets research while its manuscript and replication
+  workspace remain local-only. No package numerical defaults changed.
 - The `LassoModel` docstring now describes all 42 configuration parameters (eleven had no entry
   and five an empty one); a test fails when a new parameter lacks a description. Docstring text
   only.
