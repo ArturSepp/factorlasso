@@ -36,6 +36,10 @@ jobs:
       run: uv run --no-sync python .github/oss_checks.py docs --working-tree --output-dir "$RUNNER_TEMP/oss-docs"
 
 
+    - name: Verify archived DOI through DataCite
+      if: inputs.online || github.event_name == 'workflow_dispatch'
+      run: uv run --no-sync python .github/scripts/check_archived_doi.py
+
     - name: Check documentation links
 
 

@@ -93,6 +93,9 @@ linkcheck_anchors = True
 linkcheck_ignore = [
     r"https://(?:www\.)?ssrn\.com/.*",
     r"https://papers\.ssrn\.com/.*",
+    # Zenodo serves a 403 to GitHub linkcheck at this DOI redirect; the online workflow
+    # checks this exact DOI and its destination against DataCite instead.
+    r"https://doi\.org/10\.5281/zenodo\.21000294$",
 ]
 # Archived research links occasionally exceed 20 seconds; keep checks bounded and retry once.
 linkcheck_timeout = 30
