@@ -57,6 +57,9 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
+from factorlasso.prior_bounds import (
+    _compute_expert_prior_bounds, _validate_expert_bound_settings,
+)
 from factorlasso.beta_priors import (
     _compute_joint_ols_prior, _compute_ols_prior,
     _validate_prior_selection_type, _zero_incompatible_priors,
@@ -510,6 +513,8 @@ def solve_lasso_cvx_problem(
     factors_beta_prior: Optional[np.ndarray] = None,
     penalty_weights: Optional[np.ndarray] = None,
     loss_normalization: str = "sample",
+    beta_lower_bounds: Optional[np.ndarray] = None,
+    beta_upper_bounds: Optional[np.ndarray] = None,
 ) -> LassoEstimationResult:
     r"""
     L1-regularised (LASSO) multi-output regression via CVXPY.
@@ -551,6 +556,10 @@ def solve_lasso_cvx_problem(
     factors_beta_prior : np.ndarray, shape (N, M), optional
         Prior β₀.  NaN entries → zero prior.
 
+    beta_lower_bounds, beta_upper_bounds : ndarray, shape (N, M), optional
+        Individual coefficient bounds; NaN cells add no constraint. These arrays
+        are already resolved by the caller, including any sign precedence.
+
     Returns
     -------
     LassoEstimationResult
@@ -574,6 +583,8 @@ def solve_lasso_cvx_problem(
         beta = cvx.Variable((n_y, n_x), nonneg=nonneg)
         constraints = []
 
+    constraints.extend(_build_loading_bound_constraints(
+        beta, beta_lower_bounds, beta_upper_bounds))
     weights = _compute_solver_weights(t, n_y, span, valid_mask)
     prior = _clean_beta_prior(factors_beta_prior, n_y, n_x)
 
@@ -611,6 +622,27 @@ def solve_lasso_cvx_problem(
     )
 
 
+def _build_loading_bound_constraints(beta, lower, upper):
+    """Create finite-cell individual bounds; NaN means no constraint."""
+    constraints = []
+    arrays = []
+    for values, is_lower in ((lower, True), (upper, False)):
+        if values is None:
+            arrays.append(None)
+            continue
+        values = np.asarray(values, dtype=float)
+        if values.shape != beta.shape or np.isinf(values).any():
+            raise ValueError('Loading bounds must match beta shape and be finite or NaN')
+        mask = np.isfinite(values)
+        if mask.any():
+            constraints.append(beta[mask] >= values[mask] if is_lower
+                               else beta[mask] <= values[mask])
+        arrays.append(values)
+    if all(value is not None for value in arrays) and np.any(arrays[0] > arrays[1]):
+        raise ValueError('Loading lower bounds exceed upper bounds')
+    return constraints
+
+
 def _build_group_lasso_problem(
     x: np.ndarray,
     y: np.ndarray,
@@ -629,6 +661,8 @@ def _build_group_lasso_problem(
     block_mode: str,
     col_weights: Optional[np.ndarray],
     loss_normalization: str = "sample",
+    beta_lower_bounds: Optional[np.ndarray] = None,
+    beta_upper_bounds: Optional[np.ndarray] = None,
 ) -> Optional[Tuple[cvx.Problem, cvx.Variable, np.ndarray, np.ndarray]]:
     """assemble the sparse group-LASSO CVXPY problem.
 
@@ -678,6 +712,8 @@ def _build_group_lasso_problem(
         beta = cvx.Variable((n_y, n_x), nonneg=nonneg)
         constraints = []
 
+    constraints.extend(_build_loading_bound_constraints(
+        beta, beta_lower_bounds, beta_upper_bounds))
     weights = _compute_solver_weights(t, n_y, span, valid_mask)
     prior = _clean_beta_prior(factors_beta_prior, n_y, n_x)
 
@@ -786,6 +822,8 @@ def solve_group_lasso_cvx_problem(
     block_mode: str = "row",
     col_weights: Optional[np.ndarray] = None,
     loss_normalization: str = "sample",
+    beta_lower_bounds: Optional[np.ndarray] = None,
+    beta_upper_bounds: Optional[np.ndarray] = None,
 ) -> LassoEstimationResult:
     r"""
     Group LASSO multi-output regression via CVXPY.
@@ -890,6 +928,10 @@ def solve_group_lasso_cvx_problem(
         Per-(cluster, factor) adaptive weights multiplying each block L2
         norm in ``"cluster_factor"`` mode. ``None`` applies unit weights.
 
+    beta_lower_bounds, beta_upper_bounds : ndarray, shape (N, M), optional
+        Individual coefficient bounds; NaN cells add no constraint. These arrays
+        are already resolved by the caller, including any sign precedence.
+
     Returns
     -------
     LassoEstimationResult
@@ -902,6 +944,7 @@ def solve_group_lasso_cvx_problem(
         l1_weight=l1_weight, penalty_weights=penalty_weights,
         row_weights=row_weights, block_mode=block_mode, col_weights=col_weights,
         loss_normalization=loss_normalization,
+        beta_lower_bounds=beta_lower_bounds, beta_upper_bounds=beta_upper_bounds,
     )
     if built is None:
         return _nan_result(y.shape[1], x.shape[1])
@@ -941,6 +984,8 @@ def solve_group_lasso_path(
     block_mode: str = "row",
     col_weights: Optional[np.ndarray] = None,
     loss_normalization: str = "sample",
+    beta_lower_bounds: Optional[np.ndarray] = None,
+    beta_upper_bounds: Optional[np.ndarray] = None,
 ) -> List[LassoEstimationResult]:
     r"""Group-LASSO over a regularisation path, reusing one canonical form.
 
@@ -982,6 +1027,10 @@ def solve_group_lasso_path(
     l1_weight, penalty_weights, row_weights, block_mode, col_weights, loss_normalization
         As in :func:`solve_group_lasso_cvx_problem`.
 
+    beta_lower_bounds, beta_upper_bounds : ndarray, shape (N, M), optional
+        Individual coefficient bounds; NaN cells add no constraint. These arrays
+        are already resolved by the caller, including any sign precedence.
+
     Returns
     -------
     list of LassoEstimationResult
@@ -1012,6 +1061,7 @@ def solve_group_lasso_path(
         l1_weight=l1_weight, penalty_weights=penalty_weights,
         row_weights=row_weights, block_mode=block_mode, col_weights=col_weights,
         loss_normalization=loss_normalization,
+        beta_lower_bounds=beta_lower_bounds, beta_upper_bounds=beta_upper_bounds,
     )
     if built is None:
         return [_nan_result(n_y, n_x) for _ in lambdas]
@@ -1059,6 +1109,8 @@ class _PreparedFit:
     penalty_weights_np: Optional[np.ndarray]
     row_weights_np: Optional[np.ndarray]
     col_weights_np: Optional[np.ndarray]
+    lower_bounds_np: Optional[np.ndarray]
+    upper_bounds_np: Optional[np.ndarray]
 
 
 @dataclass
@@ -1386,6 +1438,18 @@ class LassoModel:
         non-negative, so each final loading keeps the sign of its univariate
         slope.
 
+    expert_prior_bound_n_std : float or None, default None
+        Optional individual sign-oriented magnitude floor from expert-selected or
+        automatic highest-R-squared OLS targets: max(0, abs(target) - n_std * HAC_SE).
+        Finite manual targets remain soft; hard signs take precedence. No cluster
+        pooling enters the bound. Supported by LASSO, group LASSO, HCGL and FCGL.
+    expert_prior_hac_lags : int, default 0
+        Bartlett bandwidth on the original observation grid. Zero uses robust
+        contemporaneous score products only. Missing rows retain their positions.
+    expert_prior_hac_lags_freq_dict : dict or None, default None
+        Optional consumer-resolved cadence map. Direct fits use the scalar lag;
+        a multi-frequency consumer must select the appropriate scalar explicitly.
+
     Attributes (fitted, set by ``fit()``)
     --------------------------------------
     coef_ : pd.DataFrame, shape (N, M)
@@ -1477,6 +1541,13 @@ class LassoModel:
         Fit-time flag recording whether the final fitted response row was
         fully observed. Nowcast eligibility reads this snapshot rather than
         the caller-owned frame aliased by ``y_``.
+
+    prior_lower_bounds_, prior_upper_bounds_ : pandas.DataFrame or None
+        Fitted individual coefficient bounds, response by factor; NaN is unbounded.
+    prior_bound_diagnostics_ : pandas.DataFrame or None
+        Selected-cell OLS/HAC statistics, floor and exclusion reasons.
+    effective_prior_hac_lags_ : int or None
+        Bandwidth used by the current fit, including a consumer's cadence override.
 
     Examples
     --------
@@ -1626,6 +1697,15 @@ class LassoModel:
     loss_denominator_: Optional[pd.Series] = field(default=None, init=False)
     n_loss_rows_: Optional[int] = field(default=None, init=False)
 
+    # Optional individual floors for explicit OLS selectors, never automatic winners.
+    expert_prior_bound_n_std: Optional[float] = None
+    expert_prior_hac_lags: int = 0
+    expert_prior_hac_lags_freq_dict: Optional[Dict[str, int]] = None
+    prior_lower_bounds_: Optional[pd.DataFrame] = field(default=None, init=False)
+    prior_upper_bounds_: Optional[pd.DataFrame] = field(default=None, init=False)
+    prior_bound_diagnostics_: Optional[pd.DataFrame] = field(default=None, init=False)
+    effective_prior_hac_lags_: Optional[int] = field(default=None, init=False)
+
     def _validate_loss_mode(self) -> None:
         """Reject invalid or unsupported objective conventions, including after mutation."""
         _validate_loss_normalization(self.loss_normalization)
@@ -1751,6 +1831,14 @@ class LassoModel:
 
     def _validate_ols_prior_mode(self) -> None:
         """Reject ambiguous flags and a mode whose solver has no beta prior."""
+        _validate_expert_bound_settings(
+            self.expert_prior_bound_n_std, self.expert_prior_hac_lags,
+            self.expert_prior_hac_lags_freq_dict)
+        if self.expert_prior_bound_n_std is not None:
+            if not self.apply_ols_prior:
+                raise ValueError('expert_prior_bound_n_std requires apply_ols_prior=True')
+            if self.model_type in _MODES_WITHOUT_SIGN_CONSTRAINTS:
+                raise ValueError('expert prior bounds require LASSO, group LASSO, HCGL or FCGL')
         _validate_prior_selection_type(self.prior_selection_type)
         if not isinstance(self.apply_ols_prior, (bool, np.bool_)):
             raise ValueError('apply_ols_prior must be a boolean')
@@ -2072,6 +2160,8 @@ class LassoModel:
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
+                beta_lower_bounds=prep.lower_bounds_np,
+                beta_upper_bounds=prep.upper_bounds_np,
                 penalty_weights=penalty_weights_np,
             )
 
@@ -2109,6 +2199,8 @@ class LassoModel:
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
+                beta_lower_bounds=prep.lower_bounds_np,
+                beta_upper_bounds=prep.upper_bounds_np,
                 group_penalty=self.group_penalty,
                 l1_weight=self.l1_weight,
                 penalty_weights=penalty_weights_np,
@@ -2127,6 +2219,8 @@ class LassoModel:
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
+                beta_lower_bounds=prep.lower_bounds_np,
+                beta_upper_bounds=prep.upper_bounds_np,
                 group_penalty=self.group_penalty,
                 l1_weight=self.l1_weight,
                 penalty_weights=penalty_weights_np,
@@ -2149,6 +2243,8 @@ class LassoModel:
                 nonneg=self.nonneg,
                 factors_beta_loading_signs=signs_np,
                 factors_beta_prior=prior_np,
+                beta_lower_bounds=prep.lower_bounds_np,
+                beta_upper_bounds=prep.upper_bounds_np,
                 group_penalty=self.group_penalty,
                 l1_weight=self.l1_weight,
                 penalty_weights=penalty_weights_np,
@@ -2219,6 +2315,10 @@ class LassoModel:
         self.ols_beta_prior_ = None
         self.effective_beta_prior_ = None
         self.ols_prior_span_ = None
+        self.prior_lower_bounds_ = None
+        self.prior_upper_bounds_ = None
+        self.prior_bound_diagnostics_ = None
+        self.effective_prior_hac_lags_ = None
         _validate_span(self.auto_sign_ewma_span, name="auto_sign_ewma_span")
         if self.auto_sign_variance not in ('date', 'independent'):
             raise ValueError("auto_sign_variance must be 'date' or 'independent'")
@@ -2503,6 +2603,30 @@ class LassoModel:
                 prior_np.copy(), index=y.columns, columns=x.columns,
             )
 
+        lower_bounds_np = upper_bounds_np = None
+        if self.expert_prior_bound_n_std is not None:
+            selections = {}
+            for asset in y.columns:
+                explicit = (None if self.factor_for_prior is None
+                            else self.factor_for_prior.get(asset))
+                factors = _selected_prior_factors(explicit)
+                if not factors:
+                    # Use the same raw highest-R-squared winner as the OLS prior,
+                    # before manual overlays or hard signs. Never reselect after
+                    # a constraint removes it; ties retain input factor order.
+                    scores = self.ols_r2_.loc[asset].dropna()
+                    factors = (scores.idxmax(),) if not scores.empty else ()
+                selections[asset] = factors
+            lower, upper, diagnostics = _compute_expert_prior_bounds(
+                x, y, selections, self.ols_beta_prior_, self.effective_beta_prior_,
+                self.factors_beta_prior, eff_span, self.expert_prior_bound_n_std,
+                self.expert_prior_hac_lags, max(3, self.warmup_period or 0))
+            self.prior_lower_bounds_ = lower
+            self.prior_upper_bounds_ = upper
+            self.prior_bound_diagnostics_ = diagnostics
+            self.effective_prior_hac_lags_ = self.expert_prior_hac_lags
+            lower_bounds_np, upper_bounds_np = lower.to_numpy(), upper.to_numpy()
+
         # ── Adaptive L1 penalty weights (Zou 2006; opt-in) ───────────────
         # When auto_sign_adaptive_weights=True, derive per-cell L1 weights
         # from the univariate slope magnitudes captured above. Only the
@@ -2560,6 +2684,7 @@ class LassoModel:
             is_lasso_mode=is_lasso_mode, signs_np=signs_np, prior_np=prior_np,
             penalty_weights_np=penalty_weights_np,
             row_weights_np=row_weights_np, col_weights_np=col_weights_np,
+            lower_bounds_np=lower_bounds_np, upper_bounds_np=upper_bounds_np,
         )
 
     def _finalize_fit(
@@ -2848,6 +2973,8 @@ class LassoModel:
             nonneg=self.nonneg,
             factors_beta_loading_signs=prep.signs_np,
             factors_beta_prior=prep.prior_np,
+            beta_lower_bounds=prep.lower_bounds_np,
+            beta_upper_bounds=prep.upper_bounds_np,
             group_penalty=self.group_penalty, l1_weight=self.l1_weight,
             penalty_weights=prep.penalty_weights_np,
             row_weights=row_w, block_mode=block_mode, col_weights=col_w,
@@ -2862,10 +2989,12 @@ class LassoModel:
             clone = LassoModel(**params)
             if derived_signs is not None:
                 clone.derived_signs_ = derived_signs
-            for name in ('ols_betas_', 'ols_r2_', 'ols_beta_prior_', 'effective_beta_prior_'):
+            for name in ('ols_betas_', 'ols_r2_', 'ols_beta_prior_', 'effective_beta_prior_',
+                         'prior_lower_bounds_', 'prior_upper_bounds_', 'prior_bound_diagnostics_'):
                 value = getattr(self, name)
                 setattr(clone, name, None if value is None else value.copy(deep=True))
             clone.ols_prior_span_ = self.ols_prior_span_
+            clone.effective_prior_hac_lags_ = self.effective_prior_hac_lags_
             clone._finalize_fit(
                 result=result, x=x, y=y, valid_mask=valid_mask,
                 eff_span=eff_span,

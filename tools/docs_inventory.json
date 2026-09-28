@@ -96,7 +96,7 @@
       "ResidualCorrelationData", "estimate_residual_correlation"
     ],
     "docs/prior_targets.md": [
-      "ExpertPriorResolution", "map_expert_factor_priors"
+      "ExpertPriorResolution", "map_expert_factor_priors", "compute_expert_prior_statistics"
     ],
     "docs/residual_alpha_nowcasting.md": [
       "LassoNowcastResult"
@@ -117,7 +117,8 @@
       "auto_sign_ewma_span", "auto_sign_use_fit_span", "auto_sign_variance"
     ],
     "docs/prior_targets.md": [
-      "apply_ols_prior", "prior_selection_type", "factor_for_prior"
+      "apply_ols_prior", "prior_selection_type", "factor_for_prior",
+        "expert_prior_bound_n_std", "expert_prior_hac_lags", "expert_prior_hac_lags_freq_dict"
     ],
     "docs/adaptive_penalty_weights.md": [
       "auto_sign_adaptive_weights", "auto_sign_adaptive_gamma", "auto_sign_adaptive_floor"

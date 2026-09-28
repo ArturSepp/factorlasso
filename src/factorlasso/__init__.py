@@ -106,6 +106,7 @@ from factorlasso.factor_covar import (
     RollingFactorCovarData,
     VarianceColumns,
 )
+from factorlasso.prior_bounds import compute_expert_prior_statistics
 from factorlasso.lasso_estimator import (
     LassoEstimationResult,
     LassoModel,
@@ -163,6 +164,7 @@ __all__ = [
     "get_x_y_np",
     "ExpertPriorResolution",
     "map_expert_factor_priors",
+    "compute_expert_prior_statistics",
     # Factor covariance assembly
     "CurrentFactorCovarData",
     "ResidualType",

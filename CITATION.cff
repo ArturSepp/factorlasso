@@ -13,8 +13,8 @@ authors:
 repository-code: "https://github.com/ArturSepp/factorlasso"
 url: "https://github.com/ArturSepp/factorlasso"
 license: GPL-3.0-or-later
-version: "0.21.0"
-date-released: "2026-09-27"
+version: "0.22.0"
+date-released: "2026-09-28"
 keywords:
   - lasso
   - group-lasso

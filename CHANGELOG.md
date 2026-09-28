@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.22.0 — 2026-09-28
+
+- Add optional individual sign-oriented bounds for expert-selected and automatic
+  highest-R-squared OLS priors: `max(0, abs(beta_OLS) - n_std * SE_HAC)`.
+  Finite manual numerical priors remain soft. Explicit hard signs keep precedence.
+  Resolve automatic winners inside each fit/training fold before applying signs,
+  with the same individual HAC calculation and no reselection after a hard conflict.
+- Export `compute_expert_prior_statistics`: single/joint EWMA OLS with an intercept,
+  original-calendar Bartlett HAC scores and the n/(n-p) finite-sample correction.
+  Missing observations retain their calendar ages and do not count as zero returns.
+- Direct fits, regularization paths and training-fold fits share the native bound
+  construction and expose loading bounds and diagnostics. No cluster averaging,
+  new dependency or default numerical change; CLARABEL remains the public default.
+- Append `expert_prior_bound_n_std` (None by default), `expert_prior_hac_lags` and
+  `expert_prior_hac_lags_freq_dict` to LassoModel. Frequency maps are consumer
+  configuration; a standalone fit uses the scalar bandwidth. Cooperative modes
+  and UniLasso reject this opt-in rather than silently ignoring constraints.
+
 ## 0.21.0 — 2026-09-27
 
 - Add the public `map_expert_factor_priors` metadata helper and `ExpertPriorResolution` audit

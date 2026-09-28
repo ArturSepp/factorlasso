@@ -125,6 +125,52 @@ set, which decides which loadings are allowed at all. The JSS manuscript (Sepp a
 2026, Section 2.5) describes an earlier rule under which a derived sign blocked an opposing prior;
 since release 0.20.0 the prior's sign overrides a derived sign, and only explicit signs block it.
 
+### Optional individual loading floors
+
+Expert-selected and automatic highest-R-squared priors can both carry an individual
+lower bound on exposure magnitude. Set `expert_prior_bound_n_std=1.0` to use one
+estimated standard error, regardless of how the prior factors were selected:
+
+$$
+\ell_{ij}=\max\left(0, |\hat c_{ij}|-k\widehat{\mathrm{SE}}(\hat c_{ij})\right),
+\qquad \mathrm{sign}(\hat c_{ij})\beta_{ij}\geq\ell_{ij}.
+$$
+
+Here $k$ is `expert_prior_bound_n_std`. A negative target imposes an upper bound
+on the signed coefficient. A zero floor adds no constraint beyond the existing
+sign policy. Each response uses its own selected regression and uncertainty;
+cluster membership never averages, reallocates or alters its floor. A joint
+selection uses the partial slopes and covariance of that joint regression.
+
+Let $z_t$ include an intercept and the selected factors, and define
+$A=\sum_t w_t z_tz_t^\top$ and $s_t=w_tz_t\hat\varepsilon_t$. The Bartlett
+heteroskedasticity and autocorrelation consistent (HAC) sandwich is
+
+$$
+\widehat V=\frac{n}{n-p}A^{-1}
+\left[\sum_t s_ts_t^\top+
+\sum_{h=1}^{L}\left(1-\frac{h}{L+1}\right)
+\sum_{t=h+1}^{T}(s_ts_{t-h}^\top+s_{t-h}s_t^\top)\right]A^{-1}.
+$$
+
+The diagonal slope entries give squared standard errors. The score contains the
+EWMA weight itself, so its outer product contains the squared weight. The
+bandwidth $L$ counts periods on the original observation grid. Missing rows have
+zero scores and retain their ages and positions; pre-inception rows do not count
+as observed returns. The correction uses $n$ valid observations and $p$ fitted
+parameters including the intercept. The Bartlett construction follows
+[Newey and West](https://www.nber.org/papers/t0055); the finite-sample correction,
+EWMA adaptation and exposure floor are explicit implementation choices.
+
+The explicit single/joint selection is used where supplied; otherwise the factor
+with the highest weighted univariate $R^2$ receives the same bound calculation.
+Selection is recomputed inside each fit or training fold, before hard-sign filtering.
+If a hard constraint suppresses the winning prior, no replacement factor is selected.
+Finite manual overrides remain soft. Explicit hard-sign constraints take precedence. Rank-deficient or insufficient samples do not produce a floor and
+are identified in diagnostics. The floor is an attribution restriction derived
+from a smaller regression, not a confidence interval for the full penalized fit.
+It excludes uncertainty in expert or data-driven factor selection and any preprocessing.
+
 ## Worked example
 
 The example has one inflation-linked response on a Rates and an Inflation factor. The factors
@@ -237,7 +283,7 @@ above remains available and does not require licensed market histories.
 
 ## Implementation in factorlasso
 
-Verified with factorlasso 0.20.0 and CVXPY with the CLARABEL solver.
+Implemented with CVXPY; the public solver default is CLARABEL.
 
 | Parameter or attribute | Role |
 |---|---|
@@ -250,6 +296,12 @@ Verified with factorlasso 0.20.0 and CVXPY with the CLARABEL solver.
 | `ols_beta_prior_` | Selected OLS centres before explicit overrides and sign conflicts. |
 | `effective_beta_prior_` | Centres the solver used, after overrides and the zeroing of centres that conflict with hard signs. |
 | `ols_prior_span_` | The span used for the OLS weights. |
+| `compute_expert_prior_statistics` | Selected-factor EWMA OLS slopes and original-calendar HAC errors, with sample-size and identification diagnostics. |
+| `expert_prior_bound_n_std` | Optional individual floor size in standard errors; `None` disables bounds. Requires OLS priors and a supported constrained LASSO mode. |
+| `expert_prior_hac_lags` | Scalar HAC bandwidth in grid periods, default zero. A standalone fit uses this value. |
+| `expert_prior_hac_lags_freq_dict` | Optional cadence-to-bandwidth map for consumer pipelines to resolve; no frequency is guessed inside a standalone fit. |
+| `prior_lower_bounds_`, `prior_upper_bounds_` | Solver-facing individual bounds; NaN means unbounded. |
+| `prior_bound_diagnostics_`, `effective_prior_hac_lags_` | Per-selected-cell targets, errors, floors and exclusion reasons, and the bandwidth actually used. |
 | `derived_signs_` | The final sign matrix, after a centre's sign has replaced a conflicting detected sign. |
 
 The OLS weights use the effective squared-loss span of the fit, including a span passed to
@@ -317,6 +369,11 @@ python examples/docs/prior_targets.py
 - [Research papers and replication](scientific-replication.md).
 
 ## References
+
+- Newey, W. K., and West, K. D. (1987). A simple, positive semi-definite,
+  heteroskedasticity and autocorrelation consistent covariance matrix.
+  *Econometrica* 55(3), 703-708. DOI 10.2307/1913610.
+  [Author working-paper version](https://www.nber.org/papers/t0055).
 
 - Bastani, H. (2021). Predicting with proxies: transfer learning in high dimension. *Management
   Science* 67(5), 2964-2984. DOI 10.1287/mnsc.2020.3729.
