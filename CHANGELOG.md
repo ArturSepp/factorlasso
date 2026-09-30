@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.23.0 — 2026-09-30
+
+- Add `ResidualType.EXPOSURE_CLUSTER` and `RESIDUAL_CLUSTER` alongside the
+  existing orthogonal and empirical choices. Use signed within-cluster residual
+  correlation means, zero between clusters, and unchanged marginal variances.
+  Residual clustering uses Ward/1-rho with cutoff fraction 0.6. Filtered snapshots
+  retain full-universe block targets through renaming, Excel persistence and as-of
+  retrieval. Existing defaults and public call signatures are unchanged.
+
+- Fix empirical residual correlation to retain each pair's available history on the common
+  return grid. Late starts and incomplete per-asset periods stay NaN for the existing EWMA
+  FFILL kernels instead of truncating every asset to the all-asset intersection or rejecting
+  every internal gap. Native residual variances, complete-panel estimates and public signatures
+  are unchanged. Require two valid aggregates per asset; keep the PSD rejection for indefinite
+  estimates. Observation counts now describe grid rows, with pair-specific histories.
+
+
+
+- Add opt-in weighted OLS/HAC geometry and known-Gaussian-shape interval
+  calibration, plus full-domain and adaptive stationary-AR(1) calibration
+  with continuous-parameter cell correction. These helpers require a fixed,
+  correct mean model and complete regular-grid responses; they do not provide
+  post-selection, simultaneous, non-Gaussian or drifting-endpoint coverage.
+- Add two-factor limiting floor-risk/radius and known-Gaussian information
+  diagnostics. The optimal radius is conditional on a zero-centred two-factor
+  Lasso limit, fixed prior-error budgets and independent score components.
+- Existing LassoModel signatures, defaults, prior floors and production fits
+  are unchanged. New functions do not automatically select or impose bounds.
+
 ## 0.22.0 — 2026-09-28
 
 - Add optional individual sign-oriented bounds for expert-selected and automatic

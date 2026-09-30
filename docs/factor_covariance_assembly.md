@@ -56,7 +56,7 @@ well-conditioned matrix; it is not part of this package and is not compared here
 | $\Sigma_x$, `x_covar` | Factor covariance | DataFrame $M \times M$ in the variance units the caller chooses, for example annualised |
 | `y_variances` | Per-response diagnostics | DataFrame indexed by response; the column `residual_var` is required and holds the diagonal of $D$ in the units of `x_covar`; `r2` and `insample_alpha` are needed by `get_snapshot`; `ewma_var` and `cluster` are optional |
 | $w$, `residual_var_weight` | Multiplier on the whole residual block | Default 1; 0 returns the systematic part |
-| `residual_type` | Structure of $D$ | `ResidualType.ORTHOGONAL` (default, diagonal) or `ResidualType.EMPIRICAL` |
+| `residual_type` | Structure of $D$ | `ResidualType.ORTHOGONAL` (default), `EMPIRICAL`, `EXPOSURE_CLUSTER`, or `RESIDUAL_CLUSTER` |
 | `residuals` | Residual panel, optional | $T \times N$ in units the caller declares; used by `estimate_alpha` |
 | `estimation_date` | Date of the snapshot, optional | Used by the rolling container and the empirical residual mode |
 | `clusters`, `linkages`, `cutoffs` | Cluster metadata, optional | Labels prefixed by frequency, such as `ME:3`; a stacked linkage table; one cut distance per frequency |
@@ -250,7 +250,7 @@ All names below are exported from the top-level package and documented in the
 | `CurrentFactorCovarData` | Frozen dataclass for one snapshot. `get_y_covar`, `get_residual_covar` and the property `y_covar` assemble; `get_model_vols`, `estimate_alpha` and `get_snapshot` report; `filter_on_tickers` subsets or renames responses; `save` and `load` write and read one Excel workbook. |
 | `RollingFactorCovarData` | Dated snapshots. `add`, `get_latest`, indexing by date and iteration over dates; `get_y_covars`, `get_residual_covars`, `get_x_covars`, `get_y_betas` return dictionaries by date; `get_residual_vars`, `get_ewma_vars`, `get_r2`, `get_systematic_vars`, `get_total_vols`, `get_residual_vols`, `get_alphas`, `get_factor_var` and `get_beta` return panels. |
 | `VarianceColumns` | String enum of the `y_variances` column names: `ewma_var`, `residual_var`, `insample_alpha`, `r2`, `stat_alpha`, `total_vol`, `sys_vol`, `resid_vol`, `cluster`. |
-| `ResidualType` | `ORTHOGONAL` for a diagonal residual block, `EMPIRICAL` for a residual correlation scaled by current residual volatilities. |
+| `ResidualType` | `ORTHOGONAL` keeps a diagonal block; `EMPIRICAL` retains the prepared correlation; `EXPOSURE_CLUSTER` and `RESIDUAL_CLUSTER` use signed within-cluster means and zero between clusters. All scale by current residual volatilities. |
 | `get_clusters_by_freq`, `get_linkages_by_freq`, `get_linkage_array`, `get_cutoffs_by_freq` | Recover per-frequency cluster labels, SciPy linkage arrays and cut distances from a snapshot. |
 
 <!-- fragment -->

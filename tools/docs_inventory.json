@@ -15,6 +15,7 @@
     "docs/sign_constraints_and_priors.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/sign_constraints_and_priors.py"},
     "docs/gated_cluster_pooled_signs.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/gated_cluster_pooled_signs.py"},
     "docs/prior_targets.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/prior_targets.py"},
+    "docs/prior_inference.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/prior_inference.py"},
     "docs/adaptive_penalty_weights.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/adaptive_penalty_weights.py"},
     "docs/group_penalties_hcgl_fcgl.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/group_penalties_hcgl_fcgl.py"},
     "docs/cooperative_lasso.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/cooperative_lasso.py"},
@@ -97,6 +98,12 @@
     ],
     "docs/prior_targets.md": [
       "ExpertPriorResolution", "map_expert_factor_priors", "compute_expert_prior_statistics"
+    ],
+    "docs/prior_inference.md": [
+      "PriorHacGeometry", "Ar1PriorInterval", "compute_prior_hac_geometry",
+      "gaussian_prior_critical_value", "compute_ar1_prior_interval",
+      "GaussianDominanceInformation", "gaussian_dominance_information",
+      "two_factor_limit_risk", "two_factor_minimax_radius"
     ],
     "docs/residual_alpha_nowcasting.md": [
       "LassoNowcastResult"

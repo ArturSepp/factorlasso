@@ -41,6 +41,88 @@ def reference(panel, span):
     return moment / np.sqrt(np.outer(np.diag(moment), np.diag(moment)))
 
 
+def available_reference(panel, span):
+    """Scalar causal means and separately weighted finite products for every pair."""
+    values = panel.to_numpy()
+    decay = 1 - 2 / (span + 1)
+    centered = np.full_like(values, np.nan)
+    for j in range(values.shape[1]):
+        # Match the established kernel's X0 initialization, including leading NaNs.
+        mean = values[0, j] if np.isfinite(values[0, j]) else 0.
+        for t, value in enumerate(values[:, j]):
+            if np.isfinite(value):
+                if t:
+                    mean = decay * mean + (1 - decay) * value
+                centered[t, j] = value - mean
+    moment = np.zeros((values.shape[1], values.shape[1]))
+    for i in range(values.shape[1]):
+        for j in range(values.shape[1]):
+            products = centered[1:, i] * centered[1:, j]
+            products = products[np.isfinite(products)]
+            weights = (1 - decay) * decay ** np.arange(len(products) - 1, -1, -1)
+            moment[i, j] = np.dot(weights, products)
+    return moment / np.sqrt(np.outer(np.diag(moment), np.diag(moment)))
+
+
+def test_late_asset_does_not_shorten_existing_pair_history():
+    """Adding a young fund preserves the older pair and uses the kernel's NaN rule."""
+    residuals, metadata, common = inputs()
+    before = estimate()
+    residuals["young"] = residuals["m"].where(residuals.index >= "2021-01-31")
+    metadata.loc["young"] = metadata.loc["m"]
+    data = estimate(residuals=residuals, metadata=metadata)
+    assert data.residual_returns.index.equals(common.index)
+    assert data.residual_returns.young.first_valid_index() == pd.Timestamp("2021-03-31")
+    assert data.residual_returns.young.loc[:"2020-12-31"].isna().all()
+    pd.testing.assert_frame_equal(data.correlation.loc[["m", "q"], ["m", "q"]],
+                                  before.correlation, check_exact=True)
+    np.testing.assert_allclose(data.correlation, available_reference(data.residual_returns, 12),
+                               atol=1e-14)
+    assert np.linalg.eigvalsh(data.correlation).min() >= -1e-14
+    restored = fl.ResidualCorrelationData.from_sheets(data.to_sheets())
+    pd.testing.assert_frame_equal(restored.residual_returns, data.residual_returns)
+
+
+def test_no_all_asset_overlap_is_required():
+    """Non-overlapping assets retain their own history; unseen pairs stay at zero."""
+    residuals, metadata, _ = inputs()
+    residuals.loc[residuals.index > "2020-12-31", "m"] = np.nan
+    residuals.loc[residuals.index <= "2020-12-31", "q"] = np.nan
+    data = estimate(residuals=residuals, metadata=metadata)
+    assert not data.residual_returns.notna().all(axis=1).any()
+    np.testing.assert_array_equal(data.correlation, np.eye(2))
+    np.testing.assert_allclose(data.correlation, available_reference(data.residual_returns, 12))
+
+
+def test_all_missing_tail_does_not_advance_observation_date():
+    """No observed asset means no new common-period observation."""
+    residuals, metadata, _ = inputs()
+    residuals.loc["2023-06-30"] = np.nan
+    data = estimate(residuals=residuals, metadata=metadata)
+    assert data.observation_date == pd.Timestamp("2023-03-31")
+
+
+def test_asynchronous_gap_still_rejects_indefinite_correlation():
+    """FFILL can violate PSD; retain the risk-container guard without projection."""
+    dates = pd.date_range("2020-03-31", periods=3, freq="QE")
+    residuals = pd.DataFrame({"a": [0., 1., .5], "b": [0., 1., np.nan]}, index=dates)
+    metadata = pd.DataFrame({"frequency": "QE", "beta_span": 3.,
+                             "annualisation_factor": 4., "residual_scale": 1.},
+                            index=residuals.columns)
+    raw = available_reference(residuals, 3)
+    assert raw[0, 1] == pytest.approx(np.sqrt(2))
+    with pytest.raises(ValueError, match="PSD"):
+        estimate(residuals=residuals, metadata=metadata, estimation_date=dates[-1])
+
+
+def test_each_asset_requires_two_complete_native_aggregates():
+    """Long histories elsewhere cannot make an unobserved asset estimable."""
+    residuals, metadata, _ = inputs()
+    residuals.loc[residuals.index < "2023-06-30", "q"] = np.nan
+    with pytest.raises(ValueError, match="two complete"):
+        estimate(residuals=residuals, metadata=metadata)
+
+
 def snapshot(prepared=None):
     """An unchanged factor block and native annual-alpha residual panel."""
     residuals, metadata, _ = inputs()
@@ -77,21 +159,25 @@ def test_asof_and_no_future_periods():
     pd.testing.assert_frame_equal(data.get_corr(pd.Timestamp("2023-08-01")), data.correlation)
 
 
-def test_incomplete_last_quarter_carries_last_complete_period():
-    """An incomplete latest period is not extrapolated into a quarter's return."""
+def test_incomplete_last_quarter_keeps_other_assets():
+    """Keep a missing quarter as NaN while other assets update their moments."""
     residuals, metadata, _ = inputs()
     residuals.loc[pd.Timestamp("2023-06-30"), "q"] = np.nan
     data = estimate(residuals=residuals, metadata=metadata)
-    assert data.observation_date == pd.Timestamp("2023-03-31")
-    assert data.residual_returns.index[-1] == pd.Timestamp("2023-03-31")
+    assert data.observation_date == pd.Timestamp("2023-06-30")
+    assert np.isnan(data.residual_returns.loc["2023-06-30", "q"])
+    assert np.isfinite(data.residual_returns.loc["2023-06-30", "m"])
+    np.testing.assert_allclose(data.correlation, available_reference(data.residual_returns, 12))
 
 
-def test_internal_gap_fails():
+def test_internal_gap_keeps_nan_and_other_assets():
     """An absent month must not be treated as a zero residual contribution."""
     residuals, metadata, _ = inputs()
     residuals = residuals.drop(pd.Timestamp("2020-02-29"))
-    with pytest.raises(ValueError, match="incomplete"):
-        estimate(residuals=residuals, metadata=metadata)
+    data = estimate(residuals=residuals, metadata=metadata)
+    assert np.isnan(data.residual_returns.loc["2020-03-31", "m"])
+    assert np.isfinite(data.residual_returns.loc["2020-03-31", "q"])
+    np.testing.assert_allclose(data.correlation, available_reference(data.residual_returns, 12))
 
 
 def test_explicit_coarser_grid_converts_decay():

@@ -148,7 +148,7 @@ structure; and the covariance is assembled from the fitted loadings.
   residual variance, model volatilities and the unit contract on their inputs.
 
 - [Empirical residual correlation](empirical_residual_correlation.md): a residual correlation
-  estimated on complete common periods, its availability date, and the residual block
+  estimated from available pairs on a common grid, its availability date, and the residual block
   $D = S[(1 - \rho) I + \rho R]S$.
 
 - [Residual-alpha nowcasting](residual_alpha_nowcasting.md): the factor component of realised
@@ -250,6 +250,7 @@ ewma_weighting_and_ragged_histories
 sign_constraints_and_priors
 gated_cluster_pooled_signs
 prior_targets
+prior_inference
 adaptive_penalty_weights
 ```
 

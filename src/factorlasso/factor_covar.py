@@ -15,7 +15,8 @@ Convention
 - Σ_y is ``(N × N)`` response covariance
 - D is ``(N × N)`` diagonal residual variances by default, or an empirical
   common-period EWMA correlation scaled by current residual standard deviations;
-  both modes assume zero factor-residual covariance
+  optionally projected onto exposure or residual cluster blocks.
+  All four modes assume zero factor-residual covariance
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 
+from factorlasso.cluster_utils import compute_clusters_from_corr_matrix
 from factorlasso.ewm_utils import compute_ewm
 from factorlasso.residual_covar import ResidualCorrelationData
 
@@ -36,6 +38,8 @@ class ResidualType(str, Enum):
 
     ORTHOGONAL = 'orthogonal'
     EMPIRICAL = 'empirical'
+    EXPOSURE_CLUSTER = 'exposure_cluster'
+    RESIDUAL_CLUSTER = 'residual_cluster'
 
 
 def _validate_residual_options(residual_type, residual_var_weight, residual_corr_weight):
@@ -45,7 +49,7 @@ def _validate_residual_options(residual_type, residual_var_weight, residual_corr
         raise ValueError("residual_corr_weight must be finite and in [0, 1]")
     if kind == ResidualType.ORTHOGONAL and residual_corr_weight != 1.:
         raise ValueError("residual_corr_weight applies only to empirical, not orthogonal residuals")
-    if kind == ResidualType.EMPIRICAL:
+    if kind != ResidualType.ORTHOGONAL:
         if not np.isfinite(residual_var_weight) or residual_var_weight < 0:
             raise ValueError("Empirical residual_var_weight must be finite and nonnegative")
     return kind
@@ -158,6 +162,11 @@ class CurrentFactorCovarData:
     residual_metadata: Optional[pd.DataFrame] = None
     residual_correlation: Optional[ResidualCorrelationData] = None
 
+    # A filtered snapshot retains the original universe's block targets.
+    # No constructor option: targets are derived by filter_on_tickers/load.
+    _residual_cluster_targets: Optional[Dict[str, pd.DataFrame]] = field(
+        default=None, init=False, repr=False, compare=False)
+
     def __post_init__(self):
         """
         Mirror ``clusters`` (if a per-asset Series) into
@@ -198,6 +207,14 @@ class CurrentFactorCovarData:
 
         Prepare correlation before retrieval; configure its grid and span during
         estimation. Correlation retrieval has no covariance scale conversion.
+
+        EXPOSURE_CLUSTER uses the fitted exposure labels; RESIDUAL_CLUSTER
+        uses Ward clustering of 1-R with cutoff fraction 0.6. Both replace
+        within-cluster entries by their signed off-diagonal mean and set
+        between-cluster entries to zero, before applying rho. Zero-risk
+        assets and assets with fewer than two residual observations are
+        excluded from clustering. Asset selection preserves the full fit
+        universe's targets. Factor exposures and alpha clusters are unchanged.
         """
         residual = self.get_residual_covar(
             residual_var_weight, assets, residual_type=residual_type,
@@ -235,7 +252,7 @@ class CurrentFactorCovarData:
         covariance = np.diag(values)
         if np.isclose(residual_var_weight, 0.):
             return pd.DataFrame(np.zeros_like(covariance), index=names, columns=names)
-        if kind == ResidualType.EMPIRICAL:
+        if kind != ResidualType.ORTHOGONAL:
             if not np.isfinite(values).all() or (values < 0).any():
                 raise ValueError("MATF residual variances must be finite and nonnegative")
             if residual_corr_weight > 0:
@@ -243,12 +260,48 @@ class CurrentFactorCovarData:
                     raise ValueError(
                         "Empirical residual covariance requires prepared residual correlation"
                     )
-                corr = self.residual_correlation.get_corr(self.estimation_date, names).to_numpy()
+                corr = self.residual_correlation.get_corr(self.estimation_date)
+                if kind in (ResidualType.EXPOSURE_CLUSTER, ResidualType.RESIDUAL_CLUSTER):
+                    corr = self._cluster_residual_correlation(kind)
+                corr = corr.loc[names, names].to_numpy()
                 vol = np.sqrt(values)
                 covariance = residual_corr_weight * corr * vol[:, None] * vol[None, :]
                 # Preserve the MATF diagonal bit-for-bit, independently of sqrt rounding.
                 np.fill_diagonal(covariance, values)
         return pd.DataFrame(residual_var_weight * covariance, index=names, columns=names)
+
+    def _cluster_residual_correlation(self, kind: ResidualType) -> pd.DataFrame:
+        """Project signed block means on the full snapshot universe before selection."""
+        corr = self.residual_correlation.get_corr(self.estimation_date)
+        if (self._residual_cluster_targets is not None
+                and kind.value in self._residual_cluster_targets):
+            return self._residual_cluster_targets[kind.value]
+        variances = self.y_variances[VarianceColumns.RESIDUAL_VARS.value]
+        eligible = (variances.gt(0)
+                    & self.residual_correlation.residual_returns.notna().sum().gt(1))
+        names = corr.index[eligible.reindex(corr.index).fillna(False)]
+        target = pd.DataFrame(np.eye(len(corr)), index=corr.index, columns=corr.columns)
+        if len(names) < 2:
+            return target
+        if kind == ResidualType.EXPOSURE_CLUSTER:
+            if self.clusters is None or self.clusters.reindex(names).isna().any():
+                raise ValueError(
+                    "exposure_cluster requires exposure cluster labels for eligible assets")
+            labels = self.clusters.reindex(names)
+        else:
+            labels, _, _ = compute_clusters_from_corr_matrix(
+                corr.loc[names, names], cutoff_fraction=.6,
+                linkage_method='ward', distance_transform='one_minus_rho',
+            )
+        for _, members in labels.groupby(labels):
+            ids = members.index
+            if len(ids) > 1:
+                block = corr.loc[ids, ids].to_numpy()
+                mean = block[np.triu_indices(len(ids), 1)].mean()
+                target.loc[ids, ids] = mean
+        values = target.to_numpy(copy=True)
+        np.fill_diagonal(values, 1.)
+        return pd.DataFrame(values, index=target.index, columns=target.columns)
 
     @property
     def y_covar(self) -> pd.DataFrame:
@@ -424,6 +477,8 @@ class CurrentFactorCovarData:
         clustering, run the estimator again on the subset.
 
         ``clusters`` is asset-indexed and is subset/renamed accordingly.
+        Both residual block targets retain their original-universe averages
+        and partitions, including after save/load and repeated selection.
         """
         if isinstance(assets, dict):
             keys = list(assets.keys())
@@ -450,7 +505,7 @@ class CurrentFactorCovarData:
             )
 
         # linkages and cutoffs are freq-level, not asset-level — pass through.
-        return CurrentFactorCovarData(
+        selected = CurrentFactorCovarData(
             x_covar=self.x_covar,
             y_betas=y_betas,
             y_variances=y_var,
@@ -466,6 +521,24 @@ class CurrentFactorCovarData:
             residual_correlation=(self.residual_correlation.filter_on_tickers(assets)
                                   if self.residual_correlation is not None else None),
         )
+
+        if self.residual_correlation is not None:
+            targets = {}
+            for kind in (ResidualType.EXPOSURE_CLUSTER, ResidualType.RESIDUAL_CLUSTER):
+                # Ordinary non-cluster fits must remain filterable. The exposure
+                # choice will still reject absent labels when it is requested.
+                eligible = (self.y_variances[VarianceColumns.RESIDUAL_VARS.value].gt(0)
+                            & self.residual_correlation.residual_returns.notna().sum().gt(1))
+                names = eligible.index[eligible]
+                if (kind == ResidualType.EXPOSURE_CLUSTER and len(names) > 1
+                        and (self.clusters is None or self.clusters.reindex(names).isna().any())):
+                    continue
+                target = self._cluster_residual_correlation(kind).loc[keys, keys]
+                if isinstance(assets, dict):
+                    target = target.rename(index=assets, columns=assets)
+                targets[kind.value] = target
+            object.__setattr__(selected, '_residual_cluster_targets', targets)
+        return selected
 
     # ── Serialisation ────────────────────────────────────────────────
 
@@ -483,6 +556,8 @@ class CurrentFactorCovarData:
             if self.residual_correlation is not None:
                 for name, frame in self.residual_correlation.to_sheets().items():
                     frame.to_excel(writer, sheet_name=name)
+            for kind, target in (self._residual_cluster_targets or {}).items():
+                target.to_excel(writer, sheet_name=f'residual_{kind}')
             if self.residuals is not None:
                 self.residuals.to_excel(writer, sheet_name='residuals')
             if self.linkages is not None:
@@ -518,7 +593,7 @@ class CurrentFactorCovarData:
         # were used at the originating fit.
         derived_signs: Optional[pd.DataFrame] = sheets.get('derived_signs')
 
-        return cls(
+        result = cls(
             x_covar=sheets['x_covar'],
             y_betas=sheets['y_betas'],
             y_variances=y_var,
@@ -533,6 +608,19 @@ class CurrentFactorCovarData:
             cutoffs=cutoffs,
             derived_signs=derived_signs,
         )
+
+        targets = {}
+        for kind in (ResidualType.EXPOSURE_CLUSTER, ResidualType.RESIDUAL_CLUSTER):
+            target = sheets.get(f'residual_{kind.value}')
+            if target is not None:
+                if result.residual_correlation is None:
+                    raise ValueError("Saved cluster target requires prepared residual correlation")
+                # Reuse the prepared-correlation finite/symmetry/PSD/label validation.
+                replace(result.residual_correlation, correlation=target)
+                targets[kind.value] = target
+        if targets:
+            object.__setattr__(result, '_residual_cluster_targets', targets)
+        return result
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -597,7 +685,10 @@ class RollingFactorCovarData:
                 if estimation.estimation_date is not None
                 else date
             )
-            yield date, replace(estimation, estimation_date=estimation_date)
+            snapshot = replace(estimation, estimation_date=estimation_date)
+            object.__setattr__(snapshot, '_residual_cluster_targets',
+                               estimation._residual_cluster_targets)
+            yield date, snapshot
 
     def get_y_covars(
         self,

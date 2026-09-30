@@ -3,13 +3,13 @@ myst:
   html_meta:
     description: >-
       Empirical residual correlation in factorlasso: estimating a dimensionless residual
-      correlation on a common grid of complete periods, its availability date, and assembling the
+      correlation from available pairs on a common period grid, its availability date, and assembling the
       residual covariance with a retention weight while keeping the stored residual variances.
 ---
 
 # Empirical residual correlation
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-26](https://github.com/ArturSepp/factorlasso/commit/26290d6bb9f527a0276eb4caa231211ce07819a9)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
@@ -24,8 +24,9 @@ residual variance unchanged.
 ## Overview
 
 The correlation is estimated separately from the variances. The variances stay those of the fit,
-in its units; the correlation is a dimensionless matrix estimated on a common grid of complete
-return periods, so responses observed at different native frequencies can be compared. The
+in its units; the correlation is a dimensionless matrix estimated on a common return-period
+grid, using each pair's available history, so responses with different start dates and native
+frequencies can be compared. The
 residual block is then
 
 $$
@@ -51,15 +52,21 @@ assembly](factor_covariance_assembly.md) article covers the rest of the model.
 
 ## Methodology
 
-### A common grid of complete periods
+### A common grid with per-response availability
 
 Each response's residuals are divided by its stored multiplier and summed over the native
 periods that make up each common period; additive log returns make the sum exact. A common
-period counts only if every native period in it is present: a missing row or value is never
-treated as a zero return, and nothing is interpolated or prorated. A native period that crosses a
-common boundary, such as a week spanning two months, raises an error; such panels must be rebuilt
-from finer data. The history runs from the first to the last complete common period, and a gap
-inside it raises an error instead of being filled, so a gapped response must be excluded.
+period is valid for a response only if every native period in it is present. Otherwise that
+response's aggregate remains NaN: a missing row or value is never treated as a zero return,
+interpolated or prorated. A native period that crosses a common boundary, such as a week spanning
+two months, raises an error; such panels must be rebuilt from finer data.
+
+The panel retains the union of per-response histories. A new response does not truncate the
+history of older pairs. Leading, internal and trailing NaNs pass to the existing EWMA kernels.
+Only all-missing periods outside the observed panel are trimmed; internal all-missing rows remain.
+Each response needs at least two valid common-period aggregates. `observation_count` counts grid
+rows, including the initialization anchor, rather than observations shared by every response.
+Per-pair counts can be obtained from the cross-product of the panel's finite-observation mask.
 
 ### Span and centring
 
@@ -67,24 +74,70 @@ Without an explicit `span`, the estimate uses the loadings' span of the coarsest
 converted to the common grid by matching the decay per unit of time:
 $\lambda_c = \lambda_n^{a_n / a_c}$ for native and common annualisation factors $a_n$ and $a_c$,
 and $s_c = (1 + \lambda_c) / (1 - \lambda_c)$. The common-period residuals are centred by their
-causal EWMA mean, the first period, which only anchors the mean, is dropped, and the EWMA second
-moment of the rest is normalised to a correlation. A positive constant multiplier of any response
-cancels.
+causal EWMA mean. The existing kernel's `X0` convention initializes responses present on the
+first grid row from that observation, and responses missing on that row from zero when they
+first appear. The first grid row only anchors the mean and is omitted from the second moment.
+
+Both kernels use `NanBackfill.FFILL`. A missing response holds its previous mean; a missing
+member of a pair holds that pair's previous second moment. For each available product the
+update is $M_{ij,t} = \lambda M_{ij,t-1} + (1 - \lambda) z_{i,t}z_{j,t}$, starting from zero.
+An unavailable product leaves $M_{ij,t} = M_{ij,t-1}$. Thus the decay advances on observed pairs,
+and a pair never observed together retains zero. This is the existing kernel convention; it does
+not divide each entry by its own accumulated weight mass. Finally,
+$R_{ij} = M_{ij} / \sqrt{M_{ii}M_{jj}}$. A positive constant multiplier of any response cancels.
 
 ### Observation date and availability date
 
-The last complete common period is the observation date; the fit date is the estimation date,
+The last grid period with at least one valid response is the observation date; the fit date is the estimation date,
 when the correlation becomes available. The two differ whenever a fit falls inside a common
 period. `ResidualCorrelationData` refuses to return the correlation for a date before its
 estimation date, because residuals recomputed with fitted loadings must not be backdated. A
 rolling container keeps one correlation vintage per availability date, returned by
 `get_residual_correlations`.
 
+### Four residual covariance choices
+
+| `ResidualType` | Correlation target before retention |
+|---|---|
+| `ORTHOGONAL` (`orthogonal`) | Identity; this remains the library default. |
+| `EMPIRICAL` (`empirical`) | The full prepared residual correlation. |
+| `EXPOSURE_CLUSTER` (`exposure_cluster`) | Signed residual-correlation averages within the fitted exposure clusters; zero between clusters. |
+| `RESIDUAL_CLUSTER` (`residual_cluster`) | The same block averaging, using clusters estimated from the prepared residual correlation. |
+
+For either cluster choice, a block of size $n > 1$ has the arithmetic mean of its
+unordered off-diagonal correlations on every off-diagonal entry. Its diagonal is one;
+a singleton has no off-diagonal entries. Means retain their sign. A positive semidefinite
+input block gives a mean between $-1/(n-1)$ and 1, so the constant-correlation block is
+positive semidefinite. Combining independent blocks and applying the retention mixture
+preserves that property without clipping or an additional PSD repair.
+
+Residual clustering uses `compute_clusters_from_corr_matrix` with Ward linkage,
+`distance_transform='one_minus_rho'`, and `cutoff_fraction=0.6`. Exposure clustering
+uses the fit's existing labels, including cadence prefixes. Both choices exclude assets
+with zero residual variance or fewer than two valid residual observations from the
+partition and the averages; excluded assets retain independent marginal residual risk.
+Exposure labels are required for eligible assets when there are at least two of them.
+
+Targets are constructed on the full fit universe before an `assets` selection.
+`filter_on_tickers` preserves the full-universe targets in the selected snapshot,
+including renaming, repeated selection, Excel save/load and rolling as-of retrieval.
+Selecting assets does not recut the partition or recompute its means. Factor exposures,
+their clusters and the native residuals used for alpha estimation remain unchanged.
+The prepared correlation vintage remains subject to its availability date; current
+snapshot variances still set the residual diagonal.
+
+`residual_corr_weight` applies to every nonorthogonal target. At zero it gives the
+orthogonal matrix without requiring prepared residual correlation or cluster labels.
+At one it retains the full selected target. This weight is distinct from
+`residual_var_weight`, which scales the entire residual covariance.
+
 ### Validation
 
 `ResidualCorrelationData` rejects a correlation that is not finite, symmetric, positive
 semidefinite and of unit diagonal, returns and metadata whose labels disagree, and an observation
-date after the estimation date. It does not repair an indefinite matrix.
+date after the estimation date. Asynchronous internal or trailing gaps can make the FFILL
+moment matrix indefinite because entries stop updating at different times. Such an estimate
+raises explicitly; it is not silently projected, shrunk, or switched to a complete-case estimate.
 
 ## Worked example
 
@@ -109,8 +162,9 @@ complete quarter, and the correlation is available from 28 February 2026; a requ
 January raises. The estimate uses 40 quarters, including the anchor. Its mean correlation is 0.49
 within block $a$, against 0.5 in the population, and $-0.29$ across the blocks; 39 centred
 quarters with a 12-quarter span leave that much sampling error. The script reproduces the matrix
-from quarterly sums and pandas EWMA means with explicit weights, and confirms that a single missing
-month fails the estimate.
+from quarterly sums and pandas EWMA means with explicit weights. It also confirms that a single
+missing month leaves only that response's quarter as NaN and preserves correlations among the
+other responses.
 
 The residual block, assembled with annual variances of $12 \times 0.03^2$:
 
@@ -132,15 +186,13 @@ residual volatility of an equal-weight portfolio of block $a$. Produced by
 
 ## Implementation in factorlasso
 
-Verified with factorlasso 0.20.0.
-
 | Name | Role |
 |---|---|
 | `estimate_residual_correlation` | The estimate from native residuals, their metadata and the fit date, with optional common `frequency`, `span` and `periods_per_year`. |
 | `ResidualCorrelationData` | `correlation`, the common-grid `residual_returns`, `asset_metadata`, `frequency`, `span`, `observation_date` and `estimation_date`; with `get_corr`, `filter_on_tickers`, `to_sheets`, `from_sheets` and `observation_count`. |
 
 A `CurrentFactorCovarData` carries the prepared correlation as `residual_correlation`.
-`get_residual_covar` and `get_y_covar` take `residual_type=ResidualType.EMPIRICAL` and
+`get_residual_covar` and `get_y_covar` accept all four `ResidualType` values and
 `residual_corr_weight` $= \rho$; `ResidualType.ORTHOGONAL`, the default, keeps the diagonal
 block and rejects any other retention. `residual_var_weight` scales the whole block. To run the
 example from a checkout:
@@ -158,8 +210,10 @@ python examples/docs/empirical_residual_correlation.py
   correlation toward zero, and with it the concentration penalty a portfolio pays.
 - **Sampling error is large on coarse grids.** Few common periods and a short span make $R$
   noisy, as the example's across-block mean of $-0.29$ shows; partial retention limits the damage.
-- **Strict data rules.** Gaps, non-nested periods and fewer than two complete common periods fail
-  rather than degrade silently; the caller decides which responses to exclude.
+- **Unequal information.** Pair histories differ. Zero for an unobserved pair is an initialization
+  convention, not evidence of independence. Finite-history weight mass is not corrected per pair.
+- **Validation remains strict.** Non-nested periods, fewer than two valid aggregates per response,
+  undefined residual variance, and indefinite estimated correlation fail explicitly.
 
 ## See also
 

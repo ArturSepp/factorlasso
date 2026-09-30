@@ -1,10 +1,11 @@
-"""Prepared residual correlation on complete common return intervals.
+"""Prepared residual correlation using available pairs on a common return grid.
 
 Input residuals are additive log-return residuals at explicitly declared native
 frequencies. Stored multipliers are undone before summation. A common-grid causal
 EWMA mean and normalized second moment use the existing factorlasso EWMA kernels.
-No factor-residual cross term, pairwise deletion, interpolation or extrapolation
-is used. The fit/availability date is distinct from the last observed period:
+NaNs remain in the common panel: each second-moment entry uses the kernel's
+FFILL rule on its available pairs. No factor-residual cross term, interpolation
+or extrapolation is used. The fit/availability date is distinct from the last observed period:
 residual history recomputed with fitted betas must never be backdated.
 """
 
@@ -61,21 +62,20 @@ def _aggregate_residuals(residuals: pd.DataFrame, metadata: pd.DataFrame,
             values = block.to_numpy(dtype=float)
             valid = np.isfinite(values).all(axis=0)
             common.loc[end, columns[valid]] = values[:, valid].sum(axis=0)
-    complete = np.isfinite(common.to_numpy()).all(axis=1)
-    positions = np.flatnonzero(complete)
-    if len(positions) < 2:
-        raise ValueError("Residual covariance requires at least two complete common periods")
-    common = common.iloc[positions[0]:positions[-1] + 1]
-    if not np.isfinite(common.to_numpy()).all():
+    valid = np.isfinite(common.to_numpy())
+    if (valid.sum(axis=0) < 2).any():
         raise ValueError(
-            "Residual history contains an incomplete common period; exclude gapped assets"
+            "Residual covariance requires at least two complete common periods per asset"
         )
-    return common
+    # Keep each asset's history, including internal NaNs. All-missing edge periods
+    # carry no observations; an incomplete native aggregate stays NaN for that asset.
+    positions = np.flatnonzero(valid.any(axis=1))
+    return common.iloc[positions[0]:positions[-1] + 1]
 
 
 def _prepare_common_residuals(residuals, metadata, estimation_date, frequency, span,
                               annualisation_factor):
-    """Validate native units and select complete nested intervals and common decay."""
+    """Validate native units and select per-asset nested intervals and common decay."""
     if (not isinstance(residuals.index, pd.DatetimeIndex)
             or not residuals.index.is_monotonic_increasing or not residuals.index.is_unique
             or residuals.index.hasnans or residuals.empty or not residuals.columns.is_unique):
@@ -124,7 +124,7 @@ def _prepare_common_residuals(residuals, metadata, estimation_date, frequency, s
 
 
 def _moment_to_correlation(moment: pd.DataFrame) -> pd.DataFrame:
-    """Normalize a complete moment matrix without changing any marginal risk estimate."""
+    """Normalize finite moments without changing any native marginal risk estimate."""
     values = moment.to_numpy(dtype=float)
     variances = np.diag(values)
     if not np.isfinite(values).all() or (variances <= 0).any():
@@ -177,7 +177,7 @@ class ResidualCorrelationData:
 
     @property
     def observation_count(self) -> int:
-        """Number of complete common periods, including the EWMA initialization anchor."""
+        """Common-grid rows including the anchor; finite counts can differ by asset."""
         return len(self.residual_returns)
 
     def get_corr(self, date: Optional[pd.Timestamp] = None,
@@ -245,15 +245,21 @@ def estimate_residual_correlation(
     units. An explicit span is measured in common-grid observations. Causal EWMA
     means remove the initialization anchor before the shared second-moment kernel.
 
+    Assets need not start together. Incomplete per-asset periods remain NaN; the
+    mean and covariance kernels use FFILL, retaining a pair's previous moment if
+    either residual is missing. Unobserved pairs keep the zero initialization.
+    No pairwise weight-mass renormalization or PSD repair is applied. Asynchronous
+    gaps can produce an indefinite matrix, which the result validator rejects.
+
     Positive constant per-asset scaling cancels. Undefined zero-variance residuals,
-    gaps, nonnested boundaries and insufficient observations fail explicitly.
+    nonnested boundaries and fewer than two complete periods per asset fail.
     Alpha continues to use the unchanged native residual panel.
     """
     common, metadata, frequency, span, _, cutoff = _prepare_common_residuals(
         residuals, metadata, estimation_date, frequency, span, periods_per_year,
     )
     centered = (common - compute_ewm(common, span=span)).iloc[1:].to_numpy()
-    # The finite EWMA mass is common to every entry and cancels in correlation.
+    # Preserve NaNs for the existing pair-by-pair FFILL covariance recursion.
     moment = pd.DataFrame(compute_ewm_covar(centered, span=span),
                           index=common.columns, columns=common.columns)
     return ResidualCorrelationData(

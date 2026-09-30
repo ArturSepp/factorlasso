@@ -5,7 +5,7 @@ residuals are correlated at 0.5 within a block and not across. One response stor
 residuals in percent. The residual correlation is estimated on a quarterly common grid, checked
 against a direct EWMA computation, and used to assemble the residual covariance
 D = S [(1 - rho) I + rho R] S for rho in {0, 0.5, 1}. The script also exercises the availability
-date and the failure on a gap. Synthetic data.
+date and preservation of incomplete per-asset periods as NaNs. Synthetic data.
 """
 
 import numpy as np
@@ -105,15 +105,16 @@ def main() -> None:
     across = corr[:4, 4:].mean()
     print(round(prepared.span, 2), round(within, 2), round(across, 2))
 
-    # --- a gap fails instead of being filled ---------------------------------------------------
+    # --- an incomplete native aggregate stays NaN for just that response ---------------------
     gapped = residuals.copy()
     gapped.iloc[60, 0] = np.nan
-    try:
-        estimate(gapped, metadata)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("a gapped history was accepted")
+    gapped_prepared = estimate(gapped, metadata)
+    quarter = gapped.index[60] + pd.offsets.QuarterEnd()
+    assert np.isnan(gapped_prepared.residual_returns.loc[quarter, NAMES[0]])
+    assert gapped_prepared.residual_returns.loc[quarter, NAMES[1:]].notna().all()
+    assert gapped_prepared.observation_count == prepared.observation_count
+    pd.testing.assert_frame_equal(gapped_prepared.correlation.loc[NAMES[1:], NAMES[1:]],
+                                  prepared.correlation.loc[NAMES[1:], NAMES[1:]], check_exact=True)
 
     # --- assembly: D = S [(1 - rho) I + rho R] S ------------------------------------------------
     blocks = residual_covariances(prepared)

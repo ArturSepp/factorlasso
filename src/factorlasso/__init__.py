@@ -107,6 +107,14 @@ from factorlasso.factor_covar import (
     VarianceColumns,
 )
 from factorlasso.prior_bounds import compute_expert_prior_statistics
+from factorlasso.prior_inference import (
+    PriorHacGeometry, Ar1PriorInterval, compute_prior_hac_geometry,
+    gaussian_prior_critical_value, compute_ar1_prior_interval,
+)
+from factorlasso.prior_risk import (
+    GaussianDominanceInformation, gaussian_dominance_information,
+    two_factor_limit_risk, two_factor_minimax_radius,
+)
 from factorlasso.lasso_estimator import (
     LassoEstimationResult,
     LassoModel,
@@ -165,6 +173,15 @@ __all__ = [
     "ExpertPriorResolution",
     "map_expert_factor_priors",
     "compute_expert_prior_statistics",
+    "PriorHacGeometry",
+    "Ar1PriorInterval",
+    "compute_prior_hac_geometry",
+    "gaussian_prior_critical_value",
+    "compute_ar1_prior_interval",
+    "GaussianDominanceInformation",
+    "gaussian_dominance_information",
+    "two_factor_limit_risk",
+    "two_factor_minimax_radius",
     # Factor covariance assembly
     "CurrentFactorCovarData",
     "ResidualType",
