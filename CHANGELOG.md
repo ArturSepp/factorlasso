@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.24.0 — unreleased
+## 0.24.0 — 2026-10-02
 
 - Reorganise the package into capability subpackages: `factorlasso.utils`,
   `factorlasso.linear_model`, `factorlasso.cluster`, `factorlasso.priors`,
