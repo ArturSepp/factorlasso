@@ -28,7 +28,7 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 
-from factorlasso.cluster_utils import compute_clusters_from_corr_matrix
+from factorlasso.cluster._hierarchical import compute_clusters_from_corr_matrix
 from factorlasso.utils._ewm import compute_ewm
 from factorlasso.residual_covar import ResidualCorrelationData
 

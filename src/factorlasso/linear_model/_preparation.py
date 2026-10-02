@@ -19,11 +19,11 @@ from typing import Any, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from factorlasso.beta_priors import _zero_incompatible_priors
-from factorlasso.cluster_utils import (
+from factorlasso.priors._ols import _zero_incompatible_priors
+from factorlasso.cluster._hierarchical import (
     apply_cluster_correlation_transform, compute_clusters_from_corr_matrix,
 )
-from factorlasso.dependence_utils import compute_dependence_matrix
+from factorlasso.cluster._dependence import compute_dependence_matrix
 from factorlasso.linear_model._restrictions import (
     SIGN_DIAGNOSTIC_ATTRIBUTES, adaptive_penalty_weights, automatic_signs, combine_signs,
     expert_prior_bounds, ols_prior, overlay_explicit_prior, override_detected_signs,

@@ -25,10 +25,10 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from factorlasso.beta_priors import _compute_joint_ols_prior, _compute_ols_prior
+from factorlasso.priors._ols import _compute_joint_ols_prior, _compute_ols_prior
 from factorlasso.linear_model._settings import _selected_prior_factors
 from factorlasso.linear_model._types import _mode_spec
-from factorlasso.prior_bounds import _compute_expert_prior_bounds
+from factorlasso.priors._bounds import _compute_expert_prior_bounds
 from factorlasso.utils._ewm import set_group_loadings
 
 #: Sign-derivation diagnostics and the fitted attribute that stores each one.
@@ -55,7 +55,7 @@ def automatic_signs(
     cluster are pooled and every member shares the cluster's signs; without one (plain LASSO
     or a single response) each response is fitted on its own.
     """
-    from factorlasso.sign_constraints import (
+    from factorlasso.priors._signs import (
         _compute_sign_matrix_per_response, _compute_sign_vector,
     )
     n, m = y_np.shape[1], x_np.shape[1]
@@ -228,7 +228,7 @@ def adaptive_penalty_weights(
     ``l1_weight = 0``. Cluster-by-factor block weights exist only for FCGL, and not after
     a single-response fit has reduced to plain LASSO.
     """
-    from factorlasso.sign_constraints import (
+    from factorlasso.priors._signs import (
         _adaptive_penalty_weights,
         _aggregate_to_block_weights,
         _aggregate_to_row_weights,

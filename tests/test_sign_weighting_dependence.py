@@ -103,7 +103,7 @@ def test_bulk_matches_single_response_and_factor_clusters(span):
 
 def test_fit_restores_missing_response_and_factor_masks(monkeypatch):
     """Check the actual solver preparation, not only a standalone helper."""
-    import factorlasso.sign_constraints as sc
+    import factorlasso.priors._signs as sc
 
     rng = np.random.default_rng(34)
     x = pd.DataFrame(rng.normal(size=(300, 2)), columns=["x", "z"])

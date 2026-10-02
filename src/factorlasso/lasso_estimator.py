@@ -8,21 +8,17 @@ name here raises :class:`AttributeError` (see :mod:`factorlasso._compat`).
 # ruff: noqa: F401
 
 from factorlasso._compat import guard_legacy_module
-from factorlasso.beta_priors import (
-    _compute_joint_ols_prior, _compute_ols_prior, _validate_prior_selection_type,
-    _zero_incompatible_priors,
+from factorlasso.cluster._dependence import (
+    compute_dependence_matrix, DEFAULT_DEPENDENCE_MEASURE, DEFAULT_GERBER_THRESHOLD,
+    DependenceMeasure,
 )
-from factorlasso.cluster_smoothing import ClusterSmootherType
-from factorlasso.cluster_utils import (
+from factorlasso.cluster._hierarchical import (
     apply_cluster_correlation_transform, ClusterCorrelationTransform,
     compute_clusters_from_corr_matrix, DEFAULT_CLUSTER_CORRELATION_TRANSFORM,
     DEFAULT_CUTOFF_FRACTION, DEFAULT_DISTANCE_TRANSFORM, DEFAULT_LINKAGE_METHOD, DistanceTransform,
     VALID_LINKAGE_METHODS,
 )
-from factorlasso.dependence_utils import (
-    compute_dependence_matrix, DEFAULT_DEPENDENCE_MEASURE, DEFAULT_GERBER_THRESHOLD,
-    DependenceMeasure,
-)
+from factorlasso.cluster._smoothing import ClusterSmootherType
 from factorlasso.linear_model._estimator import LassoModel
 from factorlasso.linear_model._preparation import _PreparedFit
 from factorlasso.linear_model._settings import _selected_prior_factors
@@ -40,7 +36,11 @@ from factorlasso.linear_model._solvers.unilasso import solve_unilasso_cvx_proble
 from factorlasso.linear_model._types import (
     LassoEstimationResult, LassoModelType, LassoNowcastResult, _MODES_WITHOUT_SIGN_CONSTRAINTS,
 )
-from factorlasso.prior_bounds import _compute_expert_prior_bounds, _validate_expert_bound_settings
+from factorlasso.priors._bounds import _compute_expert_prior_bounds, _validate_expert_bound_settings
+from factorlasso.priors._ols import (
+    _compute_joint_ols_prior, _compute_ols_prior, _validate_prior_selection_type,
+    _zero_incompatible_priors,
+)
 from factorlasso.utils._ewm import (
     compute_ewm, compute_expanding_power, set_group_loadings, _validate_span,
 )

@@ -54,12 +54,12 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 import numpy as np
 import pandas as pd
 
-from factorlasso.cluster_smoothing import ClusterSmootherType
-from factorlasso.cluster_utils import (
+from factorlasso.cluster._smoothing import ClusterSmootherType
+from factorlasso.cluster._hierarchical import (
     DEFAULT_CLUSTER_CORRELATION_TRANSFORM, DEFAULT_CUTOFF_FRACTION, DEFAULT_DISTANCE_TRANSFORM,
     DEFAULT_LINKAGE_METHOD, ClusterCorrelationTransform, DistanceTransform,
 )
-from factorlasso.dependence_utils import (
+from factorlasso.cluster._dependence import (
     DEFAULT_DEPENDENCE_MEASURE, DEFAULT_GERBER_THRESHOLD, DependenceMeasure,
 )
 from factorlasso.linear_model import _inspection, _nowcast

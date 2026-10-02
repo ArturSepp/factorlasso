@@ -14,15 +14,15 @@ from typing import Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
-from factorlasso.beta_priors import _validate_prior_selection_type
-from factorlasso.cluster_smoothing import ClusterSmootherType
-from factorlasso.cluster_utils import (
+from factorlasso.priors._ols import _validate_prior_selection_type
+from factorlasso.cluster._smoothing import ClusterSmootherType
+from factorlasso.cluster._hierarchical import (
     VALID_LINKAGE_METHODS, ClusterCorrelationTransform, DistanceTransform,
 )
-from factorlasso.dependence_utils import DependenceMeasure
+from factorlasso.cluster._dependence import DependenceMeasure
 from factorlasso.linear_model._solvers.common import _validate_loss_normalization
 from factorlasso.linear_model._types import LassoModelType, _mode_spec
-from factorlasso.prior_bounds import _validate_expert_bound_settings
+from factorlasso.priors._bounds import _validate_expert_bound_settings
 from factorlasso.utils._ewm import _validate_span
 
 
