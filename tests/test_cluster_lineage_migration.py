@@ -6,6 +6,7 @@ from pathlib import Path
 
 import factorlasso
 import factorlasso.cluster_lineage as cluster_lineage
+import factorlasso.diagnostics._lineage as lineage_implementation
 
 
 def test_cluster_lineage_public_exports_are_canonical() -> None:
@@ -18,7 +19,7 @@ def test_cluster_lineage_public_exports_are_canonical() -> None:
 
 def test_cluster_lineage_runtime_import_surface_stays_leaf_only() -> None:
     """Package code imports only the scientific core, factorlasso internals, and stdlib."""
-    source = Path(inspect.getfile(cluster_lineage)).read_text(encoding="utf-8")
+    source = Path(inspect.getfile(lineage_implementation)).read_text(encoding="utf-8")
     tree = ast.parse(source)
     allowed = {
         "__future__",
@@ -41,7 +42,7 @@ def test_cluster_lineage_runtime_import_surface_stays_leaf_only() -> None:
 
 def test_cluster_lineage_docstrings_use_numpydoc_sections() -> None:
     """The moved module contains no Google-style public docstring sections."""
-    source = Path(inspect.getfile(cluster_lineage)).read_text(encoding="utf-8")
+    source = Path(inspect.getfile(lineage_implementation)).read_text(encoding="utf-8")
     assert "Args:" not in source
     assert "Returns:" not in source
     assert "Raises:" not in source

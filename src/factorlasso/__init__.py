@@ -74,19 +74,30 @@ from factorlasso.cluster import (
     score_with_stability_pooled_clusters,
     smooth_similarity_ewma,
 )
-from factorlasso.cluster_lineage import (
-    RiskClusterReport,
-    TaxonomyConfig,
-    analyze_cluster_lineage,
-    run_cluster_lineage_report,
-)
-from factorlasso.cv import LassoModelCV
-from factorlasso.diagonality import LassoModelDiagonalityCV
-from factorlasso.factor_covar import (
+from factorlasso.covariance import (
     CurrentFactorCovarData,
+    ResidualCorrelationData,
     ResidualType,
     RollingFactorCovarData,
     VarianceColumns,
+    estimate_residual_correlation,
+)
+from factorlasso.diagnostics import (
+    ResidualDiagnostics,
+    RiskClusterReport,
+    Sparsity,
+    TaxonomyConfig,
+    analyze_cluster_lineage,
+    diagnose_residuals,
+    effective_sparsity,
+    marchenko_pastur_edge,
+    missing_factor_components,
+    null_threshold,
+    partition_variance_share,
+    raw_offdiagonal_mass,
+    residual_correlation,
+    run_cluster_lineage_report,
+    suggest_tolerance,
 )
 from factorlasso.linear_model import (
     LassoEstimationResult,
@@ -99,6 +110,7 @@ from factorlasso.linear_model import (
     solve_lasso_cvx_problem,
     solve_unilasso_cvx_problem,
 )
+from factorlasso.model_selection import LassoModelCV, LassoModelDiagonalityCV
 from factorlasso.priors import (
     Ar1PriorInterval,
     ExpertPriorResolution,
@@ -115,22 +127,6 @@ from factorlasso.priors import (
     two_factor_minimax_radius,
     validate_cluster_signs,
 )
-from factorlasso.residual_covar import (
-    ResidualCorrelationData, estimate_residual_correlation,
-)
-from factorlasso.residual_diagnostics import (
-    ResidualDiagnostics,
-    Sparsity,
-    diagnose_residuals,
-    effective_sparsity,
-    marchenko_pastur_edge,
-    missing_factor_components,
-    null_threshold,
-    partition_variance_share,
-    raw_offdiagonal_mass,
-    residual_correlation,
-    suggest_tolerance,
-)
 from factorlasso.utils import (
     compute_ewm,
     compute_ewm_covar,
@@ -142,17 +138,23 @@ from factorlasso.utils import (
 # The modules of the 0.23.0 flat layout stay importable, and stay attributes of the package.
 from factorlasso import (  # noqa: F401
     beta_priors,
+    cluster_lineage,
     cluster_smoothing,
     cluster_standardization,
     cluster_statistics,
     cluster_utils,
+    cv,
     dependence_utils,
+    diagonality,
     ewm_utils,
     expert_prior_map,
+    factor_covar,
     lasso_estimator,
     prior_bounds,
     prior_inference,
     prior_risk,
+    residual_covar,
+    residual_diagnostics,
     sign_constraints,
 )
 
