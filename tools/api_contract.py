@@ -15,9 +15,10 @@ Usage::
     python tools/api_contract.py --write tests/data/api_contract.json
     python tools/api_contract.py --check tests/data/api_contract.json
 
-``--write`` regenerates the reviewed fixture and is run only when the contract is meant to
-change. Legacy names are derived from module source with :mod:`ast` at generation time; a check
-uses the names recorded in the fixture.
+``--write`` derives the contract from the current revision, including the legacy names, which
+it reads from module source with :mod:`ast`; it was run once, on 0.23.0, whose flat modules
+define those names. ``--update`` rewrites a stored contract for an intended, reviewed change
+and keeps the recorded legacy names. A check uses the names recorded in the fixture.
 """
 
 from __future__ import annotations
@@ -56,6 +57,12 @@ LEGACY_MODULES = (
     "residual_covar",
     "residual_diagnostics",
     "sign_constraints",
+)
+
+#: Capability subpackages; each exports a subset of the root ``__all__``.
+SUBPACKAGES = (
+    "utils", "linear_model", "cluster", "priors", "covariance", "diagnostics",
+    "model_selection",
 )
 
 _NO_DEFAULT = "<no default>"
@@ -142,8 +149,12 @@ def _members(cls: type) -> Dict[str, Any]:
 
 
 def class_record(cls: type) -> Dict[str, Any]:
-    """Describe an exported class: enum members, dataclass fields, constructor and members."""
-    record: Dict[str, Any] = {"kind": "class"}
+    """Describe an exported class: enum members, dataclass fields, constructor and members.
+
+    ``module`` is the class's ``__module__``: pickles store it, so it is pinned once the
+    layout is final and a later move is visible in review.
+    """
+    record: Dict[str, Any] = {"kind": "class", "module": cls.__module__}
     if issubclass(cls, enum.Enum):
         record["kind"] = "enum"
         record["enum_members"] = [[member.name, serialise_value(member.value)]
@@ -247,9 +258,12 @@ def build_contract(legacy: Optional[Dict[str, Dict[str, Optional[str]]]] = None)
             "names": {name: _legacy_entry(module, name, root, source)
                       for name, source in names.items()},
         }
+    subpackages = {name: list(importlib.import_module(f"factorlasso.{name}").__all__)
+                   for name in SUBPACKAGES}
     return {
         "root_all": list(root.__all__),
         "exports": exports,
+        "subpackages": subpackages,
         "legacy_sources": legacy,
         "legacy": legacy_records,
     }
@@ -300,12 +314,19 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--write", type=Path, help="write the contract derived from this revision")
+    group.add_argument("--update", type=Path,
+                       help="rewrite a stored contract, keeping its recorded legacy names")
     group.add_argument("--check", type=Path, help="compare the package against a stored contract")
     args = parser.parse_args(list(argv) if argv is not None else None)
     if args.write:
         args.write.parent.mkdir(parents=True, exist_ok=True)
-        args.write.write_text(_dump(build_contract()), encoding="utf-8")
+        args.write.write_text(_dump(build_contract()), encoding="utf-8", newline="\n")
         print(f"wrote {args.write}")
+        return 0
+    if args.update:
+        legacy = load(args.update)["legacy_sources"]
+        args.update.write_text(_dump(build_contract(legacy)), encoding="utf-8", newline="\n")
+        print(f"updated {args.update}")
         return 0
     found = check(args.check)
     for line in found:

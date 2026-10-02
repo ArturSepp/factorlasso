@@ -116,7 +116,7 @@ class CurrentFactorCovarData:
     Examples
     --------
     >>> import numpy as np, pandas as pd
-    >>> from factorlasso.factor_covar import CurrentFactorCovarData, VarianceColumns
+    >>> from factorlasso import CurrentFactorCovarData, VarianceColumns
     >>> M, N = 3, 5
     >>> x_covar = pd.DataFrame(np.eye(M), columns=[f'f{i}' for i in range(M)],
     ...                         index=[f'f{i}' for i in range(M)])

@@ -24,7 +24,7 @@ import pytest
 
 from factorlasso import LassoModel, LassoModelType
 from factorlasso.lasso_estimator import LassoEstimationResult
-from factorlasso.sign_constraints import _compute_sign_vector
+from factorlasso.priors._signs import _compute_sign_vector
 
 
 def test_cluster_span_fields_keep_historical_constructor_positions():

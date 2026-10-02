@@ -78,6 +78,7 @@
  "exports": {
   "LassoModel": {
    "kind": "class",
+   "module": "factorlasso.linear_model._estimator",
    "dataclass": {
     "frozen": false,
     "fields": [
@@ -1122,6 +1123,7 @@
   },
   "LassoModelCV": {
    "kind": "class",
+   "module": "factorlasso.model_selection._cv",
    "dataclass": {
     "frozen": false,
     "fields": [
@@ -1295,6 +1297,7 @@
   },
   "LassoModelType": {
    "kind": "enum",
+   "module": "factorlasso.linear_model._types",
    "enum_members": [
     [
      "LASSO",
@@ -1329,6 +1332,7 @@
   },
   "LassoEstimationResult": {
    "kind": "class",
+   "module": "factorlasso.linear_model._types",
    "dataclass": {
     "frozen": false,
     "fields": [
@@ -1400,6 +1404,7 @@
   },
   "LassoNowcastResult": {
    "kind": "class",
+   "module": "factorlasso.linear_model._types",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -1493,6 +1498,7 @@
   },
   "ClusterSmootherType": {
    "kind": "enum",
+   "module": "factorlasso.cluster._smoothing",
    "enum_members": [
     [
      "NONE",
@@ -1515,6 +1521,7 @@
   },
   "ClusterStabilityStatistics": {
    "kind": "class",
+   "module": "factorlasso.cluster._stability",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -1641,6 +1648,7 @@
   },
   "StabilityPoolingType": {
    "kind": "enum",
+   "module": "factorlasso.cluster._standardization",
    "enum_members": [
     [
      "NONE",
@@ -1659,6 +1667,7 @@
   },
   "RollingClusterData": {
    "kind": "class",
+   "module": "factorlasso.cluster._smoothing",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -2174,6 +2183,7 @@
   },
   "ExpertPriorResolution": {
    "kind": "class",
+   "module": "factorlasso.priors._expert_map",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -2272,6 +2282,7 @@
   },
   "PriorHacGeometry": {
    "kind": "class",
+   "module": "factorlasso.priors._inference",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -2347,6 +2358,7 @@
   },
   "Ar1PriorInterval": {
    "kind": "class",
+   "module": "factorlasso.priors._inference",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -2591,6 +2603,7 @@
   },
   "GaussianDominanceInformation": {
    "kind": "class",
+   "module": "factorlasso.priors._risk",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -2736,6 +2749,7 @@
   },
   "CurrentFactorCovarData": {
    "kind": "class",
+   "module": "factorlasso.covariance._factor_covar",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -3046,6 +3060,7 @@
   },
   "ResidualType": {
    "kind": "enum",
+   "module": "factorlasso.covariance._factor_covar",
    "enum_members": [
     [
      "ORTHOGONAL",
@@ -3068,6 +3083,7 @@
   },
   "ResidualCorrelationData": {
    "kind": "class",
+   "module": "factorlasso.covariance._residual_correlation",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -3252,6 +3268,7 @@
   },
   "RollingFactorCovarData": {
    "kind": "class",
+   "module": "factorlasso.covariance._factor_covar",
    "dataclass": {
     "frozen": false,
     "fields": [
@@ -3547,6 +3564,7 @@
   },
   "VarianceColumns": {
    "kind": "enum",
+   "module": "factorlasso.covariance._factor_covar",
    "enum_members": [
     [
      "EWMA_VARIANCE",
@@ -3589,6 +3607,7 @@
   },
   "RiskClusterReport": {
    "kind": "class",
+   "module": "factorlasso.diagnostics._lineage",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -3823,6 +3842,7 @@
   },
   "TaxonomyConfig": {
    "kind": "class",
+   "module": "factorlasso.diagnostics._lineage",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -4034,6 +4054,7 @@
   },
   "DependenceMeasure": {
    "kind": "enum",
+   "module": "factorlasso.cluster._dependence",
    "enum_members": [
     [
      "PEARSON",
@@ -4106,6 +4127,7 @@
   },
   "ClusterCorrelationTransform": {
    "kind": "enum",
+   "module": "factorlasso.cluster._hierarchical",
    "enum_members": [
     [
      "NONE",
@@ -4120,6 +4142,7 @@
   },
   "ClusterCorrelationTransformResult": {
    "kind": "class",
+   "module": "factorlasso.cluster._hierarchical",
    "dataclass": {
     "frozen": true,
     "fields": [
@@ -4224,6 +4247,7 @@
   },
   "DistanceTransform": {
    "kind": "enum",
+   "module": "factorlasso.cluster._hierarchical",
    "enum_members": [
     [
      "ONE_MINUS_RHO",
@@ -4688,6 +4712,7 @@
   },
   "LassoModelDiagonalityCV": {
    "kind": "class",
+   "module": "factorlasso.model_selection._diagonality",
    "dataclass": {
     "frozen": false,
     "fields": [
@@ -4938,6 +4963,7 @@
   },
   "ResidualDiagnostics": {
    "kind": "class",
+   "module": "factorlasso.diagnostics._residuals",
    "dataclass": {
     "frozen": false,
     "fields": [
@@ -5111,6 +5137,7 @@
   },
   "Sparsity": {
    "kind": "class",
+   "module": "factorlasso.diagnostics._residuals",
    "dataclass": {
     "frozen": false,
     "fields": [
@@ -5414,6 +5441,96 @@
     ]
    ]
   }
+ },
+ "subpackages": {
+  "utils": [
+   "compute_ewm",
+   "compute_ewm_covar",
+   "compute_expanding_power",
+   "get_x_y_np",
+   "set_group_loadings"
+  ],
+  "linear_model": [
+   "LassoEstimationResult",
+   "LassoModel",
+   "LassoModelType",
+   "LassoNowcastResult",
+   "solve_cooperative_group_lasso_cvx_problem",
+   "solve_group_lasso_cvx_problem",
+   "solve_group_lasso_path",
+   "solve_lasso_cvx_problem",
+   "solve_unilasso_cvx_problem"
+  ],
+  "cluster": [
+   "ClusterCorrelationTransform",
+   "ClusterCorrelationTransformResult",
+   "ClusterSmootherType",
+   "ClusterStabilityStatistics",
+   "DependenceMeasure",
+   "DistanceTransform",
+   "RollingClusterData",
+   "StabilityPoolingType",
+   "apply_cluster_correlation_transform",
+   "apply_partition_distance_bonus",
+   "compute_cluster_stability_statistics",
+   "compute_clusters_from_corr_matrix",
+   "compute_co_association_panel",
+   "compute_dependence_matrix",
+   "compute_gerber_matrix",
+   "compute_rolling_smoothed_clusters",
+   "get_clusters_by_freq",
+   "get_cutoffs_by_freq",
+   "get_linkage_array",
+   "get_linkages_by_freq",
+   "remove_first_principal_component",
+   "score_with_stability_pooled_clusters",
+   "smooth_similarity_ewma"
+  ],
+  "priors": [
+   "Ar1PriorInterval",
+   "ExpertPriorResolution",
+   "GaussianDominanceInformation",
+   "PriorHacGeometry",
+   "compute_ar1_prior_interval",
+   "compute_expert_prior_statistics",
+   "compute_prior_hac_geometry",
+   "derive_sign_constraints",
+   "gaussian_dominance_information",
+   "gaussian_prior_critical_value",
+   "map_expert_factor_priors",
+   "two_factor_limit_risk",
+   "two_factor_minimax_radius",
+   "validate_cluster_signs"
+  ],
+  "covariance": [
+   "CurrentFactorCovarData",
+   "ResidualCorrelationData",
+   "ResidualType",
+   "RollingFactorCovarData",
+   "VarianceColumns",
+   "estimate_residual_correlation"
+  ],
+  "diagnostics": [
+   "ResidualDiagnostics",
+   "RiskClusterReport",
+   "Sparsity",
+   "TaxonomyConfig",
+   "analyze_cluster_lineage",
+   "diagnose_residuals",
+   "effective_sparsity",
+   "marchenko_pastur_edge",
+   "missing_factor_components",
+   "null_threshold",
+   "partition_variance_share",
+   "raw_offdiagonal_mass",
+   "residual_correlation",
+   "run_cluster_lineage_report",
+   "suggest_tolerance"
+  ],
+  "model_selection": [
+   "LassoModelCV",
+   "LassoModelDiagonalityCV"
+  ]
  },
  "legacy_sources": {
   "beta_priors": {

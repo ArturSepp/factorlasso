@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 from factorlasso import LassoModel, LassoModelType
-from factorlasso.sign_constraints import _adaptive_penalty_weights
+from factorlasso.priors._signs import _adaptive_penalty_weights
 
 
 def _make_mixed_panel(seed: int = 7, T: int = 240, idio: float = 0.10):
@@ -277,7 +277,7 @@ def test_adaptive_penalty_weights_gamma_exponent():
 
 def test_aggregate_to_row_weights_rms():
     """Direct test of _aggregate_to_row_weights: RMS over non-pinned cells."""
-    from factorlasso.sign_constraints import _aggregate_to_row_weights
+    from factorlasso.priors._signs import _aggregate_to_row_weights
 
     # All non-pinned: RMS over the full row
     cell_w = np.array([[2.0, 4.0, 4.0]])         # sqrt((4+16+16)/3) = sqrt(12) = 3.464
@@ -306,7 +306,7 @@ def test_aggregate_to_row_weights_rms():
 
 def test_aggregate_multiple_rows():
     """Multi-row aggregation runs vectorised across N."""
-    from factorlasso.sign_constraints import _aggregate_to_row_weights
+    from factorlasso.priors._signs import _aggregate_to_row_weights
 
     cell_w = np.array([
         [2.0, 4.0, 4.0],

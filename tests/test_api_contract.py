@@ -96,6 +96,32 @@ def test_legacy_modules_remain_root_attributes():
         assert isinstance(getattr(factorlasso, name), types.ModuleType), name
 
 
+def test_subpackages_are_homes_of_root_names(contract_tool):
+    """Each root export has exactly one capability subpackage, which re-exports that object.
+
+    Subpackages promote nothing beyond ``factorlasso.__all__``; COMPATIBILITY.md defines the
+    root as the stable surface.
+    """
+    homes = {}
+    for name in contract_tool.SUBPACKAGES:
+        subpackage = importlib.import_module(f"factorlasso.{name}")
+        assert len(set(subpackage.__all__)) == len(subpackage.__all__), name
+        for export in subpackage.__all__:
+            assert export in factorlasso.__all__, f"{name}.{export} is not a root export"
+            assert getattr(subpackage, export) is getattr(factorlasso, export)
+            homes.setdefault(export, []).append(name)
+    assert sorted(homes) == sorted(factorlasso.__all__)
+    assert {name: places for name, places in homes.items() if len(places) > 1} == {}
+
+
+def test_every_historical_module_is_a_guarded_facade(contract_tool):
+    """All 19 modules of the 0.23.0 layout are facades whose names are read-only."""
+    from factorlasso._compat import _LegacyModule
+
+    assert [name for name in contract_tool.LEGACY_MODULES
+            if not isinstance(getattr(factorlasso, name), _LegacyModule)] == []
+
+
 def _facades():
     """The historical modules that are compatibility facades."""
     from factorlasso._compat import _LegacyModule

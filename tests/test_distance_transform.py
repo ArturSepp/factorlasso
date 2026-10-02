@@ -8,10 +8,8 @@ import pytest
 import scipy.cluster.hierarchy as spc
 from scipy.spatial.distance import squareform
 
-from factorlasso.cluster_utils import (
-    DEFAULT_DISTANCE_TRANSFORM,
-    DistanceTransform,
-    _corr_to_distance,
+from factorlasso.cluster._hierarchical import (
+    DEFAULT_DISTANCE_TRANSFORM, DistanceTransform, _corr_to_distance,
     compute_clusters_from_corr_matrix,
 )
 from factorlasso.lasso_estimator import LassoModel, LassoModelType

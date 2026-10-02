@@ -2,6 +2,19 @@
 
 ## 0.24.0 — unreleased
 
+- Reorganise the package into capability subpackages: `factorlasso.utils`,
+  `factorlasso.linear_model`, `factorlasso.cluster`, `factorlasso.priors`,
+  `factorlasso.covariance`, `factorlasso.diagnostics` and `factorlasso.model_selection`.
+  `LassoModel` now orchestrates private modules for settings, preparation, restrictions,
+  solver dispatch and fitted state, and one internal table states what each mode supports.
+  Each subpackage exports only names already in `factorlasso.__all__`, which is unchanged.
+  The 19 modules of the 0.23 layout (`factorlasso.lasso_estimator`,
+  `factorlasso.cluster_utils`, ...) remain importable with every name they provided, as
+  re-exports. Assigning one of their names now raises `AttributeError` naming the owning
+  module, because the assignment would not change what factorlasso runs; patch the owning
+  module instead. Classes pickle under their new module paths; 0.23.0 pickles still load.
+  Results, warnings and exceptions are otherwise identical to 0.23.0 on the seeded parity
+  matrix.
 - Fix `LassoModel.fit_reg_lambda_path` for GROUP_LASSO, HCGL and FCGL: every returned
   model now carries the automatic-sign diagnostics of a fresh fit at its `reg_lambda`
   (`detected_signs_`, `sign_slopes_`, `sign_t_stats_`, `sign_effective_n_`,

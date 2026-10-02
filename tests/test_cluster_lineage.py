@@ -30,21 +30,10 @@ import pytest
 from factorlasso import CurrentFactorCovarData, RollingFactorCovarData, VarianceColumns
 
 # factorlasso lineage
-from factorlasso.cluster_lineage import (
-    RiskClusterReport,
-    TaxonomyConfig,
-    TrackPanel,
-    _build_tracks,
-    _classify,
-    _cluster_series,
-    _Fingerprint,
-    _match_panel,
-    _match_panel_mcf,
-    _overlap,
-    _psd_clip,
-    _qualifies,
-    _snapshot_fingerprints,
-    analyze_cluster_lineage,
+from factorlasso.diagnostics._lineage import (
+    RiskClusterReport, TaxonomyConfig, TrackPanel, _build_tracks, _classify, _cluster_series,
+    _Fingerprint, _match_panel, _match_panel_mcf, _overlap, _psd_clip, _qualifies,
+    _snapshot_fingerprints, analyze_cluster_lineage,
 )
 
 FACTORS = ['Equity', 'Rates', 'Credit']

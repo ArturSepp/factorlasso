@@ -152,7 +152,7 @@ def test_public_co_association_accessor_uses_one_during_short_history():
 def test_public_accessor_default_preserves_the_private_panel():
     """Promotion to a public name must not alter the panel attached to rolling clusters."""
     from factorlasso import compute_co_association_panel
-    from factorlasso.cluster_smoothing import _co_association_panel
+    from factorlasso.cluster._smoothing import _co_association_panel
 
     history = _partition_history()
     expected = _co_association_panel(history, window=6)

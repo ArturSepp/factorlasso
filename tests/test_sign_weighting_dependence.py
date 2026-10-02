@@ -6,10 +6,8 @@ import pytest
 
 from factorlasso import LassoModel
 from factorlasso.lasso_estimator import get_x_y_np
-from factorlasso.sign_constraints import (
-    _compute_sign_matrix_per_response,
-    _compute_sign_vector,
-    derive_sign_constraints,
+from factorlasso.priors._signs import (
+    _compute_sign_matrix_per_response, _compute_sign_vector, derive_sign_constraints,
 )
 
 
