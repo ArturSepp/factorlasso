@@ -13,7 +13,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from factorlasso.ewm_utils import _validate_span, compute_expanding_power
+from factorlasso.utils._ewm import _validate_span, compute_expanding_power
 
 
 def _validate_prior_selection_type(prior_selection_type: str) -> None:

@@ -65,7 +65,8 @@ import numpy as np
 import pandas as pd
 
 from factorlasso.cv import DEFAULT_LAMBDA_GRID, expanding_window_splits
-from factorlasso.lasso_estimator import LassoModel, LassoModelType
+from factorlasso.linear_model._estimator import LassoModel
+from factorlasso.linear_model._types import LassoModelType
 from factorlasso.residual_diagnostics import (
     ResidualDiagnostics,
     diagnose_residuals,

@@ -35,6 +35,8 @@ from typing import NamedTuple, Optional, Sequence
 from urllib.parse import unquote, urlsplit
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+#: Source file that defines ``LassoModel``, relative to the repository root.
+ESTIMATOR_SOURCE = Path("src", "factorlasso", "linear_model", "_estimator.py")
 PROJECT_URL = "https://github.com/ArturSepp/factorlasso"
 CITATION_URL = f"{PROJECT_URL}/blob/main/CITATION.cff"
 IMPLEMENTATION_HEADING = "Implementation in factorlasso"
@@ -457,7 +459,7 @@ def lasso_model_fields(root: Path) -> tuple[list[str], list[str]]:
     fitted : list of str
         Constructor fields with a trailing underscore; they hold fitted state.
     """
-    source = (root / "src" / "factorlasso" / "lasso_estimator.py").read_text(encoding="utf-8")
+    source = (root / ESTIMATOR_SOURCE).read_text(encoding="utf-8")
     for node in ast.parse(source).body:
         if isinstance(node, ast.ClassDef) and node.name == "LassoModel":
             configuration, fitted = [], []
@@ -480,7 +482,7 @@ def lasso_model_fields(root: Path) -> tuple[list[str], list[str]]:
                 name = item.target.id
                 (fitted if name.endswith("_") else configuration).append(name)
             return configuration, fitted
-    raise ValueError("class LassoModel was not found in lasso_estimator.py.")
+    raise ValueError(f"class LassoModel was not found in {ESTIMATOR_SOURCE.as_posix()}.")
 
 
 def check_parameter_ownership(inventory: dict, root: Path) -> tuple[list[str], dict[str, str]]:

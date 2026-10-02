@@ -45,8 +45,9 @@ def sha256_file(path: Path) -> str:
 def source_identity(root: Path, files: Sequence[str]) -> dict:
     """Record the code that actually ran: per-file hashes, package hash, commit and dirty flag."""
     package = hashlib.sha256()
-    for path in sorted((root / "src" / "factorlasso").glob("*.py")):
-        package.update(path.name.encode())
+    package_root = root / "src" / "factorlasso"
+    for path in sorted(package_root.rglob("*.py")):
+        package.update(path.relative_to(package_root).as_posix().encode())
         package.update(path.read_bytes())
     identity = {
         "files": {name: sha256_file(source_file(root, name)) for name in sorted(set(files))},

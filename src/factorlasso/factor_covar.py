@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 
 from factorlasso.cluster_utils import compute_clusters_from_corr_matrix
-from factorlasso.ewm_utils import compute_ewm
+from factorlasso.utils._ewm import compute_ewm
 from factorlasso.residual_covar import ResidualCorrelationData
 
 

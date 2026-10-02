@@ -40,7 +40,8 @@ import cvxpy as cvx
 import numpy as np
 import pandas as pd
 
-from factorlasso.lasso_estimator import LassoModel, LassoModelType
+from factorlasso.linear_model._estimator import LassoModel
+from factorlasso.linear_model._types import LassoModelType
 
 # Errors we treat as "this fold failed, record NaN and continue".
 # Anything else (KeyboardInterrupt, MemoryError, attribute errors from

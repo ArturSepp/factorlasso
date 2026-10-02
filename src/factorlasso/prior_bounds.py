@@ -10,7 +10,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from factorlasso.ewm_utils import _validate_span
+from factorlasso.utils._ewm import _validate_span
 
 
 def _validate_hac_lags(hac_lags):

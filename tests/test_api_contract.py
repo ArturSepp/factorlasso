@@ -7,8 +7,10 @@ and reviewed. Each check is shown to fail on the defect it exists to catch.
 """
 
 import dataclasses
+import importlib
 import importlib.util
 import inspect
+import json
 import types
 from pathlib import Path
 
@@ -92,6 +94,63 @@ def test_legacy_modules_remain_root_attributes():
         "sign_constraints",
     ):
         assert isinstance(getattr(factorlasso, name), types.ModuleType), name
+
+
+def _facades():
+    """The historical modules that are compatibility facades."""
+    from factorlasso._compat import _LegacyModule
+
+    modules = [getattr(factorlasso, name) for name in sorted(
+        json.loads(FIXTURE.read_text(encoding="utf-8"))["legacy"])]
+    return [module for module in modules if isinstance(module, _LegacyModule)]
+
+
+def test_facades_reject_assignment_of_reexported_names(monkeypatch):
+    """Patching a facade would not reach the implementation, so it fails loudly instead."""
+    facades = _facades()
+    assert facades
+    for module in facades:
+        name = sorted(module._legacy_owners)[0]
+        owner = module._legacy_owners[name]
+        with pytest.raises(AttributeError, match=owner.replace(".", r"\.")):
+            setattr(module, name, None)
+        with pytest.raises(AttributeError):
+            delattr(module, name)
+        with pytest.raises(AttributeError):
+            monkeypatch.setattr(module, name, None)
+        assert getattr(module, name) is getattr(importlib.import_module(owner), name, None) \
+            or owner == module.__name__
+
+
+def test_facades_keep_ordinary_attribute_behaviour():
+    """Names that are not re-exports can still be set and removed."""
+    module = _facades()[0]
+    module.not_a_reexport = 1
+    del module.not_a_reexport
+    assert not hasattr(module, "not_a_reexport")
+
+
+def test_estimator_patch_target_reaches_the_fit(monkeypatch):
+    """Patching the canonical owner affects ``fit``; the facade name is the same object."""
+    import factorlasso.linear_model._estimator as owner
+    from factorlasso import LassoModelType
+
+    calls = []
+    original = owner.solve_lasso_cvx_problem
+
+    def spy(*args, **kwargs):
+        calls.append(1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(owner, "solve_lasso_cvx_problem", spy)
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    x = pd.DataFrame(rng.standard_normal((30, 2)), columns=["f0", "f1"])
+    y = pd.DataFrame(rng.standard_normal((30, 2)), columns=["a", "b"])
+    factorlasso.LassoModel(model_type=LassoModelType.LASSO).fit(x, y)
+    assert calls == [1]
 
 
 def test_preparation_seam_is_retained():

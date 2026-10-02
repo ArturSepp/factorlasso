@@ -17,7 +17,7 @@ from typing import ClassVar, Dict, Optional, Union
 import numpy as np
 import pandas as pd
 
-from factorlasso.ewm_utils import _validate_span, compute_ewm, compute_ewm_covar
+from factorlasso.utils._ewm import _validate_span, compute_ewm, compute_ewm_covar
 
 
 def _compatible_boundary(date: pd.Timestamp, offset: pd.DateOffset) -> bool:

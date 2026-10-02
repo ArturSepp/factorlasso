@@ -24,9 +24,10 @@ from factorlasso.cluster_utils import (
     compute_clusters_from_corr_matrix,
 )
 from factorlasso.dependence_utils import DependenceMeasure, compute_dependence_matrix
+from factorlasso.utils._panel import get_x_y_np
 
 if TYPE_CHECKING:
-    from factorlasso.lasso_estimator import LassoModel
+    from factorlasso.linear_model._estimator import LassoModel
 
 
 class ClusterSmootherType(Enum):
@@ -159,8 +160,6 @@ def _effective_cluster_correlation_span(lasso_model: "LassoModel") -> Optional[f
 
 def _correlation_input(y: pd.DataFrame, lasso_model: "LassoModel") -> pd.DataFrame:
     """Reproduce the response correlation used by ``LassoModel._prepare_fit``."""
-    from factorlasso.lasso_estimator import get_x_y_np
-
     cluster_span = _effective_cluster_correlation_span(lasso_model)
     dummy_x = pd.DataFrame(0.0, index=y.index, columns=["__cluster_dummy__"])
     _, y_np, valid_mask = get_x_y_np(
@@ -191,8 +190,6 @@ def _iter_correlation_inputs(
         for date in dates:
             yield date, _correlation_input(y.loc[:date], lasso_model)
         return
-
-    from factorlasso.lasso_estimator import get_x_y_np
 
     y_limit = y.loc[:dates[-1]]
     dummy_x = pd.DataFrame(0.0, index=y_limit.index, columns=["__cluster_dummy__"])

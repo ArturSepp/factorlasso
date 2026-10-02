@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import factorlasso.lasso_estimator as estimator_module
+import factorlasso.linear_model._estimator as estimator_module
 from factorlasso import (
     LassoModel,
     LassoModelType,

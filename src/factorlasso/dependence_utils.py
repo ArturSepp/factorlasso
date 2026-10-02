@@ -68,7 +68,7 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from factorlasso.ewm_utils import NanBackfill, compute_ewm_covar
+from factorlasso.utils._ewm import NanBackfill, compute_ewm_covar
 
 # ═══════════════════════════════════════════════════════════════════════
 # Dependence measures

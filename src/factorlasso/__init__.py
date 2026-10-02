@@ -90,12 +90,6 @@ from factorlasso.dependence_utils import (
     compute_gerber_matrix,
 )
 from factorlasso.diagonality import LassoModelDiagonalityCV
-from factorlasso.ewm_utils import (
-    compute_ewm,
-    compute_ewm_covar,
-    compute_expanding_power,
-    set_group_loadings,
-)
 from factorlasso.expert_prior_map import (
     ExpertPriorResolution,
     map_expert_factor_priors,
@@ -115,12 +109,11 @@ from factorlasso.prior_risk import (
     GaussianDominanceInformation, gaussian_dominance_information,
     two_factor_limit_risk, two_factor_minimax_radius,
 )
-from factorlasso.lasso_estimator import (
+from factorlasso.linear_model import (
     LassoEstimationResult,
     LassoModel,
     LassoModelType,
     LassoNowcastResult,
-    get_x_y_np,
     solve_cooperative_group_lasso_cvx_problem,
     solve_group_lasso_cvx_problem,
     solve_group_lasso_path,
@@ -147,6 +140,16 @@ from factorlasso.sign_constraints import (
     derive_sign_constraints,
     validate_cluster_signs,
 )
+from factorlasso.utils import (
+    compute_ewm,
+    compute_ewm_covar,
+    compute_expanding_power,
+    get_x_y_np,
+    set_group_loadings,
+)
+
+# The modules of the 0.23.0 flat layout stay importable, and stay attributes of the package.
+from factorlasso import ewm_utils, lasso_estimator  # noqa: F401
 
 try:
     __version__ = _pkg_version("factorlasso")
