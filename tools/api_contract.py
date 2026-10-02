@@ -68,8 +68,23 @@ SUBPACKAGES = (
 _NO_DEFAULT = "<no default>"
 
 
+def _is_typing_alias(value: Any) -> bool:
+    """Whether ``value`` is a typing construct, such as ``Union[np.ndarray, pd.DataFrame]``.
+
+    Their runtime representation changes across Python versions (3.14 made ``Union`` objects
+    non-callable), so only their kind is recorded.
+    """
+    return (isinstance(value, getattr(types, "UnionType", ()))
+            or isinstance(value, getattr(types, "GenericAlias", ()))
+            or type(value).__module__ == "typing")
+
+
 def serialise_value(value: Any) -> Any:
-    """Return a JSON-compatible, address-free description of a default or constant."""
+    """Return a JSON-compatible, address-free description of a default or constant.
+
+    Floats are kept to 12 significant digits: computed constants (such as a ``logspace``
+    grid) can differ in the last bit between NumPy builds and platforms.
+    """
     if value is inspect.Parameter.empty or value is dataclasses.MISSING:
         return _NO_DEFAULT
     if type(value).__name__ == "_HAS_DEFAULT_FACTORY_CLASS":
@@ -83,7 +98,7 @@ def serialise_value(value: Any) -> Any:
     if isinstance(value, int):
         return value
     if isinstance(value, float):
-        return value if math.isfinite(value) else {"float": repr(value)}
+        return float(f"{value:.12g}") if math.isfinite(value) else {"float": repr(value)}
     if isinstance(value, (tuple, list, frozenset, set)):
         items = [serialise_value(item) for item in value]
         if isinstance(value, (frozenset, set)):
@@ -94,6 +109,8 @@ def serialise_value(value: Any) -> Any:
                          for key, item in value.items()]}
     if isinstance(value, type):
         return {"type": value.__qualname__}
+    if _is_typing_alias(value):
+        return {"typing": "alias"}
     if callable(value):
         return {"callable": getattr(value, "__qualname__", type(value).__qualname__)}
     return {"instance": type(value).__qualname__}

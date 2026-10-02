@@ -77,6 +77,19 @@ def test_contract_detects_a_changed_dataclass_field(contract_tool):
     )
 
 
+def test_contract_values_are_portable(contract_tool):
+    """Platform last-bit float noise and Python-version typing reprs do not change the record."""
+    import typing
+
+    import numpy as np
+
+    serialise = contract_tool.serialise_value
+    assert serialise(6.158482110660267e-06) == serialise(6.1584821106602665e-06)
+    assert serialise(1e-5) != serialise(2e-5)
+    assert serialise(typing.Union[np.ndarray, list]) == {"typing": "alias"}
+    assert serialise(typing.Optional[int]) == {"typing": "alias"}
+
+
 def test_contract_detects_a_missing_legacy_name(contract_tool):
     """A historical module that no longer provides a recorded name is reported."""
     module = types.ModuleType("factorlasso.fake_legacy")
