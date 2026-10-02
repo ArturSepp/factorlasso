@@ -1,0 +1,7150 @@
+{
+ "root_all": [
+  "LassoModel",
+  "LassoModelCV",
+  "LassoModelType",
+  "LassoEstimationResult",
+  "LassoNowcastResult",
+  "ClusterSmootherType",
+  "ClusterStabilityStatistics",
+  "StabilityPoolingType",
+  "RollingClusterData",
+  "solve_lasso_cvx_problem",
+  "solve_group_lasso_cvx_problem",
+  "solve_group_lasso_path",
+  "solve_cooperative_group_lasso_cvx_problem",
+  "solve_unilasso_cvx_problem",
+  "get_x_y_np",
+  "ExpertPriorResolution",
+  "map_expert_factor_priors",
+  "compute_expert_prior_statistics",
+  "PriorHacGeometry",
+  "Ar1PriorInterval",
+  "compute_prior_hac_geometry",
+  "gaussian_prior_critical_value",
+  "compute_ar1_prior_interval",
+  "GaussianDominanceInformation",
+  "gaussian_dominance_information",
+  "two_factor_limit_risk",
+  "two_factor_minimax_radius",
+  "CurrentFactorCovarData",
+  "ResidualType",
+  "ResidualCorrelationData",
+  "estimate_residual_correlation",
+  "RollingFactorCovarData",
+  "VarianceColumns",
+  "RiskClusterReport",
+  "TaxonomyConfig",
+  "analyze_cluster_lineage",
+  "run_cluster_lineage_report",
+  "DependenceMeasure",
+  "compute_dependence_matrix",
+  "compute_gerber_matrix",
+  "ClusterCorrelationTransform",
+  "ClusterCorrelationTransformResult",
+  "DistanceTransform",
+  "apply_cluster_correlation_transform",
+  "compute_clusters_from_corr_matrix",
+  "get_clusters_by_freq",
+  "get_cutoffs_by_freq",
+  "get_linkage_array",
+  "get_linkages_by_freq",
+  "remove_first_principal_component",
+  "apply_partition_distance_bonus",
+  "compute_co_association_panel",
+  "compute_cluster_stability_statistics",
+  "compute_rolling_smoothed_clusters",
+  "score_with_stability_pooled_clusters",
+  "smooth_similarity_ewma",
+  "compute_ewm",
+  "compute_ewm_covar",
+  "compute_expanding_power",
+  "set_group_loadings",
+  "derive_sign_constraints",
+  "validate_cluster_signs",
+  "LassoModelDiagonalityCV",
+  "ResidualDiagnostics",
+  "Sparsity",
+  "diagnose_residuals",
+  "effective_sparsity",
+  "marchenko_pastur_edge",
+  "missing_factor_components",
+  "null_threshold",
+  "raw_offdiagonal_mass",
+  "residual_correlation",
+  "suggest_tolerance",
+  "partition_variance_share"
+ ],
+ "exports": {
+  "LassoModel": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": false,
+    "fields": [
+     {
+      "name": "model_type",
+      "init": true,
+      "default": {
+       "enum": "LassoModelType",
+       "name": "LASSO",
+       "value": 1
+      },
+      "factory": null
+     },
+     {
+      "name": "group_data",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "reg_lambda",
+      "init": true,
+      "default": 1e-05,
+      "factory": null
+     },
+     {
+      "name": "span",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "span_freq_dict",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "cutoff_fraction",
+      "init": true,
+      "default": 0.5,
+      "factory": null
+     },
+     {
+      "name": "linkage_method",
+      "init": true,
+      "default": "ward",
+      "factory": null
+     },
+     {
+      "name": "distance_transform",
+      "init": true,
+      "default": "one_minus_rho",
+      "factory": null
+     },
+     {
+      "name": "cluster_correlation_transform",
+      "init": true,
+      "default": "none",
+      "factory": null
+     },
+     {
+      "name": "dependence_measure",
+      "init": true,
+      "default": "pearson",
+      "factory": null
+     },
+     {
+      "name": "gerber_threshold",
+      "init": true,
+      "default": 0.5,
+      "factory": null
+     },
+     {
+      "name": "n_clusters",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "cluster_smoother_type",
+      "init": true,
+      "default": {
+       "enum": "ClusterSmootherType",
+       "name": "NONE",
+       "value": 1
+      },
+      "factory": null
+     },
+     {
+      "name": "smoother_delta",
+      "init": true,
+      "default": 0.05,
+      "factory": null
+     },
+     {
+      "name": "smoother_lambda",
+      "init": true,
+      "default": 0.7,
+      "factory": null
+     },
+     {
+      "name": "recluster_freq",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "group_penalty",
+      "init": true,
+      "default": "normalized",
+      "factory": null
+     },
+     {
+      "name": "l1_weight",
+      "init": true,
+      "default": 0.0,
+      "factory": null
+     },
+     {
+      "name": "demean",
+      "init": true,
+      "default": true,
+      "factory": null
+     },
+     {
+      "name": "solver",
+      "init": true,
+      "default": "CLARABEL",
+      "factory": null
+     },
+     {
+      "name": "solver_fallbacks",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "warmup_period",
+      "init": true,
+      "default": 12,
+      "factory": null
+     },
+     {
+      "name": "nonneg",
+      "init": true,
+      "default": false,
+      "factory": null
+     },
+     {
+      "name": "factors_beta_loading_signs",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "factors_beta_prior",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "auto_sign_constraints",
+      "init": true,
+      "default": false,
+      "factory": null
+     },
+     {
+      "name": "auto_sign_threshold_t",
+      "init": true,
+      "default": 0.75,
+      "factory": null
+     },
+     {
+      "name": "auto_sign_adaptive_weights",
+      "init": true,
+      "default": false,
+      "factory": null
+     },
+     {
+      "name": "auto_sign_adaptive_gamma",
+      "init": true,
+      "default": 1.0,
+      "factory": null
+     },
+     {
+      "name": "auto_sign_adaptive_floor",
+      "init": true,
+      "default": 0.001,
+      "factory": null
+     },
+     {
+      "name": "unilasso_loo",
+      "init": true,
+      "default": true,
+      "factory": null
+     },
+     {
+      "name": "unilasso_non_negative",
+      "init": true,
+      "default": true,
+      "factory": null
+     },
+     {
+      "name": "x_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "y_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "coef_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "intercept_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "alpha_const_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "estimation_result_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "clusters_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "linkage_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "cutoff_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "valid_mask_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "effective_span_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "effective_cluster_correlation_span_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "derived_signs_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "fit_demeaned_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "nowcast_residuals_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "nowcast_factors_complete_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "nowcast_final_response_complete_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "cluster_correlation_span",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "cluster_correlation_span_freq_dict",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "auto_sign_excluded_factors",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "apply_ols_prior",
+      "init": true,
+      "default": false,
+      "factory": null
+     },
+     {
+      "name": "prior_selection_type",
+      "init": true,
+      "default": "highest_r2",
+      "factory": null
+     },
+     {
+      "name": "ols_betas_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "ols_r2_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "ols_beta_prior_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "effective_beta_prior_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "ols_prior_span_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "factor_for_prior",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "auto_sign_ewma_span",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "auto_sign_use_fit_span",
+      "init": true,
+      "default": false,
+      "factory": null
+     },
+     {
+      "name": "auto_sign_variance",
+      "init": true,
+      "default": "independent",
+      "factory": null
+     },
+     {
+      "name": "effective_sign_span_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "detected_signs_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "sign_slopes_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "sign_t_stats_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "sign_effective_n_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "sign_valid_counts_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "sign_penalty_weights_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "sign_block_weights_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "loss_normalization",
+      "init": true,
+      "default": "sample",
+      "factory": null
+     },
+     {
+      "name": "loss_weight_mass_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "loss_denominator_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "n_loss_rows_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "expert_prior_bound_n_std",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "expert_prior_hac_lags",
+      "init": true,
+      "default": 0,
+      "factory": null
+     },
+     {
+      "name": "expert_prior_hac_lags_freq_dict",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "prior_lower_bounds_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "prior_upper_bounds_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "prior_bound_diagnostics_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "effective_prior_hac_lags_",
+      "init": false,
+      "default": null,
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "model_type",
+     "POSITIONAL_OR_KEYWORD",
+     {
+      "enum": "LassoModelType",
+      "name": "LASSO",
+      "value": 1
+     }
+    ],
+    [
+     "group_data",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "reg_lambda",
+     "POSITIONAL_OR_KEYWORD",
+     1e-05
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "span_freq_dict",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "cutoff_fraction",
+     "POSITIONAL_OR_KEYWORD",
+     0.5
+    ],
+    [
+     "linkage_method",
+     "POSITIONAL_OR_KEYWORD",
+     "ward"
+    ],
+    [
+     "distance_transform",
+     "POSITIONAL_OR_KEYWORD",
+     "one_minus_rho"
+    ],
+    [
+     "cluster_correlation_transform",
+     "POSITIONAL_OR_KEYWORD",
+     "none"
+    ],
+    [
+     "dependence_measure",
+     "POSITIONAL_OR_KEYWORD",
+     "pearson"
+    ],
+    [
+     "gerber_threshold",
+     "POSITIONAL_OR_KEYWORD",
+     0.5
+    ],
+    [
+     "n_clusters",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "cluster_smoother_type",
+     "POSITIONAL_OR_KEYWORD",
+     {
+      "enum": "ClusterSmootherType",
+      "name": "NONE",
+      "value": 1
+     }
+    ],
+    [
+     "smoother_delta",
+     "POSITIONAL_OR_KEYWORD",
+     0.05
+    ],
+    [
+     "smoother_lambda",
+     "POSITIONAL_OR_KEYWORD",
+     0.7
+    ],
+    [
+     "recluster_freq",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "group_penalty",
+     "POSITIONAL_OR_KEYWORD",
+     "normalized"
+    ],
+    [
+     "l1_weight",
+     "POSITIONAL_OR_KEYWORD",
+     0.0
+    ],
+    [
+     "demean",
+     "POSITIONAL_OR_KEYWORD",
+     true
+    ],
+    [
+     "solver",
+     "POSITIONAL_OR_KEYWORD",
+     "CLARABEL"
+    ],
+    [
+     "solver_fallbacks",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "warmup_period",
+     "POSITIONAL_OR_KEYWORD",
+     12
+    ],
+    [
+     "nonneg",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "factors_beta_loading_signs",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "factors_beta_prior",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "auto_sign_constraints",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "auto_sign_threshold_t",
+     "POSITIONAL_OR_KEYWORD",
+     0.75
+    ],
+    [
+     "auto_sign_adaptive_weights",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "auto_sign_adaptive_gamma",
+     "POSITIONAL_OR_KEYWORD",
+     1.0
+    ],
+    [
+     "auto_sign_adaptive_floor",
+     "POSITIONAL_OR_KEYWORD",
+     0.001
+    ],
+    [
+     "unilasso_loo",
+     "POSITIONAL_OR_KEYWORD",
+     true
+    ],
+    [
+     "unilasso_non_negative",
+     "POSITIONAL_OR_KEYWORD",
+     true
+    ],
+    [
+     "x_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "y_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "coef_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "intercept_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "alpha_const_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "estimation_result_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "clusters_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "linkage_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "cutoff_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "valid_mask_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "effective_span_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "effective_cluster_correlation_span_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "derived_signs_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "cluster_correlation_span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "cluster_correlation_span_freq_dict",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "auto_sign_excluded_factors",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "apply_ols_prior",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "prior_selection_type",
+     "POSITIONAL_OR_KEYWORD",
+     "highest_r2"
+    ],
+    [
+     "factor_for_prior",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "auto_sign_ewma_span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "auto_sign_use_fit_span",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "auto_sign_variance",
+     "POSITIONAL_OR_KEYWORD",
+     "independent"
+    ],
+    [
+     "loss_normalization",
+     "POSITIONAL_OR_KEYWORD",
+     "sample"
+    ],
+    [
+     "expert_prior_bound_n_std",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "expert_prior_hac_lags",
+     "POSITIONAL_OR_KEYWORD",
+     0
+    ],
+    [
+     "expert_prior_hac_lags_freq_dict",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ],
+   "members": {
+    "clusters": {
+     "property": true,
+     "setter": true
+    },
+    "copy": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "kwargs",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ]
+     ]
+    },
+    "cutoff": {
+     "property": true,
+     "setter": true
+    },
+    "estimated_betas": {
+     "property": true,
+     "setter": true
+    },
+    "fit": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "y",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "verbose",
+       "POSITIONAL_OR_KEYWORD",
+       false
+      ],
+      [
+       "span",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "external_clusters",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "external_linkage",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "external_cutoff",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "cluster_correlation_span",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ]
+     ]
+    },
+    "fit_reg_lambda_path": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "y",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "reg_lambdas",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "verbose",
+       "POSITIONAL_OR_KEYWORD",
+       false
+      ],
+      [
+       "span",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "cluster_correlation_span",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ]
+     ]
+    },
+    "get_params": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "deep",
+       "POSITIONAL_OR_KEYWORD",
+       true
+      ]
+     ]
+    },
+    "linkage": {
+     "property": true,
+     "setter": true
+    },
+    "nowcast": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "alpha_span",
+       "KEYWORD_ONLY",
+       null
+      ]
+     ]
+    },
+    "plot_signs": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "ax",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ]
+     ]
+    },
+    "predict": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "score": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "y",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "set_params": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "params",
+       "VAR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "summary": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "x": {
+     "property": true,
+     "setter": true
+    },
+    "y": {
+     "property": true,
+     "setter": true
+    }
+   }
+  },
+  "LassoModelCV": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": false,
+    "fields": [
+     {
+      "name": "lambdas",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "n_splits",
+      "init": true,
+      "default": 5,
+      "factory": null
+     },
+     {
+      "name": "base_model",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "refit",
+      "init": true,
+      "default": true,
+      "factory": null
+     },
+     {
+      "name": "use_lambda_path",
+      "init": true,
+      "default": false,
+      "factory": null
+     },
+     {
+      "name": "best_lambda_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "best_score_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "cv_scores_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "best_model_",
+      "init": true,
+      "default": null,
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "lambdas",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "n_splits",
+     "POSITIONAL_OR_KEYWORD",
+     5
+    ],
+    [
+     "base_model",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "refit",
+     "POSITIONAL_OR_KEYWORD",
+     true
+    ],
+    [
+     "use_lambda_path",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "best_lambda_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "best_score_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "cv_scores_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "best_model_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ],
+   "members": {
+    "fit": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "y",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "verbose",
+       "POSITIONAL_OR_KEYWORD",
+       false
+      ]
+     ]
+    },
+    "predict": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "score": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "y",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    }
+   }
+  },
+  "LassoModelType": {
+   "kind": "enum",
+   "enum_members": [
+    [
+     "LASSO",
+     1
+    ],
+    [
+     "UNILASSO",
+     2
+    ],
+    [
+     "GROUP_LASSO",
+     3
+    ],
+    [
+     "HIERARCHICAL_CLUSTER_GROUP_LASSO",
+     4
+    ],
+    [
+     "FACTOR_CLUSTER_GROUP_LASSO",
+     5
+    ],
+    [
+     "COOPERATIVE_GROUP_LASSO",
+     6
+    ],
+    [
+     "COOPERATIVE_CLUSTER_GROUP_LASSO",
+     7
+    ]
+   ],
+   "members": {}
+  },
+  "LassoEstimationResult": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": false,
+    "fields": [
+     {
+      "name": "estimated_beta",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "alpha",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "ss_total",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "ss_res",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "r2",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimated_beta",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "alpha",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "ss_total",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "ss_res",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "r2",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "LassoNowcastResult": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "prediction",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "factor_component",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "target_factors",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "stat_alpha",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "betas",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "residuals",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "diagnostics",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "prediction",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "factor_component",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "target_factors",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "stat_alpha",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "betas",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "residuals",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "diagnostics",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "ClusterSmootherType": {
+   "kind": "enum",
+   "enum_members": [
+    [
+     "NONE",
+     1
+    ],
+    [
+     "HOLD",
+     2
+    ],
+    [
+     "PARTITION_BONUS",
+     3
+    ],
+    [
+     "SIMILARITY_EWMA",
+     4
+    ]
+   ],
+   "members": {}
+  },
+  "ClusterStabilityStatistics": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "partitions",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "frequency",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "span",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "min_history",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "w_i",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "w_g",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "coverage",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "partitions",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "frequency",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "min_history",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "w_i",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "w_g",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "coverage",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {
+    "boundary_statistics": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "membership",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "size_vs_w_correlation": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "within_cluster_asset_w_dispersion": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    }
+   }
+  },
+  "StabilityPoolingType": {
+   "kind": "enum",
+   "enum_members": [
+    [
+     "NONE",
+     "none"
+    ],
+    [
+     "CLUSTER_VARIANCE",
+     "cluster_variance"
+    ],
+    [
+     "ASSET_VARIANCE",
+     "asset_variance"
+    ]
+   ],
+   "members": {}
+  },
+  "RollingClusterData": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "clusters",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "linkages",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "cutoffs",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "co_association",
+      "init": true,
+      "default": null,
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "clusters",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "linkages",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "cutoffs",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "co_association",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ],
+   "members": {}
+  },
+  "solve_lasso_cvx_problem": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "valid_mask",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "reg_lambda",
+     "POSITIONAL_OR_KEYWORD",
+     1e-08
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "verbose",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "solver",
+     "POSITIONAL_OR_KEYWORD",
+     "CLARABEL"
+    ],
+    [
+     "solver_fallbacks",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "nonneg",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "factors_beta_loading_signs",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "factors_beta_prior",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "penalty_weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "loss_normalization",
+     "POSITIONAL_OR_KEYWORD",
+     "sample"
+    ],
+    [
+     "beta_lower_bounds",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "beta_upper_bounds",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ]
+  },
+  "solve_group_lasso_cvx_problem": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "group_loadings",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "valid_mask",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "reg_lambda",
+     "POSITIONAL_OR_KEYWORD",
+     1e-08
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "nonneg",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "verbose",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "solver",
+     "POSITIONAL_OR_KEYWORD",
+     "CLARABEL"
+    ],
+    [
+     "solver_fallbacks",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "factors_beta_loading_signs",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "factors_beta_prior",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "group_penalty",
+     "POSITIONAL_OR_KEYWORD",
+     "normalized"
+    ],
+    [
+     "l1_weight",
+     "POSITIONAL_OR_KEYWORD",
+     0.0
+    ],
+    [
+     "penalty_weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "row_weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "block_mode",
+     "POSITIONAL_OR_KEYWORD",
+     "row"
+    ],
+    [
+     "col_weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "loss_normalization",
+     "POSITIONAL_OR_KEYWORD",
+     "sample"
+    ],
+    [
+     "beta_lower_bounds",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "beta_upper_bounds",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ]
+  },
+  "solve_group_lasso_path": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "group_loadings",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "reg_lambdas",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "valid_mask",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "nonneg",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "verbose",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "solver",
+     "POSITIONAL_OR_KEYWORD",
+     "CLARABEL"
+    ],
+    [
+     "solver_fallbacks",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "factors_beta_loading_signs",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "factors_beta_prior",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "group_penalty",
+     "POSITIONAL_OR_KEYWORD",
+     "normalized"
+    ],
+    [
+     "l1_weight",
+     "POSITIONAL_OR_KEYWORD",
+     0.0
+    ],
+    [
+     "penalty_weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "row_weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "block_mode",
+     "POSITIONAL_OR_KEYWORD",
+     "row"
+    ],
+    [
+     "col_weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "loss_normalization",
+     "POSITIONAL_OR_KEYWORD",
+     "sample"
+    ],
+    [
+     "beta_lower_bounds",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "beta_upper_bounds",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ]
+  },
+  "solve_cooperative_group_lasso_cvx_problem": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "group_loadings",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "valid_mask",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "reg_lambda",
+     "KEYWORD_ONLY",
+     1e-08
+    ],
+    [
+     "span",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "verbose",
+     "KEYWORD_ONLY",
+     false
+    ],
+    [
+     "solver",
+     "KEYWORD_ONLY",
+     "CLARABEL"
+    ],
+    [
+     "solver_fallbacks",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "factors_beta_prior",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "group_penalty",
+     "KEYWORD_ONLY",
+     "normalized"
+    ],
+    [
+     "l1_weight",
+     "KEYWORD_ONLY",
+     0.0
+    ],
+    [
+     "col_weights",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "loss_normalization",
+     "KEYWORD_ONLY",
+     "sample"
+    ]
+   ]
+  },
+  "solve_unilasso_cvx_problem": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "valid_mask",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "reg_lambda",
+     "KEYWORD_ONLY",
+     1e-08
+    ],
+    [
+     "span",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "verbose",
+     "KEYWORD_ONLY",
+     false
+    ],
+    [
+     "solver",
+     "KEYWORD_ONLY",
+     "CLARABEL"
+    ],
+    [
+     "solver_fallbacks",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "loo",
+     "KEYWORD_ONLY",
+     true
+    ],
+    [
+     "non_negative",
+     "KEYWORD_ONLY",
+     true
+    ]
+   ]
+  },
+  "get_x_y_np": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "demean",
+     "POSITIONAL_OR_KEYWORD",
+     true
+    ]
+   ]
+  },
+  "ExpertPriorResolution": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "selection",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "audit",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "selection",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "audit",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "map_expert_factor_priors": {
+   "kind": "function",
+   "signature": [
+    [
+     "ticker_to_name",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "factor_names",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "asset_class",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "ticker_overrides",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "policy_version",
+     "KEYWORD_ONLY",
+     null
+    ]
+   ]
+  },
+  "compute_expert_prior_statistics": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "hac_lags",
+     "POSITIONAL_OR_KEYWORD",
+     0
+    ],
+    [
+     "min_periods",
+     "POSITIONAL_OR_KEYWORD",
+     3
+    ]
+   ]
+  },
+  "PriorHacGeometry": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "design",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "linear",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "quadratic",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "residual_map",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "design",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "linear",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "quadratic",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "residual_map",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {
+    "statistics": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "responses",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    }
+   }
+  },
+  "Ar1PriorInterval": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "estimate",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "standard_error",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "lower",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "upper",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "critical_value",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "phi_centres",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "phi_edges",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "retained_cells",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "cell_critical_values",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "alpha",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "delta",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "calibration_alpha",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "adaptive",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimate",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "standard_error",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "lower",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "upper",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "critical_value",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "phi_centres",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "phi_edges",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "retained_cells",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "cell_critical_values",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "alpha",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "delta",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "calibration_alpha",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "adaptive",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "compute_prior_hac_geometry": {
+   "kind": "function",
+   "signature": [
+    [
+     "design",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "hac_lags",
+     "POSITIONAL_OR_KEYWORD",
+     0
+    ],
+    [
+     "coefficient",
+     "POSITIONAL_OR_KEYWORD",
+     1
+    ]
+   ]
+  },
+  "gaussian_prior_critical_value": {
+   "kind": "function",
+   "signature": [
+    [
+     "geometry",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance_shape",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "alpha",
+     "POSITIONAL_OR_KEYWORD",
+     0.05
+    ]
+   ]
+  },
+  "compute_ar1_prior_interval": {
+   "kind": "function",
+   "signature": [
+    [
+     "geometry",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "responses",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "phi_max",
+     "KEYWORD_ONLY",
+     0.7
+    ],
+    [
+     "cells",
+     "KEYWORD_ONLY",
+     401
+    ],
+    [
+     "alpha",
+     "KEYWORD_ONLY",
+     0.05
+    ],
+    [
+     "adaptive",
+     "KEYWORD_ONLY",
+     false
+    ],
+    [
+     "delta",
+     "KEYWORD_ONLY",
+     0.01
+    ]
+   ]
+  },
+  "GaussianDominanceInformation": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "information",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "sole_variance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "coupling",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "secondary_variance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "information",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "sole_variance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "coupling",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "secondary_variance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {
+    "risk_rate": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "secondary_bound",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    }
+   }
+  },
+  "gaussian_dominance_information": {
+   "kind": "function",
+   "signature": [
+    [
+     "factors",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "two_factor_limit_risk": {
+   "kind": "function",
+   "signature": [
+    [
+     "radius",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "secondary_bound",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "bias_bound",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "penalty",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "score_variance",
+     "POSITIONAL_OR_KEYWORD",
+     1.0
+    ],
+    [
+     "cross_moment",
+     "POSITIONAL_OR_KEYWORD",
+     0.0
+    ]
+   ]
+  },
+  "two_factor_minimax_radius": {
+   "kind": "function",
+   "signature": [
+    [
+     "secondary_bound",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "bias_bound",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "penalty",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "CurrentFactorCovarData": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "x_covar",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "y_betas",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "y_variances",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "estimation_date",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "residuals",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "clusters",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "linkages",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "cutoffs",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "derived_signs",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "residual_metadata",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "residual_correlation",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "_residual_cluster_targets",
+      "init": false,
+      "default": null,
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "x_covar",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y_betas",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y_variances",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimation_date",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "residuals",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "clusters",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "linkages",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "cutoffs",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "derived_signs",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "residual_metadata",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "residual_correlation",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ],
+   "members": {
+    "estimate_alpha": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "alpha_span",
+       "POSITIONAL_OR_KEYWORD",
+       120
+      ],
+      [
+       "asset_frequencies",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "default_freq",
+       "POSITIONAL_OR_KEYWORD",
+       "ME"
+      ]
+     ]
+    },
+    "filter_on_tickers": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "assets",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_model_vols": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "assets",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ]
+     ]
+    },
+    "get_residual_covar": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "residual_var_weight",
+       "POSITIONAL_OR_KEYWORD",
+       1.0
+      ],
+      [
+       "assets",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "residual_type",
+       "KEYWORD_ONLY",
+       "orthogonal"
+      ],
+      [
+       "residual_corr_weight",
+       "KEYWORD_ONLY",
+       1.0
+      ]
+     ]
+    },
+    "get_snapshot": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "assets",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "alpha_span",
+       "POSITIONAL_OR_KEYWORD",
+       120
+      ],
+      [
+       "asset_frequencies",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "default_freq",
+       "POSITIONAL_OR_KEYWORD",
+       "ME"
+      ]
+     ]
+    },
+    "get_y_covar": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "residual_var_weight",
+       "POSITIONAL_OR_KEYWORD",
+       1.0
+      ],
+      [
+       "assets",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "residual_type",
+       "KEYWORD_ONLY",
+       "orthogonal"
+      ],
+      [
+       "residual_corr_weight",
+       "KEYWORD_ONLY",
+       1.0
+      ]
+     ]
+    },
+    "load": {
+     "classmethod": [
+      [
+       "path",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "save": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "path",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "y_covar": {
+     "property": true,
+     "setter": false
+    }
+   }
+  },
+  "ResidualType": {
+   "kind": "enum",
+   "enum_members": [
+    [
+     "ORTHOGONAL",
+     "orthogonal"
+    ],
+    [
+     "EMPIRICAL",
+     "empirical"
+    ],
+    [
+     "EXPOSURE_CLUSTER",
+     "exposure_cluster"
+    ],
+    [
+     "RESIDUAL_CLUSTER",
+     "residual_cluster"
+    ]
+   ],
+   "members": {}
+  },
+  "ResidualCorrelationData": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "correlation",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "residual_returns",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "asset_metadata",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "frequency",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "span",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "observation_date",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "estimation_date",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "correlation",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "residual_returns",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "asset_metadata",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "frequency",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "observation_date",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimation_date",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {
+    "filter_on_tickers": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "assets",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "from_sheets": {
+     "classmethod": [
+      [
+       "sheets",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_corr": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "date",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "assets",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ]
+     ]
+    },
+    "observation_count": {
+     "property": true,
+     "setter": false
+    },
+    "to_sheets": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    }
+   }
+  },
+  "estimate_residual_correlation": {
+   "kind": "function",
+   "signature": [
+    [
+     "residuals",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "metadata",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimation_date",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "frequency",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "periods_per_year",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ]
+  },
+  "RollingFactorCovarData": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": false,
+    "fields": [
+     {
+      "name": "data",
+      "init": true,
+      "default": "<no default>",
+      "factory": {
+       "type": "dict"
+      }
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "data",
+     "POSITIONAL_OR_KEYWORD",
+     "<default factory>"
+    ]
+   ],
+   "members": {
+    "add": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "date",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "estimation",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "dates": {
+     "property": true,
+     "setter": false
+    },
+    "filter_on_tickers": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "tickers",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_alphas": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "alpha_span",
+       "POSITIONAL_OR_KEYWORD",
+       120
+      ],
+      [
+       "asset_frequencies",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "default_freq",
+       "POSITIONAL_OR_KEYWORD",
+       "ME"
+      ]
+     ]
+    },
+    "get_beta": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "factor",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_ewma_vars": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_factor_var": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "factor",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_latest": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_r2": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_residual_correlations": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_residual_covars": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "residual_var_weight",
+       "POSITIONAL_OR_KEYWORD",
+       1.0
+      ],
+      [
+       "assets",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "residual_type",
+       "KEYWORD_ONLY",
+       "orthogonal"
+      ],
+      [
+       "residual_corr_weight",
+       "KEYWORD_ONLY",
+       1.0
+      ],
+      [
+       "dates",
+       "KEYWORD_ONLY",
+       null
+      ]
+     ]
+    },
+    "get_residual_vars": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_residual_vols": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_snapshot": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "alpha_span",
+       "POSITIONAL_OR_KEYWORD",
+       120
+      ]
+     ]
+    },
+    "get_systematic_vars": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_total_vols": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_x_covars": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_y_betas": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "get_y_covars": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "residual_var_weight",
+       "POSITIONAL_OR_KEYWORD",
+       1.0
+      ],
+      [
+       "assets",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ],
+      [
+       "residual_type",
+       "KEYWORD_ONLY",
+       "orthogonal"
+      ],
+      [
+       "dates",
+       "KEYWORD_ONLY",
+       null
+      ],
+      [
+       "residual_corr_weight",
+       "KEYWORD_ONLY",
+       1.0
+      ]
+     ]
+    },
+    "n_observations": {
+     "property": true,
+     "setter": false
+    }
+   }
+  },
+  "VarianceColumns": {
+   "kind": "enum",
+   "enum_members": [
+    [
+     "EWMA_VARIANCE",
+     "ewma_var"
+    ],
+    [
+     "RESIDUAL_VARS",
+     "residual_var"
+    ],
+    [
+     "INSAMPLE_ALPHA",
+     "insample_alpha"
+    ],
+    [
+     "R2",
+     "r2"
+    ],
+    [
+     "ALPHA",
+     "stat_alpha"
+    ],
+    [
+     "TOTAL_VOL",
+     "total_vol"
+    ],
+    [
+     "SYST_VOL",
+     "sys_vol"
+    ],
+    [
+     "RESID_VOL",
+     "resid_vol"
+    ],
+    [
+     "CLUSTER",
+     "cluster"
+    ]
+   ],
+   "members": {}
+  },
+  "RiskClusterReport": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "relabel",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "tracks",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "classification",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "lineage",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "transitions",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "params",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "factor_covar",
+      "init": true,
+      "default": "<no default>",
+      "factory": {
+       "type": "DataFrame"
+      }
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "relabel",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "tracks",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "classification",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "lineage",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "transitions",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "params",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "factor_covar",
+     "POSITIONAL_OR_KEYWORD",
+     "<default factory>"
+    ]
+   ],
+   "members": {
+    "factor_labels": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "hi_beta",
+       "KEYWORD_ONLY",
+       0.7
+      ],
+      [
+       "lo_beta",
+       "KEYWORD_ONLY",
+       0.3
+      ],
+      [
+       "secondary_share",
+       "KEYWORD_ONLY",
+       0.35
+      ],
+      [
+       "vol_low",
+       "KEYWORD_ONLY",
+       0.05
+      ],
+      [
+       "vol_high",
+       "KEYWORD_ONLY",
+       0.12
+      ]
+     ]
+    },
+    "label_tracks": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "asset_meta",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "sub_class_col",
+       "KEYWORD_ONLY",
+       "Sub Asset Class"
+      ],
+      [
+       "class_col",
+       "KEYWORD_ONLY",
+       "Asset Class"
+      ],
+      [
+       "equity_factor",
+       "KEYWORD_ONLY",
+       "Equity"
+      ],
+      [
+       "purity_cut",
+       "KEYWORD_ONLY",
+       0.5
+      ]
+     ]
+    },
+    "labels_at": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "date",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "label_kind",
+       "POSITIONAL_OR_KEYWORD",
+       "factor"
+      ],
+      [
+       "asset_meta",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ]
+     ]
+    },
+    "to_figures": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "to_label_panel": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "label_kind",
+       "POSITIONAL_OR_KEYWORD",
+       "factor"
+      ],
+      [
+       "asset_meta",
+       "POSITIONAL_OR_KEYWORD",
+       null
+      ]
+     ]
+    },
+    "to_membership_panel": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "to_tables": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    }
+   }
+  },
+  "TaxonomyConfig": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "equity_factor",
+      "init": true,
+      "default": "Equity",
+      "factory": null
+     },
+     {
+      "name": "high_beta",
+      "init": true,
+      "default": 0.7,
+      "factory": null
+     },
+     {
+      "name": "defensive_beta",
+      "init": true,
+      "default": 0.3,
+      "factory": null
+     },
+     {
+      "name": "mixed_dominant_frac",
+      "init": true,
+      "default": 0.5,
+      "factory": null
+     },
+     {
+      "name": "stable_spread_vol",
+      "init": true,
+      "default": 0.015,
+      "factory": null
+     },
+     {
+      "name": "drifting_spread_vol",
+      "init": true,
+      "default": 0.03,
+      "factory": null
+     },
+     {
+      "name": "core_coverage",
+      "init": true,
+      "default": 0.7,
+      "factory": null
+     },
+     {
+      "name": "transient_coverage",
+      "init": true,
+      "default": 0.3,
+      "factory": null
+     },
+     {
+      "name": "vol_low",
+      "init": true,
+      "default": 0.05,
+      "factory": null
+     },
+     {
+      "name": "vol_high",
+      "init": true,
+      "default": 0.12,
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "equity_factor",
+     "POSITIONAL_OR_KEYWORD",
+     "Equity"
+    ],
+    [
+     "high_beta",
+     "POSITIONAL_OR_KEYWORD",
+     0.7
+    ],
+    [
+     "defensive_beta",
+     "POSITIONAL_OR_KEYWORD",
+     0.3
+    ],
+    [
+     "mixed_dominant_frac",
+     "POSITIONAL_OR_KEYWORD",
+     0.5
+    ],
+    [
+     "stable_spread_vol",
+     "POSITIONAL_OR_KEYWORD",
+     0.015
+    ],
+    [
+     "drifting_spread_vol",
+     "POSITIONAL_OR_KEYWORD",
+     0.03
+    ],
+    [
+     "core_coverage",
+     "POSITIONAL_OR_KEYWORD",
+     0.7
+    ],
+    [
+     "transient_coverage",
+     "POSITIONAL_OR_KEYWORD",
+     0.3
+    ],
+    [
+     "vol_low",
+     "POSITIONAL_OR_KEYWORD",
+     0.05
+    ],
+    [
+     "vol_high",
+     "POSITIONAL_OR_KEYWORD",
+     0.12
+    ]
+   ],
+   "members": {}
+  },
+  "analyze_cluster_lineage": {
+   "kind": "function",
+   "signature": [
+    [
+     "covar_data",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "overlap_metric",
+     "KEYWORD_ONLY",
+     "overlap"
+    ],
+    [
+     "beta_metric",
+     "KEYWORD_ONLY",
+     "mahalanobis_sf"
+    ],
+    [
+     "combine",
+     "KEYWORD_ONLY",
+     "gated"
+    ],
+    [
+     "overlap_band",
+     "KEYWORD_ONLY",
+     {
+      "tuple": [
+       0.15,
+       0.6
+      ]
+     }
+    ],
+    [
+     "spread_vol_cut",
+     "KEYWORD_ONLY",
+     0.015
+    ],
+    [
+     "bridge_window",
+     "KEYWORD_ONLY",
+     6
+    ],
+    [
+     "bridge_decay",
+     "KEYWORD_ONLY",
+     0.5
+    ],
+    [
+     "w_overlap",
+     "KEYWORD_ONLY",
+     0.6
+    ],
+    [
+     "weighting",
+     "KEYWORD_ONLY",
+     "equal"
+    ],
+    [
+     "taxonomy",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "method",
+     "KEYWORD_ONLY",
+     "mcf"
+    ]
+   ]
+  },
+  "run_cluster_lineage_report": {
+   "kind": "function",
+   "signature": [
+    [
+     "covar_data",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "kwargs",
+     "VAR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "DependenceMeasure": {
+   "kind": "enum",
+   "enum_members": [
+    [
+     "PEARSON",
+     "pearson"
+    ],
+    [
+     "SPEARMAN",
+     "spearman"
+    ],
+    [
+     "GERBER",
+     "gerber"
+    ]
+   ],
+   "members": {}
+  },
+  "compute_dependence_matrix": {
+   "kind": "function",
+   "signature": [
+    [
+     "a",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "dependence_measure",
+     "POSITIONAL_OR_KEYWORD",
+     "pearson"
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "gerber_threshold",
+     "POSITIONAL_OR_KEYWORD",
+     0.5
+    ],
+    [
+     "nan_backfill",
+     "POSITIONAL_OR_KEYWORD",
+     {
+      "enum": "NanBackfill",
+      "name": "FFILL",
+      "value": 1
+     }
+    ]
+   ]
+  },
+  "compute_gerber_matrix": {
+   "kind": "function",
+   "signature": [
+    [
+     "a",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "gerber_threshold",
+     "POSITIONAL_OR_KEYWORD",
+     0.5
+    ]
+   ]
+  },
+  "ClusterCorrelationTransform": {
+   "kind": "enum",
+   "enum_members": [
+    [
+     "NONE",
+     "none"
+    ],
+    [
+     "REMOVE_PC1",
+     "remove_pc1"
+    ]
+   ],
+   "members": {}
+  },
+  "ClusterCorrelationTransformResult": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "correlation",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "removed_eigenvalue",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "removed_variance_share",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "minimum_residual_variance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "eigengap",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "dominant_component_unique",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "missing_offdiagonal_pairs",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "isolated_assets",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "correlation",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "removed_eigenvalue",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "removed_variance_share",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "minimum_residual_variance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "eigengap",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "dominant_component_unique",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "missing_offdiagonal_pairs",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "isolated_assets",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "DistanceTransform": {
+   "kind": "enum",
+   "enum_members": [
+    [
+     "ONE_MINUS_RHO",
+     "one_minus_rho"
+    ],
+    [
+     "CHORD",
+     "chord"
+    ],
+    [
+     "ARCCOS",
+     "arccos"
+    ]
+   ],
+   "members": {}
+  },
+  "apply_cluster_correlation_transform": {
+   "kind": "function",
+   "signature": [
+    [
+     "corr_matrix",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "transform",
+     "POSITIONAL_OR_KEYWORD",
+     "none"
+    ]
+   ]
+  },
+  "compute_clusters_from_corr_matrix": {
+   "kind": "function",
+   "signature": [
+    [
+     "corr_matrix",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "cutoff_fraction",
+     "POSITIONAL_OR_KEYWORD",
+     0.5
+    ],
+    [
+     "linkage_method",
+     "POSITIONAL_OR_KEYWORD",
+     "ward"
+    ],
+    [
+     "distance_transform",
+     "POSITIONAL_OR_KEYWORD",
+     "one_minus_rho"
+    ],
+    [
+     "n_clusters",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ]
+  },
+  "get_clusters_by_freq": {
+   "kind": "function",
+   "signature": [
+    [
+     "clusters",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "get_cutoffs_by_freq": {
+   "kind": "function",
+   "signature": [
+    [
+     "cutoffs",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "get_linkage_array": {
+   "kind": "function",
+   "signature": [
+    [
+     "linkages",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "freq",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "get_linkages_by_freq": {
+   "kind": "function",
+   "signature": [
+    [
+     "linkages",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "remove_first_principal_component": {
+   "kind": "function",
+   "signature": [
+    [
+     "corr_matrix",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "apply_partition_distance_bonus": {
+   "kind": "function",
+   "signature": [
+    [
+     "dist",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "prev_clusters",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "delta",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "compute_co_association_panel": {
+   "kind": "function",
+   "signature": [
+    [
+     "clusters",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "window",
+     "POSITIONAL_OR_KEYWORD",
+     6
+    ],
+    [
+     "min_history",
+     "POSITIONAL_OR_KEYWORD",
+     1
+    ],
+    [
+     "span",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "adjust",
+     "KEYWORD_ONLY",
+     true
+    ]
+   ]
+  },
+  "compute_cluster_stability_statistics": {
+   "kind": "function",
+   "signature": [
+    [
+     "partitions",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "span_by_freq",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "min_history",
+     "POSITIONAL_OR_KEYWORD",
+     12
+    ]
+   ]
+  },
+  "compute_rolling_smoothed_clusters": {
+   "kind": "function",
+   "signature": [
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimation_dates",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "lasso_model",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "eligibility",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ]
+  },
+  "score_with_stability_pooled_clusters": {
+   "kind": "function",
+   "signature": [
+    [
+     "raw_signal",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "rolling_clusters",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "stability_weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "min_cluster_size",
+     "POSITIONAL_OR_KEYWORD",
+     3
+    ],
+    [
+     "pooling_type",
+     "POSITIONAL_OR_KEYWORD",
+     {
+      "enum": "StabilityPoolingType",
+      "name": "NONE",
+      "value": "none"
+     }
+    ]
+   ]
+  },
+  "smooth_similarity_ewma": {
+   "kind": "function",
+   "signature": [
+    [
+     "corr",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "prev_smoothed",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "smoother_lambda",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "compute_ewm": {
+   "kind": "function",
+   "signature": [
+    [
+     "data",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "ewm_lambda",
+     "POSITIONAL_OR_KEYWORD",
+     0.94
+    ],
+    [
+     "init_value",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "init_type",
+     "POSITIONAL_OR_KEYWORD",
+     {
+      "enum": "InitType",
+      "name": "X0",
+      "value": 2
+     }
+    ],
+    [
+     "nan_backfill",
+     "POSITIONAL_OR_KEYWORD",
+     {
+      "enum": "NanBackfill",
+      "name": "FFILL",
+      "value": 1
+     }
+    ]
+   ]
+  },
+  "compute_ewm_covar": {
+   "kind": "function",
+   "signature": [
+    [
+     "a",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "b",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "ewm_lambda",
+     "POSITIONAL_OR_KEYWORD",
+     0.94
+    ],
+    [
+     "covar0",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "is_corr",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "nan_backfill",
+     "POSITIONAL_OR_KEYWORD",
+     {
+      "enum": "NanBackfill",
+      "name": "FFILL",
+      "value": 1
+     }
+    ]
+   ]
+  },
+  "compute_expanding_power": {
+   "kind": "function",
+   "signature": [
+    [
+     "n",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "power_lambda",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "reverse_columns",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ]
+   ]
+  },
+  "set_group_loadings": {
+   "kind": "function",
+   "signature": [
+    [
+     "group_data",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "group_order",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ]
+  },
+  "derive_sign_constraints": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "clusters",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "master_constraints",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "auto_sign_threshold_t",
+     "POSITIONAL_OR_KEYWORD",
+     0.75
+    ],
+    [
+     "return_slopes",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ],
+    [
+     "ewma_span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "variance_estimator",
+     "POSITIONAL_OR_KEYWORD",
+     "independent"
+    ]
+   ]
+  },
+  "validate_cluster_signs": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "clusters",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "warn",
+     "POSITIONAL_OR_KEYWORD",
+     true
+    ],
+    [
+     "ewma_span",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ]
+  },
+  "LassoModelDiagonalityCV": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": false,
+    "fields": [
+     {
+      "name": "lambdas",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "n_splits",
+      "init": true,
+      "default": 5,
+      "factory": null
+     },
+     {
+      "name": "base_model",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "refit",
+      "init": true,
+      "default": true,
+      "factory": null
+     },
+     {
+      "name": "use_lambda_path",
+      "init": true,
+      "default": true,
+      "factory": null
+     },
+     {
+      "name": "significance",
+      "init": true,
+      "default": 0.05,
+      "factory": null
+     },
+     {
+      "name": "zero_rtol",
+      "init": true,
+      "default": 0.0001,
+      "factory": null
+     },
+     {
+      "name": "min_periods",
+      "init": true,
+      "default": 30,
+      "factory": null
+     },
+     {
+      "name": "best_lambda_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "best_score_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "passed_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "threshold_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "diagnostics_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "fold_scores_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "missing_factors_",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "best_model_",
+      "init": true,
+      "default": null,
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "lambdas",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "n_splits",
+     "POSITIONAL_OR_KEYWORD",
+     5
+    ],
+    [
+     "base_model",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "refit",
+     "POSITIONAL_OR_KEYWORD",
+     true
+    ],
+    [
+     "use_lambda_path",
+     "POSITIONAL_OR_KEYWORD",
+     true
+    ],
+    [
+     "significance",
+     "POSITIONAL_OR_KEYWORD",
+     0.05
+    ],
+    [
+     "zero_rtol",
+     "POSITIONAL_OR_KEYWORD",
+     0.0001
+    ],
+    [
+     "min_periods",
+     "POSITIONAL_OR_KEYWORD",
+     30
+    ],
+    [
+     "best_lambda_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "best_score_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "passed_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "threshold_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "diagnostics_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "fold_scores_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "missing_factors_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "best_model_",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ]
+   ],
+   "members": {
+    "fit": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "y",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "verbose",
+       "POSITIONAL_OR_KEYWORD",
+       false
+      ]
+     ]
+    },
+    "predict": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    },
+    "score": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "x",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "y",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    }
+   }
+  },
+  "ResidualDiagnostics": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": false,
+    "fields": [
+     {
+      "name": "sphericity",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "threshold",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "top_eigenvalue",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "mp_edge",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "n_above_edge",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "mean_abs_offdiag",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "max_abs_offdiag",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "raw_offdiag_ss",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "nu",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "n_obs",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "n_series",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "n_pairs",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "correlation",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "sphericity",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "threshold",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "top_eigenvalue",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "mp_edge",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "n_above_edge",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "mean_abs_offdiag",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "max_abs_offdiag",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "raw_offdiag_ss",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "nu",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "n_obs",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "n_series",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "n_pairs",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "correlation",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {
+    "passes": {
+     "property": true,
+     "setter": false
+    },
+    "to_dict": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    }
+   }
+  },
+  "Sparsity": {
+   "kind": "class",
+   "dataclass": {
+    "frozen": false,
+    "fields": [
+     {
+      "name": "n_nonzero",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "n_total",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "density",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "per_asset",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "max_per_asset",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "per_factor",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "empty_factors",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "empty_assets",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "n_nonfinite",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "tol_used",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "n_nonzero",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "n_total",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "density",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "per_asset",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "max_per_asset",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "per_factor",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "empty_factors",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "empty_assets",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "n_nonfinite",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "tol_used",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {
+    "is_rank_deficient": {
+     "property": true,
+     "setter": false
+    },
+    "to_dict": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    }
+   }
+  },
+  "diagnose_residuals": {
+   "kind": "function",
+   "signature": [
+    [
+     "resid",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "n_fitted_per_asset",
+     "POSITIONAL_OR_KEYWORD",
+     0.0
+    ],
+    [
+     "significance",
+     "POSITIONAL_OR_KEYWORD",
+     0.05
+    ],
+    [
+     "min_periods",
+     "POSITIONAL_OR_KEYWORD",
+     30
+    ]
+   ]
+  },
+  "effective_sparsity": {
+   "kind": "function",
+   "signature": [
+    [
+     "betas",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "tol",
+     "POSITIONAL_OR_KEYWORD",
+     0.0
+    ],
+    [
+     "rtol",
+     "POSITIONAL_OR_KEYWORD",
+     0.0001
+    ],
+    [
+     "raise_on_nonfinite",
+     "POSITIONAL_OR_KEYWORD",
+     false
+    ]
+   ]
+  },
+  "marchenko_pastur_edge": {
+   "kind": "function",
+   "signature": [
+    [
+     "n_series",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "nu",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "missing_factor_components": {
+   "kind": "function",
+   "signature": [
+    [
+     "resid",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "n_components",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "loading_floor",
+     "POSITIONAL_OR_KEYWORD",
+     0.25
+    ],
+    [
+     "min_periods",
+     "POSITIONAL_OR_KEYWORD",
+     30
+    ],
+    [
+     "n_fitted_per_asset",
+     "POSITIONAL_OR_KEYWORD",
+     0.0
+    ]
+   ]
+  },
+  "null_threshold": {
+   "kind": "function",
+   "signature": [
+    [
+     "n_pairs",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "significance",
+     "POSITIONAL_OR_KEYWORD",
+     0.05
+    ]
+   ]
+  },
+  "raw_offdiagonal_mass": {
+   "kind": "function",
+   "signature": [
+    [
+     "resid",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "min_periods",
+     "POSITIONAL_OR_KEYWORD",
+     30
+    ]
+   ]
+  },
+  "residual_correlation": {
+   "kind": "function",
+   "signature": [
+    [
+     "resid",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "min_periods",
+     "POSITIONAL_OR_KEYWORD",
+     30
+    ]
+   ]
+  },
+  "suggest_tolerance": {
+   "kind": "function",
+   "signature": [
+    [
+     "betas",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  },
+  "partition_variance_share": {
+   "kind": "function",
+   "signature": [
+    [
+     "returns",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "labels",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ]
+  }
+ },
+ "legacy_sources": {
+  "beta_priors": {
+   "_centred_finite_values": null,
+   "_compute_joint_ols_prior": null,
+   "_compute_ols_prior": null,
+   "_validate_prior_selection_type": null,
+   "_validate_span": "factorlasso.ewm_utils:_validate_span",
+   "_zero_incompatible_priors": null,
+   "compute_expanding_power": "factorlasso.ewm_utils:compute_expanding_power"
+  },
+  "cluster_lineage": {
+   "CurrentFactorCovarData": "factorlasso.factor_covar:CurrentFactorCovarData",
+   "RiskClusterReport": null,
+   "RollingFactorCovarData": "factorlasso.factor_covar:RollingFactorCovarData",
+   "TaxonomyConfig": null,
+   "TrackPanel": null,
+   "VarianceColumns": "factorlasso.factor_covar:VarianceColumns",
+   "_Fingerprint": null,
+   "_build_tracks": null,
+   "_classify": null,
+   "_cluster_series": null,
+   "_match_panel": null,
+   "_match_panel_mcf": null,
+   "_overlap": null,
+   "_psd_clip": null,
+   "_qualifies": null,
+   "_snapshot_fingerprints": null,
+   "_validate_edges": null,
+   "analyze_cluster_lineage": null,
+   "run_cluster_lineage_report": null,
+   "solve_max_weight_matching": null
+  },
+  "cluster_smoothing": {
+   "ClusterCorrelationTransform": "factorlasso.cluster_utils:ClusterCorrelationTransform",
+   "ClusterSmootherType": null,
+   "DependenceMeasure": "factorlasso.dependence_utils:DependenceMeasure",
+   "RollingClusterData": null,
+   "_cluster_distance_matrix": null,
+   "_co_association_panel": null,
+   "_corr_to_distance": "factorlasso.cluster_utils:_corr_to_distance",
+   "_correlation_input": null,
+   "_effective_cluster_correlation_span": null,
+   "_ewma_co_association_panel": null,
+   "_is_recluster_date": null,
+   "_iter_correlation_inputs": null,
+   "_join_entrants": null,
+   "apply_cluster_correlation_transform": "factorlasso.cluster_utils:apply_cluster_correlation_transform",
+   "apply_partition_distance_bonus": null,
+   "compute_clusters_from_corr_matrix": "factorlasso.cluster_utils:compute_clusters_from_corr_matrix",
+   "compute_co_association_panel": null,
+   "compute_dependence_matrix": "factorlasso.dependence_utils:compute_dependence_matrix",
+   "compute_rolling_smoothed_clusters": null,
+   "smooth_similarity_ewma": null
+  },
+  "cluster_standardization": {
+   "StabilityPoolingType": null,
+   "_global_panel_score": null,
+   "_global_zscore": null,
+   "_last_on_or_before": null,
+   "_pooled_cluster_score": null,
+   "_stability_row": null,
+   "score_with_stability_pooled_clusters": null
+  },
+  "cluster_statistics": {
+   "ClusterStabilityStatistics": null,
+   "_cluster_weight_panel": null,
+   "_coverage_frame": null,
+   "_infer_partition_frequency": null,
+   "_normalise_frequency": null,
+   "_validate_span_map": null,
+   "compute_cluster_stability_statistics": null,
+   "compute_co_association_panel": "factorlasso.cluster_smoothing:compute_co_association_panel"
+  },
+  "cluster_utils": {
+   "ClusterCorrelationTransform": null,
+   "ClusterCorrelationTransformResult": null,
+   "DEFAULT_CLUSTER_CORRELATION_TRANSFORM": null,
+   "DEFAULT_CUTOFF_FRACTION": null,
+   "DEFAULT_DISTANCE_TRANSFORM": null,
+   "DEFAULT_LINKAGE_METHOD": null,
+   "DistanceTransform": null,
+   "VALID_LINKAGE_METHODS": null,
+   "_CORRELATION_TOLERANCE": null,
+   "_RESIDUAL_VARIANCE_FLOOR": null,
+   "_corr_to_distance": null,
+   "_validated_clustering_correlation": null,
+   "apply_cluster_correlation_transform": null,
+   "compute_clusters_from_corr_matrix": null,
+   "get_clusters_by_freq": null,
+   "get_cutoffs_by_freq": null,
+   "get_linkage_array": null,
+   "get_linkages_by_freq": null,
+   "remove_first_principal_component": null
+  },
+  "cv": {
+   "DEFAULT_LAMBDA_GRID": null,
+   "LassoModel": "factorlasso.lasso_estimator:LassoModel",
+   "LassoModelCV": null,
+   "LassoModelType": "factorlasso.lasso_estimator:LassoModelType",
+   "_FOLD_ERRORS": null,
+   "expanding_window_splits": null
+  },
+  "dependence_utils": {
+   "DEFAULT_DEPENDENCE_MEASURE": null,
+   "DEFAULT_GERBER_THRESHOLD": null,
+   "DependenceMeasure": null,
+   "NanBackfill": "factorlasso.ewm_utils:NanBackfill",
+   "_normalised_ewm_weights": null,
+   "compute_dependence_matrix": null,
+   "compute_ewm_covar": "factorlasso.ewm_utils:compute_ewm_covar",
+   "compute_gerber_matrix": null
+  },
+  "diagonality": {
+   "DEFAULT_LAMBDA_GRID": "factorlasso.cv:DEFAULT_LAMBDA_GRID",
+   "LassoModel": "factorlasso.lasso_estimator:LassoModel",
+   "LassoModelDiagonalityCV": null,
+   "LassoModelType": "factorlasso.lasso_estimator:LassoModelType",
+   "ResidualDiagnostics": "factorlasso.residual_diagnostics:ResidualDiagnostics",
+   "_FOLD_ERRORS": null,
+   "_GROUP_FAMILY": null,
+   "diagnose_residuals": "factorlasso.residual_diagnostics:diagnose_residuals",
+   "effective_sparsity": "factorlasso.residual_diagnostics:effective_sparsity",
+   "expanding_window_splits": "factorlasso.cv:expanding_window_splits",
+   "missing_factor_components": "factorlasso.residual_diagnostics:missing_factor_components"
+  },
+  "ewm_utils": {
+   "InitType": null,
+   "NanBackfill": null,
+   "_to_np": null,
+   "_validate_ewm_lambda": null,
+   "_validate_span": null,
+   "compute_ewm": null,
+   "compute_ewm_covar": null,
+   "compute_expanding_power": null,
+   "ewm_recursion": null,
+   "set_group_loadings": null,
+   "set_init_dim1": null
+  },
+  "expert_prior_map": {
+   "ExpertPriorResolution": null,
+   "_BROAD_EQUITY_NAME": null,
+   "_BROAD_MSCI_MARKETS": null,
+   "_MSCI_RETURN_MARKERS": null,
+   "_NON_EQUITY_NAME": null,
+   "_commodity_selection": null,
+   "_is_equity_index_name": null,
+   "_is_listed_real_estate_name": null,
+   "_normalise_name": null,
+   "_normalise_ticker": null,
+   "_selection_from_name": null,
+   "map_expert_factor_priors": null
+  },
+  "factor_covar": {
+   "CurrentFactorCovarData": null,
+   "ResidualCorrelationData": "factorlasso.residual_covar:ResidualCorrelationData",
+   "ResidualType": null,
+   "RollingFactorCovarData": null,
+   "VarianceColumns": null,
+   "_validate_residual_options": null,
+   "compute_clusters_from_corr_matrix": "factorlasso.cluster_utils:compute_clusters_from_corr_matrix",
+   "compute_ewm": "factorlasso.ewm_utils:compute_ewm"
+  },
+  "lasso_estimator": {
+   "ClusterCorrelationTransform": "factorlasso.cluster_utils:ClusterCorrelationTransform",
+   "ClusterSmootherType": "factorlasso.cluster_smoothing:ClusterSmootherType",
+   "DEFAULT_CLUSTER_CORRELATION_TRANSFORM": "factorlasso.cluster_utils:DEFAULT_CLUSTER_CORRELATION_TRANSFORM",
+   "DEFAULT_CUTOFF_FRACTION": "factorlasso.cluster_utils:DEFAULT_CUTOFF_FRACTION",
+   "DEFAULT_DEPENDENCE_MEASURE": "factorlasso.dependence_utils:DEFAULT_DEPENDENCE_MEASURE",
+   "DEFAULT_DISTANCE_TRANSFORM": "factorlasso.cluster_utils:DEFAULT_DISTANCE_TRANSFORM",
+   "DEFAULT_GERBER_THRESHOLD": "factorlasso.dependence_utils:DEFAULT_GERBER_THRESHOLD",
+   "DEFAULT_LINKAGE_METHOD": "factorlasso.cluster_utils:DEFAULT_LINKAGE_METHOD",
+   "DependenceMeasure": "factorlasso.dependence_utils:DependenceMeasure",
+   "DistanceTransform": "factorlasso.cluster_utils:DistanceTransform",
+   "LassoEstimationResult": null,
+   "LassoModel": null,
+   "LassoModelType": null,
+   "LassoNowcastResult": null,
+   "VALID_LINKAGE_METHODS": "factorlasso.cluster_utils:VALID_LINKAGE_METHODS",
+   "_MODES_WITHOUT_SIGN_CONSTRAINTS": null,
+   "_PreparedFit": null,
+   "_build_group_lasso_problem": null,
+   "_build_loading_bound_constraints": null,
+   "_build_sign_constraints": null,
+   "_clean_beta_prior": null,
+   "_compute_expert_prior_bounds": "factorlasso.prior_bounds:_compute_expert_prior_bounds",
+   "_compute_joint_ols_prior": "factorlasso.beta_priors:_compute_joint_ols_prior",
+   "_compute_ols_prior": "factorlasso.beta_priors:_compute_ols_prior",
+   "_compute_solver_diagnostics": null,
+   "_compute_solver_weights": null,
+   "_derive_valid_mask_from_y": null,
+   "_nan_result": null,
+   "_selected_prior_factors": null,
+   "_solve_with_fallback": null,
+   "_validate_expert_bound_settings": "factorlasso.prior_bounds:_validate_expert_bound_settings",
+   "_validate_loss_normalization": null,
+   "_validate_prior_selection_type": "factorlasso.beta_priors:_validate_prior_selection_type",
+   "_validate_span": "factorlasso.ewm_utils:_validate_span",
+   "_weighted_squared_loss": null,
+   "_zero_incompatible_priors": "factorlasso.beta_priors:_zero_incompatible_priors",
+   "apply_cluster_correlation_transform": "factorlasso.cluster_utils:apply_cluster_correlation_transform",
+   "compute_clusters_from_corr_matrix": "factorlasso.cluster_utils:compute_clusters_from_corr_matrix",
+   "compute_dependence_matrix": "factorlasso.dependence_utils:compute_dependence_matrix",
+   "compute_ewm": "factorlasso.ewm_utils:compute_ewm",
+   "compute_expanding_power": "factorlasso.ewm_utils:compute_expanding_power",
+   "get_x_y_np": null,
+   "set_group_loadings": "factorlasso.ewm_utils:set_group_loadings",
+   "solve_cooperative_group_lasso_cvx_problem": null,
+   "solve_group_lasso_cvx_problem": null,
+   "solve_group_lasso_path": null,
+   "solve_lasso_cvx_problem": null,
+   "solve_unilasso_cvx_problem": null
+  },
+  "prior_bounds": {
+   "_compute_expert_prior_bounds": null,
+   "_validate_expert_bound_settings": null,
+   "_validate_hac_lags": null,
+   "_validate_span": "factorlasso.ewm_utils:_validate_span",
+   "compute_expert_prior_statistics": null
+  },
+  "prior_inference": {
+   "Ar1PriorInterval": null,
+   "PriorHacGeometry": null,
+   "_angular_log_density": null,
+   "_ar_covariance": null,
+   "_gaussian_critical": null,
+   "_pivot_tail": null,
+   "_probability": null,
+   "_responses": null,
+   "_symmetric": null,
+   "compute_ar1_prior_interval": null,
+   "compute_prior_hac_geometry": null,
+   "gaussian_prior_critical_value": null
+  },
+  "prior_risk": {
+   "GaussianDominanceInformation": null,
+   "_nonnegative": null,
+   "_symmetric": "factorlasso.prior_inference:_symmetric",
+   "gaussian_dominance_information": null,
+   "two_factor_limit_risk": null,
+   "two_factor_minimax_radius": null
+  },
+  "residual_covar": {
+   "ResidualCorrelationData": null,
+   "_aggregate_residuals": null,
+   "_compatible_boundary": null,
+   "_moment_to_correlation": null,
+   "_prepare_common_residuals": null,
+   "_validate_span": "factorlasso.ewm_utils:_validate_span",
+   "compute_ewm": "factorlasso.ewm_utils:compute_ewm",
+   "compute_ewm_covar": "factorlasso.ewm_utils:compute_ewm_covar",
+   "estimate_residual_correlation": null
+  },
+  "residual_diagnostics": {
+   "ArrayLike": null,
+   "ResidualDiagnostics": null,
+   "Sparsity": null,
+   "_PARTITION_SHARE_COLUMNS": null,
+   "_partition_share_row": null,
+   "diagnose_residuals": null,
+   "effective_sparsity": null,
+   "marchenko_pastur_edge": null,
+   "missing_factor_components": null,
+   "null_threshold": null,
+   "partition_variance_share": null,
+   "raw_offdiagonal_mass": null,
+   "residual_correlation": null,
+   "suggest_tolerance": null
+  },
+  "sign_constraints": {
+   "_adaptive_penalty_weights": null,
+   "_aggregate_to_block_weights": null,
+   "_aggregate_to_row_weights": null,
+   "_compute_sign_matrix_per_response": null,
+   "_compute_sign_vector": null,
+   "_pooled_sign_statistics": null,
+   "_sign_observation_weights": null,
+   "derive_sign_constraints": null,
+   "validate_cluster_signs": null
+  }
+ },
+ "legacy": {
+  "beta_priors": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "_centred_finite_values": {
+     "source": null,
+     "qualname": "_centred_finite_values"
+    },
+    "_compute_joint_ols_prior": {
+     "source": null,
+     "qualname": "_compute_joint_ols_prior"
+    },
+    "_compute_ols_prior": {
+     "source": null,
+     "qualname": "_compute_ols_prior"
+    },
+    "_validate_prior_selection_type": {
+     "source": null,
+     "qualname": "_validate_prior_selection_type"
+    },
+    "_validate_span": {
+     "source": "factorlasso.ewm_utils:_validate_span",
+     "qualname": "_validate_span",
+     "is_source_object": true
+    },
+    "_zero_incompatible_priors": {
+     "source": null,
+     "qualname": "_zero_incompatible_priors"
+    },
+    "compute_expanding_power": {
+     "source": "factorlasso.ewm_utils:compute_expanding_power",
+     "is_root_export": true,
+     "qualname": "compute_expanding_power",
+     "is_source_object": true
+    }
+   }
+  },
+  "cluster_lineage": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "CurrentFactorCovarData": {
+     "source": "factorlasso.factor_covar:CurrentFactorCovarData",
+     "is_root_export": true,
+     "qualname": "CurrentFactorCovarData",
+     "is_source_object": true
+    },
+    "RiskClusterReport": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "RiskClusterReport"
+    },
+    "RollingFactorCovarData": {
+     "source": "factorlasso.factor_covar:RollingFactorCovarData",
+     "is_root_export": true,
+     "qualname": "RollingFactorCovarData",
+     "is_source_object": true
+    },
+    "TaxonomyConfig": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "TaxonomyConfig"
+    },
+    "TrackPanel": {
+     "source": null,
+     "qualname": "TrackPanel"
+    },
+    "VarianceColumns": {
+     "source": "factorlasso.factor_covar:VarianceColumns",
+     "is_root_export": true,
+     "qualname": "VarianceColumns",
+     "is_source_object": true
+    },
+    "_Fingerprint": {
+     "source": null,
+     "qualname": "_Fingerprint"
+    },
+    "_build_tracks": {
+     "source": null,
+     "qualname": "_build_tracks"
+    },
+    "_classify": {
+     "source": null,
+     "qualname": "_classify"
+    },
+    "_cluster_series": {
+     "source": null,
+     "qualname": "_cluster_series"
+    },
+    "_match_panel": {
+     "source": null,
+     "qualname": "_match_panel"
+    },
+    "_match_panel_mcf": {
+     "source": null,
+     "qualname": "_match_panel_mcf"
+    },
+    "_overlap": {
+     "source": null,
+     "qualname": "_overlap"
+    },
+    "_psd_clip": {
+     "source": null,
+     "qualname": "_psd_clip"
+    },
+    "_qualifies": {
+     "source": null,
+     "qualname": "_qualifies"
+    },
+    "_snapshot_fingerprints": {
+     "source": null,
+     "qualname": "_snapshot_fingerprints"
+    },
+    "_validate_edges": {
+     "source": null,
+     "qualname": "_validate_edges"
+    },
+    "analyze_cluster_lineage": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "analyze_cluster_lineage"
+    },
+    "run_cluster_lineage_report": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "run_cluster_lineage_report"
+    },
+    "solve_max_weight_matching": {
+     "source": null,
+     "qualname": "solve_max_weight_matching"
+    }
+   }
+  },
+  "cluster_smoothing": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "ClusterCorrelationTransform": {
+     "source": "factorlasso.cluster_utils:ClusterCorrelationTransform",
+     "is_root_export": true,
+     "qualname": "ClusterCorrelationTransform",
+     "is_source_object": true
+    },
+    "ClusterSmootherType": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "ClusterSmootherType"
+    },
+    "DependenceMeasure": {
+     "source": "factorlasso.dependence_utils:DependenceMeasure",
+     "is_root_export": true,
+     "qualname": "DependenceMeasure",
+     "is_source_object": true
+    },
+    "RollingClusterData": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "RollingClusterData"
+    },
+    "_cluster_distance_matrix": {
+     "source": null,
+     "qualname": "_cluster_distance_matrix"
+    },
+    "_co_association_panel": {
+     "source": null,
+     "qualname": "_co_association_panel"
+    },
+    "_corr_to_distance": {
+     "source": "factorlasso.cluster_utils:_corr_to_distance",
+     "qualname": "_corr_to_distance",
+     "is_source_object": true
+    },
+    "_correlation_input": {
+     "source": null,
+     "qualname": "_correlation_input"
+    },
+    "_effective_cluster_correlation_span": {
+     "source": null,
+     "qualname": "_effective_cluster_correlation_span"
+    },
+    "_ewma_co_association_panel": {
+     "source": null,
+     "qualname": "_ewma_co_association_panel"
+    },
+    "_is_recluster_date": {
+     "source": null,
+     "qualname": "_is_recluster_date"
+    },
+    "_iter_correlation_inputs": {
+     "source": null,
+     "qualname": "_iter_correlation_inputs"
+    },
+    "_join_entrants": {
+     "source": null,
+     "qualname": "_join_entrants"
+    },
+    "apply_cluster_correlation_transform": {
+     "source": "factorlasso.cluster_utils:apply_cluster_correlation_transform",
+     "is_root_export": true,
+     "qualname": "apply_cluster_correlation_transform",
+     "is_source_object": true
+    },
+    "apply_partition_distance_bonus": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "apply_partition_distance_bonus"
+    },
+    "compute_clusters_from_corr_matrix": {
+     "source": "factorlasso.cluster_utils:compute_clusters_from_corr_matrix",
+     "is_root_export": true,
+     "qualname": "compute_clusters_from_corr_matrix",
+     "is_source_object": true
+    },
+    "compute_co_association_panel": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_co_association_panel"
+    },
+    "compute_dependence_matrix": {
+     "source": "factorlasso.dependence_utils:compute_dependence_matrix",
+     "is_root_export": true,
+     "qualname": "compute_dependence_matrix",
+     "is_source_object": true
+    },
+    "compute_rolling_smoothed_clusters": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_rolling_smoothed_clusters"
+    },
+    "smooth_similarity_ewma": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "smooth_similarity_ewma"
+    }
+   }
+  },
+  "cluster_standardization": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "StabilityPoolingType": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "StabilityPoolingType"
+    },
+    "_global_panel_score": {
+     "source": null,
+     "qualname": "_global_panel_score"
+    },
+    "_global_zscore": {
+     "source": null,
+     "qualname": "_global_zscore"
+    },
+    "_last_on_or_before": {
+     "source": null,
+     "qualname": "_last_on_or_before"
+    },
+    "_pooled_cluster_score": {
+     "source": null,
+     "qualname": "_pooled_cluster_score"
+    },
+    "_stability_row": {
+     "source": null,
+     "qualname": "_stability_row"
+    },
+    "score_with_stability_pooled_clusters": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "score_with_stability_pooled_clusters"
+    }
+   }
+  },
+  "cluster_statistics": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "ClusterStabilityStatistics": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "ClusterStabilityStatistics"
+    },
+    "_cluster_weight_panel": {
+     "source": null,
+     "qualname": "_cluster_weight_panel"
+    },
+    "_coverage_frame": {
+     "source": null,
+     "qualname": "_coverage_frame"
+    },
+    "_infer_partition_frequency": {
+     "source": null,
+     "qualname": "_infer_partition_frequency"
+    },
+    "_normalise_frequency": {
+     "source": null,
+     "qualname": "_normalise_frequency"
+    },
+    "_validate_span_map": {
+     "source": null,
+     "qualname": "_validate_span_map"
+    },
+    "compute_cluster_stability_statistics": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_cluster_stability_statistics"
+    },
+    "compute_co_association_panel": {
+     "source": "factorlasso.cluster_smoothing:compute_co_association_panel",
+     "is_root_export": true,
+     "qualname": "compute_co_association_panel",
+     "is_source_object": true
+    }
+   }
+  },
+  "cluster_utils": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "ClusterCorrelationTransform": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "ClusterCorrelationTransform"
+    },
+    "ClusterCorrelationTransformResult": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "ClusterCorrelationTransformResult"
+    },
+    "DEFAULT_CLUSTER_CORRELATION_TRANSFORM": {
+     "source": null,
+     "value": "none"
+    },
+    "DEFAULT_CUTOFF_FRACTION": {
+     "source": null,
+     "value": 0.5
+    },
+    "DEFAULT_DISTANCE_TRANSFORM": {
+     "source": null,
+     "value": "one_minus_rho"
+    },
+    "DEFAULT_LINKAGE_METHOD": {
+     "source": null,
+     "value": "ward"
+    },
+    "DistanceTransform": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "DistanceTransform"
+    },
+    "VALID_LINKAGE_METHODS": {
+     "source": null,
+     "value": {
+      "tuple": [
+       "single",
+       "complete",
+       "average",
+       "weighted",
+       "centroid",
+       "median",
+       "ward"
+      ]
+     }
+    },
+    "_CORRELATION_TOLERANCE": {
+     "source": null,
+     "value": 1e-10
+    },
+    "_RESIDUAL_VARIANCE_FLOOR": {
+     "source": null,
+     "value": 1e-12
+    },
+    "_corr_to_distance": {
+     "source": null,
+     "qualname": "_corr_to_distance"
+    },
+    "_validated_clustering_correlation": {
+     "source": null,
+     "qualname": "_validated_clustering_correlation"
+    },
+    "apply_cluster_correlation_transform": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "apply_cluster_correlation_transform"
+    },
+    "compute_clusters_from_corr_matrix": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_clusters_from_corr_matrix"
+    },
+    "get_clusters_by_freq": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "get_clusters_by_freq"
+    },
+    "get_cutoffs_by_freq": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "get_cutoffs_by_freq"
+    },
+    "get_linkage_array": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "get_linkage_array"
+    },
+    "get_linkages_by_freq": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "get_linkages_by_freq"
+    },
+    "remove_first_principal_component": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "remove_first_principal_component"
+    }
+   }
+  },
+  "cv": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "DEFAULT_LAMBDA_GRID": {
+     "source": null,
+     "value": {
+      "tuple": [
+       1e-06,
+       1.8329807108324375e-06,
+       3.359818286283781e-06,
+       6.158482110660267e-06,
+       1.1288378916846883e-05,
+       2.06913808111479e-05,
+       3.792690190732254e-05,
+       6.951927961775606e-05,
+       0.00012742749857031334,
+       0.00023357214690901214,
+       0.0004281332398719391,
+       0.0007847599703514606,
+       0.0014384498882876629,
+       0.0026366508987303583,
+       0.004832930238571752,
+       0.008858667904100823,
+       0.01623776739188721,
+       0.029763514416313194,
+       0.05455594781168514,
+       0.1
+      ]
+     }
+    },
+    "LassoModel": {
+     "source": "factorlasso.lasso_estimator:LassoModel",
+     "is_root_export": true,
+     "qualname": "LassoModel",
+     "is_source_object": true
+    },
+    "LassoModelCV": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "LassoModelCV"
+    },
+    "LassoModelType": {
+     "source": "factorlasso.lasso_estimator:LassoModelType",
+     "is_root_export": true,
+     "qualname": "LassoModelType",
+     "is_source_object": true
+    },
+    "_FOLD_ERRORS": {
+     "source": null,
+     "value": {
+      "tuple": [
+       {
+        "type": "SolverError"
+       },
+       {
+        "type": "DCPError"
+       },
+       {
+        "type": "ValueError"
+       },
+       {
+        "type": "LinAlgError"
+       }
+      ]
+     }
+    },
+    "expanding_window_splits": {
+     "source": null,
+     "qualname": "expanding_window_splits"
+    }
+   }
+  },
+  "dependence_utils": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "DEFAULT_DEPENDENCE_MEASURE": {
+     "source": null,
+     "value": "pearson"
+    },
+    "DEFAULT_GERBER_THRESHOLD": {
+     "source": null,
+     "value": 0.5
+    },
+    "DependenceMeasure": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "DependenceMeasure"
+    },
+    "NanBackfill": {
+     "source": "factorlasso.ewm_utils:NanBackfill",
+     "qualname": "NanBackfill",
+     "is_source_object": true
+    },
+    "_normalised_ewm_weights": {
+     "source": null,
+     "qualname": "_normalised_ewm_weights"
+    },
+    "compute_dependence_matrix": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_dependence_matrix"
+    },
+    "compute_ewm_covar": {
+     "source": "factorlasso.ewm_utils:compute_ewm_covar",
+     "is_root_export": true,
+     "qualname": "compute_ewm_covar",
+     "is_source_object": true
+    },
+    "compute_gerber_matrix": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_gerber_matrix"
+    }
+   }
+  },
+  "diagonality": {
+   "root_attribute": true,
+   "__all__": [
+    "LassoModelDiagonalityCV"
+   ],
+   "names": {
+    "DEFAULT_LAMBDA_GRID": {
+     "source": "factorlasso.cv:DEFAULT_LAMBDA_GRID",
+     "value": {
+      "tuple": [
+       1e-06,
+       1.8329807108324375e-06,
+       3.359818286283781e-06,
+       6.158482110660267e-06,
+       1.1288378916846883e-05,
+       2.06913808111479e-05,
+       3.792690190732254e-05,
+       6.951927961775606e-05,
+       0.00012742749857031334,
+       0.00023357214690901214,
+       0.0004281332398719391,
+       0.0007847599703514606,
+       0.0014384498882876629,
+       0.0026366508987303583,
+       0.004832930238571752,
+       0.008858667904100823,
+       0.01623776739188721,
+       0.029763514416313194,
+       0.05455594781168514,
+       0.1
+      ]
+     },
+     "is_source_object": true
+    },
+    "LassoModel": {
+     "source": "factorlasso.lasso_estimator:LassoModel",
+     "is_root_export": true,
+     "qualname": "LassoModel",
+     "is_source_object": true
+    },
+    "LassoModelDiagonalityCV": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "LassoModelDiagonalityCV"
+    },
+    "LassoModelType": {
+     "source": "factorlasso.lasso_estimator:LassoModelType",
+     "is_root_export": true,
+     "qualname": "LassoModelType",
+     "is_source_object": true
+    },
+    "ResidualDiagnostics": {
+     "source": "factorlasso.residual_diagnostics:ResidualDiagnostics",
+     "is_root_export": true,
+     "qualname": "ResidualDiagnostics",
+     "is_source_object": true
+    },
+    "_FOLD_ERRORS": {
+     "source": null,
+     "value": {
+      "tuple": [
+       {
+        "type": "SolverError"
+       },
+       {
+        "type": "DCPError"
+       },
+       {
+        "type": "ValueError"
+       },
+       {
+        "type": "LinAlgError"
+       }
+      ]
+     }
+    },
+    "_GROUP_FAMILY": {
+     "source": null,
+     "value": {
+      "tuple": [
+       {
+        "enum": "LassoModelType",
+        "name": "GROUP_LASSO",
+        "value": 3
+       },
+       {
+        "enum": "LassoModelType",
+        "name": "HIERARCHICAL_CLUSTER_GROUP_LASSO",
+        "value": 4
+       },
+       {
+        "enum": "LassoModelType",
+        "name": "FACTOR_CLUSTER_GROUP_LASSO",
+        "value": 5
+       }
+      ]
+     }
+    },
+    "diagnose_residuals": {
+     "source": "factorlasso.residual_diagnostics:diagnose_residuals",
+     "is_root_export": true,
+     "qualname": "diagnose_residuals",
+     "is_source_object": true
+    },
+    "effective_sparsity": {
+     "source": "factorlasso.residual_diagnostics:effective_sparsity",
+     "is_root_export": true,
+     "qualname": "effective_sparsity",
+     "is_source_object": true
+    },
+    "expanding_window_splits": {
+     "source": "factorlasso.cv:expanding_window_splits",
+     "qualname": "expanding_window_splits",
+     "is_source_object": true
+    },
+    "missing_factor_components": {
+     "source": "factorlasso.residual_diagnostics:missing_factor_components",
+     "is_root_export": true,
+     "qualname": "missing_factor_components",
+     "is_source_object": true
+    }
+   }
+  },
+  "ewm_utils": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "InitType": {
+     "source": null,
+     "qualname": "InitType"
+    },
+    "NanBackfill": {
+     "source": null,
+     "qualname": "NanBackfill"
+    },
+    "_to_np": {
+     "source": null,
+     "qualname": "_to_np"
+    },
+    "_validate_ewm_lambda": {
+     "source": null,
+     "qualname": "_validate_ewm_lambda"
+    },
+    "_validate_span": {
+     "source": null,
+     "qualname": "_validate_span"
+    },
+    "compute_ewm": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_ewm"
+    },
+    "compute_ewm_covar": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_ewm_covar"
+    },
+    "compute_expanding_power": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_expanding_power"
+    },
+    "ewm_recursion": {
+     "source": null,
+     "qualname": "ewm_recursion"
+    },
+    "set_group_loadings": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "set_group_loadings"
+    },
+    "set_init_dim1": {
+     "source": null,
+     "qualname": "set_init_dim1"
+    }
+   }
+  },
+  "expert_prior_map": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "ExpertPriorResolution": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "ExpertPriorResolution"
+    },
+    "_BROAD_EQUITY_NAME": {
+     "source": null,
+     "value": {
+      "instance": "Pattern"
+     }
+    },
+    "_BROAD_MSCI_MARKETS": {
+     "source": null,
+     "value": {
+      "frozenset": [
+       "ac asia pacific ex japan",
+       "ac world",
+       "acwi",
+       "australia",
+       "brazil",
+       "canada",
+       "china",
+       "em asia",
+       "em ex asia",
+       "emerging latin america",
+       "emerging markets europe middle east africa",
+       "emerging markets india",
+       "emerging markets korea",
+       "emerging markets mexico",
+       "emerging markets poland",
+       "emerging markets south africa",
+       "emerging markets taiwan",
+       "emerging markets",
+       "emerging",
+       "emu",
+       "europe ex switzerland ex uk",
+       "europe ex uk ex switzerland",
+       "europe",
+       "france",
+       "germany",
+       "hong kong",
+       "italy",
+       "japan",
+       "netherlands",
+       "norway",
+       "pacific ex japan",
+       "saudi arabia",
+       "singapore free",
+       "spain",
+       "switzerland",
+       "uk",
+       "us",
+       "usa",
+       "world"
+      ]
+     }
+    },
+    "_MSCI_RETURN_MARKERS": {
+     "source": null,
+     "value": {
+      "tuple": [
+       " net total return ",
+       " net return ",
+       " gross total return ",
+       " 100 hedged to ",
+       " hedged to ",
+       " net ",
+       " index"
+      ]
+     }
+    },
+    "_NON_EQUITY_NAME": {
+     "source": null,
+     "value": {
+      "instance": "Pattern"
+     }
+    },
+    "_commodity_selection": {
+     "source": null,
+     "qualname": "_commodity_selection"
+    },
+    "_is_equity_index_name": {
+     "source": null,
+     "qualname": "_is_equity_index_name"
+    },
+    "_is_listed_real_estate_name": {
+     "source": null,
+     "qualname": "_is_listed_real_estate_name"
+    },
+    "_normalise_name": {
+     "source": null,
+     "qualname": "_normalise_name"
+    },
+    "_normalise_ticker": {
+     "source": null,
+     "qualname": "_normalise_ticker"
+    },
+    "_selection_from_name": {
+     "source": null,
+     "qualname": "_selection_from_name"
+    },
+    "map_expert_factor_priors": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "map_expert_factor_priors"
+    }
+   }
+  },
+  "factor_covar": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "CurrentFactorCovarData": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "CurrentFactorCovarData"
+    },
+    "ResidualCorrelationData": {
+     "source": "factorlasso.residual_covar:ResidualCorrelationData",
+     "is_root_export": true,
+     "qualname": "ResidualCorrelationData",
+     "is_source_object": true
+    },
+    "ResidualType": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "ResidualType"
+    },
+    "RollingFactorCovarData": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "RollingFactorCovarData"
+    },
+    "VarianceColumns": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "VarianceColumns"
+    },
+    "_validate_residual_options": {
+     "source": null,
+     "qualname": "_validate_residual_options"
+    },
+    "compute_clusters_from_corr_matrix": {
+     "source": "factorlasso.cluster_utils:compute_clusters_from_corr_matrix",
+     "is_root_export": true,
+     "qualname": "compute_clusters_from_corr_matrix",
+     "is_source_object": true
+    },
+    "compute_ewm": {
+     "source": "factorlasso.ewm_utils:compute_ewm",
+     "is_root_export": true,
+     "qualname": "compute_ewm",
+     "is_source_object": true
+    }
+   }
+  },
+  "lasso_estimator": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "ClusterCorrelationTransform": {
+     "source": "factorlasso.cluster_utils:ClusterCorrelationTransform",
+     "is_root_export": true,
+     "qualname": "ClusterCorrelationTransform",
+     "is_source_object": true
+    },
+    "ClusterSmootherType": {
+     "source": "factorlasso.cluster_smoothing:ClusterSmootherType",
+     "is_root_export": true,
+     "qualname": "ClusterSmootherType",
+     "is_source_object": true
+    },
+    "DEFAULT_CLUSTER_CORRELATION_TRANSFORM": {
+     "source": "factorlasso.cluster_utils:DEFAULT_CLUSTER_CORRELATION_TRANSFORM",
+     "value": "none",
+     "is_source_object": true
+    },
+    "DEFAULT_CUTOFF_FRACTION": {
+     "source": "factorlasso.cluster_utils:DEFAULT_CUTOFF_FRACTION",
+     "value": 0.5,
+     "is_source_object": true
+    },
+    "DEFAULT_DEPENDENCE_MEASURE": {
+     "source": "factorlasso.dependence_utils:DEFAULT_DEPENDENCE_MEASURE",
+     "value": "pearson",
+     "is_source_object": true
+    },
+    "DEFAULT_DISTANCE_TRANSFORM": {
+     "source": "factorlasso.cluster_utils:DEFAULT_DISTANCE_TRANSFORM",
+     "value": "one_minus_rho",
+     "is_source_object": true
+    },
+    "DEFAULT_GERBER_THRESHOLD": {
+     "source": "factorlasso.dependence_utils:DEFAULT_GERBER_THRESHOLD",
+     "value": 0.5,
+     "is_source_object": true
+    },
+    "DEFAULT_LINKAGE_METHOD": {
+     "source": "factorlasso.cluster_utils:DEFAULT_LINKAGE_METHOD",
+     "value": "ward",
+     "is_source_object": true
+    },
+    "DependenceMeasure": {
+     "source": "factorlasso.dependence_utils:DependenceMeasure",
+     "is_root_export": true,
+     "qualname": "DependenceMeasure",
+     "is_source_object": true
+    },
+    "DistanceTransform": {
+     "source": "factorlasso.cluster_utils:DistanceTransform",
+     "is_root_export": true,
+     "qualname": "DistanceTransform",
+     "is_source_object": true
+    },
+    "LassoEstimationResult": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "LassoEstimationResult"
+    },
+    "LassoModel": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "LassoModel"
+    },
+    "LassoModelType": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "LassoModelType"
+    },
+    "LassoNowcastResult": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "LassoNowcastResult"
+    },
+    "VALID_LINKAGE_METHODS": {
+     "source": "factorlasso.cluster_utils:VALID_LINKAGE_METHODS",
+     "value": {
+      "tuple": [
+       "single",
+       "complete",
+       "average",
+       "weighted",
+       "centroid",
+       "median",
+       "ward"
+      ]
+     },
+     "is_source_object": true
+    },
+    "_MODES_WITHOUT_SIGN_CONSTRAINTS": {
+     "source": null,
+     "value": {
+      "tuple": [
+       {
+        "enum": "LassoModelType",
+        "name": "UNILASSO",
+        "value": 2
+       },
+       {
+        "enum": "LassoModelType",
+        "name": "COOPERATIVE_GROUP_LASSO",
+        "value": 6
+       },
+       {
+        "enum": "LassoModelType",
+        "name": "COOPERATIVE_CLUSTER_GROUP_LASSO",
+        "value": 7
+       }
+      ]
+     }
+    },
+    "_PreparedFit": {
+     "source": null,
+     "qualname": "_PreparedFit"
+    },
+    "_build_group_lasso_problem": {
+     "source": null,
+     "qualname": "_build_group_lasso_problem"
+    },
+    "_build_loading_bound_constraints": {
+     "source": null,
+     "qualname": "_build_loading_bound_constraints"
+    },
+    "_build_sign_constraints": {
+     "source": null,
+     "qualname": "_build_sign_constraints"
+    },
+    "_clean_beta_prior": {
+     "source": null,
+     "qualname": "_clean_beta_prior"
+    },
+    "_compute_expert_prior_bounds": {
+     "source": "factorlasso.prior_bounds:_compute_expert_prior_bounds",
+     "qualname": "_compute_expert_prior_bounds",
+     "is_source_object": true
+    },
+    "_compute_joint_ols_prior": {
+     "source": "factorlasso.beta_priors:_compute_joint_ols_prior",
+     "qualname": "_compute_joint_ols_prior",
+     "is_source_object": true
+    },
+    "_compute_ols_prior": {
+     "source": "factorlasso.beta_priors:_compute_ols_prior",
+     "qualname": "_compute_ols_prior",
+     "is_source_object": true
+    },
+    "_compute_solver_diagnostics": {
+     "source": null,
+     "qualname": "_compute_solver_diagnostics"
+    },
+    "_compute_solver_weights": {
+     "source": null,
+     "qualname": "_compute_solver_weights"
+    },
+    "_derive_valid_mask_from_y": {
+     "source": null,
+     "qualname": "_derive_valid_mask_from_y"
+    },
+    "_nan_result": {
+     "source": null,
+     "qualname": "_nan_result"
+    },
+    "_selected_prior_factors": {
+     "source": null,
+     "qualname": "_selected_prior_factors"
+    },
+    "_solve_with_fallback": {
+     "source": null,
+     "qualname": "_solve_with_fallback"
+    },
+    "_validate_expert_bound_settings": {
+     "source": "factorlasso.prior_bounds:_validate_expert_bound_settings",
+     "qualname": "_validate_expert_bound_settings",
+     "is_source_object": true
+    },
+    "_validate_loss_normalization": {
+     "source": null,
+     "qualname": "_validate_loss_normalization"
+    },
+    "_validate_prior_selection_type": {
+     "source": "factorlasso.beta_priors:_validate_prior_selection_type",
+     "qualname": "_validate_prior_selection_type",
+     "is_source_object": true
+    },
+    "_validate_span": {
+     "source": "factorlasso.ewm_utils:_validate_span",
+     "qualname": "_validate_span",
+     "is_source_object": true
+    },
+    "_weighted_squared_loss": {
+     "source": null,
+     "qualname": "_weighted_squared_loss"
+    },
+    "_zero_incompatible_priors": {
+     "source": "factorlasso.beta_priors:_zero_incompatible_priors",
+     "qualname": "_zero_incompatible_priors",
+     "is_source_object": true
+    },
+    "apply_cluster_correlation_transform": {
+     "source": "factorlasso.cluster_utils:apply_cluster_correlation_transform",
+     "is_root_export": true,
+     "qualname": "apply_cluster_correlation_transform",
+     "is_source_object": true
+    },
+    "compute_clusters_from_corr_matrix": {
+     "source": "factorlasso.cluster_utils:compute_clusters_from_corr_matrix",
+     "is_root_export": true,
+     "qualname": "compute_clusters_from_corr_matrix",
+     "is_source_object": true
+    },
+    "compute_dependence_matrix": {
+     "source": "factorlasso.dependence_utils:compute_dependence_matrix",
+     "is_root_export": true,
+     "qualname": "compute_dependence_matrix",
+     "is_source_object": true
+    },
+    "compute_ewm": {
+     "source": "factorlasso.ewm_utils:compute_ewm",
+     "is_root_export": true,
+     "qualname": "compute_ewm",
+     "is_source_object": true
+    },
+    "compute_expanding_power": {
+     "source": "factorlasso.ewm_utils:compute_expanding_power",
+     "is_root_export": true,
+     "qualname": "compute_expanding_power",
+     "is_source_object": true
+    },
+    "get_x_y_np": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "get_x_y_np"
+    },
+    "set_group_loadings": {
+     "source": "factorlasso.ewm_utils:set_group_loadings",
+     "is_root_export": true,
+     "qualname": "set_group_loadings",
+     "is_source_object": true
+    },
+    "solve_cooperative_group_lasso_cvx_problem": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "solve_cooperative_group_lasso_cvx_problem"
+    },
+    "solve_group_lasso_cvx_problem": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "solve_group_lasso_cvx_problem"
+    },
+    "solve_group_lasso_path": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "solve_group_lasso_path"
+    },
+    "solve_lasso_cvx_problem": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "solve_lasso_cvx_problem"
+    },
+    "solve_unilasso_cvx_problem": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "solve_unilasso_cvx_problem"
+    }
+   }
+  },
+  "prior_bounds": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "_compute_expert_prior_bounds": {
+     "source": null,
+     "qualname": "_compute_expert_prior_bounds"
+    },
+    "_validate_expert_bound_settings": {
+     "source": null,
+     "qualname": "_validate_expert_bound_settings"
+    },
+    "_validate_hac_lags": {
+     "source": null,
+     "qualname": "_validate_hac_lags"
+    },
+    "_validate_span": {
+     "source": "factorlasso.ewm_utils:_validate_span",
+     "qualname": "_validate_span",
+     "is_source_object": true
+    },
+    "compute_expert_prior_statistics": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_expert_prior_statistics"
+    }
+   }
+  },
+  "prior_inference": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "Ar1PriorInterval": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "Ar1PriorInterval"
+    },
+    "PriorHacGeometry": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "PriorHacGeometry"
+    },
+    "_angular_log_density": {
+     "source": null,
+     "qualname": "_angular_log_density"
+    },
+    "_ar_covariance": {
+     "source": null,
+     "qualname": "_ar_covariance"
+    },
+    "_gaussian_critical": {
+     "source": null,
+     "qualname": "_gaussian_critical"
+    },
+    "_pivot_tail": {
+     "source": null,
+     "qualname": "_pivot_tail"
+    },
+    "_probability": {
+     "source": null,
+     "qualname": "_probability"
+    },
+    "_responses": {
+     "source": null,
+     "qualname": "_responses"
+    },
+    "_symmetric": {
+     "source": null,
+     "qualname": "_symmetric"
+    },
+    "compute_ar1_prior_interval": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_ar1_prior_interval"
+    },
+    "compute_prior_hac_geometry": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "compute_prior_hac_geometry"
+    },
+    "gaussian_prior_critical_value": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "gaussian_prior_critical_value"
+    }
+   }
+  },
+  "prior_risk": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "GaussianDominanceInformation": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "GaussianDominanceInformation"
+    },
+    "_nonnegative": {
+     "source": null,
+     "qualname": "_nonnegative"
+    },
+    "_symmetric": {
+     "source": "factorlasso.prior_inference:_symmetric",
+     "qualname": "_symmetric",
+     "is_source_object": true
+    },
+    "gaussian_dominance_information": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "gaussian_dominance_information"
+    },
+    "two_factor_limit_risk": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "two_factor_limit_risk"
+    },
+    "two_factor_minimax_radius": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "two_factor_minimax_radius"
+    }
+   }
+  },
+  "residual_covar": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "ResidualCorrelationData": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "ResidualCorrelationData"
+    },
+    "_aggregate_residuals": {
+     "source": null,
+     "qualname": "_aggregate_residuals"
+    },
+    "_compatible_boundary": {
+     "source": null,
+     "qualname": "_compatible_boundary"
+    },
+    "_moment_to_correlation": {
+     "source": null,
+     "qualname": "_moment_to_correlation"
+    },
+    "_prepare_common_residuals": {
+     "source": null,
+     "qualname": "_prepare_common_residuals"
+    },
+    "_validate_span": {
+     "source": "factorlasso.ewm_utils:_validate_span",
+     "qualname": "_validate_span",
+     "is_source_object": true
+    },
+    "compute_ewm": {
+     "source": "factorlasso.ewm_utils:compute_ewm",
+     "is_root_export": true,
+     "qualname": "compute_ewm",
+     "is_source_object": true
+    },
+    "compute_ewm_covar": {
+     "source": "factorlasso.ewm_utils:compute_ewm_covar",
+     "is_root_export": true,
+     "qualname": "compute_ewm_covar",
+     "is_source_object": true
+    },
+    "estimate_residual_correlation": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "estimate_residual_correlation"
+    }
+   }
+  },
+  "residual_diagnostics": {
+   "root_attribute": true,
+   "__all__": [
+    "ResidualDiagnostics",
+    "diagnose_residuals",
+    "marchenko_pastur_edge",
+    "missing_factor_components",
+    "null_threshold",
+    "raw_offdiagonal_mass",
+    "residual_correlation",
+    "effective_sparsity",
+    "Sparsity",
+    "suggest_tolerance",
+    "partition_variance_share"
+   ],
+   "names": {
+    "ArrayLike": {
+     "source": null,
+     "value": {
+      "callable": "Union"
+     }
+    },
+    "ResidualDiagnostics": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "ResidualDiagnostics"
+    },
+    "Sparsity": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "Sparsity"
+    },
+    "_PARTITION_SHARE_COLUMNS": {
+     "source": null,
+     "value": {
+      "list": [
+       "share",
+       "floor",
+       "adjusted_share",
+       "n_names",
+       "n_groups"
+      ]
+     }
+    },
+    "_partition_share_row": {
+     "source": null,
+     "qualname": "_partition_share_row"
+    },
+    "diagnose_residuals": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "diagnose_residuals"
+    },
+    "effective_sparsity": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "effective_sparsity"
+    },
+    "marchenko_pastur_edge": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "marchenko_pastur_edge"
+    },
+    "missing_factor_components": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "missing_factor_components"
+    },
+    "null_threshold": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "null_threshold"
+    },
+    "partition_variance_share": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "partition_variance_share"
+    },
+    "raw_offdiagonal_mass": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "raw_offdiagonal_mass"
+    },
+    "residual_correlation": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "residual_correlation"
+    },
+    "suggest_tolerance": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "suggest_tolerance"
+    }
+   }
+  },
+  "sign_constraints": {
+   "root_attribute": true,
+   "__all__": null,
+   "names": {
+    "_adaptive_penalty_weights": {
+     "source": null,
+     "qualname": "_adaptive_penalty_weights"
+    },
+    "_aggregate_to_block_weights": {
+     "source": null,
+     "qualname": "_aggregate_to_block_weights"
+    },
+    "_aggregate_to_row_weights": {
+     "source": null,
+     "qualname": "_aggregate_to_row_weights"
+    },
+    "_compute_sign_matrix_per_response": {
+     "source": null,
+     "qualname": "_compute_sign_matrix_per_response"
+    },
+    "_compute_sign_vector": {
+     "source": null,
+     "qualname": "_compute_sign_vector"
+    },
+    "_pooled_sign_statistics": {
+     "source": null,
+     "qualname": "_pooled_sign_statistics"
+    },
+    "_sign_observation_weights": {
+     "source": null,
+     "qualname": "_sign_observation_weights"
+    },
+    "derive_sign_constraints": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "derive_sign_constraints"
+    },
+    "validate_cluster_signs": {
+     "source": null,
+     "is_root_export": true,
+     "qualname": "validate_cluster_signs"
+    }
+   }
+  }
+ }
+}
