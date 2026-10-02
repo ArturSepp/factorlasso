@@ -131,8 +131,8 @@ def test_facades_keep_ordinary_attribute_behaviour():
 
 
 def test_estimator_patch_target_reaches_the_fit(monkeypatch):
-    """Patching the canonical owner affects ``fit``; the facade name is the same object."""
-    import factorlasso.linear_model._estimator as owner
+    """Patching the solver name where dispatch looks it up affects ``fit``."""
+    import factorlasso.linear_model._dispatch as owner
     from factorlasso import LassoModelType
 
     calls = []

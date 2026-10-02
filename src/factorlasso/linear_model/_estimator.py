@@ -47,72 +47,34 @@ with grouped variables", *J. R. Statist. Soc. B*, 68(1), 49–67.
 
 from __future__ import annotations
 
-import warnings
 from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
 
-from factorlasso.prior_bounds import _compute_expert_prior_bounds, _validate_expert_bound_settings
-from factorlasso.beta_priors import (
-    _compute_joint_ols_prior, _compute_ols_prior, _validate_prior_selection_type,
-    _zero_incompatible_priors,
-)
 from factorlasso.cluster_smoothing import ClusterSmootherType
 from factorlasso.cluster_utils import (
     DEFAULT_CLUSTER_CORRELATION_TRANSFORM, DEFAULT_CUTOFF_FRACTION, DEFAULT_DISTANCE_TRANSFORM,
-    DEFAULT_LINKAGE_METHOD, VALID_LINKAGE_METHODS, ClusterCorrelationTransform, DistanceTransform,
-    apply_cluster_correlation_transform, compute_clusters_from_corr_matrix,
+    DEFAULT_LINKAGE_METHOD, ClusterCorrelationTransform, DistanceTransform,
 )
 from factorlasso.dependence_utils import (
     DEFAULT_DEPENDENCE_MEASURE, DEFAULT_GERBER_THRESHOLD, DependenceMeasure,
-    compute_dependence_matrix,
 )
-from factorlasso.utils._ewm import _validate_span, compute_ewm, set_group_loadings
+from factorlasso.linear_model import _inspection, _nowcast
+from factorlasso.linear_model._dispatch import (
+    GROUP_PENALTY_MODES, solve_prepared, solve_prepared_path,
+)
+from factorlasso.linear_model._preparation import _PreparedFit, prepare_fit
+from factorlasso.linear_model._settings import (
+    coerce_fit_inputs, resolve_spans, validate_configuration, validate_external_clusters,
+)
+from factorlasso.linear_model._state import fitted_state, install_fitted_state
 from factorlasso.linear_model._types import (
-    LassoModelType, _MODES_WITHOUT_SIGN_CONSTRAINTS, LassoEstimationResult, LassoNowcastResult,
-)
-from factorlasso.linear_model._solvers.common import (
-    _compute_solver_weights, _validate_loss_normalization,
+    LassoEstimationResult, LassoModelType, LassoNowcastResult,
 )
 from factorlasso.utils._panel import get_x_y_np
-from factorlasso.linear_model._solvers.lasso import solve_lasso_cvx_problem
-from factorlasso.linear_model._solvers.group_lasso import (
-    solve_group_lasso_cvx_problem, solve_group_lasso_path,
-)
-from factorlasso.linear_model._solvers.cooperative import solve_cooperative_group_lasso_cvx_problem
-from factorlasso.linear_model._solvers.unilasso import solve_unilasso_cvx_problem
-
-
-def _selected_prior_factors(value) -> tuple:
-    """Validate a scalar or ordered factor list without mutating estimator parameters."""
-    if pd.api.types.is_scalar(value):
-        return () if pd.isna(value) else (value,)
-    if not isinstance(value, (list, tuple)) or not value:
-        raise ValueError('factor_for_prior requires a scalar label or nonempty list/tuple')
-    if any(not pd.api.types.is_scalar(label) or pd.isna(label) for label in value):
-        raise ValueError('factor_for_prior selections require nonmissing scalar labels')
-    if pd.Index(value).has_duplicates:
-        raise ValueError('factor_for_prior selections must contain unique factors')
-    return tuple(value)
-
-
-@dataclass(frozen=True)
-class _PreparedFit:
-    """reg_lambda-independent solver inputs derived once by ``_prepare_fit``."""
-    asset_clusters: Optional[pd.Series]
-    linkage: Optional[Any]
-    cutoff: Optional[float]
-    is_lasso_mode: bool
-    signs_np: Optional[np.ndarray]
-    prior_np: Optional[np.ndarray]
-    penalty_weights_np: Optional[np.ndarray]
-    row_weights_np: Optional[np.ndarray]
-    col_weights_np: Optional[np.ndarray]
-    lower_bounds_np: Optional[np.ndarray]
-    upper_bounds_np: Optional[np.ndarray]
 
 
 @dataclass
@@ -708,161 +670,9 @@ class LassoModel:
     prior_bound_diagnostics_: Optional[pd.DataFrame] = field(default=None, init=False)
     effective_prior_hac_lags_: Optional[int] = field(default=None, init=False)
 
-    def _validate_loss_mode(self) -> None:
-        """Reject invalid or unsupported objective conventions, including after mutation."""
-        _validate_loss_normalization(self.loss_normalization)
-        if (self.model_type == LassoModelType.UNILASSO
-                and self.loss_normalization != 'sample'):
-            raise ValueError('UNILASSO uses its existing unweighted two-stage loss; '
-                             'loss_normalization must be sample')
-
     def __post_init__(self):
-        self._validate_loss_mode()
-        self._validate_ols_prior_mode()
-        self._validate_sign_inputs_mode()
-        if self.model_type in (
-            LassoModelType.GROUP_LASSO,
-            LassoModelType.COOPERATIVE_GROUP_LASSO,
-        ) and self.group_data is None:
-            raise ValueError(
-                "group_data must be provided for model_type="
-                f"{self.model_type.name}"
-            )
-        _validate_span(self.span)
-        _validate_span(
-            self.cluster_correlation_span, name="cluster_correlation_span"
-        )
-        if not (0.0 < self.cutoff_fraction <= 1.0):
-            raise ValueError(
-                f"cutoff_fraction must lie in (0, 1], "
-                f"got {self.cutoff_fraction!r}"
-            )
-        if self.linkage_method not in VALID_LINKAGE_METHODS:
-            raise ValueError(
-                f"linkage_method must be one of {VALID_LINKAGE_METHODS}, "
-                f"got {self.linkage_method!r}"
-            )
-        try:
-            DistanceTransform(self.distance_transform)
-        except ValueError:
-            raise ValueError(
-                f"distance_transform must be one of "
-                f"{[t.value for t in DistanceTransform]}, "
-                f"got {self.distance_transform!r}"
-            ) from None
-        try:
-            ClusterCorrelationTransform(self.cluster_correlation_transform)
-        except ValueError:
-            raise ValueError(
-                f"cluster_correlation_transform must be one of "
-                f"{[item.value for item in ClusterCorrelationTransform]}, "
-                f"got {self.cluster_correlation_transform!r}"
-            ) from None
-        try:
-            DependenceMeasure(self.dependence_measure)
-        except ValueError:
-            raise ValueError(
-                f"dependence_measure must be one of "
-                f"{[m.value for m in DependenceMeasure]}, "
-                f"got {self.dependence_measure!r}"
-            ) from None
-        if not 0.0 <= self.gerber_threshold <= 1.0:
-            raise ValueError(
-                f"gerber_threshold must lie in [0, 1], "
-                f"got {self.gerber_threshold!r}"
-            )
-        if self.n_clusters is not None:
-            if (not isinstance(self.n_clusters, (int, np.integer))
-                    or isinstance(self.n_clusters, bool)):
-                raise ValueError(
-                    f"n_clusters must be an integer or None, "
-                    f"got {self.n_clusters!r}"
-                )
-            if self.n_clusters < 1:
-                raise ValueError(
-                    f"n_clusters must be at least 1, got {self.n_clusters!r}"
-                )
-        try:
-            smoother_type = ClusterSmootherType(self.cluster_smoother_type)
-        except ValueError:
-            raise ValueError(
-                f"cluster_smoother_type must be one of "
-                f"{list(ClusterSmootherType)}, got {self.cluster_smoother_type!r}"
-            ) from None
-        if self.smoother_delta < 0.0:
-            raise ValueError(
-                f"smoother_delta must be non-negative, got {self.smoother_delta!r}"
-            )
-        if not 0.0 <= self.smoother_lambda < 1.0:
-            raise ValueError(
-                f"smoother_lambda must lie in [0, 1), got {self.smoother_lambda!r}"
-            )
-        if smoother_type == ClusterSmootherType.HOLD and self.recluster_freq is None:
-            raise ValueError(
-                f"recluster_freq must be set for HOLD, got {self.recluster_freq!r}"
-            )
-        if smoother_type == ClusterSmootherType.NONE and self.recluster_freq is not None:
-            raise ValueError(
-                f"recluster_freq must be None when smoother is NONE, "
-                f"got {self.recluster_freq!r}"
-            )
-        if self.group_penalty not in ("normalized", "yuan_lin"):
-            raise ValueError(
-                f"group_penalty must be 'normalized' or 'yuan_lin', "
-                f"got {self.group_penalty!r}"
-            )
-        if not (0.0 <= self.l1_weight <= 1.0):
-            raise ValueError(
-                f"l1_weight must lie in [0, 1], got {self.l1_weight!r}"
-            )
-
-    def _validate_sign_inputs_mode(self) -> None:
-        """Reject hard sign inputs for the solvers that cannot enforce them."""
-        if self.model_type not in _MODES_WITHOUT_SIGN_CONSTRAINTS:
-            return
-        if self.factors_beta_loading_signs is not None:
-            raise ValueError(
-                'factors_beta_loading_signs is not supported by the '
-                f'{self.model_type.name} solver, which takes no sign constraint'
-            )
-        if self.nonneg:
-            raise ValueError(
-                f'nonneg=True is not supported by the {self.model_type.name} solver, '
-                'which takes no sign constraint'
-            )
-
-    def _validate_ols_prior_mode(self) -> None:
-        """Reject ambiguous flags and a mode whose solver has no beta prior."""
-        _validate_expert_bound_settings(
-            self.expert_prior_bound_n_std, self.expert_prior_hac_lags,
-            self.expert_prior_hac_lags_freq_dict)
-        if self.expert_prior_bound_n_std is not None:
-            if not self.apply_ols_prior:
-                raise ValueError('expert_prior_bound_n_std requires apply_ols_prior=True')
-            if self.model_type in _MODES_WITHOUT_SIGN_CONSTRAINTS:
-                raise ValueError('expert prior bounds require LASSO, group LASSO, HCGL or FCGL')
-        _validate_prior_selection_type(self.prior_selection_type)
-        if not isinstance(self.apply_ols_prior, (bool, np.bool_)):
-            raise ValueError('apply_ols_prior must be a boolean')
-        if self.factor_for_prior is not None:
-            if not self.apply_ols_prior:
-                raise ValueError('factor_for_prior requires apply_ols_prior=True')
-            if not isinstance(self.factor_for_prior, (Mapping, pd.Series)):
-                raise TypeError('factor_for_prior must be a mapping or pandas Series')
-            if (isinstance(self.factor_for_prior, pd.Series)
-                    and not self.factor_for_prior.index.is_unique):
-                raise ValueError('factor_for_prior response labels must be unique')
-            for _, value in self.factor_for_prior.items():
-                _selected_prior_factors(value)
-        if self.model_type == LassoModelType.UNILASSO:
-            if self.apply_ols_prior:
-                raise ValueError('apply_ols_prior is not supported by the UNILASSO solver')
-            # The UniLasso solver takes no beta prior; reject rather than ignore it silently.
-            if self.factors_beta_prior is not None:
-                raise ValueError(
-                    'factors_beta_prior is not supported by the UNILASSO solver, '
-                    'which takes no beta prior'
-                )
+        """Validate the configuration; see :mod:`factorlasso.linear_model._settings`."""
+        validate_configuration(self)
 
     # ── Backward-compatible property aliases ─────────────────────────
 
@@ -970,65 +780,6 @@ class LassoModel:
 
     # ── Core API ─────────────────────────────────────────────────────
 
-    @staticmethod
-    def _validate_fit_inputs(
-        x: Union[pd.DataFrame, pd.Series, np.ndarray],
-        y: Union[pd.DataFrame, pd.Series, np.ndarray],
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Coerce Series/ndarray → DataFrame and validate shapes / index alignment.
-
-        NumPy arrays are accepted for \\pkg{scikit-learn} interoperability
-        (``Pipeline``, ``GridSearchCV``, ``cross_val_score`` pass ndarrays):
-        a 1-D array becomes a single-column frame, a 2-D array gets generated
-        ``x0, x1, ...`` / ``y0, y1, ...`` column names and a shared
-        ``RangeIndex``. DataFrame inputs are unchanged, so existing callers
-        and the named-index behaviour the rest of the pipeline relies on are
-        unaffected.
-        """
-        if isinstance(x, np.ndarray):
-            # A 1-D array of length T is one regressor observed T times —
-            # mirror the y handling and the pd.Series-x convention. The
-            # previous ``np.atleast_2d`` turned shape (T,) into a (1, T)
-            # row (one observation, T features) and fit() then failed on
-            # index alignment with a misleading error message.
-            if x.ndim == 1:
-                x = x.reshape(-1, 1)
-            x = pd.DataFrame(
-                x, columns=[f"x{j}" for j in range(x.shape[1])]
-            )
-        if isinstance(y, np.ndarray):
-            if y.ndim == 1:
-                y = y.reshape(-1, 1)
-            y = pd.DataFrame(
-                y, columns=[f"y{k}" for k in range(y.shape[1])]
-            )
-        if isinstance(x, pd.Series):
-            x = x.to_frame()
-        if isinstance(y, pd.Series):
-            y = y.to_frame()
-        if not isinstance(x, pd.DataFrame):
-            raise TypeError(
-                f"x must be pd.DataFrame, pd.Series, or np.ndarray, "
-                f"got {type(x).__name__}"
-            )
-        if not isinstance(y, pd.DataFrame):
-            raise TypeError(
-                f"y must be pd.DataFrame, pd.Series, or np.ndarray, "
-                f"got {type(y).__name__}"
-            )
-        if len(x) == 0:
-            raise ValueError("Empty input: x and y must have at least one row")
-        # ndarray inputs arrive with independent RangeIndexes of equal length;
-        # align y onto x's index so the equality check below passes.
-        if len(x) == len(y) and not x.index.equals(y.index):
-            y = y.set_axis(x.index, axis=0)
-        if not x.index.equals(y.index):
-            raise ValueError(
-                f"x and y must share the same index: "
-                f"x has {len(x)} rows, y has {len(y)} rows"
-            )
-        return x, y
-
     def copy(self, kwargs: Optional[Dict] = None) -> LassoModel:
         """Create a fresh, unfitted copy, optionally overriding parameters.
 
@@ -1097,42 +848,16 @@ class LassoModel:
         self
             Updated with ``coef_`` (N × M) and ``intercept_`` (N,).
         """
-        x, y = self._validate_fit_inputs(x, y)
-        external_modes = (
-            LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-            LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+        x, y = coerce_fit_inputs(x, y)
+        validate_external_clusters(
+            self.model_type, external_clusters, external_linkage, external_cutoff,
         )
-        if external_clusters is not None and self.model_type not in external_modes:
-            raise ValueError(
-                "external_clusters is supported only for HCGL and FCGL, "
-                f"got model_type={self.model_type.name}"
-            )
-        if external_clusters is None and (
-            external_linkage is not None or external_cutoff is not None
-        ):
-            raise ValueError("external linkage/cutoff metadata requires external_clusters")
-
-        # Explicit None-check for span precedence: ``span or self.span``
-        # would mistakenly treat span=0 as falsy and fall back to
-        # self.span. Zero is not a valid span anyway (validated below),
-        # but the correct idiom is an explicit None check.
-        eff_span = self.span if span is None else span
-        _validate_span(eff_span)
-        configured_cluster_span = (
-            self.cluster_correlation_span
-            if cluster_correlation_span is None
-            else cluster_correlation_span
-        )
-        eff_cluster_correlation_span = (
-            eff_span if configured_cluster_span is None else configured_cluster_span
-        )
-        _validate_span(
-            eff_cluster_correlation_span, name="cluster_correlation_span"
+        eff_span, eff_cluster_correlation_span = resolve_spans(
+            self, span, cluster_correlation_span,
         )
         x_np, y_np, valid_mask = get_x_y_np(
             x=x, y=y, span=eff_span, demean=self.demean
         )
-
         prep = self._prepare_fit(
             x=x, y=y, x_np=x_np, y_np=y_np,
             valid_mask=valid_mask, eff_span=eff_span,
@@ -1141,150 +866,11 @@ class LassoModel:
             external_linkage=external_linkage,
             external_cutoff=external_cutoff,
         )
-        asset_clusters = prep.asset_clusters
-        linkage = prep.linkage
-        cutoff = prep.cutoff
-        is_lasso_mode = prep.is_lasso_mode
-        signs_np = prep.signs_np
-        prior_np = prep.prior_np
-        penalty_weights_np = prep.penalty_weights_np
-        row_weights_np = prep.row_weights_np
-        col_weights_np = prep.col_weights_np
-
-        # ── Solver dispatch (consumes the pre-computed asset_clusters) ──
-        if is_lasso_mode:
-            result = solve_lasso_cvx_problem(
-                x=x_np, y=y_np, valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                solver_fallbacks=self.solver_fallbacks,
-                loss_normalization=self.loss_normalization,
-                nonneg=self.nonneg,
-                factors_beta_loading_signs=signs_np,
-                factors_beta_prior=prior_np,
-                beta_lower_bounds=prep.lower_bounds_np,
-                beta_upper_bounds=prep.upper_bounds_np,
-                penalty_weights=penalty_weights_np,
-            )
-
-        elif self.model_type == LassoModelType.GROUP_LASSO:
-            # Restore NaN positions before computing the EWMA correlation for
-            # clustering. ``get_x_y_np`` zero-fills NaN in y_np so the CVXPY
-            # quadratic-loss solvers can process a finite array (the weights
-            # matrix ``valid_mask`` separately zeros out those observations in
-            # the loss). But ``compute_ewm_covar`` interprets every finite row
-            # as a legitimate observation — a zero-filled row enters the
-            # correlation recursion as a "zero return" observation rather than
-            # as "no observation", which systematically shrinks the estimated
-            # correlations of assets with longer leading-NaN prefixes toward
-            # zero. That shrinkage then propagates into Ward linkage distances,
-            # dendrogram cuts, and group-lasso β estimates, producing results
-            # that depend on how much pre-history each asset carries rather
-            # than on economic correlation structure.
-            #
-            # Passing NaN through lets compute_ewm_covar's NaN-aware recursion
-            # (NanBackfill.FFILL on non-finite outer products) handle leading
-            # and mid-stream missing observations correctly: the correlation
-            # for each asset is estimated only over its valid window, and the
-            # zero-variance guard on the diagonal still protects against
-            # degenerate columns. See CHANGELOG entry for 2026-04-16 commit
-            # 937ba7c "align ewma with qis" for compute_ewm_covar's current
-            # NaN-handling contract.
-            gl = set_group_loadings(group_data=asset_clusters)
-            result = solve_group_lasso_cvx_problem(
-                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
-                valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                solver_fallbacks=self.solver_fallbacks,
-                loss_normalization=self.loss_normalization,
-                nonneg=self.nonneg,
-                factors_beta_loading_signs=signs_np,
-                factors_beta_prior=prior_np,
-                beta_lower_bounds=prep.lower_bounds_np,
-                beta_upper_bounds=prep.upper_bounds_np,
-                group_penalty=self.group_penalty,
-                l1_weight=self.l1_weight,
-                penalty_weights=penalty_weights_np,
-                row_weights=row_weights_np,
-            )
-
-        elif self.model_type == LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO:
-            gl = set_group_loadings(group_data=asset_clusters)
-            result = solve_group_lasso_cvx_problem(
-                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
-                valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                solver_fallbacks=self.solver_fallbacks,
-                loss_normalization=self.loss_normalization,
-                nonneg=self.nonneg,
-                factors_beta_loading_signs=signs_np,
-                factors_beta_prior=prior_np,
-                beta_lower_bounds=prep.lower_bounds_np,
-                beta_upper_bounds=prep.upper_bounds_np,
-                group_penalty=self.group_penalty,
-                l1_weight=self.l1_weight,
-                penalty_weights=penalty_weights_np,
-                row_weights=row_weights_np,
-            )
-        elif self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO:
-            # Same HCGL cluster discovery as HIERARCHICAL_CLUSTER_GROUP_LASSO, but the
-            # group penalty is taken over each cluster x factor block
-            # (block_mode="cluster_factor") rather than over each asset row.
-            # The cluster is the group of the L2 norm here, so the problem
-            # is NOT block-separable across assets.
-            gl = set_group_loadings(group_data=asset_clusters)
-            result = solve_group_lasso_cvx_problem(
-                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
-                valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                solver_fallbacks=self.solver_fallbacks,
-                loss_normalization=self.loss_normalization,
-                nonneg=self.nonneg,
-                factors_beta_loading_signs=signs_np,
-                factors_beta_prior=prior_np,
-                beta_lower_bounds=prep.lower_bounds_np,
-                beta_upper_bounds=prep.upper_bounds_np,
-                group_penalty=self.group_penalty,
-                l1_weight=self.l1_weight,
-                penalty_weights=penalty_weights_np,
-                block_mode="cluster_factor",
-                col_weights=col_weights_np,
-            )
-        elif self.model_type in (
-            LassoModelType.COOPERATIVE_GROUP_LASSO,
-            LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
-        ):
-            gl = set_group_loadings(group_data=asset_clusters)
-            result = solve_cooperative_group_lasso_cvx_problem(
-                x=x_np, y=y_np, group_loadings=gl.to_numpy(),
-                valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                solver_fallbacks=self.solver_fallbacks,
-                loss_normalization=self.loss_normalization,
-                factors_beta_prior=prior_np,
-                group_penalty=self.group_penalty,
-                l1_weight=self.l1_weight,
-            )
-        elif self.model_type == LassoModelType.UNILASSO:
-            result = solve_unilasso_cvx_problem(
-                x=x_np, y=y_np, valid_mask=valid_mask,
-                reg_lambda=self.reg_lambda, span=eff_span,
-                verbose=verbose, solver=self.solver,
-                solver_fallbacks=self.solver_fallbacks,
-                loo=self.unilasso_loo,
-                non_negative=self.unilasso_non_negative,
-            )
-        else:
-            raise NotImplementedError(f"Unsupported model_type: {self.model_type}")
-
+        result = solve_prepared(self, prep, x_np, y_np, valid_mask, eff_span, verbose)
         self._finalize_fit(
             result=result, x=x, y=y, valid_mask=valid_mask, eff_span=eff_span,
             eff_cluster_correlation_span=eff_cluster_correlation_span,
-            asset_clusters=asset_clusters, linkage=linkage, cutoff=cutoff,
+            asset_clusters=prep.asset_clusters, linkage=prep.linkage, cutoff=prep.cutoff,
         )
         return self
 
@@ -1309,384 +895,11 @@ class LassoModel:
         across the grid. Sets ``self.derived_signs_`` as the in-line code
         did.
         """
-        self._validate_loss_mode()
-        self._validate_ols_prior_mode()
-        self._validate_sign_inputs_mode()
-        self.ols_betas_ = None
-        self.ols_r2_ = None
-        self.ols_beta_prior_ = None
-        self.effective_beta_prior_ = None
-        self.ols_prior_span_ = None
-        self.prior_lower_bounds_ = None
-        self.prior_upper_bounds_ = None
-        self.prior_bound_diagnostics_ = None
-        self.effective_prior_hac_lags_ = None
-        _validate_span(self.auto_sign_ewma_span, name="auto_sign_ewma_span")
-        if self.auto_sign_variance not in ('date', 'independent'):
-            raise ValueError("auto_sign_variance must be 'date' or 'independent'")
-        if self.auto_sign_use_fit_span and self.auto_sign_ewma_span is not None:
-            raise ValueError("select either auto_sign_use_fit_span or auto_sign_ewma_span")
-        self.effective_sign_span_ = None
-        for attr in ('detected_signs_', 'sign_slopes_', 'sign_t_stats_',
-                     'sign_effective_n_', 'sign_valid_counts_',
-                     'sign_penalty_weights_', 'sign_block_weights_'):
-            setattr(self, attr, None)
-        # ── Asset-side clustering (length N), computed once and shared by
-        #    both the auto-sign derivation block and the solver dispatch.
-        #    None for plain LASSO / single-column y; pd.Series indexed by
-        #    y.columns for the GROUP modes.
-        # ----------------------------------------------------------------
-        excluded = self.auto_sign_excluded_factors
-        if excluded is not None:
-            if (isinstance(excluded, str)
-                    or not isinstance(excluded, (list, tuple))
-                    or any(not isinstance(name, str) for name in excluded)
-                    or len(set(excluded)) != len(excluded)):
-                raise ValueError("auto_sign_excluded_factors must be unique factor names")
-            missing = set(excluded) - set(x.columns)
-            if missing:
-                raise ValueError(
-                    f"auto_sign_excluded_factors not present in x: {sorted(missing)}"
-                )
-        asset_clusters: Optional[pd.Series] = None
-        linkage = None
-        cutoff = None
-        is_lasso_mode = (
-            self.model_type == LassoModelType.LASSO
-            or (
-                y_np.shape[1] == 1
-                and self.model_type in (
-                    LassoModelType.GROUP_LASSO,
-                    LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-                    LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-                )
-            )
-        )
-
-        if is_lasso_mode:
-            # asset_clusters stays None → per-y-column sign derivation below
-            pass
-        elif self.model_type in (
-            LassoModelType.GROUP_LASSO,
-            LassoModelType.COOPERATIVE_GROUP_LASSO,
-        ):
-            asset_clusters = self.group_data[y.columns]
-        elif self.model_type in (
-            LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-            LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-            LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
-        ):
-            if external_clusters is not None:
-                asset_clusters = external_clusters.reindex(y.columns)
-                if asset_clusters.isna().any():
-                    missing = asset_clusters[asset_clusters.isna()].index.tolist()
-                    raise ValueError(
-                        f"external_clusters is missing assignments for {missing!r}"
-                    )
-                linkage = external_linkage
-                cutoff = external_cutoff
-            else:
-                # When the two spans are equal, reuse the solver-ready panel so
-                # the default path stays numerically identical. A distinct
-                # clustering span must also own EWMA demeaning; changing only
-                # the final dependence weights would still leak the beta span
-                # into cluster discovery through the transformed response panel.
-                if eff_cluster_correlation_span == eff_span:
-                    clustering_y_np = y_np
-                    clustering_valid_mask = valid_mask
-                else:
-                    _, clustering_y_np, clustering_valid_mask = get_x_y_np(
-                        x=x,
-                        y=y,
-                        span=eff_cluster_correlation_span,
-                        demean=self.demean,
-                    )
-                # Restore NaN before the clustering correlation (see block comment
-                # in the solver-dispatch section below for the rationale).
-                y_for_corr = np.where(
-                    clustering_valid_mask > 0, clustering_y_np, np.nan
-                )
-                # By default the clustering correlation uses the SAME observation
-                # weighting as the solver loss: sample Pearson correlation
-                # (pairwise-complete over valid observations) when ``span=None``,
-                # the EWMA(span) correlation when a span is set. Versions before
-                # 0.5.1 always routed through ``compute_ewm_covar``, whose
-                # ``ewm_lambda = 0.94`` default (an effective span of ~32
-                # observations, the RiskMetrics daily convention) silently
-                # applied when ``span=None`` — so a uniform-weight fit clustered
-                # on a trailing-window correlation, contradicting both the
-                # documented contract (Pearson ``corr(Y)``) and the loss
-                # weighting. Correlation is invariant to centring, so computing
-                # it on the demeaned panel is equivalent to the raw panel.
-                # ``compute_dependence_matrix`` preserves that contract for
-                # every measure: ``span=None`` weights observations uniformly
-                # and a finite span applies EWMA(span) weights. The Gerber
-                # statistic weights its indicator counts, which recovers the
-                # published equal-weight statistic as span grows. Note that
-                # Gerber, unlike Pearson and Spearman, is NOT invariant to
-                # centring — its thresholds apply to levels — so it sees the
-                # same demeaned panel the solver loss does.
-                corr = compute_dependence_matrix(
-                    a=y_for_corr,
-                    dependence_measure=self.dependence_measure,
-                    span=eff_cluster_correlation_span,
-                    gerber_threshold=self.gerber_threshold,
-                )
-                corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
-                corr_df = apply_cluster_correlation_transform(
-                    corr_df, transform=self.cluster_correlation_transform
-                )
-                asset_clusters, linkage, cutoff = compute_clusters_from_corr_matrix(
-                    corr_df, cutoff_fraction=self.cutoff_fraction,
-                    linkage_method=self.linkage_method,
-                    distance_transform=self.distance_transform,
-                    n_clusters=self.n_clusters,
-                )
-
-        # ── Sign-constraint assembly ─────────────────────────────────
-        # Two layers can contribute:
-        #
-        #   1. Auto-derived signs (auto_sign_constraints=True): univariate
-        #      slopes computed on the EWMA-demeaned, NaN-masked arrays the
-        #      solver actually consumes. Pooling strategy mirrors the
-        #      solver's structural assumption:
-        #        * GROUP modes  → pool y within each asset cluster; signs
-        #          shared by every cluster member (rows identical within
-        #          a cluster, can differ across clusters).
-        #        * LASSO / single-col → derive signs per y-column
-        #          independently; each row of the (N × M) matrix comes
-        #          from a univariate fit against a single response.
-        #
-        #   2. Explicit factors_beta_loading_signs (N × M, NaN-permissive):
-        #      asset-specific per-cell overrides. NaN means "use the auto
-        #      layer here"; any non-NaN value wins.
-        #
-        # When both are supplied, (2) is overlaid on (1). When only (1) or
-        # only (2) is supplied, the other layer is treated as all-NaN.
-        # ----------------------------------------------------------------
-        signs_np = None
-        auto_signs_np = None
-        explicit_signs_np = None
-        # Track univariate slope magnitudes when adaptive penalty weighting
-        # is requested; same provenance as the signs (per-cluster or per-y).
-        auto_slopes_np = None
-        want_adaptive = (
-            self.auto_sign_constraints and self.auto_sign_adaptive_weights
-        )
-
-        if self.auto_sign_constraints:
-            from factorlasso.sign_constraints import (
-                _compute_sign_matrix_per_response, _compute_sign_vector,
-            )
-            n, m = y_np.shape[1], x_np.shape[1]
-            # Solver arrays remain zero-filled; signs must see the original masks.
-            offset = len(x) - len(x_np)
-            sign_x = np.where(x.iloc[offset:].notna().to_numpy(), x_np, np.nan)
-            sign_y = np.where(valid_mask > 0, y_np, np.nan)
-            sign_span = eff_span if self.auto_sign_use_fit_span else self.auto_sign_ewma_span
-            self.effective_sign_span_ = sign_span
-            sign_kwargs = dict(auto_sign_threshold_t=self.auto_sign_threshold_t,
-                               ewma_span=sign_span, variance_estimator=self.auto_sign_variance,
-                               return_diagnostics=True)
-            if asset_clusters is not None:
-                auto_signs_np = np.empty((n, m))
-                auto_slopes_np = np.empty((n, m))
-                diagnostics = {key: np.empty((n, m))
-                               for key in ('t_stats', 'effective_n', 'n_obs')}
-                cluster_vals = np.asarray(asset_clusters)
-                for c in np.unique(cluster_vals):
-                    members_idx = np.where(cluster_vals == c)[0]
-                    signs, slopes, diag = _compute_sign_vector(
-                        x_arr=sign_x, y_arr=sign_y[:, members_idx], **sign_kwargs)
-                    auto_signs_np[members_idx] = signs
-                    auto_slopes_np[members_idx] = slopes
-                    for key in diagnostics:
-                        diagnostics[key][members_idx] = diag[key]
-            else:
-                auto_signs_np, auto_slopes_np, diagnostics = _compute_sign_matrix_per_response(
-                    x_arr=sign_x, y_arr=sign_y, **sign_kwargs)
-            self.detected_signs_ = pd.DataFrame(auto_signs_np, index=y.columns, columns=x.columns)
-            self.sign_slopes_ = pd.DataFrame(auto_slopes_np, index=y.columns, columns=x.columns)
-            for attr, key in (('sign_t_stats_', 't_stats'), ('sign_effective_n_', 'effective_n'),
-                              ('sign_valid_counts_', 'n_obs')):
-                setattr(self, attr, pd.DataFrame(
-                    diagnostics[key], index=y.columns, columns=x.columns))
-
-        if self.factors_beta_loading_signs is not None:
-            explicit_signs_np = self.factors_beta_loading_signs.loc[
-                y.columns, x.columns
-            ].to_numpy()
-
-        # Exclude only the automatic constraint layer. Keep the original pooled
-        # slopes/signs for adaptive weights; explicit per-asset signs still win.
-        auto_constraint_signs = auto_signs_np
-        if auto_signs_np is not None and excluded:
-            auto_constraint_signs = auto_signs_np.copy()
-            auto_constraint_signs[:, x.columns.get_indexer(excluded)] = np.nan
-        if auto_constraint_signs is not None and explicit_signs_np is not None:
-            # Overlay: explicit per-cell value wins where non-NaN
-            signs_np = np.where(
-                np.isnan(explicit_signs_np), auto_constraint_signs, explicit_signs_np
-            )
-        elif auto_constraint_signs is not None:
-            signs_np = auto_constraint_signs
-        elif explicit_signs_np is not None:
-            signs_np = explicit_signs_np
-
-        prior_np = None
-        if self.apply_ols_prior:
-            ols_beta, ols_r2, prior_np = _compute_ols_prior(
-                x.to_numpy(dtype=float), y.to_numpy(dtype=float), span=eff_span,
-                min_periods=max(3, self.warmup_period or 0),
-                prior_selection_type=self.prior_selection_type,
-            )
-            if self.factor_for_prior is not None:
-                for response, selection in self.factor_for_prior.items():
-                    factors = _selected_prior_factors(selection)
-                    if not factors:
-                        continue
-                    missing = [factor for factor in factors if factor not in x.columns]
-                    if missing:
-                        raise ValueError(f'factor_for_prior names unknown factors {missing!r}')
-                    if response not in y.columns:
-                        continue
-                    i = y.columns.get_loc(response)
-                    columns = x.columns.get_indexer(factors)
-                    prior_np[i, :] = 0.0
-                    if len(factors) == 1:
-                        j = columns[0]
-                        prior_np[i, j] = ols_beta[i, j] if np.isfinite(ols_beta[i, j]) else 0.0
-                    else:
-                        prior_np[i, columns] = _compute_joint_ols_prior(
-                            x.iloc[:, columns].to_numpy(dtype=float),
-                            y.iloc[:, i].to_numpy(dtype=float), span=eff_span,
-                            min_periods=max(3, self.warmup_period or 0))
-            self.ols_betas_ = pd.DataFrame(ols_beta, index=y.columns, columns=x.columns)
-            self.ols_r2_ = pd.DataFrame(ols_r2, index=y.columns, columns=x.columns)
-            self.ols_beta_prior_ = pd.DataFrame(
-                prior_np.copy(), index=y.columns, columns=x.columns,
-            )
-            self.ols_prior_span_ = eff_span
-        if self.factors_beta_prior is not None:
-            explicit_prior = self.factors_beta_prior.loc[y.columns, x.columns].to_numpy()
-            if self.apply_ols_prior:
-                if np.isinf(explicit_prior).any():
-                    raise ValueError('OLS prior overrides must be finite or NaN')
-                prior_np = np.where(np.isnan(explicit_prior), prior_np, explicit_prior)
-            else:
-                prior_np = explicit_prior
-        # Prior direction overrides only data-detected constraints, including
-        # the automatic zero gate. Explicit hard signs and excluded columns
-        # retain their precedence; zero/missing priors carry no direction.
-        # Keep auto_signs_np untouched: adaptive weights still use detection.
-        if auto_constraint_signs is not None and prior_np is not None:
-            prior_signs = np.sign(prior_np)
-            override = (np.isfinite(prior_np) & (prior_np != 0.0)
-                        & np.isfinite(auto_constraint_signs)
-                        & (prior_signs != auto_constraint_signs))
-            if explicit_signs_np is not None:
-                override &= np.isnan(explicit_signs_np)
-            signs_np = signs_np.copy()
-            signs_np[override] = prior_signs[override]
-
-        # Persist the final solver-facing sign matrix for monitoring /
-        # downstream inspection. Stored only when the solver receives it:
-        # the UniLasso and cooperative solvers take no sign constraint, so
-        # derived signs are not enforced there and are not reported.
-        if signs_np is not None and self.model_type not in _MODES_WITHOUT_SIGN_CONSTRAINTS:
-            self.derived_signs_ = pd.DataFrame(
-                signs_np, index=y.columns, columns=x.columns,
-            )
-
-        if self.apply_ols_prior:
-            # Only remaining hard-constraint conflicts lose their prior.
-            prior_np = _zero_incompatible_priors(prior_np, signs_np, nonneg=self.nonneg)
-            self.effective_beta_prior_ = pd.DataFrame(
-                prior_np.copy(), index=y.columns, columns=x.columns,
-            )
-
-        lower_bounds_np = upper_bounds_np = None
-        if self.expert_prior_bound_n_std is not None:
-            selections = {}
-            for asset in y.columns:
-                explicit = (None if self.factor_for_prior is None
-                            else self.factor_for_prior.get(asset))
-                factors = _selected_prior_factors(explicit)
-                if not factors:
-                    # Use the same raw highest-R-squared winner as the OLS prior,
-                    # before manual overlays or hard signs. Never reselect after
-                    # a constraint removes it; ties retain input factor order.
-                    scores = self.ols_r2_.loc[asset].dropna()
-                    factors = (scores.idxmax(),) if not scores.empty else ()
-                selections[asset] = factors
-            lower, upper, diagnostics = _compute_expert_prior_bounds(
-                x, y, selections, self.ols_beta_prior_, self.effective_beta_prior_,
-                self.factors_beta_prior, eff_span, self.expert_prior_bound_n_std,
-                self.expert_prior_hac_lags, max(3, self.warmup_period or 0))
-            self.prior_lower_bounds_ = lower
-            self.prior_upper_bounds_ = upper
-            self.prior_bound_diagnostics_ = diagnostics
-            self.effective_prior_hac_lags_ = self.expert_prior_hac_lags
-            lower_bounds_np, upper_bounds_np = lower.to_numpy(), upper.to_numpy()
-
-        # ── Adaptive L1 penalty weights (Zou 2006; opt-in) ───────────────
-        # When auto_sign_adaptive_weights=True, derive per-cell L1 weights
-        # from the univariate slope magnitudes captured above. Only the
-        # auto-derived layer contributes; explicit sign overrides do not
-        # carry magnitude information.
-        #
-        # The per-cell weights are used by both:
-        #   • the L1 term (Zou 2006 adaptive Lasso), when ``l1_weight > 0``;
-        #   • the group-L2 term (Wang & Leng 2008 adaptive group lasso),
-        #     via row aggregation. This is what gives the adaptive flag
-        #     impact in the production HIERARCHICAL_CLUSTER_GROUP_LASSO config where
-        #     ``l1_weight = 0`` and the group penalty does all the work.
-        penalty_weights_np = None
-        row_weights_np = None
-        col_weights_np = None
-        if want_adaptive and auto_slopes_np is not None:
-            from factorlasso.sign_constraints import (
-                _adaptive_penalty_weights,
-                _aggregate_to_block_weights,
-                _aggregate_to_row_weights,
-            )
-            penalty_weights_np = _adaptive_penalty_weights(
-                slopes=auto_slopes_np,
-                signs=auto_signs_np if auto_signs_np is not None
-                else np.sign(auto_slopes_np),
-                gamma=self.auto_sign_adaptive_gamma,
-                floor=self.auto_sign_adaptive_floor,
-            )
-            row_weights_np = _aggregate_to_row_weights(
-                cell_weights=penalty_weights_np,
-                signs=auto_signs_np if auto_signs_np is not None
-                else np.sign(auto_slopes_np),
-            )
-            # Skip the cluster-by-factor block weights when the fit has
-            # degenerated to plain LASSO (single asset): there are no clusters
-            # and the lasso solver does not consume col_weights anyway.
-            if (self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO
-                    and not is_lasso_mode):
-                col_weights_np = _aggregate_to_block_weights(
-                    cell_weights=penalty_weights_np,
-                    signs=auto_signs_np if auto_signs_np is not None
-                    else np.sign(auto_slopes_np),
-                    group_loadings=set_group_loadings(
-                        group_data=asset_clusters
-                    ).to_numpy(),
-                )
-
-        if penalty_weights_np is not None:
-            self.sign_penalty_weights_ = pd.DataFrame(
-                penalty_weights_np, index=y.columns, columns=x.columns)
-        self.sign_block_weights_ = None if col_weights_np is None else col_weights_np.copy()
-
-        return _PreparedFit(
-            asset_clusters=asset_clusters, linkage=linkage, cutoff=cutoff,
-            is_lasso_mode=is_lasso_mode, signs_np=signs_np, prior_np=prior_np,
-            penalty_weights_np=penalty_weights_np,
-            row_weights_np=row_weights_np, col_weights_np=col_weights_np,
-            lower_bounds_np=lower_bounds_np, upper_bounds_np=upper_bounds_np,
+        return prepare_fit(
+            self, x=x, y=y, x_np=x_np, y_np=y_np, valid_mask=valid_mask, eff_span=eff_span,
+            eff_cluster_correlation_span=eff_cluster_correlation_span,
+            external_clusters=external_clusters, external_linkage=external_linkage,
+            external_cutoff=external_cutoff,
         )
 
     def _finalize_fit(
@@ -1708,159 +921,11 @@ class LassoModel:
         single fit and every point on a regularisation path share one
         post-processing path.
         """
-        # Zero out betas for variables with insufficient history
-        est_beta = result.estimated_beta
-        short_assets: Optional[pd.Index] = None
-        if self.warmup_period is not None:
-            n_valid = np.count_nonzero(~np.isnan(y.to_numpy()), axis=0)
-            short = n_valid < self.warmup_period
-            if np.any(short):
-                est_beta[short, :] = 0.0
-                # Capture the zeroed assets for the warning below and for
-                # the cluster-assignment step at the end of fit(), which
-                # must drop these same assets so clusters_, coef_, and the
-                # per-asset diagnostics stay mutually consistent. Without
-                # this the zeroed-beta assets would still receive spurious
-                # singleton cluster labels that inflate downstream
-                # n_clusters and pollute cluster-based risk attribution /
-                # regime diagnostics.
-                short_assets = y.columns[short]
-                zeroed = ', '.join(map(str, short_assets[:10]))
-                if len(short_assets) > 10:
-                    zeroed += f", ... (+{len(short_assets) - 10} more)"
-                warnings.warn(
-                    f"factorlasso: {int(np.sum(short))} of "
-                    f"{len(short)} assets had fewer than "
-                    f"warmup_period={self.warmup_period} valid "
-                    f"observations and were zeroed: {zeroed}",
-                    stacklevel=2,
-                )
-                for attr in ('alpha', 'ss_total', 'ss_res', 'r2'):
-                    getattr(result, attr)[short] = np.nan
-
-        # Store fitted state (trailing underscore convention)
-        self.x_ = x
-        self.y_ = y
-        self.valid_mask_ = valid_mask
-        self.n_loss_rows_ = valid_mask.shape[0]
-        loss_weights = _compute_solver_weights(
-            self.n_loss_rows_, len(y.columns), eff_span, valid_mask)
-        if self.model_type == LassoModelType.UNILASSO:
-            # UniLasso's stage-two objective is unweighted on each valid window.
-            mass = np.sum(valid_mask, axis=0)
-            denominator = mass.copy()
-        else:
-            mass = np.sum(np.square(loss_weights), axis=0)
-            denominator = (mass.copy() if self.loss_normalization == 'weight_sum'
-                           else np.full(len(y.columns), self.n_loss_rows_, dtype=float))
-        self.loss_weight_mass_ = pd.Series(mass, index=y.columns, name='loss_weight_mass')
-        self.loss_denominator_ = pd.Series(denominator, index=y.columns, name='loss_denominator')
-        self.effective_span_ = eff_span
-        self.effective_cluster_correlation_span_ = eff_cluster_correlation_span
-        self.coef_ = pd.DataFrame(
-            est_beta, index=y.columns, columns=x.columns,
-        )
-        # Capture one original-unit T x N residual panel for causal nowcasts.
-        # Existing x_/y_ intentionally preserve their historical aliasing
-        # contract, so eligibility and alpha cannot be reconstructed from
-        # those mutable caller-owned frames after fit().
-        x_snapshot = x.to_numpy(dtype=float, copy=True)
-        y_snapshot = y.to_numpy(dtype=float, copy=True)
-        beta_snapshot = self.coef_.to_numpy(dtype=float, copy=True)
-        self.fit_demeaned_ = bool(self.demean)
-        self.nowcast_residuals_ = pd.DataFrame(
-            y_snapshot - x_snapshot @ beta_snapshot.T,
-            index=y.index.copy(),
-            columns=y.columns.copy(),
-            copy=True,
-        )
-        self.nowcast_factors_complete_ = bool(np.isfinite(x_snapshot).all())
-        self.nowcast_final_response_complete_ = bool(
-            len(y_snapshot) > 0 and np.isfinite(y_snapshot[-1]).all()
-        )
-        # intercept_ : preserved from v0.3.3 — the raw solver output, namely
-        # the EWMA-weighted residual mean on the demeaned data. This is the
-        # mechanical artefact of fitting a no-intercept model on centered
-        # inputs (see :class:`LassoEstimationResult` docstring on ``alpha``).
-        # It is NOT the regression intercept in the original
-        # ``y = α + Xβ + ε`` representation; for span=None it is identically
-        # zero by construction. Kept under this name for back-compat with
-        # any analytics that read ``model.intercept_``.
-        self.intercept_ = pd.Series(
-            result.alpha, index=y.columns, name='intercept',
-        )
-        # alpha_const_ : the economic intercept α — what users typically
-        # mean by "alpha" when decomposing returns into ``α + Xβ + ε``.
-        #
-        # Reconstructed from the same weighting that produced β: for
-        # ``span=None`` (uniform weights) this is the sample-mean
-        # reconstruction ``α = ȳ - x̄·β``; for ``span=integer`` it uses
-        # EWMA-weighted means with the same weights factorlasso applies in
-        # the loss function. This guarantees the (α, β) pair is
-        # internally consistent — both are estimators on the same weighted
-        # objective. Using sample means with EWMA-weighted β would mix two
-        # different estimators and the resulting α would not be the
-        # weighted-residual-mean that pairs with β.
-        #
-        # For ``span=None`` and unconstrained coefficients this equals
-        # the OLS intercept exactly.
-        x_arr = x.to_numpy(dtype=float)
-        y_arr = y.to_numpy(dtype=float)
-        T_full, n_x_full = x_arr.shape
-        n_y_full = y_arr.shape[1]
-        # Per-response valid mask of full (pre-demean) length T_full.
-        # NaN in y[:, j] or all-NaN in x[t] makes row invalid for response j.
-        y_valid = (~np.isnan(y_arr)).astype(float)
-        x_row_valid = (~np.isnan(x_arr).all(axis=1)).astype(float)
-        valid_full = y_valid * x_row_valid[:, None]
-        # Weights aligned with the original T_full rows. Match factorlasso's
-        # loss function: w_t² = (1 - 2/(span+1))^(T-1-t) for EWMA, uniform
-        # for span=None.
-        if eff_span is None:
-            w_sq_full = np.ones(T_full)
-        else:
-            lam = 1.0 - 2.0 / (float(eff_span) + 1.0)
-            w_sq_full = lam ** np.arange(T_full - 1, -1, -1)
-        x_safe = np.nan_to_num(x_arr)
-        y_safe = np.nan_to_num(y_arr)
-        x_means = np.zeros((n_y_full, n_x_full))
-        y_means = np.zeros(n_y_full)
-        for j in range(n_y_full):
-            w_j = w_sq_full * valid_full[:, j]
-            tot = w_j.sum()
-            if tot > 0.0:
-                w_j_norm = w_j / tot
-                x_means[j] = w_j_norm @ x_safe
-                y_means[j] = w_j_norm @ y_safe[:, j]
-            else:
-                x_means[j] = np.nan
-                y_means[j] = np.nan
-        beta_arr = np.where(np.isnan(est_beta), 0.0, est_beta)
-        alpha_const_arr = y_means - np.einsum('ij,ij->i', beta_arr, x_means)
-        alpha_const_ser = pd.Series(
-            alpha_const_arr, index=y.columns, name='alpha_const',
-        )
-        if short_assets is not None:
-            alpha_const_ser.loc[short_assets] = np.nan
-        self.alpha_const_ = alpha_const_ser
-        self.estimation_result_ = result
-        # asset_clusters is already populated by the upstream dispatch (HCGL
-        # output for HIERARCHICAL_CLUSTER_GROUP_LASSO, group_data for GROUP_LASSO, None
-        # for plain LASSO). Filter out cluster labels for ghost assets —
-        # assets whose betas were zeroed above because they had fewer than
-        # ``warmup_period`` valid observations. Dropping them here keeps
-        # ``clusters_`` consistent with ``coef_`` (zeroed) and per-asset
-        # diagnostics (NaN), so downstream consumers that count or analyse
-        # clusters see only assets that actually contributed to the fit.
-        # Without this, pre-launch / short-history assets receive
-        # placeholder singleton labels that inflate ``n_clusters`` in early
-        # history (observed: 83 raw vs 31 real on a 160-asset multi-asset
-        # universe at 2002-12-31).
-        if asset_clusters is not None and short_assets is not None and len(short_assets) > 0:
-            asset_clusters = asset_clusters.drop(short_assets, errors='ignore')
-        self.clusters_ = asset_clusters
-        self.linkage_ = linkage
-        self.cutoff_ = cutoff
+        install_fitted_state(self, fitted_state(
+            self, result=result, x=x, y=y, valid_mask=valid_mask, eff_span=eff_span,
+            eff_cluster_correlation_span=eff_cluster_correlation_span,
+            asset_clusters=asset_clusters, linkage=linkage, cutoff=cutoff,
+        ))
 
     def fit_reg_lambda_path(
         self,
@@ -1906,37 +971,14 @@ class LassoModel:
         if len(lambdas) == 0:
             raise ValueError("reg_lambdas must be non-empty")
 
-        group_family = (
-            LassoModelType.GROUP_LASSO,
-            LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-            LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-        )
-        if self.model_type not in group_family:
+        if self.model_type not in GROUP_PENALTY_MODES:
             # No path solver for these modes; a full fit per grid point. The
             # derivation repeats, but the result is identical to fit().
-            out: List["LassoModel"] = []
-            for lam in lambdas:
-                params = self.get_params()
-                params["reg_lambda"] = lam
-                out.append(LassoModel(**params).fit(
-                    x=x, y=y, verbose=verbose, span=span,
-                    cluster_correlation_span=cluster_correlation_span,
-                ))
-            return out
+            return self._fit_each(lambdas, x, y, verbose, span, cluster_correlation_span)
 
-        x, y = self._validate_fit_inputs(x, y)
-        eff_span = self.span if span is None else span
-        _validate_span(eff_span)
-        configured_cluster_span = (
-            self.cluster_correlation_span
-            if cluster_correlation_span is None
-            else cluster_correlation_span
-        )
-        eff_cluster_correlation_span = (
-            eff_span if configured_cluster_span is None else configured_cluster_span
-        )
-        _validate_span(
-            eff_cluster_correlation_span, name="cluster_correlation_span"
+        x, y = coerce_fit_inputs(x, y)
+        eff_span, eff_cluster_correlation_span = resolve_spans(
+            self, span, cluster_correlation_span,
         )
         x_np, y_np, valid_mask = get_x_y_np(
             x=x, y=y, span=eff_span, demean=self.demean,
@@ -1952,35 +994,10 @@ class LassoModel:
             # no shared canonical form to exploit across the grid. Fall through
             # to a full fit per grid point, exactly as the non-path estimators
             # above. Each fit applies the same single-asset LASSO reduction.
-            out_single: List["LassoModel"] = []
-            for lam in lambdas:
-                params = self.get_params()
-                params["reg_lambda"] = lam
-                out_single.append(LassoModel(**params).fit(
-                    x=x, y=y, verbose=verbose, span=span,
-                    cluster_correlation_span=cluster_correlation_span,
-                ))
-            return out_single
+            return self._fit_each(lambdas, x, y, verbose, span, cluster_correlation_span)
 
-        gl = set_group_loadings(group_data=prep.asset_clusters).to_numpy()
-        if self.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO:
-            block_mode, row_w, col_w = "cluster_factor", None, prep.col_weights_np
-        else:
-            block_mode, row_w, col_w = "row", prep.row_weights_np, None
-
-        results = solve_group_lasso_path(
-            x=x_np, y=y_np, group_loadings=gl, reg_lambdas=lambdas,
-            valid_mask=valid_mask, span=eff_span, verbose=verbose,
-            solver=self.solver, solver_fallbacks=self.solver_fallbacks,
-            nonneg=self.nonneg,
-            factors_beta_loading_signs=prep.signs_np,
-            factors_beta_prior=prep.prior_np,
-            beta_lower_bounds=prep.lower_bounds_np,
-            beta_upper_bounds=prep.upper_bounds_np,
-            group_penalty=self.group_penalty, l1_weight=self.l1_weight,
-            penalty_weights=prep.penalty_weights_np,
-            row_weights=row_w, block_mode=block_mode, col_weights=col_w,
-            loss_normalization=self.loss_normalization,
+        results = solve_prepared_path(
+            self, prep, x_np, y_np, valid_mask, eff_span, lambdas, verbose,
         )
 
         derived_signs = getattr(self, "derived_signs_", None)
@@ -2005,6 +1022,18 @@ class LassoModel:
                 linkage=prep.linkage, cutoff=prep.cutoff,
             )
             out.append(clone)
+        return out
+
+    def _fit_each(self, lambdas, x, y, verbose, span, cluster_correlation_span):
+        """A fresh, full :meth:`fit` per ``reg_lambda`` (modes without a path solver)."""
+        out: List["LassoModel"] = []
+        for lam in lambdas:
+            params = self.get_params()
+            params["reg_lambda"] = lam
+            out.append(LassoModel(**params).fit(
+                x=x, y=y, verbose=verbose, span=span,
+                cluster_correlation_span=cluster_correlation_span,
+            ))
         return out
 
     def nowcast(
@@ -2049,126 +1078,7 @@ class LassoModel:
         TypeError
             If ``x`` is not a pandas DataFrame with a DatetimeIndex.
         """
-        fitted_state = (
-            self.coef_,
-            self.estimation_result_,
-            self.alpha_const_,
-            self.valid_mask_,
-            self.fit_demeaned_,
-            self.nowcast_residuals_,
-            self.nowcast_factors_complete_,
-            self.nowcast_final_response_complete_,
-        )
-        if any(value is None for value in fitted_state):
-            raise RuntimeError("Model not fitted. Call fit() first.")
-        if self.fit_demeaned_ is not True:
-            raise ValueError("nowcast requires a model fitted with demean=True")
-        _validate_span(alpha_span, name="alpha_span")
-        if self.nowcast_factors_complete_ is not True:
-            raise ValueError("nowcast requires complete fitted factor rows")
-        if self.nowcast_final_response_complete_ is not True:
-            raise ValueError("nowcast requires a fully observed final response row")
-
-        betas = self.coef_.copy(deep=True)
-        residuals = self.nowcast_residuals_.copy(deep=True)
-        if not np.isfinite(betas.to_numpy(dtype=float)).all():
-            raise ValueError("nowcast requires finite fitted betas")
-        residual_values = residuals.to_numpy(dtype=float)
-        if np.isinf(residual_values).any():
-            raise ValueError("nowcast residual history cannot contain infinite values")
-        if not np.isfinite(residual_values[-1]).all():
-            raise ValueError("nowcast requires finite terminal residuals")
-
-        if not isinstance(x, pd.DataFrame):
-            raise TypeError("x must be a pandas DataFrame")
-        if x.empty:
-            raise ValueError("x must contain at least one target factor row")
-        if not x.columns.equals(betas.columns):
-            raise ValueError(
-                "x columns must exactly match fitted factor columns in the same order"
-            )
-        if not isinstance(residuals.index, pd.DatetimeIndex):
-            raise TypeError("fitted data must have a DatetimeIndex for nowcast")
-        if not residuals.index.is_monotonic_increasing or not residuals.index.is_unique:
-            raise ValueError("fitted DatetimeIndex must be sorted and unique")
-        if not isinstance(x.index, pd.DatetimeIndex):
-            raise TypeError("x must have a DatetimeIndex")
-        if not x.index.is_monotonic_increasing or not x.index.is_unique:
-            raise ValueError("x DatetimeIndex must be sorted and unique")
-        if residuals.index.tz != x.index.tz:
-            raise ValueError("x and fitted DatetimeIndex values must use the same timezone")
-        if bool(np.any(x.index <= residuals.index[-1])):
-            raise ValueError("every x target date must be strictly after the fit cutoff")
-
-        target_factors = x.copy(deep=True)
-        if not np.isfinite(target_factors.to_numpy(dtype=float)).all():
-            raise ValueError("x target factor values must all be finite")
-
-        resolved_alpha_span = self.effective_span_ if alpha_span is None else alpha_span
-        stat_alpha = pd.Series(index=betas.index.copy(), dtype=float, name="stat_alpha")
-        if resolved_alpha_span is None:
-            stat_alpha.loc[:] = residuals.mean(axis=0, skipna=True)
-        else:
-            for response in residuals.columns:
-                first_valid = residuals[response].first_valid_index()
-                history = residuals.loc[first_valid:, response]
-                stat_alpha.loc[response] = compute_ewm(
-                    history, span=resolved_alpha_span
-                ).iloc[-1]
-
-        factor_component = target_factors @ betas.T
-        prediction = factor_component.add(stat_alpha, axis="columns")
-
-        sqrt_solver_weights = _compute_solver_weights(
-            t=self.valid_mask_.shape[0],
-            n_y=len(betas.index),
-            span=self.effective_span_,
-            valid_mask=self.valid_mask_,
-        )
-        loss_weights = np.square(sqrt_solver_weights)
-        weight_sums = np.sum(loss_weights, axis=0)
-        squared_weight_sums = np.sum(np.square(loss_weights), axis=0)
-        effective_n_obs = np.divide(
-            np.square(weight_sums),
-            squared_weight_sums,
-            out=np.full_like(weight_sums, np.nan),
-            where=squared_weight_sums > 0.0,
-        )
-
-        fit_start_dates = []
-        for response in residuals.columns:
-            fit_start_dates.append(residuals[response].first_valid_index())
-        result = self.estimation_result_
-        diagnostics = pd.DataFrame(
-            {
-                "fit_start_date": fit_start_dates,
-                "fit_end_date": residuals.index[-1],
-                "n_response_obs_to_cutoff": residuals.notna().sum(axis=0).to_numpy(),
-                "n_obs_used": self.valid_mask_.sum(axis=0).astype(int),
-                "effective_n_obs": effective_n_obs,
-                "beta_span": self.effective_span_,
-                "alpha_span": resolved_alpha_span,
-                "fit_demeaned": self.fit_demeaned_,
-                "stat_alpha": stat_alpha.to_numpy(copy=True),
-                "alpha_const": self.alpha_const_.to_numpy(copy=True),
-                "factorlasso_fit_ss_total_ewma_demeaned": result.ss_total.copy(),
-                "factorlasso_fit_ss_res_ewma_demeaned": result.ss_res.copy(),
-                "factorlasso_fit_r2_ewma_demeaned": result.r2.copy(),
-                "n_nonzero_betas": np.count_nonzero(
-                    ~np.isclose(betas.to_numpy(dtype=float), 0.0), axis=1
-                ),
-            },
-            index=betas.index.copy(),
-        )
-        return LassoNowcastResult(
-            prediction=prediction.copy(deep=True),
-            factor_component=factor_component.copy(deep=True),
-            target_factors=target_factors.copy(deep=True),
-            stat_alpha=stat_alpha.copy(deep=True),
-            betas=betas.copy(deep=True),
-            residuals=residuals.copy(deep=True),
-            diagnostics=diagnostics.copy(deep=True),
-        )
+        return _nowcast.nowcast(self, x, alpha_span=alpha_span)
 
     def predict(self, x: pd.DataFrame) -> pd.DataFrame:
         """
@@ -2263,36 +1173,7 @@ class LassoModel:
         count and density, and the mean per-asset R-squared. Raises if the
         model has not been fitted.
         """
-        if self.coef_ is None:
-            raise RuntimeError("Model not fitted. Call fit() first.")
-        n, m = self.coef_.shape
-        k_active = int((self.coef_.abs() > 1e-8).sum().sum())
-        lines = [
-            "LassoModel summary",
-            "-" * 40,
-            f"model_type        : {self.model_type.name}",
-            f"responses (N)     : {n}",
-            f"factors (M)       : {m}",
-            f"reg_lambda        : {self.reg_lambda:g}",
-            f"l1_weight (alpha) : {self.l1_weight:g}",
-            f"active coefs      : {k_active} / {n * m} "
-            f"({100.0 * k_active / (n * m):.1f}%)",
-        ]
-        if self.clusters_ is not None:
-            lines.append(f"clusters (HCGL)   : {int(self.clusters_.nunique())}")
-        if self.auto_sign_constraints and self.derived_signs_ is not None:
-            gated = int((self.derived_signs_ == 0).sum().sum())
-            lines.append(f"sign-gated cells  : {gated}")
-        if self.estimation_result_ is not None and getattr(
-            self.estimation_result_, "r2", None
-        ) is not None:
-            try:
-                lines.append(
-                    f"mean R^2          : {float(np.nanmean(self.estimation_result_.r2)):.4f}"
-                )
-            except Exception:  # pragma: no cover
-                pass
-        return "\n".join(lines)
+        return _inspection.summary(self)
 
     def plot_signs(self, ax=None):
         """Plot the derived sign matrix as a heatmap (requires matplotlib).
@@ -2300,23 +1181,4 @@ class LassoModel:
         Returns the matplotlib ``Axes``. Available only when
         ``auto_sign_constraints=True`` produced a ``derived_signs_`` matrix.
         """
-        if self.derived_signs_ is None:
-            raise RuntimeError(
-                "No derived_signs_ to plot. Fit with auto_sign_constraints=True."
-            )
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError as exc:  # pragma: no cover
-            raise ImportError("plot_signs requires matplotlib.") from exc
-        s = self.derived_signs_.values.astype(float)
-        if ax is None:
-            _, ax = plt.subplots(
-                figsize=(max(4, s.shape[1]), max(3, s.shape[0] * 0.12))
-            )
-        ax.imshow(s, aspect="auto", cmap="RdBu", vmin=-1, vmax=1)
-        ax.set_xticks(range(s.shape[1]))
-        ax.set_xticklabels(list(self.derived_signs_.columns), rotation=45,
-                           ha="right", fontsize=8)
-        ax.set_ylabel("assets")
-        ax.set_title("Derived sign matrix (+1 / 0 / -1)")
-        return ax
+        return _inspection.plot_signs(self, ax=ax)

@@ -23,7 +23,9 @@ from factorlasso.dependence_utils import (
     compute_dependence_matrix, DEFAULT_DEPENDENCE_MEASURE, DEFAULT_GERBER_THRESHOLD,
     DependenceMeasure,
 )
-from factorlasso.linear_model._estimator import LassoModel, _PreparedFit, _selected_prior_factors
+from factorlasso.linear_model._estimator import LassoModel
+from factorlasso.linear_model._preparation import _PreparedFit
+from factorlasso.linear_model._settings import _selected_prior_factors
 from factorlasso.linear_model._solvers.common import (
     _build_loading_bound_constraints, _build_sign_constraints, _clean_beta_prior,
     _compute_solver_diagnostics, _compute_solver_weights, _derive_valid_mask_from_y, _nan_result,
