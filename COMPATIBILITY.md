@@ -146,7 +146,10 @@ new owner, including underscore helpers that downstream code is known to import.
 scheduled; any removal would follow the deprecation policy below. Because these modules no longer
 hold the implementation, assigning one of their names (for example with `monkeypatch.setattr` or
 `unittest.mock.patch.object`) would not change what factorlasso runs. Such an assignment raises
-`AttributeError` naming the owning module, which is the module to patch.
+`AttributeError`. A helper can be imported by name into several implementation modules, each of
+which looks it up in its own namespace; `factorlasso._compat.patch_points(module, name)` lists
+them, the error names them, and patching the name in all of them reproduces the 0.23 effect.
+These internal patch points are not part of the stable surface.
 
 Objects pickled with 0.23.0 load, because the historical module paths still resolve. Classes now
 pickle under their new module path (for example `factorlasso.linear_model._estimator.LassoModel`),

@@ -152,7 +152,8 @@ listed in exactly one subpackage `__all__`, and subpackages export nothing else:
 name goes into the root `__all__`, its subpackage `__all__` and an owning article (below). The
 historical modules hold no code: `tests/data/api_contract.json` (written by
 `tools/api_contract.py`) pins every name they provide, and assigning one of them raises because
-it would not reach the implementation; patch the owning private module instead.
+it would not reach the implementation. A helper imported by name into several private modules is
+looked up in each; patch every module that `factorlasso._compat.patch_points` returns.
 
 The ``src`` layout is load-bearing: imports from a checkout must resolve through
 ``src/factorlasso/``, and the wheel job independently tests the built wheel and sdist from outside

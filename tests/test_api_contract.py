@@ -179,6 +179,68 @@ def test_estimator_patch_target_reaches_the_fit(monkeypatch):
     assert calls == [1]
 
 
+def _small_panel():
+    """A complete panel small enough for quick fits of every solver family."""
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(1)
+    x = pd.DataFrame(rng.standard_normal((40, 2)), columns=["f0", "f1"])
+    y = pd.DataFrame(x.to_numpy() @ [[1.0, 0.5, 0.2, 0.1], [0.0, 0.3, 0.6, 0.9]]
+                     + 0.1 * rng.standard_normal((40, 4)), columns=["a", "b", "c", "d"])
+    return x, y
+
+
+def test_patch_points_reach_every_solver_call(monkeypatch):
+    """Patching a helper at all its patch points intercepts every solver family's call.
+
+    In 0.23 an assignment on ``lasso_estimator`` did this; since 0.24 the helper is looked up
+    in several modules, which ``patch_points`` lists.
+    """
+    from factorlasso._compat import patch_points
+    from factorlasso import LassoModelType as T
+
+    groups = __import__("pandas").Series([1, 1, 2, 2], index=["a", "b", "c", "d"])
+    for name, modes in (
+        ("_solve_with_fallback", (T.LASSO, T.UNILASSO, T.GROUP_LASSO,
+                                  T.COOPERATIVE_GROUP_LASSO)),
+        ("_weighted_squared_loss", (T.LASSO, T.GROUP_LASSO, T.COOPERATIVE_GROUP_LASSO)),
+        ("solve_lasso_cvx_problem", (T.LASSO,)),
+    ):
+        targets = patch_points("factorlasso.lasso_estimator", name)
+        original = getattr(factorlasso.lasso_estimator, name)
+        calls = []
+
+        def spy(*args, _original=original, **kwargs):
+            calls.append(1)
+            return _original(*args, **kwargs)
+
+        with monkeypatch.context() as patcher:
+            for module in targets:
+                patcher.setattr(module, name, spy)
+            for mode in modes:
+                before = len(calls)
+                x, y = _small_panel()
+                extra = {"group_data": groups} if mode in (
+                    T.GROUP_LASSO, T.COOPERATIVE_GROUP_LASSO) else {}
+                factorlasso.LassoModel(model_type=mode, reg_lambda=1e-3, **extra).fit(x, y)
+                assert len(calls) > before, f"{name} not intercepted for {mode.name}"
+
+
+def test_facade_error_names_every_patch_point():
+    """The facade's error lists the modules that must be patched, and only real re-exports."""
+    from factorlasso._compat import patch_points
+
+    targets = patch_points("factorlasso.lasso_estimator", "_solve_with_fallback")
+    assert len(targets) > 1
+    with pytest.raises(AttributeError) as error:
+        factorlasso.lasso_estimator._solve_with_fallback = None
+    for module in targets:
+        assert module.__name__ in str(error.value)
+    with pytest.raises(KeyError):
+        patch_points("factorlasso.lasso_estimator", "not_a_reexport")
+
+
 def test_preparation_seam_is_retained():
     """Tests and research scripts wrap ``LassoModel._prepare_fit`` and read its record."""
     from factorlasso.lasso_estimator import LassoModel, _PreparedFit

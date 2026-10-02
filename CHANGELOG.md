@@ -10,9 +10,10 @@
   Each subpackage exports only names already in `factorlasso.__all__`, which is unchanged.
   The 19 modules of the 0.23 layout (`factorlasso.lasso_estimator`,
   `factorlasso.cluster_utils`, ...) remain importable with every name they provided, as
-  re-exports. Assigning one of their names now raises `AttributeError` naming the owning
-  module, because the assignment would not change what factorlasso runs; patch the owning
-  module instead. Classes pickle under their new module paths; 0.23.0 pickles still load.
+  re-exports. Assigning one of their names now raises `AttributeError`, because the
+  assignment would not change what factorlasso runs. Patch the name in every module where
+  factorlasso looks it up instead; `factorlasso._compat.patch_points` lists them and the
+  error names them. Classes pickle under their new module paths; 0.23.0 pickles still load.
   Results, warnings and exceptions are otherwise identical to 0.23.0 on the seeded parity
   matrix.
 - Fix `LassoModel.fit_reg_lambda_path` for GROUP_LASSO, HCGL and FCGL: every returned
