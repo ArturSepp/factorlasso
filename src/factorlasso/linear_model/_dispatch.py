@@ -19,16 +19,8 @@ from factorlasso.linear_model._solvers.group_lasso import (
 )
 from factorlasso.linear_model._solvers.lasso import solve_lasso_cvx_problem
 from factorlasso.linear_model._solvers.unilasso import solve_unilasso_cvx_problem
-from factorlasso.linear_model._types import LassoEstimationResult, LassoModelType
+from factorlasso.linear_model._types import LassoEstimationResult, LassoModelType, _mode_spec
 from factorlasso.utils._ewm import set_group_loadings
-
-#: Modes solved by the group-LASSO programme (and its regularisation path).
-GROUP_PENALTY_MODES = (
-    LassoModelType.GROUP_LASSO,
-    LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-    LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-)
-
 
 def group_penalty_geometry(model_type: LassoModelType, prep: _PreparedFit) -> Dict:
     """Solver keywords of the group penalty.
@@ -37,7 +29,7 @@ def group_penalty_geometry(model_type: LassoModelType, prep: _PreparedFit) -> Di
     loadings of a cluster's responses on each factor (cluster-by-factor blocks), so its
     problem is not block-separable across responses.
     """
-    if model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO:
+    if _mode_spec(model_type).block_mode == "cluster_factor":
         return dict(block_mode="cluster_factor", col_weights=prep.col_weights_np)
     return dict(row_weights=prep.row_weights_np)
 
@@ -46,6 +38,7 @@ def solve_prepared(model, prep: _PreparedFit, x_np: np.ndarray, y_np: np.ndarray
                    valid_mask: np.ndarray, eff_span: Optional[float],
                    verbose: bool) -> LassoEstimationResult:
     """Solve one prepared fit at ``model.reg_lambda``."""
+    solver = _mode_spec(model.model_type).solver
     if prep.is_lasso_mode:
         return solve_lasso_cvx_problem(
             x=x_np, y=y_np, valid_mask=valid_mask,
@@ -60,7 +53,7 @@ def solve_prepared(model, prep: _PreparedFit, x_np: np.ndarray, y_np: np.ndarray
             beta_upper_bounds=prep.upper_bounds_np,
             penalty_weights=prep.penalty_weights_np,
         )
-    if model.model_type in GROUP_PENALTY_MODES:
+    if solver == "group":
         gl = set_group_loadings(group_data=prep.asset_clusters)
         return solve_group_lasso_cvx_problem(
             x=x_np, y=y_np, group_loadings=gl.to_numpy(),
@@ -79,10 +72,7 @@ def solve_prepared(model, prep: _PreparedFit, x_np: np.ndarray, y_np: np.ndarray
             penalty_weights=prep.penalty_weights_np,
             **group_penalty_geometry(model.model_type, prep),
         )
-    if model.model_type in (
-        LassoModelType.COOPERATIVE_GROUP_LASSO,
-        LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
-    ):
+    if solver == "cooperative":
         gl = set_group_loadings(group_data=prep.asset_clusters)
         return solve_cooperative_group_lasso_cvx_problem(
             x=x_np, y=y_np, group_loadings=gl.to_numpy(),
@@ -95,7 +85,7 @@ def solve_prepared(model, prep: _PreparedFit, x_np: np.ndarray, y_np: np.ndarray
             group_penalty=model.group_penalty,
             l1_weight=model.l1_weight,
         )
-    if model.model_type == LassoModelType.UNILASSO:
+    if solver == "unilasso":
         return solve_unilasso_cvx_problem(
             x=x_np, y=y_np, valid_mask=valid_mask,
             reg_lambda=model.reg_lambda, span=eff_span,

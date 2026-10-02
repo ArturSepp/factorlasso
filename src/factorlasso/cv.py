@@ -41,7 +41,7 @@ import numpy as np
 import pandas as pd
 
 from factorlasso.linear_model._estimator import LassoModel
-from factorlasso.linear_model._types import LassoModelType
+from factorlasso.linear_model._types import LassoModelType, _mode_spec  # noqa: F401 (historical name)
 
 # Errors we treat as "this fold failed, record NaN and continue".
 # Anything else (KeyboardInterrupt, MemoryError, attribute errors from
@@ -221,13 +221,8 @@ class LassoModelCV:
 
         scores = np.full((len(lambdas), len(splits)), np.nan)
         template = self._make_model(lambdas[0])
-        group_family = (
-            LassoModelType.GROUP_LASSO,
-            LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-            LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-        )
         use_path = (
-            self.use_lambda_path and template.model_type in group_family
+            self.use_lambda_path and _mode_spec(template.model_type).lambda_path
         )
 
         if use_path:

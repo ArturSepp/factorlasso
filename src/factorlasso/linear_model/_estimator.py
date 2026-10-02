@@ -63,16 +63,14 @@ from factorlasso.dependence_utils import (
     DEFAULT_DEPENDENCE_MEASURE, DEFAULT_GERBER_THRESHOLD, DependenceMeasure,
 )
 from factorlasso.linear_model import _inspection, _nowcast
-from factorlasso.linear_model._dispatch import (
-    GROUP_PENALTY_MODES, solve_prepared, solve_prepared_path,
-)
+from factorlasso.linear_model._dispatch import solve_prepared, solve_prepared_path
 from factorlasso.linear_model._preparation import _PreparedFit, prepare_fit
 from factorlasso.linear_model._settings import (
     coerce_fit_inputs, resolve_spans, validate_configuration, validate_external_clusters,
 )
 from factorlasso.linear_model._state import fitted_state, install_fitted_state
 from factorlasso.linear_model._types import (
-    LassoEstimationResult, LassoModelType, LassoNowcastResult,
+    LassoEstimationResult, LassoModelType, LassoNowcastResult, _mode_spec,
 )
 from factorlasso.utils._panel import get_x_y_np
 
@@ -971,7 +969,7 @@ class LassoModel:
         if len(lambdas) == 0:
             raise ValueError("reg_lambdas must be non-empty")
 
-        if self.model_type not in GROUP_PENALTY_MODES:
+        if not _mode_spec(self.model_type).lambda_path:
             # No path solver for these modes; a full fit per grid point. The
             # derivation repeats, but the result is identical to fit().
             return self._fit_each(lambdas, x, y, verbose, span, cluster_correlation_span)

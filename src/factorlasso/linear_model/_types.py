@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
-
 
 
 class LassoModelType(Enum):
@@ -25,13 +25,85 @@ class LassoModelType(Enum):
     COOPERATIVE_CLUSTER_GROUP_LASSO = 7  #: coop-LASSO on discovered clusters
 
 
-# Solvers that take no hard sign constraint: UniLasso is a two-stage univariate-guided fit and
-# the cooperative penalty handles signs softly through the positive and negative parts of beta.
-# A sign matrix or ``nonneg`` is rejected for these modes instead of being dropped silently.
-_MODES_WITHOUT_SIGN_CONSTRAINTS = (
-    LassoModelType.UNILASSO,
-    LassoModelType.COOPERATIVE_GROUP_LASSO,
-    LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
+@dataclass(frozen=True)
+class _ModeSpec:
+    """What one estimator mode supports (private metadata, not configuration).
+
+    The estimator's algorithms stay explicit in the solvers; this record only states which
+    family a mode belongs to, so that validation, preparation, dispatch and the selectors
+    read one table instead of repeating mode lists.
+
+    Attributes
+    ----------
+    grouping : str
+        ``"none"``, ``"user"`` (``group_data``) or ``"discovered"`` (clusters of the response
+        dependence, or an external partition where accepted).
+    solver : str or None
+        ``"lasso"``, ``"group"``, ``"cooperative"`` or ``"unilasso"``.
+    block_mode : str or None
+        Geometry of the group penalty: ``"row"`` (each response's loadings) or
+        ``"cluster_factor"`` (a cluster's loadings on one factor).
+    hard_constraints : bool
+        Whether the solver enforces hard sign constraints, ``nonneg`` and loading bounds.
+        UniLasso is a two-stage univariate-guided fit and the cooperative penalty handles
+        signs softly through the positive and negative parts of beta, so sign inputs are
+        rejected for those modes instead of being dropped silently.
+    external_clusters : bool
+        Whether ``fit`` accepts an externally supplied partition.
+    lambda_path : bool
+        Whether a DPP regularisation-path solver exists.
+    single_response_lasso : bool
+        Whether a single response reduces the group penalty to plain LASSO.
+    """
+    grouping: str
+    solver: Optional[str]
+    block_mode: Optional[str]
+    hard_constraints: bool
+    external_clusters: bool
+    lambda_path: bool
+    single_response_lasso: bool
+
+
+_MODE_SPECS: Dict[LassoModelType, _ModeSpec] = {
+    LassoModelType.LASSO: _ModeSpec(
+        grouping="none", solver="lasso", block_mode=None, hard_constraints=True,
+        external_clusters=False, lambda_path=False, single_response_lasso=False),
+    LassoModelType.UNILASSO: _ModeSpec(
+        grouping="none", solver="unilasso", block_mode=None, hard_constraints=False,
+        external_clusters=False, lambda_path=False, single_response_lasso=False),
+    LassoModelType.GROUP_LASSO: _ModeSpec(
+        grouping="user", solver="group", block_mode="row", hard_constraints=True,
+        external_clusters=False, lambda_path=True, single_response_lasso=True),
+    LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO: _ModeSpec(
+        grouping="discovered", solver="group", block_mode="row", hard_constraints=True,
+        external_clusters=True, lambda_path=True, single_response_lasso=True),
+    LassoModelType.FACTOR_CLUSTER_GROUP_LASSO: _ModeSpec(
+        grouping="discovered", solver="group", block_mode="cluster_factor",
+        hard_constraints=True, external_clusters=True, lambda_path=True,
+        single_response_lasso=True),
+    LassoModelType.COOPERATIVE_GROUP_LASSO: _ModeSpec(
+        grouping="user", solver="cooperative", block_mode=None, hard_constraints=False,
+        external_clusters=False, lambda_path=False, single_response_lasso=False),
+    LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO: _ModeSpec(
+        grouping="discovered", solver="cooperative", block_mode=None, hard_constraints=False,
+        external_clusters=False, lambda_path=False, single_response_lasso=False),
+}
+
+#: Behaviour of a ``model_type`` that is not a :class:`LassoModelType` member: no grouping,
+#: no solver (``fit`` raises ``NotImplementedError``), and no rejected sign inputs.
+_UNKNOWN_MODE = _ModeSpec(
+    grouping="none", solver=None, block_mode=None, hard_constraints=True,
+    external_clusters=False, lambda_path=False, single_response_lasso=False)
+
+
+def _mode_spec(model_type) -> _ModeSpec:
+    """The capabilities of ``model_type``; ``_UNKNOWN_MODE`` for a non-member."""
+    return _MODE_SPECS.get(model_type, _UNKNOWN_MODE)
+
+
+# Solvers that take no hard sign constraint (kept as the historical constant).
+_MODES_WITHOUT_SIGN_CONSTRAINTS = tuple(
+    mode for mode in LassoModelType if not _MODE_SPECS[mode].hard_constraints
 )
 
 

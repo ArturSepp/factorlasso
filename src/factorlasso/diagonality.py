@@ -66,7 +66,7 @@ import pandas as pd
 
 from factorlasso.cv import DEFAULT_LAMBDA_GRID, expanding_window_splits
 from factorlasso.linear_model._estimator import LassoModel
-from factorlasso.linear_model._types import LassoModelType
+from factorlasso.linear_model._types import LassoModelType, _mode_spec
 from factorlasso.residual_diagnostics import (
     ResidualDiagnostics,
     diagnose_residuals,
@@ -83,11 +83,8 @@ _FOLD_ERRORS: Tuple[type, ...] = (
     np.linalg.LinAlgError,
 )
 
-_GROUP_FAMILY = (
-    LassoModelType.GROUP_LASSO,
-    LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-    LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-)
+# Modes with a regularisation-path solver (kept as the historical constant).
+_GROUP_FAMILY = tuple(mode for mode in LassoModelType if _mode_spec(mode).lambda_path)
 
 
 @dataclass

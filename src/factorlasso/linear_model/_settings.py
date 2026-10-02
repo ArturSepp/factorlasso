@@ -21,7 +21,7 @@ from factorlasso.cluster_utils import (
 )
 from factorlasso.dependence_utils import DependenceMeasure
 from factorlasso.linear_model._solvers.common import _validate_loss_normalization
-from factorlasso.linear_model._types import _MODES_WITHOUT_SIGN_CONSTRAINTS, LassoModelType
+from factorlasso.linear_model._types import LassoModelType, _mode_spec
 from factorlasso.prior_bounds import _validate_expert_bound_settings
 from factorlasso.utils._ewm import _validate_span
 
@@ -50,7 +50,7 @@ def validate_loss_mode(model) -> None:
 
 def validate_sign_inputs_mode(model) -> None:
     """Reject hard sign inputs for the solvers that cannot enforce them."""
-    if model.model_type not in _MODES_WITHOUT_SIGN_CONSTRAINTS:
+    if _mode_spec(model.model_type).hard_constraints:
         return
     if model.factors_beta_loading_signs is not None:
         raise ValueError(
@@ -72,7 +72,7 @@ def validate_ols_prior_mode(model) -> None:
     if model.expert_prior_bound_n_std is not None:
         if not model.apply_ols_prior:
             raise ValueError('expert_prior_bound_n_std requires apply_ols_prior=True')
-        if model.model_type in _MODES_WITHOUT_SIGN_CONSTRAINTS:
+        if not _mode_spec(model.model_type).hard_constraints:
             raise ValueError('expert prior bounds require LASSO, group LASSO, HCGL or FCGL')
     _validate_prior_selection_type(model.prior_selection_type)
     if not isinstance(model.apply_ols_prior, (bool, np.bool_)):
@@ -103,10 +103,7 @@ def validate_configuration(model) -> None:
     validate_loss_mode(model)
     validate_ols_prior_mode(model)
     validate_sign_inputs_mode(model)
-    if model.model_type in (
-        LassoModelType.GROUP_LASSO,
-        LassoModelType.COOPERATIVE_GROUP_LASSO,
-    ) and model.group_data is None:
+    if _mode_spec(model.model_type).grouping == "user" and model.group_data is None:
         raise ValueError(
             "group_data must be provided for model_type="
             f"{model.model_type.name}"
@@ -235,11 +232,7 @@ def validate_excluded_factors(model, x: pd.DataFrame) -> None:
 def validate_external_clusters(model_type, external_clusters, external_linkage,
                                external_cutoff) -> None:
     """External partitions are accepted only by the discovered-cluster group penalties."""
-    external_modes = (
-        LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-        LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-    )
-    if external_clusters is not None and model_type not in external_modes:
+    if external_clusters is not None and not _mode_spec(model_type).external_clusters:
         raise ValueError(
             "external_clusters is supported only for HCGL and FCGL, "
             f"got model_type={model_type.name}"

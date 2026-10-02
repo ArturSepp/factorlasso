@@ -30,7 +30,7 @@ from factorlasso.linear_model._restrictions import (
 from factorlasso.linear_model._settings import (
     validate_excluded_factors, validate_fit_modes, validate_sign_settings,
 )
-from factorlasso.linear_model._types import _MODES_WITHOUT_SIGN_CONSTRAINTS, LassoModelType
+from factorlasso.linear_model._types import _mode_spec
 from factorlasso.utils._panel import get_x_y_np
 
 #: Prior and bound diagnostics, reset at the start of every preparation.
@@ -144,33 +144,20 @@ def asset_partition(
     the user groups for GROUP_LASSO and COOPERATIVE_GROUP_LASSO; the supplied external
     partition, or the discovered one, for the cluster modes.
     """
+    spec = _mode_spec(model.model_type)
     asset_clusters: Optional[pd.Series] = None
     linkage = None
     cutoff = None
     is_lasso_mode = (
-        model.model_type == LassoModelType.LASSO
-        or (
-            y_np.shape[1] == 1
-            and model.model_type in (
-                LassoModelType.GROUP_LASSO,
-                LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-                LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-            )
-        )
+        spec.solver == "lasso"
+        or (y_np.shape[1] == 1 and spec.single_response_lasso)
     )
     if is_lasso_mode:
         # asset_clusters stays None → per-y-column sign derivation
         pass
-    elif model.model_type in (
-        LassoModelType.GROUP_LASSO,
-        LassoModelType.COOPERATIVE_GROUP_LASSO,
-    ):
+    elif spec.grouping == "user":
         asset_clusters = model.group_data[y.columns]
-    elif model.model_type in (
-        LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-        LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-        LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
-    ):
+    elif spec.grouping == "discovered":
         if external_clusters is not None:
             asset_clusters = external_clusters.reindex(y.columns)
             if asset_clusters.isna().any():
@@ -263,7 +250,7 @@ def prepare_fit(
 
     # The final solver-facing sign matrix, stored only when the solver receives it: the
     # UniLasso and cooperative solvers take no sign constraint.
-    if signs_np is not None and model.model_type not in _MODES_WITHOUT_SIGN_CONSTRAINTS:
+    if signs_np is not None and _mode_spec(model.model_type).hard_constraints:
         model.derived_signs_ = pd.DataFrame(
             signs_np, index=y.columns, columns=x.columns,
         )

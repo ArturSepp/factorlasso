@@ -27,7 +27,7 @@ import pandas as pd
 
 from factorlasso.beta_priors import _compute_joint_ols_prior, _compute_ols_prior
 from factorlasso.linear_model._settings import _selected_prior_factors
-from factorlasso.linear_model._types import LassoModelType
+from factorlasso.linear_model._types import _mode_spec
 from factorlasso.prior_bounds import _compute_expert_prior_bounds
 from factorlasso.utils._ewm import set_group_loadings
 
@@ -246,7 +246,7 @@ def adaptive_penalty_weights(
         else np.sign(auto_slopes_np),
     )
     col_weights_np = None
-    if (model.model_type == LassoModelType.FACTOR_CLUSTER_GROUP_LASSO
+    if (_mode_spec(model.model_type).block_mode == "cluster_factor"
             and not is_lasso_mode):
         col_weights_np = _aggregate_to_block_weights(
             cell_weights=penalty_weights_np,
