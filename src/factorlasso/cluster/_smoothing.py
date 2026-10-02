@@ -14,8 +14,6 @@ from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from scipy.cluster import hierarchy as spc
-from scipy.spatial.distance import squareform
 
 from factorlasso.cluster._hierarchical import (
     ClusterCorrelationTransform,
@@ -23,7 +21,10 @@ from factorlasso.cluster._hierarchical import (
     apply_cluster_correlation_transform,
     compute_clusters_from_corr_matrix,
 )
-from factorlasso.cluster._dependence import DependenceMeasure, compute_dependence_matrix
+from factorlasso.cluster._dependence import DependenceMeasure
+from factorlasso.cluster._response import (
+    _ClusterGeometry, _ResponseDependenceSettings, linkage_and_cut, prepared_response_dependence,
+)
 from factorlasso.utils._panel import get_x_y_np
 
 if TYPE_CHECKING:
@@ -138,18 +139,18 @@ def _cluster_distance_matrix(
     corr: pd.DataFrame,
     lasso_model: "LassoModel",
 ) -> Tuple[pd.Series, np.ndarray, float]:
-    """Apply the model's unchanged linkage and cut to a square distance matrix."""
-    condensed = squareform(distance, checks=False)
-    linkage = spc.linkage(condensed, method=lasso_model.linkage_method)
-    if lasso_model.n_clusters is None:
-        cutoff = float(lasso_model.cutoff_fraction * np.max(condensed))
-        labels = spc.fcluster(linkage, cutoff, criterion="distance")
-    else:
-        count = min(int(lasso_model.n_clusters), len(corr))
-        labels = spc.fcluster(linkage, count, criterion="maxclust")
-        n_merges = len(corr) - len(np.unique(labels))
-        cutoff = float(linkage[n_merges - 1, 2]) if n_merges > 0 else 0.0
-    return pd.Series(labels, index=corr.index), linkage, cutoff
+    """Apply the model's unchanged linkage and cut to a square distance matrix.
+
+    ``lasso_model`` is an estimator or a :class:`_ClusterGeometry`. The distance may differ
+    from the plain correlation distance (the partition bonus discounts it), so the transform
+    is not applied here.
+    """
+    count = (None if lasso_model.n_clusters is None
+             else min(int(lasso_model.n_clusters), len(corr)))
+    labels, linkage, cutoff = linkage_and_cut(
+        distance, len(corr), lasso_model.linkage_method, lasso_model.cutoff_fraction, count,
+    )
+    return pd.Series(labels, index=corr.index), linkage, float(cutoff)
 
 
 def _effective_cluster_correlation_span(lasso_model: "LassoModel") -> Optional[float]:
@@ -159,7 +160,12 @@ def _effective_cluster_correlation_span(lasso_model: "LassoModel") -> Optional[f
 
 
 def _correlation_input(y: pd.DataFrame, lasso_model: "LassoModel") -> pd.DataFrame:
-    """Reproduce the response correlation used by ``LassoModel._prepare_fit``."""
+    """The response dependence used by ``LassoModel._prepare_fit``, without factors.
+
+    ``lasso_model`` is an estimator or a :class:`_ResponseDependenceSettings`. There are no
+    factor returns here, so a response observation is masked only when it is missing; the
+    fit additionally masks dates whose whole factor row is missing.
+    """
     cluster_span = _effective_cluster_correlation_span(lasso_model)
     dummy_x = pd.DataFrame(0.0, index=y.index, columns=["__cluster_dummy__"])
     _, y_np, valid_mask = get_x_y_np(
@@ -168,14 +174,10 @@ def _correlation_input(y: pd.DataFrame, lasso_model: "LassoModel") -> pd.DataFra
         span=cluster_span,
         demean=lasso_model.demean,
     )
-    y_for_corr = np.where(valid_mask > 0, y_np, np.nan)
-    corr = compute_dependence_matrix(
-        a=y_for_corr,
-        dependence_measure=lasso_model.dependence_measure,
-        span=cluster_span,
-        gerber_threshold=lasso_model.gerber_threshold,
+    return prepared_response_dependence(
+        y_np, valid_mask, y.columns, lasso_model.dependence_measure, cluster_span,
+        lasso_model.gerber_threshold,
     )
-    return pd.DataFrame(corr, index=y.columns, columns=y.columns)
 
 
 def _iter_correlation_inputs(
@@ -465,6 +467,10 @@ def compute_rolling_smoothed_clusters(
     held: Optional[Tuple[pd.Series, np.ndarray, float]] = None
     held_eligible: Optional[pd.Series] = None
 
+    # Response preparation and partition geometry are resolved once; the smoothing policy is
+    # read from the model throughout.
+    response = _ResponseDependenceSettings.from_model(lasso_model)
+    geometry = _ClusterGeometry.from_model(lasso_model)
     transform = ClusterCorrelationTransform(
         lasso_model.cluster_correlation_transform
     )
@@ -472,7 +478,7 @@ def compute_rolling_smoothed_clusters(
         eligibility is not None or transform != ClusterCorrelationTransform.NONE
     )
 
-    for date, corr in _iter_correlation_inputs(y, dates, lasso_model):
+    for date, corr in _iter_correlation_inputs(y, dates, response):
         y_current = y.loc[:date]
         if y_current.empty:
             raise ValueError(f"no response observations at or before {date!r}")
@@ -516,40 +522,31 @@ def compute_rolling_smoothed_clusters(
         elif smoother == ClusterSmootherType.HOLD:
             bundle = compute_clusters_from_corr_matrix(
                 corr,
-                cutoff_fraction=lasso_model.cutoff_fraction,
-                linkage_method=lasso_model.linkage_method,
-                distance_transform=lasso_model.distance_transform,
-                n_clusters=lasso_model.n_clusters,
+                **geometry.as_kwargs(),
             )
         elif smoother == ClusterSmootherType.PARTITION_BONUS and previous_clusters is not None:
             distance = _corr_to_distance(
                 corr.fillna(0.0).to_numpy(),
-                distance_transform=lasso_model.distance_transform,
+                distance_transform=geometry.distance_transform,
             )
             distance = apply_partition_distance_bonus(
                 distance,
                 previous_clusters.reindex(corr.index),
                 lasso_model.smoother_delta,
             )
-            bundle = _cluster_distance_matrix(distance, corr, lasso_model)
+            bundle = _cluster_distance_matrix(distance, corr, geometry)
         elif smoother == ClusterSmootherType.SIMILARITY_EWMA:
             previous_similarity = smooth_similarity_ewma(
                 corr, previous_similarity, lasso_model.smoother_lambda
             )
             bundle = compute_clusters_from_corr_matrix(
                 previous_similarity,
-                cutoff_fraction=lasso_model.cutoff_fraction,
-                linkage_method=lasso_model.linkage_method,
-                distance_transform=lasso_model.distance_transform,
-                n_clusters=lasso_model.n_clusters,
+                **geometry.as_kwargs(),
             )
         else:
             bundle = compute_clusters_from_corr_matrix(
                 corr,
-                cutoff_fraction=lasso_model.cutoff_fraction,
-                linkage_method=lasso_model.linkage_method,
-                distance_transform=lasso_model.distance_transform,
-                n_clusters=lasso_model.n_clusters,
+                **geometry.as_kwargs(),
             )
 
         if is_scheduled and update_partition:

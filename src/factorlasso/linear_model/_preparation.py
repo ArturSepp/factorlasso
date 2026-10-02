@@ -23,7 +23,7 @@ from factorlasso.priors._ols import _zero_incompatible_priors
 from factorlasso.cluster._hierarchical import (
     apply_cluster_correlation_transform, compute_clusters_from_corr_matrix,
 )
-from factorlasso.cluster._dependence import compute_dependence_matrix
+from factorlasso.cluster._response import _ClusterGeometry, prepared_response_dependence
 from factorlasso.linear_model._restrictions import (
     SIGN_DIAGNOSTIC_ATTRIBUTES, adaptive_penalty_weights, automatic_signs, combine_signs,
     expert_prior_bounds, ols_prior, overlay_explicit_prior, override_detected_signs,
@@ -109,24 +109,15 @@ def discover_response_clusters(
             span=eff_cluster_correlation_span,
             demean=model.demean,
         )
-    y_for_corr = np.where(
-        clustering_valid_mask > 0, clustering_y_np, np.nan
+    corr_df = prepared_response_dependence(
+        clustering_y_np, clustering_valid_mask, y.columns, model.dependence_measure,
+        eff_cluster_correlation_span, model.gerber_threshold,
     )
-    corr = compute_dependence_matrix(
-        a=y_for_corr,
-        dependence_measure=model.dependence_measure,
-        span=eff_cluster_correlation_span,
-        gerber_threshold=model.gerber_threshold,
-    )
-    corr_df = pd.DataFrame(corr, columns=y.columns, index=y.columns)
     corr_df = apply_cluster_correlation_transform(
         corr_df, transform=model.cluster_correlation_transform
     )
     return compute_clusters_from_corr_matrix(
-        corr_df, cutoff_fraction=model.cutoff_fraction,
-        linkage_method=model.linkage_method,
-        distance_transform=model.distance_transform,
-        n_clusters=model.n_clusters,
+        corr_df, **_ClusterGeometry.from_model(model).as_kwargs(),
     )
 
 

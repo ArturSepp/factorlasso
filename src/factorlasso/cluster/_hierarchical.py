@@ -77,8 +77,8 @@ from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import scipy.cluster.hierarchy as spc
-from scipy.spatial.distance import squareform
+
+from factorlasso.cluster._response import linkage_and_cut
 
 # ═══════════════════════════════════════════════════════════════════════
 # Clustering from correlation
@@ -595,19 +595,9 @@ def compute_clusters_from_corr_matrix(
     dist_square = _corr_to_distance(
         corr_matrix.to_numpy(), distance_transform=distance_transform,
     )
-    pdist = squareform(dist_square, checks=False)
-    linkage = spc.linkage(pdist, method=linkage_method)
-    if n_clusters is None:
-        cutoff = cutoff_fraction * np.max(pdist)
-        idx = spc.fcluster(linkage, cutoff, 'distance')
-    else:
-        idx = spc.fcluster(linkage, n_clusters, 'maxclust')
-        # Report the height of the last accepted merge, so the returned
-        # cutoff stays comparable with the fractional-cut branch. With k
-        # realised clusters over n assets, exactly n - k merges were
-        # accepted, and ``linkage`` is ordered by increasing height.
-        n_merges = corr_matrix.shape[0] - len(np.unique(idx))
-        cutoff = float(linkage[n_merges - 1, 2]) if n_merges > 0 else 0.0
+    idx, linkage, cutoff = linkage_and_cut(
+        dist_square, corr_matrix.shape[0], linkage_method, cutoff_fraction, n_clusters,
+    )
     clusters = pd.Series(idx, index=corr_matrix.columns)
     return clusters, linkage, cutoff
 
