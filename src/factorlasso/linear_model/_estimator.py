@@ -69,7 +69,7 @@ from factorlasso.linear_model._settings import (
     coerce_fit_inputs, resolve_spans, validate_configuration, validate_external_clusters,
 )
 from factorlasso.linear_model._state import (
-    fitted_state, install_fitted_state, owned, preparation_state,
+    fitted_state, fitted_state_transaction, install_fitted_state, owned, preparation_state,
 )
 from factorlasso.linear_model._types import (
     LassoEstimationResult, LassoModelType, LassoNowcastResult, _mode_spec,
@@ -847,31 +847,40 @@ class LassoModel:
         -------
         self
             Updated with ``coef_`` (N × M) and ``intercept_`` (N,).
+
+        Notes
+        -----
+        If an exception escapes, every fitted attribute keeps the value it had
+        before the call (unfitted attributes stay unset); parameters changed
+        with :meth:`set_params` are not rolled back. A solve that fails
+        without raising still warns and stores NaN coefficients, as before.
         """
-        x, y = coerce_fit_inputs(x, y)
-        validate_external_clusters(
-            self.model_type, external_clusters, external_linkage, external_cutoff,
-        )
-        eff_span, eff_cluster_correlation_span = resolve_spans(
-            self, span, cluster_correlation_span,
-        )
-        x_np, y_np, valid_mask = get_x_y_np(
-            x=x, y=y, span=eff_span, demean=self.demean
-        )
-        prep = self._prepare_fit(
-            x=x, y=y, x_np=x_np, y_np=y_np,
-            valid_mask=valid_mask, eff_span=eff_span,
-            eff_cluster_correlation_span=eff_cluster_correlation_span,
-            external_clusters=external_clusters,
-            external_linkage=external_linkage,
-            external_cutoff=external_cutoff,
-        )
-        result = solve_prepared(self, prep, x_np, y_np, valid_mask, eff_span, verbose)
-        self._finalize_fit(
-            result=result, x=x, y=y, valid_mask=valid_mask, eff_span=eff_span,
-            eff_cluster_correlation_span=eff_cluster_correlation_span,
-            asset_clusters=prep.asset_clusters, linkage=prep.linkage, cutoff=prep.cutoff,
-        )
+        # A fit that raises leaves the previous fitted state in place (0.25).
+        with fitted_state_transaction(self):
+            x, y = coerce_fit_inputs(x, y)
+            validate_external_clusters(
+                self.model_type, external_clusters, external_linkage, external_cutoff,
+            )
+            eff_span, eff_cluster_correlation_span = resolve_spans(
+                self, span, cluster_correlation_span,
+            )
+            x_np, y_np, valid_mask = get_x_y_np(
+                x=x, y=y, span=eff_span, demean=self.demean
+            )
+            prep = self._prepare_fit(
+                x=x, y=y, x_np=x_np, y_np=y_np,
+                valid_mask=valid_mask, eff_span=eff_span,
+                eff_cluster_correlation_span=eff_cluster_correlation_span,
+                external_clusters=external_clusters,
+                external_linkage=external_linkage,
+                external_cutoff=external_cutoff,
+            )
+            result = solve_prepared(self, prep, x_np, y_np, valid_mask, eff_span, verbose)
+            self._finalize_fit(
+                result=result, x=x, y=y, valid_mask=valid_mask, eff_span=eff_span,
+                eff_cluster_correlation_span=eff_cluster_correlation_span,
+                asset_clusters=prep.asset_clusters, linkage=prep.linkage, cutoff=prep.cutoff,
+            )
         return self
 
     def _prepare_fit(
@@ -956,10 +965,10 @@ class LassoModel:
         solver tolerance, since the path is solved as one parametrised
         problem.
 
-        Primitive behind ``LassoModelCV(use_lambda_path=True)``. For the
-        group-LASSO family ``self`` is left partially updated (its
-        preparation diagnostics, such as ``derived_signs_``, are set); use
-        the returned models, not ``self``.
+        Primitive behind ``LassoModelCV(use_lambda_path=True)``. The fitted
+        attributes of ``self`` are unchanged on return and when an error is
+        raised; before 0.25 the group-LASSO family left ``self`` partially
+        updated. Use the returned models.
 
         Parameters
         ----------
@@ -983,47 +992,50 @@ class LassoModel:
             # derivation repeats, but the result is identical to fit().
             return self._fit_each(lambdas, x, y, verbose, span, cluster_correlation_span)
 
-        x, y = coerce_fit_inputs(x, y)
-        eff_span, eff_cluster_correlation_span = resolve_spans(
-            self, span, cluster_correlation_span,
-        )
-        x_np, y_np, valid_mask = get_x_y_np(
-            x=x, y=y, span=eff_span, demean=self.demean,
-        )
-        prep = self._prepare_fit(
-            x=x, y=y, x_np=x_np, y_np=y_np,
-            valid_mask=valid_mask, eff_span=eff_span,
-            eff_cluster_correlation_span=eff_cluster_correlation_span,
-        )
-
-        if prep.is_lasso_mode:
-            # Single asset (N=1): the group penalty is degenerate, so there is
-            # no shared canonical form to exploit across the grid. Fall through
-            # to a full fit per grid point, exactly as the non-path estimators
-            # above. Each fit applies the same single-asset LASSO reduction.
-            return self._fit_each(lambdas, x, y, verbose, span, cluster_correlation_span)
-
-        results = solve_prepared_path(
-            self, prep, x_np, y_np, valid_mask, eff_span, lambdas, verbose,
-        )
-
-        # Every returned model carries its own copy of the full preparation state that a fresh
-        # fit at its reg_lambda would hold, then the solve-dependent state of its result.
-        out: List["LassoModel"] = []
-        for lam, result in zip(lambdas, results):
-            params = self.get_params()
-            params["reg_lambda"] = lam
-            clone = LassoModel(**params)
-            install_fitted_state(clone, preparation_state(self))
-            clone._finalize_fit(
-                result=result, x=x, y=y, valid_mask=owned(valid_mask),
-                eff_span=eff_span,
-                eff_cluster_correlation_span=eff_cluster_correlation_span,
-                asset_clusters=owned(prep.asset_clusters),
-                linkage=owned(prep.linkage), cutoff=prep.cutoff,
+        # Preparation stores diagnostics on the template while it runs; they are restored
+        # afterwards, so the template's fitted state is unchanged on return and on error.
+        with fitted_state_transaction(self, keep=False):
+            x, y = coerce_fit_inputs(x, y)
+            eff_span, eff_cluster_correlation_span = resolve_spans(
+                self, span, cluster_correlation_span,
             )
-            out.append(clone)
-        return out
+            x_np, y_np, valid_mask = get_x_y_np(
+                x=x, y=y, span=eff_span, demean=self.demean,
+            )
+            prep = self._prepare_fit(
+                x=x, y=y, x_np=x_np, y_np=y_np,
+                valid_mask=valid_mask, eff_span=eff_span,
+                eff_cluster_correlation_span=eff_cluster_correlation_span,
+            )
+
+            if prep.is_lasso_mode:
+                # Single asset (N=1): the group penalty is degenerate, so there is
+                # no shared canonical form to exploit across the grid. Fall through
+                # to a full fit per grid point, exactly as the non-path estimators
+                # above. Each fit applies the same single-asset LASSO reduction.
+                return self._fit_each(lambdas, x, y, verbose, span, cluster_correlation_span)
+
+            results = solve_prepared_path(
+                self, prep, x_np, y_np, valid_mask, eff_span, lambdas, verbose,
+            )
+
+            # Every returned model carries its own copy of the full preparation state that a fresh
+            # fit at its reg_lambda would hold, then the solve-dependent state of its result.
+            out: List["LassoModel"] = []
+            for lam, result in zip(lambdas, results):
+                params = self.get_params()
+                params["reg_lambda"] = lam
+                clone = LassoModel(**params)
+                install_fitted_state(clone, preparation_state(self))
+                clone._finalize_fit(
+                    result=result, x=x, y=y, valid_mask=owned(valid_mask),
+                    eff_span=eff_span,
+                    eff_cluster_correlation_span=eff_cluster_correlation_span,
+                    asset_clusters=owned(prep.asset_clusters),
+                    linkage=owned(prep.linkage), cutoff=prep.cutoff,
+                )
+                out.append(clone)
+            return out
 
     def _fit_each(self, lambdas, x, y, verbose, span, cluster_correlation_span):
         """A fresh, full :meth:`fit` per ``reg_lambda`` (modes without a path solver)."""
