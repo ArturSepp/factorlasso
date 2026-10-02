@@ -130,6 +130,32 @@ Anything absent from `factorlasso.__all__` is internal and may change without no
   callers depending on the internal structure of those objects (variables,
   parameters, constraints by index) are not protected.
 
+## Module layout (from 0.24)
+
+The capability subpackages `factorlasso.utils`, `factorlasso.linear_model`,
+`factorlasso.cluster`, `factorlasso.priors`, `factorlasso.covariance`,
+`factorlasso.diagnostics` and `factorlasso.model_selection` are documented homes of the root
+names. Each subpackage `__all__` lists a subset of `factorlasso.__all__`, and every name resolves
+to the same object as at the root; the subpackages add no public names. Their modules with a
+leading underscore are internal.
+
+The 19 modules of the flat 0.23 layout (`factorlasso.lasso_estimator`,
+`factorlasso.cluster_utils`, `factorlasso.sign_constraints`, ...) remain importable, remain
+attributes of the package, and keep every name they provided in 0.23.0 as a re-export from its
+new owner, including underscore helpers that downstream code is known to import. No removal is
+scheduled; any removal would follow the deprecation policy below. Because these modules no longer
+hold the implementation, assigning one of their names (for example with `monkeypatch.setattr` or
+`unittest.mock.patch.object`) would not change what factorlasso runs. Such an assignment raises
+`AttributeError`. A helper can be imported by name into several implementation modules, each of
+which looks it up in its own namespace; `factorlasso._compat.patch_points(module, name)` lists
+them, the error names them, and patching the name in all of them reproduces the 0.23 effect.
+These internal patch points are not part of the stable surface.
+
+Objects pickled with 0.23.0 load, because the historical module paths still resolve. Classes now
+pickle under their new module path (for example `factorlasso.linear_model._estimator.LassoModel`),
+which later releases keep importable. Loading across versions still requires compatible fitted
+fields; arbitrary cross-version pickle compatibility is not guaranteed.
+
 ## Deprecation policy
 
 Any breaking change to the stable surface follows this process:

@@ -22,9 +22,9 @@ from factorlasso import (
     LassoModel,
     LassoModelType,
     VarianceColumns,
+    compute_ewm_covar,
+    get_x_y_np,
 )
-from factorlasso.ewm_utils import compute_ewm_covar
-from factorlasso.lasso_estimator import get_x_y_np
 
 
 def main():

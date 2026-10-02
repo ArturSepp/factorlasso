@@ -22,9 +22,8 @@ from factorlasso import (
     solve_group_lasso_cvx_problem,
     solve_lasso_cvx_problem,
 )
-from factorlasso.lasso_estimator import (
-    _build_sign_constraints,
-    _derive_valid_mask_from_y,
+from factorlasso.linear_model._solvers.common import (
+    _build_sign_constraints, _derive_valid_mask_from_y,
 )
 
 # ═══════════════════════════════════════════════════════════════════════

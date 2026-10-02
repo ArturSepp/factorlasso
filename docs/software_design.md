@@ -21,54 +21,46 @@ through a fit, and states where the package ends.
 
 ## Module layers
 
-| Layer | Modules | Responsibility |
+| Subpackage | Internal modules | Responsibility |
 |---|---|---|
-| Kernels | `ewm_utils`, `dependence_utils` | EWMA means and covariances, and the Pearson, Spearman and Gerber dependence matrices. |
-| Priors and signs | `beta_priors`, `sign_constraints`, `expert_prior_map` | OLS prior centres, derived sign constraints, adaptive penalty weights, and the mapping of expert priors to factors. |
-| Clusters | `cluster_utils`, `cluster_smoothing`, `cluster_statistics`, `cluster_standardization`, `cluster_lineage` | Distance, linkage and cut; causal rolling partitions; stability statistics and pooled scoring; offline lineage. |
-| Estimation | `lasso_estimator` | `LassoModel` and the CVXPY programmes of every mode. |
-| Selection and diagnostics | `cv`, `diagonality`, `residual_diagnostics` | Expanding-window selection by held-out $R^2$ or residual diagonality, and the residual tests. |
-| Containers | `factor_covar`, `residual_covar` | Dated factor-model snapshots, covariance assembly, and the prepared residual correlation. |
+| `factorlasso.utils` | `_ewm`, `_panel` | EWMA means and covariances, group loadings, and the preparation of the panels for the solvers: alignment, validity masks and de-meaning. |
+| `factorlasso.cluster` | `_dependence`, `_hierarchical`, `_smoothing`, `_stability`, `_standardization` | Pearson, Spearman and Gerber dependence; distance, linkage and cut; causal rolling partitions; stability statistics and pooled scoring. |
+| `factorlasso.priors` | `_signs`, `_ols`, `_bounds`, `_expert_map`, `_inference`, `_risk` | Derived sign constraints and adaptive penalty weights, OLS prior centres and expert bounds, the mapping of expert priors to factors, and prior inference and risk. |
+| `factorlasso.linear_model` | `_estimator`, `_settings`, `_preparation`, `_restrictions`, `_dispatch`, `_state`, `_nowcast`, `_inspection`, `_types`, `_solvers` | `LassoModel`: validation, the penalty-independent preparation, the CVXPY programme of every mode, the fitted state and the nowcast. |
+| `factorlasso.covariance` | `_factor_covar`, `_residual_correlation` | Dated factor-model snapshots, covariance assembly, and the prepared residual correlation. |
+| `factorlasso.diagnostics` | `_residuals`, `_lineage` | Residual tests and effective sparsity, and the offline lineage of the risk clusters in a rolling covariance history. |
+| `factorlasso.model_selection` | `_cv`, `_diagonality` | Expanding-window selection by held-out $R^2$ or residual diagonality. |
 
-Every public name is exported from the package root; the [API reference](api.rst) groups them by
-the article that documents them. The import graph runs one way. The kernels import only each
-other; the estimator imports the kernels, the prior centres and the cluster utilities, and the
-sign derivation inside the fit; the selectors import the estimator; the containers import the
-kernels; and the lineage imports only the containers. `cluster_smoothing` refers to `LassoModel`
-only inside functions, which keeps the graph acyclic.
+Every public name is exported from the package root and from the one subpackage that owns it;
+the [API reference](api.rst) groups them by the article that documents them. Modules with a
+leading underscore are internal. The modules of the earlier flat layout, such as
+`factorlasso.lasso_estimator` and `factorlasso.cluster_utils`, remain importable and re-export
+their names from the new owners.
+
+The import graph runs one way. `utils` imports no other subpackage; `cluster` and `priors`
+import `utils`; `covariance` imports `utils` and `cluster`; `linear_model` imports `utils`,
+`cluster` and `priors`; `diagnostics` imports `utils` and `covariance`, because the lineage reads
+covariance snapshots; and `model_selection` imports `utils`, `linear_model` and `diagnostics`.
+The rolling clustering refers to `LassoModel` only for type checking, which keeps the graph
+acyclic. A test of the package enforces these edges.
 
 ```mermaid
 flowchart TB
-    subgraph kernels["Kernels"]
-        ewm["ewm_utils"]
-        dep["dependence_utils"]
-    end
-    subgraph derivation["Priors, signs and clusters"]
-        priors["beta_priors, sign_constraints, expert_prior_map"]
-        clusters["cluster_utils, cluster_smoothing"]
-    end
-    subgraph estimation["Estimation"]
-        model["lasso_estimator: LassoModel"]
-    end
-    subgraph selection["Selection and diagnostics"]
-        sel["cv, diagonality, residual_diagnostics"]
-    end
-    subgraph containers["Containers"]
-        cov["factor_covar, residual_covar"]
-    end
-    subgraph offline["Cluster analytics"]
-        stats["cluster_statistics, cluster_standardization"]
-        lineage["cluster_lineage (offline)"]
-    end
-    ewm --> dep
-    ewm --> priors
-    dep --> clusters
-    priors --> model
-    clusters --> model
-    model --> sel
-    ewm --> cov
-    cov --> lineage
-    clusters --> stats
+    utils["utils: EWMA, group loadings, panel preparation"]
+    cluster["cluster: dependence, partitions, smoothing, stability"]
+    priors["priors: signs, prior centres, bounds, inference"]
+    linear["linear_model: LassoModel and the solvers"]
+    covariance["covariance: snapshots and assembly"]
+    diagnostics["diagnostics: residual tests, offline lineage"]
+    selection["model_selection: LassoModelCV, LassoModelDiagonalityCV"]
+    utils --> cluster
+    utils --> priors
+    cluster --> linear
+    priors --> linear
+    cluster --> covariance
+    covariance --> diagnostics
+    linear --> selection
+    diagnostics --> selection
 ```
 
 ## A fit, step by step

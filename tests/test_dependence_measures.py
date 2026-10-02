@@ -9,12 +9,9 @@ import scipy.cluster.hierarchy as spc
 from scipy.spatial.distance import squareform
 
 from factorlasso.cluster_utils import compute_clusters_from_corr_matrix
-from factorlasso.dependence_utils import (
-    DEFAULT_DEPENDENCE_MEASURE,
-    DependenceMeasure,
-    _normalised_ewm_weights,
-    compute_dependence_matrix,
-    compute_gerber_matrix,
+from factorlasso.cluster._dependence import (
+    DEFAULT_DEPENDENCE_MEASURE, DependenceMeasure, _normalised_ewm_weights,
+    compute_dependence_matrix, compute_gerber_matrix,
 )
 from factorlasso.ewm_utils import compute_ewm_covar
 from factorlasso.lasso_estimator import LassoModel, LassoModelType

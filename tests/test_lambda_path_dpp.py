@@ -22,10 +22,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from factorlasso.lasso_estimator import (
-    _build_group_lasso_problem,
-    solve_group_lasso_cvx_problem,
-    solve_group_lasso_path,
+from factorlasso.linear_model._solvers.group_lasso import (
+    _build_group_lasso_problem, solve_group_lasso_cvx_problem, solve_group_lasso_path,
 )
 
 # Parity tolerance. CLARABEL solves the parametrised and the rebuilt

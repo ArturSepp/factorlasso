@@ -1,0 +1,279 @@
+"""Resolve economic descriptions into per-response OLS-prior factor labels.
+
+This optional metadata helper does not estimate beta magnitudes. It produces
+the ``factor_for_prior`` mapping consumed by :class:`factorlasso.LassoModel`;
+unrecognised or mixed instruments retain automatic highest-R-squared selection.
+It depends on factor labels, not on a consumer's factor-model class or CMA data.
+"""
+
+from __future__ import annotations
+
+import re
+import warnings
+from collections.abc import Collection, Mapping
+from dataclasses import dataclass
+
+import pandas as pd
+
+
+_BROAD_EQUITY_NAME = re.compile(
+    r'^(?:eq )?(?:acwi|us|uk|europe|eu|japan|swiss|ac asia|asia|em|world|'
+    r'north america|global equity)'
+    r'(?: chf| xuk| xswiss| sli| msci| xjp| xasia| ex japan| ex asia| dm| hedged)*$'
+)
+_NON_EQUITY_NAME = re.compile(
+    r'\b(?:bonds?|debt|credit|fixed income|treasury|cash|commodit(?:y|ies)|hedge fund)\b'
+)
+_BROAD_MSCI_MARKETS = frozenset({
+    'acwi', 'ac world', 'world', 'usa', 'us', 'uk', 'europe', 'emu', 'japan',
+    'switzerland', 'canada', 'france', 'germany', 'netherlands', 'italy',
+    'spain', 'norway', 'australia', 'hong kong', 'singapore free', 'china',
+    'brazil', 'saudi arabia', 'emerging', 'em asia', 'em ex asia',
+    'emerging markets', 'emerging latin america', 'emerging markets india',
+    'emerging markets korea', 'emerging markets taiwan',
+    'emerging markets mexico', 'emerging markets south africa',
+    'emerging markets poland', 'emerging markets europe middle east africa',
+    'europe ex uk ex switzerland', 'europe ex switzerland ex uk',
+    'ac asia pacific ex japan', 'pacific ex japan',
+})
+_MSCI_RETURN_MARKERS = (
+    ' net total return ', ' net return ', ' gross total return ',
+    ' 100 hedged to ', ' hedged to ', ' net ', ' index',
+)
+
+
+@dataclass(frozen=True)
+class ExpertPriorResolution:
+    """Factor labels and provenance for one metadata-to-prior resolution.
+
+    Attributes
+    ----------
+    selection : pd.Series
+        Response-indexed scalar or ordered tuple of factor labels. Missing
+        entries defer to the estimator's automatic factor selection.
+    audit : pd.DataFrame
+        Response-indexed name, readable selection, source, rule and optional
+        caller-supplied policy version.
+    """
+
+    selection: pd.Series
+    audit: pd.DataFrame
+
+
+def _normalise_name(value: object) -> str:
+    """Return a token-preserving, case-insensitive instrument description."""
+    if not isinstance(value, str):
+        return ''
+    return ' '.join(re.sub(r'[^a-z0-9]+', ' ', value.casefold()).split())
+
+
+def _normalise_ticker(value: object) -> str:
+    """Canonicalise an instrument identifier for override matching."""
+    return ' '.join(str(value).upper().split())
+
+
+def _is_equity_index_name(name: str) -> bool:
+    """Recognise broad equity benchmarks, leaving style and sectors automatic."""
+    if _BROAD_EQUITY_NAME.fullmatch(name):
+        return True
+    if _NON_EQUITY_NAME.search(name):
+        return False
+    if name.startswith('msci '):
+        description = name[len('msci '):]
+        for marker in _MSCI_RETURN_MARKERS:
+            if marker in description:
+                return description.split(marker, 1)[0] in _BROAD_MSCI_MARKETS
+    return bool(
+        re.search(r'\bunited kingdom large (?:and )?mid cap net return index\b', name)
+        or name == 'sli swiss leader perform'
+    )
+
+
+def _is_listed_real_estate_name(name: str) -> bool:
+    """Recognise listed property equity without treating private/debt funds as REITs."""
+    if _NON_EQUITY_NAME.search(name) or re.search(r'\b(?:private|mortgage)\b', name):
+        return False
+    return bool(
+        re.search(r'\b(?:listed|equity) reits?\b', name)
+        or any(name.startswith('msci world real estate' + marker)
+               for marker in _MSCI_RETURN_MARKERS)
+    )
+
+
+def _commodity_selection(name: str) -> tuple[str | None, str]:
+    """Select dedicated gold/oil factors only for unmixed commodity mandates."""
+    if re.search(r'\b(?:mining|miners?|producers?|equity|gas|silver|agriculture|metals)\b', name):
+        return None, 'unsupported_or_mixed_commodity'
+    matches = [factor for token, factor in (('gold', 'Gold'), ('oil', 'Oil'))
+               if re.search(rf'\b{token}\b', name)]
+    if len(matches) > 1:
+        return None, 'mixed_factor_name'
+    return (matches[0], 'dedicated_commodity') if matches else (None, 'no_rule')
+
+
+def _selection_from_name(name: str) -> tuple[str | tuple[str, ...] | None, str]:
+    """Recognise fixed-income/hybrid mandates, retaining incomplete or mixed cases."""
+    il = bool(re.search(r'\b(?:il bonds?|inflation linked|inflation notes?|tips)\b', name))
+    hy = bool(re.search(r'\b(?:hy|high yield)\b', name))
+    em = bool(re.search(r'\b(?:em|emerging markets?|c?embi)\b', name))
+    explicit_ig = bool(re.search(r'\b(?:ig|investment grade)\b', name))
+    descriptive_ig = bool(re.search(
+        r'\b(?:corporates?|global (?:aggregate|agg)|aaa bbb)\b', name))
+    government = bool(re.search(r'\b(?:treasur(?:y|ies)|government|govt|sovereign)\b',
+                                name))
+    municipal = bool(re.search(r'\b(?:municipal|muni) bonds?\b', name))
+    securitized = bool(re.search(r'\bsecuriti[sz]ed bonds?\b', name))
+    coco = bool(re.search(r'\b(?:cocos?|contingent convertibles?)\b', name))
+    convertible = bool(re.search(r'\bconvertibles?\b', name)) and not coco
+    preferred = bool(re.search(r'\bpreferred\b', name))
+    floating = bool(re.search(r'\b(?:floating rate|floaters?)\b', name))
+    # Hard-currency EM credit is not a local-rates/FX mandate, even at IG quality.
+    if em and re.search(r'\blocal (?:currency|rates?)\b', name):
+        return None, 'unsupported_em_local_currency'
+    if ((government and re.search(r'\bcorporates?\b', name))
+            or ((municipal or securitized) and (hy or em))):
+        return None, 'mixed_factor_name'
+    ig = explicit_ig or (descriptive_ig and not (
+        il or hy or em or government or municipal or securitized or convertible or preferred))
+    candidates = [
+        (('Rates', 'Inflation'), 'inflation_linked', il),
+        ('Credit IG', 'investment_grade' if explicit_ig else 'investment_grade_index_name', ig),
+        ('Credit HY', 'high_yield', hy),
+        ('Credit EM', 'em_bonds', em),
+    ]
+    matches = [(selection, rule) for selection, rule, matched in candidates if matched]
+    if len(matches) > 1:
+        return None, 'mixed_factor_name'
+    # A CoCo needs its rating; ordinary convertibles/preferreds have equity optionality.
+    # Do not infer IG quality from "preferred" or fixed duration from floating coupons.
+    if coco:
+        return matches[0] if matches else (None, 'coco_rating_unspecified')
+    if convertible or preferred:
+        if matches or floating or re.search(r'\barbitrage\b', name):
+            return None, 'mixed_factor_name'
+        return ('Rates', 'Equity'), 'convertible' if convertible else 'preferred'
+    if matches:
+        return matches[0]
+    if floating:
+        return None, 'floating_rate_quality_unspecified'
+    # Rates is a prior centre, not a claim that muni/securitized spread risk is zero.
+    if government or municipal or securitized:
+        rule = 'government_rates' if government else (
+            'municipal_rates_proxy' if municipal else 'securitized_rates_proxy')
+        return 'Rates', rule
+    return None, 'no_rule'
+
+
+def map_expert_factor_priors(
+        ticker_to_name: pd.Series,
+        factor_names: Collection[str] | Mapping[str, object],
+        *,
+        asset_class: pd.Series | None = None,
+        ticker_overrides: Mapping[str, str | list[str] | tuple[str, ...]] | None = None,
+        policy_version: str | None = None,
+) -> ExpertPriorResolution:
+    """Select OLS-prior factors from instrument descriptions and reviewed overrides.
+
+    Parameters
+    ----------
+    ticker_to_name : pd.Series
+        Instrument names indexed by unique ticker or response identifier.
+    factor_names : collection of str or mapping
+        Available factor labels. A mapping contributes its keys, not values;
+        pass ``x.columns`` or a consumer model's factor-name list directly.
+    asset_class : pd.Series, optional
+        Response-indexed broad asset classes. When supplied, name rules are
+        gated to equity, fixed-income/hybrid or commodity classes. Missing
+        classes retain the legacy fixed-income and explicit "EQ" name rules.
+    ticker_overrides : mapping, optional
+        Explicit response-to-factor selection, taking precedence over names.
+        A scalar selects univariate OLS; an ordered list or tuple selects joint OLS.
+    policy_version : str, optional
+        Caller-owned policy identifier copied into the audit. It is distinct
+        from the factorlasso package version.
+
+    Returns
+    -------
+    ExpertPriorResolution
+        A nullable ``selection`` suitable for ``LassoModel.factor_for_prior``
+        and an auditable account of each decision. Unknown model factors warn
+        and fall back to automatic selection.
+    """
+    if not isinstance(ticker_to_name, pd.Series):
+        raise TypeError('ticker_to_name must be a pandas Series')
+    if not ticker_to_name.index.is_unique:
+        raise ValueError('expert-prior tickers must be unique')
+    tickers = pd.Index([_normalise_ticker(ticker) for ticker in ticker_to_name.index])
+    if not tickers.is_unique or any(ticker in ('', 'NAN', 'NONE') for ticker in tickers):
+        raise ValueError('expert-prior tickers must be nonempty and unique after normalisation')
+    if asset_class is not None:
+        if not isinstance(asset_class, pd.Series):
+            raise TypeError('asset_class must be a pandas Series')
+        if (not asset_class.index.is_unique
+                or not ticker_to_name.index.isin(asset_class.index).all()):
+            raise ValueError('asset_class must uniquely cover every requested ticker')
+
+    if isinstance(factor_names, str) or not isinstance(factor_names, Collection):
+        raise TypeError('factor names must be a collection of strings or mapping keys')
+    factors = list(factor_names)
+    if (not factors or any(not isinstance(factor, str) or not factor.strip()
+                           for factor in factors) or len(set(factors)) != len(factors)):
+        raise ValueError('factor names must be nonempty, distinct string labels')
+    known_factors = set(factors)
+
+    if ticker_overrides is not None and not isinstance(ticker_overrides, Mapping):
+        raise TypeError('ticker_overrides must be a mapping')
+    overrides = {_normalise_ticker(ticker): selected
+                 for ticker, selected in (ticker_overrides or {}).items()}
+    if len(overrides) != len(ticker_overrides or {}):
+        raise ValueError('expert-prior override tickers must be unique after normalisation')
+
+    selection = pd.Series(None, index=ticker_to_name.index, name='factor_for_prior', dtype=object)
+    audit_rows = []
+    unavailable = {}
+    for ticker, normalised_ticker in zip(ticker_to_name.index, tickers):
+        name = _normalise_name(ticker_to_name.loc[ticker])
+        selected = overrides.get(normalised_ticker)
+        source = 'override' if selected is not None else 'automatic'
+        rule = 'reviewed_override' if selected is not None else 'no_rule'
+        if selected is None:
+            category = '' if asset_class is None else _normalise_name(asset_class.loc[ticker])
+            if category in ('equity', 'equities') or (not category and name.startswith('eq ')):
+                if _is_equity_index_name(name):
+                    selected, rule = 'Equity', 'broad_equity_name'
+                elif _is_listed_real_estate_name(name):
+                    selected, rule = ('Rates', 'Equity'), 'listed_real_estate'
+            elif category in ('', 'bonds', 'bond', 'fixed income', 'hybrid', 'hybrids'):
+                selected, rule = _selection_from_name(name)
+            elif category in ('commodity', 'commodities'):
+                selected, rule = _commodity_selection(name)
+            source = 'name' if selected is not None else (
+                'ambiguous' if rule == 'mixed_factor_name' else 'automatic')
+        if isinstance(selected, (list, tuple)):
+            if (not selected or any(not isinstance(factor, str) or not factor.strip()
+                                    for factor in selected)
+                    or len(set(selected)) != len(selected)):
+                raise ValueError('expert-prior selections require distinct factor names')
+            selected = tuple(selected)
+        elif selected is not None and (not isinstance(selected, str) or not selected.strip()):
+            raise ValueError('expert-prior selections require factor names')
+        selected_factors = selected if isinstance(selected, tuple) else (selected,)
+        absent = [factor for factor in selected_factors
+                  if factor is not None and factor not in known_factors]
+        if absent:
+            unavailable[str(ticker)] = absent
+            selected, source, rule = None, 'unavailable', 'factor_absent_from_model'
+        selection.at[ticker] = selected
+        audit_rows.append({
+            'name': ticker_to_name.loc[ticker],
+            'selection': ' + '.join(selected) if isinstance(selected, tuple) else selected,
+            'source': source,
+            'rule': rule,
+            'policy_version': policy_version,
+        })
+    if unavailable:
+        warnings.warn(
+            f'expert prior factors absent from this model; retaining automatic '
+            f'selection for {unavailable!r}', UserWarning, stacklevel=2)
+    audit = pd.DataFrame(audit_rows, index=ticker_to_name.index)
+    return ExpertPriorResolution(selection=selection, audit=audit)

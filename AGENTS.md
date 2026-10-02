@@ -113,25 +113,28 @@ The staged publication checker and both distribution checks must pass.
 
 ```
 src/factorlasso/
-  lasso_estimator.py          main estimator (sklearn-compatible) and the CVXPY solvers
-  sign_constraints.py         univariate-derived sign constraints and adaptive penalty weights
-  cv.py                       LassoModelCV, expanding-window selection of reg_lambda
-  diagonality.py              LassoModelDiagonalityCV, penalty selection by residual diagonality
-  residual_diagnostics.py     strict-factor-structure tests on a residual panel, effective sparsity
-  factor_covar.py             factor covariance containers and assembly
-  residual_covar.py           prepared common-period residual correlation
-  cluster_utils.py            correlation-to-distance, linkage, dendrogram cut, common-mode removal
-  dependence_utils.py         dependence measures for the clustering correlation
-  cluster_smoothing.py        causal smoothing of rolling clusters, co-association panel
-  cluster_statistics.py       causal cluster-stability statistics
-  cluster_standardization.py  stability-pooled scoring within rolling clusters
-  cluster_lineage.py          offline persistent labelling of estimated risk clusters
-  ewm_utils.py                exponentially weighted moment utilities
+  __init__.py                 explicit root exports (the stable surface, `__all__`)
+  utils/                      EWMA moments, group loadings, panel preparation (_ewm, _panel)
+  cluster/                    dependence, distance/linkage/cut, rolling smoothing, stability,
+                              stability-pooled scoring (_dependence, _hierarchical, _smoothing,
+                              _stability, _standardization)
+  priors/                     sign constraints and adaptive weights, OLS prior centres, expert
+                              bounds and mapping, prior inference and risk (_signs, _ols, _bounds,
+                              _expert_map, _inference, _risk)
+  linear_model/               LassoModel (_estimator) orchestrating _settings, _preparation,
+                              _restrictions, _dispatch, _state, _nowcast, _inspection; result
+                              types and the mode table (_types); CVXPY solvers (_solvers/)
+  covariance/                 factor covariance containers and assembly, residual correlation
+  diagnostics/                residual diagnostics and effective sparsity, offline lineage
+  model_selection/            LassoModelCV and LassoModelDiagonalityCV (_cv, _diagonality)
+  _compat.py                  read-only facades for the 0.23.0 module paths
+  <19 historical modules>     lasso_estimator.py, cluster_utils.py, ...: facades only
 tests/                        test modules (top-level, test_*.py)
 docs/                         Sphinx site: RST utility pages, api.rst, Markdown methodology articles
 docs/images/                  reviewed exhibit previews and analytics_manifest.json
 examples/                     runnable examples; examples/docs/ holds the articles' canonical scripts
-tools/                        check_docs.py, docs_inventory.json, docs_analytics/ (exhibit registry)
+tools/                        check_docs.py, docs_inventory.json, docs_analytics/ (exhibit registry),
+                              api_contract.py (importable API contract)
 benchmarks/                   performance benchmarks
 papers/jss_2026/              local-only JSS workspace (ignored)
 papers/sign_pooling_2026/     sign-pooling paper source and replication
@@ -139,6 +142,18 @@ agents/                       local, git-ignored roadmaps, audits and reports
 COMPARISON.md                 empirical comparison against competing packages
 COMPATIBILITY.md              scikit-learn compatibility notes
 ```
+
+Subpackages import only downward: `cluster` and `priors` use `utils`; `covariance` uses `utils`
+and `cluster`; `linear_model` uses `utils`, `cluster` and `priors`; `diagnostics` uses `utils`
+and `covariance`; `model_selection` uses `utils`, `linear_model` and `diagnostics`
+(`tests/test_import_boundaries.py`). Package code imports the private module that owns a name,
+never a historical facade, the root or another subpackage's `__init__`. Every root export is
+listed in exactly one subpackage `__all__`, and subpackages export nothing else: a new public
+name goes into the root `__all__`, its subpackage `__all__` and an owning article (below). The
+historical modules hold no code: `tests/data/api_contract.json` (written by
+`tools/api_contract.py`) pins every name they provide, and assigning one of them raises because
+it would not reach the implementation. A helper imported by name into several private modules is
+looked up in each; patch every module that `factorlasso._compat.patch_points` returns.
 
 The ``src`` layout is load-bearing: imports from a checkout must resolve through
 ``src/factorlasso/``, and the wheel job independently tests the built wheel and sdist from outside
@@ -199,7 +214,7 @@ live in the `test`, `lint`, and `audit` dependency groups. Supported Python is >
 - Convex problems are expressed with `cvxpy`.
 - Dataclasses carry estimator configuration and result containers.
 - **Statistics taken from the literature carry their source in the module docstring.**
-  `residual_diagnostics.py` has a `References` section naming Schott (2005) for the sphericity
+  `diagnostics/_residuals.py` has a `References` section naming Schott (2005) for the sphericity
   statistic, Marchenko-Pastur (1967) and Laloux et al. (1999) for the spectral edge, and
   Gagliardini, Ossola and Scaillet (2019) for reading the largest residual eigenvalue as an
   omitted-factor test and for the "smallest model that passes" selection shape. Keep that section
@@ -216,7 +231,7 @@ live in the `test`, `lint`, and `audit` dependency groups. Supported Python is >
   Compatibility is achieved by following its conventions, not by depending on it — `scikit-learn`
   is in the `test` dependency group only, and `import factorlasso` leaves `sklearn` absent from
   `sys.modules`.
-  **One deliberate exception:** `__sklearn_tags__` in `lasso_estimator.py` imports
+  **One deliberate exception:** `__sklearn_tags__` in `linear_model/_estimator.py` imports
   `sklearn.utils` inside the method behind a `try/except`, so an older scikit-learn that does not
   call the hook falls through and a missing scikit-learn cannot break an import. It runs only when
   scikit-learn is installed and calling it. Any future exception keeps that shape: inside the

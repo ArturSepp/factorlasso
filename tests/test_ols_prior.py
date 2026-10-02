@@ -6,8 +6,8 @@ import pytest
 from sklearn.base import clone
 
 from factorlasso import LassoModel, LassoModelCV, LassoModelType
-from factorlasso.beta_priors import _compute_ols_prior
-from factorlasso.lasso_estimator import _compute_solver_weights
+from factorlasso.priors._ols import _compute_ols_prior
+from factorlasso.linear_model._solvers.common import _compute_solver_weights
 
 
 def panel():

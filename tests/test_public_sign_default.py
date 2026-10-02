@@ -2,7 +2,7 @@
 
 import numpy as np
 from factorlasso import LassoModel
-from factorlasso.sign_constraints import _compute_sign_vector
+from factorlasso.priors._signs import _compute_sign_vector
 
 
 def test_public_gate_defaults_to_independent_without_reverting_mask_fix():

@@ -333,8 +333,7 @@ def test_every_lasso_parameter_is_described_in_the_docstring(check_docs):
     """The generated API page shows the docstring, so a new parameter must be described there."""
     import ast
 
-    source = (REPOSITORY_ROOT / "src" / "factorlasso" / "lasso_estimator.py").read_text(
-        encoding="utf-8")
+    source = (REPOSITORY_ROOT / check_docs.ESTIMATOR_SOURCE).read_text(encoding="utf-8")
     model = next(node for node in ast.parse(source).body
                  if isinstance(node, ast.ClassDef) and node.name == "LassoModel")
     documented = _documented_parameters(ast.get_docstring(model, clean=False))

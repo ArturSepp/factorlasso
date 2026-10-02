@@ -6,10 +6,8 @@ import pytest
 
 from factorlasso import LassoModel
 from factorlasso.lasso_estimator import get_x_y_np
-from factorlasso.sign_constraints import (
-    _compute_sign_matrix_per_response,
-    _compute_sign_vector,
-    derive_sign_constraints,
+from factorlasso.priors._signs import (
+    _compute_sign_matrix_per_response, _compute_sign_vector, derive_sign_constraints,
 )
 
 
@@ -103,7 +101,7 @@ def test_bulk_matches_single_response_and_factor_clusters(span):
 
 def test_fit_restores_missing_response_and_factor_masks(monkeypatch):
     """Check the actual solver preparation, not only a standalone helper."""
-    import factorlasso.sign_constraints as sc
+    import factorlasso.priors._signs as sc
 
     rng = np.random.default_rng(34)
     x = pd.DataFrame(rng.normal(size=(300, 2)), columns=["x", "z"])

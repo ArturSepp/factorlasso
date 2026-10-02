@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "factorlasso"
-version = "0.23.0"
+version = "0.24.0"
 description = "Sparse multi-output factor-model estimation with sign constraints, prior-centered shrinkage, data-driven grouped penalties, and consistent factor covariance assembly"
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -143,8 +143,9 @@ extend-select = ["TID251", "TID253", "ICN"]
 [tool.ruff.lint.flake8-tidy-imports]
 # scikit-learn is a test-group dependency, never a runtime one: compatibility is achieved by
 # following its conventions, not by depending on it. A module-level import fails; the
-# `__sklearn_tags__` shim in lasso_estimator.py imports sklearn.utils inside the method behind a
-# try/except and is allowed by design, which is why this is TID253 rather than a flat TID251 ban.
+# `__sklearn_tags__` shim in linear_model/_estimator.py imports sklearn.utils inside the method
+# behind a try/except and is allowed by design, which is why this is TID253 rather than a flat
+# TID251 ban.
 banned-module-level-imports = ["sklearn"]
 
 [tool.ruff.lint.per-file-ignores]

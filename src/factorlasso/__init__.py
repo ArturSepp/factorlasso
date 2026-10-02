@@ -49,90 +49,45 @@ BibTeX entries.
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
-from factorlasso.cluster_lineage import (
-    RiskClusterReport,
-    TaxonomyConfig,
-    analyze_cluster_lineage,
-    run_cluster_lineage_report,
-)
-from factorlasso.cluster_smoothing import (
-    ClusterSmootherType,
-    RollingClusterData,
-    apply_partition_distance_bonus,
-    compute_co_association_panel,
-    compute_rolling_smoothed_clusters,
-    smooth_similarity_ewma,
-)
-from factorlasso.cluster_standardization import (
-    StabilityPoolingType,
-    score_with_stability_pooled_clusters,
-)
-from factorlasso.cluster_statistics import (
-    ClusterStabilityStatistics,
-    compute_cluster_stability_statistics,
-)
-from factorlasso.cluster_utils import (
+from factorlasso.cluster import (
     ClusterCorrelationTransform,
     ClusterCorrelationTransformResult,
+    ClusterSmootherType,
+    ClusterStabilityStatistics,
+    DependenceMeasure,
     DistanceTransform,
+    RollingClusterData,
+    StabilityPoolingType,
     apply_cluster_correlation_transform,
+    apply_partition_distance_bonus,
+    compute_cluster_stability_statistics,
     compute_clusters_from_corr_matrix,
+    compute_co_association_panel,
+    compute_dependence_matrix,
+    compute_gerber_matrix,
+    compute_rolling_smoothed_clusters,
     get_clusters_by_freq,
     get_cutoffs_by_freq,
     get_linkage_array,
     get_linkages_by_freq,
     remove_first_principal_component,
+    score_with_stability_pooled_clusters,
+    smooth_similarity_ewma,
 )
-from factorlasso.cv import LassoModelCV
-from factorlasso.dependence_utils import (
-    DependenceMeasure,
-    compute_dependence_matrix,
-    compute_gerber_matrix,
-)
-from factorlasso.diagonality import LassoModelDiagonalityCV
-from factorlasso.ewm_utils import (
-    compute_ewm,
-    compute_ewm_covar,
-    compute_expanding_power,
-    set_group_loadings,
-)
-from factorlasso.expert_prior_map import (
-    ExpertPriorResolution,
-    map_expert_factor_priors,
-)
-from factorlasso.factor_covar import (
+from factorlasso.covariance import (
     CurrentFactorCovarData,
+    ResidualCorrelationData,
     ResidualType,
     RollingFactorCovarData,
     VarianceColumns,
+    estimate_residual_correlation,
 )
-from factorlasso.prior_bounds import compute_expert_prior_statistics
-from factorlasso.prior_inference import (
-    PriorHacGeometry, Ar1PriorInterval, compute_prior_hac_geometry,
-    gaussian_prior_critical_value, compute_ar1_prior_interval,
-)
-from factorlasso.prior_risk import (
-    GaussianDominanceInformation, gaussian_dominance_information,
-    two_factor_limit_risk, two_factor_minimax_radius,
-)
-from factorlasso.lasso_estimator import (
-    LassoEstimationResult,
-    LassoModel,
-    LassoModelType,
-    LassoNowcastResult,
-    get_x_y_np,
-    solve_cooperative_group_lasso_cvx_problem,
-    solve_group_lasso_cvx_problem,
-    solve_group_lasso_path,
-    solve_lasso_cvx_problem,
-    solve_unilasso_cvx_problem,
-)
-from factorlasso.residual_covar import (
-    ResidualCorrelationData, estimate_residual_correlation,
-)
-from factorlasso.residual_diagnostics import (
+from factorlasso.diagnostics import (
     ResidualDiagnostics,
+    RiskClusterReport,
     Sparsity,
+    TaxonomyConfig,
+    analyze_cluster_lineage,
     diagnose_residuals,
     effective_sparsity,
     marchenko_pastur_edge,
@@ -141,11 +96,66 @@ from factorlasso.residual_diagnostics import (
     partition_variance_share,
     raw_offdiagonal_mass,
     residual_correlation,
+    run_cluster_lineage_report,
     suggest_tolerance,
 )
-from factorlasso.sign_constraints import (
+from factorlasso.linear_model import (
+    LassoEstimationResult,
+    LassoModel,
+    LassoModelType,
+    LassoNowcastResult,
+    solve_cooperative_group_lasso_cvx_problem,
+    solve_group_lasso_cvx_problem,
+    solve_group_lasso_path,
+    solve_lasso_cvx_problem,
+    solve_unilasso_cvx_problem,
+)
+from factorlasso.model_selection import LassoModelCV, LassoModelDiagonalityCV
+from factorlasso.priors import (
+    Ar1PriorInterval,
+    ExpertPriorResolution,
+    GaussianDominanceInformation,
+    PriorHacGeometry,
+    compute_ar1_prior_interval,
+    compute_expert_prior_statistics,
+    compute_prior_hac_geometry,
     derive_sign_constraints,
+    gaussian_dominance_information,
+    gaussian_prior_critical_value,
+    map_expert_factor_priors,
+    two_factor_limit_risk,
+    two_factor_minimax_radius,
     validate_cluster_signs,
+)
+from factorlasso.utils import (
+    compute_ewm,
+    compute_ewm_covar,
+    compute_expanding_power,
+    get_x_y_np,
+    set_group_loadings,
+)
+
+# The modules of the 0.23.0 flat layout stay importable, and stay attributes of the package.
+from factorlasso import (  # noqa: F401
+    beta_priors,
+    cluster_lineage,
+    cluster_smoothing,
+    cluster_standardization,
+    cluster_statistics,
+    cluster_utils,
+    cv,
+    dependence_utils,
+    diagonality,
+    ewm_utils,
+    expert_prior_map,
+    factor_covar,
+    lasso_estimator,
+    prior_bounds,
+    prior_inference,
+    prior_risk,
+    residual_covar,
+    residual_diagnostics,
+    sign_constraints,
 )
 
 try:

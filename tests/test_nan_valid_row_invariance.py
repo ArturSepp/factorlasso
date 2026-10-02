@@ -28,10 +28,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from factorlasso.sign_constraints import (
-    _compute_sign_matrix_per_response,
-    _compute_sign_vector,
-)
+from factorlasso.priors._signs import _compute_sign_matrix_per_response, _compute_sign_vector
 
 
 def _honest_univariate(x_arr, y_col):

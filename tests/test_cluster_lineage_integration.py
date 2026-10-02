@@ -9,16 +9,9 @@ import pytest
 from scipy.optimize import linear_sum_assignment
 
 from factorlasso import CurrentFactorCovarData, RollingFactorCovarData
-from factorlasso.cluster_lineage import (
-    RiskClusterReport,
-    TaxonomyConfig,
-    _Fingerprint,
-    _overlap,
-    _psd_clip,
-    _qualifies,
-    _snapshot_fingerprints,
-    analyze_cluster_lineage,
-    run_cluster_lineage_report,
+from factorlasso.diagnostics._lineage import (
+    RiskClusterReport, TaxonomyConfig, _Fingerprint, _overlap, _psd_clip, _qualifies,
+    _snapshot_fingerprints, analyze_cluster_lineage, run_cluster_lineage_report,
 )
 
 FACTORS = ("Equity", "Rates", "Credit")
