@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.25.0 — unreleased
+## 0.25.0 — 2026-10-02
 
 - A `LassoModel.fit` that raises now leaves every fitted attribute as it was before the call,
   so a failed refit no longer mixes diagnostics of the new configuration with coefficients
