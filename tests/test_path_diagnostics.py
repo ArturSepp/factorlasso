@@ -73,7 +73,6 @@ def _equal(left, right):
     return left == right
 
 
-@pytest.mark.xfail(strict=True, reason="V3 S0 known defect: path models omit sign diagnostics")
 @pytest.mark.parametrize("model_type", [
     LassoModelType.GROUP_LASSO,
     LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
@@ -93,7 +92,6 @@ def test_path_models_carry_fresh_fit_preparation_diagnostics(model_type):
     assert mismatched == [], ", ".join(mismatched)
 
 
-@pytest.mark.xfail(strict=True, reason="V3 S0 known defect: refit keeps stale derived_signs_")
 def test_refit_without_signs_clears_derived_signs():
     """A refit whose configuration enforces no signs leaves ``derived_signs_`` unset."""
     x, y = _panel()
@@ -105,7 +103,6 @@ def test_refit_without_signs_clears_derived_signs():
     assert model.derived_signs_ is None
 
 
-@pytest.mark.xfail(strict=True, reason="V3 S0 known defect: path inherits stale derived_signs_")
 def test_path_from_refitted_template_has_no_stale_signs():
     """Path models never inherit the template's signs from an earlier configuration."""
     x, y = _panel()
@@ -117,7 +114,6 @@ def test_path_from_refitted_template_has_no_stale_signs():
     assert all(model.derived_signs_ is None for model in path)
 
 
-@pytest.mark.xfail(strict=True, reason="V3 S0 known defect: path models share diagnostics")
 def test_path_models_own_their_diagnostics():
     """No mutable diagnostic object is shared between path models or with the template."""
     x, y = _panel()

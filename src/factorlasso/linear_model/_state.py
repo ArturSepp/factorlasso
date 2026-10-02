@@ -1,8 +1,11 @@
 """Fitted state of a solved fit: warmup zeroing, coefficients, intercepts and bookkeeping.
 
-:func:`fitted_state` is the one place that enumerates the solve-dependent fitted attributes;
-:func:`install_fitted_state` stores them. A single fit and every point of a regularisation
-path share this post-processing.
+A fitted model's state has two parts. The preparation state (signs, priors, bounds, adaptive
+weights; :data:`~factorlasso.linear_model._preparation.PREPARATION_STATE`) does not depend on
+``reg_lambda``; :func:`preparation_state` copies it from the model that was prepared.
+:func:`fitted_state` enumerates the solve-dependent attributes. :func:`install_fitted_state`
+stores a record. A single fit and every point of a regularisation path share this
+post-processing, so a path model carries exactly the diagnostics of a fresh fit.
 """
 
 from __future__ import annotations
@@ -13,6 +16,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 
+from factorlasso.linear_model._preparation import PREPARATION_STATE
 from factorlasso.linear_model._solvers.common import _compute_solver_weights
 from factorlasso.linear_model._types import LassoEstimationResult, LassoModelType
 
@@ -197,6 +201,20 @@ def economic_intercept(
     if short_assets is not None:
         alpha_const_ser.loc[short_assets] = np.nan
     return alpha_const_ser
+
+
+def owned(value):
+    """An independent copy of a mutable fitted value; immutable values are returned as is."""
+    if isinstance(value, (pd.DataFrame, pd.Series)):
+        return value.copy(deep=True)
+    if isinstance(value, np.ndarray):
+        return value.copy()
+    return value
+
+
+def preparation_state(prepared_model) -> Dict[str, Any]:
+    """Independent copies of every preparation diagnostic of ``prepared_model``."""
+    return {name: owned(getattr(prepared_model, name)) for name in PREPARATION_STATE}
 
 
 def install_fitted_state(model, state: Dict[str, Any]) -> None:

@@ -5,9 +5,10 @@ weights do not depend on ``reg_lambda``. :func:`prepare_fit` derives them once f
 prepared panel, so a regularisation path reuses them across the grid, and returns the solver
 inputs as a :class:`_PreparedFit`.
 
-The preparation diagnostics are stored on the model as they are derived, in the order and at
-the points where earlier releases stored them; a fit that raises part-way therefore leaves the
-same partial state as before.
+The preparation diagnostics (:data:`PREPARATION_STATE`) are stored on the model as they are
+derived, in the order and at the points where earlier releases stored them; a fit that raises
+part-way therefore leaves the same partial state as before. Every one of them is reset first,
+so a refit never keeps a diagnostic of an earlier configuration.
 """
 
 from __future__ import annotations
@@ -40,11 +41,15 @@ PRIOR_DIAGNOSTICS = (
     'effective_prior_hac_lags_',
 )
 
-#: Automatic-sign diagnostics, reset after the sign settings have been validated.
+#: Sign diagnostics, reset after the sign settings have been validated. ``derived_signs_``
+#: is the solver-facing sign matrix; a fit that enforces no signs leaves it ``None``.
 SIGN_DIAGNOSTICS = (
     'detected_signs_', 'sign_slopes_', 'sign_t_stats_', 'sign_effective_n_',
-    'sign_valid_counts_', 'sign_penalty_weights_', 'sign_block_weights_',
+    'sign_valid_counts_', 'sign_penalty_weights_', 'sign_block_weights_', 'derived_signs_',
 )
+
+#: Every fitted attribute that the preparation derives (independent of ``reg_lambda``).
+PREPARATION_STATE = PRIOR_DIAGNOSTICS + ('effective_sign_span_',) + SIGN_DIAGNOSTICS
 
 
 @dataclass(frozen=True)

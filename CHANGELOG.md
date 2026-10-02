@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.24.0 — unreleased
+
+- Fix `LassoModel.fit_reg_lambda_path` for GROUP_LASSO, HCGL and FCGL: every returned
+  model now carries the automatic-sign diagnostics of a fresh fit at its `reg_lambda`
+  (`detected_signs_`, `sign_slopes_`, `sign_t_stats_`, `sign_effective_n_`,
+  `sign_valid_counts_`, `sign_penalty_weights_`, `sign_block_weights_`,
+  `effective_sign_span_`), which were left `None`. Each returned model owns independent
+  copies of its preparation diagnostics, cluster labels, linkage and validity mask, so
+  modifying one no longer changes another model or the template. Coefficients, selected
+  penalties and every other output are unchanged.
+- Fix a stale `derived_signs_`: a refit whose configuration enforces no sign constraint
+  now leaves `derived_signs_` as `None` instead of keeping the previous fit's matrix, and
+  regularisation-path models no longer inherit it from the template. `derived_signs_` is
+  reset with the other sign diagnostics at the start of every fit, including a fit that
+  subsequently raises.
+
 ## 0.23.0 — 2026-09-30
 
 - Add `ResidualType.EXPOSURE_CLUSTER` and `RESIDUAL_CLUSTER` alongside the

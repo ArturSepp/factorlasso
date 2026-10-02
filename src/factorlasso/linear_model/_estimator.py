@@ -68,7 +68,9 @@ from factorlasso.linear_model._preparation import _PreparedFit, prepare_fit
 from factorlasso.linear_model._settings import (
     coerce_fit_inputs, resolve_spans, validate_configuration, validate_external_clusters,
 )
-from factorlasso.linear_model._state import fitted_state, install_fitted_state
+from factorlasso.linear_model._state import (
+    fitted_state, install_fitted_state, owned, preparation_state,
+)
 from factorlasso.linear_model._types import (
     LassoEstimationResult, LassoModelType, LassoNowcastResult, _mode_spec,
 )
@@ -948,9 +950,16 @@ class LassoModel:
         and UniLasso have no path solver, so each grid point is a full
         :meth:`fit`.
 
-        Primitive behind ``LassoModelCV(use_lambda_path=True)``. ``self`` is
-        left partially updated (its ``derived_signs_`` is set); use the
-        returned models, not ``self``.
+        Each returned model owns its fitted state: it holds the complete
+        sign, prior, bound and adaptive-weight diagnostics of a fresh fit,
+        as independent copies. Coefficients agree with a fresh fit up to
+        solver tolerance, since the path is solved as one parametrised
+        problem.
+
+        Primitive behind ``LassoModelCV(use_lambda_path=True)``. For the
+        group-LASSO family ``self`` is left partially updated (its
+        preparation diagnostics, such as ``derived_signs_``, are set); use
+        the returned models, not ``self``.
 
         Parameters
         ----------
@@ -998,26 +1007,20 @@ class LassoModel:
             self, prep, x_np, y_np, valid_mask, eff_span, lambdas, verbose,
         )
 
-        derived_signs = getattr(self, "derived_signs_", None)
+        # Every returned model carries its own copy of the full preparation state that a fresh
+        # fit at its reg_lambda would hold, then the solve-dependent state of its result.
         out: List["LassoModel"] = []
         for lam, result in zip(lambdas, results):
             params = self.get_params()
             params["reg_lambda"] = lam
             clone = LassoModel(**params)
-            if derived_signs is not None:
-                clone.derived_signs_ = derived_signs
-            for name in ('ols_betas_', 'ols_r2_', 'ols_beta_prior_', 'effective_beta_prior_',
-                         'prior_lower_bounds_', 'prior_upper_bounds_', 'prior_bound_diagnostics_'):
-                value = getattr(self, name)
-                setattr(clone, name, None if value is None else value.copy(deep=True))
-            clone.ols_prior_span_ = self.ols_prior_span_
-            clone.effective_prior_hac_lags_ = self.effective_prior_hac_lags_
+            install_fitted_state(clone, preparation_state(self))
             clone._finalize_fit(
-                result=result, x=x, y=y, valid_mask=valid_mask,
+                result=result, x=x, y=y, valid_mask=owned(valid_mask),
                 eff_span=eff_span,
                 eff_cluster_correlation_span=eff_cluster_correlation_span,
-                asset_clusters=prep.asset_clusters,
-                linkage=prep.linkage, cutoff=prep.cutoff,
+                asset_clusters=owned(prep.asset_clusters),
+                linkage=owned(prep.linkage), cutoff=prep.cutoff,
             )
             out.append(clone)
         return out
