@@ -11,7 +11,9 @@ post-processing, so a path model carries exactly the diagnostics of a fresh fit.
 from __future__ import annotations
 
 import warnings
-from typing import Any, Dict, Optional
+from contextlib import contextmanager
+from dataclasses import fields
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -221,3 +223,39 @@ def install_fitted_state(model, state: Dict[str, Any]) -> None:
     """Store a fitted-state record on ``model``."""
     for name, value in state.items():
         setattr(model, name, value)
+
+
+def fitted_attribute_names(model) -> Tuple[str, ...]:
+    """The fitted attributes of an estimator: its dataclass fields with a trailing underscore."""
+    return tuple(field.name for field in fields(model) if field.name.endswith("_"))
+
+
+@contextmanager
+def fitted_state_transaction(model, keep: bool = True) -> Iterator[None]:
+    """Restore ``model``'s fitted attributes unless the block completes and ``keep`` is set.
+
+    Preparation stores its diagnostics on the model as it derives them, which estimator
+    hooks may observe. A fit that raises therefore restores every fitted attribute to the
+    object it held before (an attribute never set returns to the class default); constructor
+    parameters, including ones changed by ``set_params``, are not touched. With
+    ``keep=False`` the attributes are restored after a successful block as well, which keeps
+    a regularisation-path template unchanged.
+    """
+    names = fitted_attribute_names(model)
+    namespace = vars(model)
+    saved = {name: namespace[name] for name in names if name in namespace}
+
+    def restore() -> None:
+        for name in names:
+            if name in saved:
+                namespace[name] = saved[name]
+            else:
+                namespace.pop(name, None)
+
+    try:
+        yield
+    except BaseException:
+        restore()
+        raise
+    if not keep:
+        restore()

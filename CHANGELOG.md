@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.25.0 — 2026-10-02
+
+- A `LassoModel.fit` that raises now leaves every fitted attribute as it was before the call,
+  so a failed refit no longer mixes diagnostics of the new configuration with coefficients
+  of the previous one; a failed first fit leaves the model unfitted. Parameters changed with
+  `set_params` are not rolled back, and a solve that fails without raising still warns and
+  stores NaN coefficients. Estimator hooks that wrap `_prepare_fit` still see the
+  preparation diagnostics on the model while the fit runs.
+- `LassoModel.fit_reg_lambda_path` no longer changes the fitted attributes of the model it is
+  called on; the GROUP_LASSO, HCGL and FCGL paths previously left the template's preparation
+  diagnostics updated. The returned models are unchanged.
+- `fit` and `fit_reg_lambda_path` refuse `x` and `y` of equal length whose index labels differ
+  (`ValueError`), instead of relabelling `y` with the index of `x` and pairing rows by
+  position. An unlabelled input, an ndarray or a frame or series with the default index
+  `0..n-1`, still takes the other input's labels; an unlabelled `x` now takes the labels of
+  `y` instead of `y` losing them.
+
 ## 0.24.0 — 2026-10-02
 
 - Reorganise the package into capability subpackages: `factorlasso.utils`,

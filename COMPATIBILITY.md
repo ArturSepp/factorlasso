@@ -172,6 +172,15 @@ Any breaking change to the stable surface follows this process:
    release, under a `### Deprecated` or `### Removed` heading
    respectively.
 
+## Fitted state and input alignment (from 0.25)
+
+`LassoModel.fit` replaces the fitted attributes only when it completes: if an exception
+escapes, every fitted attribute keeps its previous value, while parameters set with
+`set_params` stay as set. A solve that fails without raising is not an exception: it warns and
+stores NaN coefficients. `fit_reg_lambda_path` never changes the fitted attributes of the model
+it is called on. `x` and `y` must carry the same index labels; an input with the default index
+`0..n-1` (including NumPy arrays) adopts the other input's labels.
+
 ## Numerical reproducibility
 
 Within the 0.18.x patch line, fitted `coef_`, `derived_signs_`, and

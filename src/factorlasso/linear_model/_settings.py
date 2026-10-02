@@ -281,6 +281,12 @@ def coerce_fit_inputs(
     ``RangeIndex``. DataFrame inputs are unchanged, so existing callers
     and the named-index behaviour the rest of the pipeline relies on are
     unaffected.
+
+    When ``x`` and ``y`` have the same length but different indexes, an input
+    with the unlabelled default index ``0..n-1`` (an ndarray, or an unlabelled
+    Series or frame) takes the other input's labels. Two labelled inputs with
+    different labels raise ``ValueError``: before 0.25 ``y`` was silently
+    relabelled with ``x``'s index, which paired rows by position.
     """
     if isinstance(x, np.ndarray):
         # A 1-D array of length T is one regressor observed T times —
@@ -315,13 +321,27 @@ def coerce_fit_inputs(
         )
     if len(x) == 0:
         raise ValueError("Empty input: x and y must have at least one row")
-    # ndarray inputs arrive with independent RangeIndexes of equal length;
-    # align y onto x's index so the equality check below passes.
+    # ndarray inputs (and unlabelled Series/frames) carry the default RangeIndex
+    # 0..n-1. An unlabelled side adopts the other side's labels; two labelled
+    # inputs with different labels are refused rather than silently realigned.
     if len(x) == len(y) and not x.index.equals(y.index):
-        y = y.set_axis(x.index, axis=0)
+        if _is_default_index(y.index):
+            y = y.set_axis(x.index, axis=0)
+        elif _is_default_index(x.index):
+            x = x.set_axis(y.index, axis=0)
+        else:
+            raise ValueError(
+                f"x and y have {len(x)} rows each but different index labels; "
+                f"align them explicitly (for example y.reindex(x.index)) before fitting"
+            )
     if not x.index.equals(y.index):
         raise ValueError(
             f"x and y must share the same index: "
             f"x has {len(x)} rows, y has {len(y)} rows"
         )
     return x, y
+
+
+def _is_default_index(index: pd.Index) -> bool:
+    """Whether ``index`` is the unlabelled default ``RangeIndex(0, n)``."""
+    return isinstance(index, pd.RangeIndex) and index.start == 0 and index.step == 1
