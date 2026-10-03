@@ -60,7 +60,7 @@ def factor_covar_data(factor_data):
     betas = model.estimated_betas
     result = model.estimation_result_
 
-    from factorlasso.ewm_utils import compute_ewm_covar
+    from factorlasso.utils import compute_ewm_covar
     x_np, _, _ = get_x_y_np(x=X, y=Y, span=52)
     x_cov_np = compute_ewm_covar(a=x_np, span=52)
     x_covar = pd.DataFrame(x_cov_np, index=X.columns, columns=X.columns)
@@ -435,7 +435,7 @@ class TestSolvers:
 
     def test_group_lasso_solver_direct(self, factor_data, group_data):
         X, Y, _ = factor_data
-        from factorlasso.ewm_utils import set_group_loadings
+        from factorlasso.utils import set_group_loadings
         x_np, y_np, mask = get_x_y_np(x=X, y=Y)
         gl = set_group_loadings(group_data=group_data).to_numpy()
         r = solve_group_lasso_cvx_problem(
@@ -621,7 +621,7 @@ class TestRollingFactorCovarData:
 
 class TestEWMUtils:
     def test_expanding_power(self):
-        from factorlasso.ewm_utils import compute_expanding_power
+        from factorlasso.utils import compute_expanding_power
         w = compute_expanding_power(5, 0.9, reverse_columns=True)
         assert len(w) == 5
         assert w[-1] == pytest.approx(1.0)
@@ -629,31 +629,31 @@ class TestEWMUtils:
 
     def test_ewm_pandas(self):
         s = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
-        from factorlasso.ewm_utils import compute_ewm
+        from factorlasso.utils import compute_ewm
         result = compute_ewm(s, span=3)
         assert len(result) == 5
         assert result.iloc[-1] > result.iloc[0]
 
     def test_ewm_numpy(self):
-        from factorlasso.ewm_utils import compute_ewm
+        from factorlasso.utils import compute_ewm
         a = np.array([1.0, 2.0, 3.0, 4.0])
         result = compute_ewm(a, span=3)
         assert result.shape == (4,)
 
     def test_ewm_covar_shape(self):
-        from factorlasso.ewm_utils import compute_ewm_covar
+        from factorlasso.utils import compute_ewm_covar
         a = np.random.randn(100, 3)
         cov = compute_ewm_covar(a, span=20)
         assert cov.shape == (3, 3)
 
     def test_ewm_covar_correlation(self):
-        from factorlasso.ewm_utils import compute_ewm_covar
+        from factorlasso.utils import compute_ewm_covar
         a = np.random.randn(100, 3)
         corr = compute_ewm_covar(a, span=20, is_corr=True)
         np.testing.assert_allclose(np.diag(corr), 1.0, atol=1e-10)
 
     def test_group_loadings(self):
-        from factorlasso.ewm_utils import set_group_loadings
+        from factorlasso.utils import set_group_loadings
         g = pd.Series(['A', 'B', 'A', 'C'], index=['x', 'y', 'z', 'w'])
         gl = set_group_loadings(g)
         assert gl.shape == (4, 3)

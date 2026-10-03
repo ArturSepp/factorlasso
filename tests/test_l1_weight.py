@@ -27,12 +27,9 @@ from factorlasso import (
     LassoModelType,
     compute_clusters_from_corr_matrix,
 )
-from factorlasso.ewm_utils import compute_ewm_covar, set_group_loadings
-from factorlasso.lasso_estimator import (
-    get_x_y_np,
-    solve_group_lasso_cvx_problem,
-    solve_lasso_cvx_problem,
-)
+from factorlasso.utils import compute_ewm_covar, set_group_loadings
+from factorlasso.utils import get_x_y_np
+from factorlasso.linear_model import solve_group_lasso_cvx_problem, solve_lasso_cvx_problem
 
 # ═══════════════════════════════════════════════════════════════════════
 # Fixtures

@@ -4,7 +4,7 @@ import argparse
 import json
 import numpy as np
 import pandas as pd
-from factorlasso.sign_constraints import _compute_sign_vector
+from factorlasso.priors._signs import _compute_sign_vector
 
 
 def run(out,reps=500):

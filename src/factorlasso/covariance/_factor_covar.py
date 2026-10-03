@@ -101,7 +101,7 @@ class CurrentFactorCovarData:
         frequencies. Columns: ``left``, ``right``, ``distance``,
         ``n_samples``. Index is freq-prefixed (e.g. ``"ME:step_0"``,
         ``"QE:step_7"``) so the per-freq block can be recovered by prefix
-        match. See :func:`factorlasso.cluster_utils.get_linkage_array` for
+        match. See :func:`factorlasso.cluster.get_linkage_array` for
         reconstructing a scipy-compatible ndarray.
     cutoffs : pd.Series, optional
         Dendrogram cutoff distance per frequency (index = freq code).

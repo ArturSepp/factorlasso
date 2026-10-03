@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from factorlasso.expert_prior_map import map_expert_factor_priors
+from factorlasso.priors import map_expert_factor_priors
 
 
 FACTORS = ['Equity', 'Rates', 'Inflation', 'Credit IG', 'Credit HY', 'Credit EM']

@@ -33,7 +33,7 @@ TYPING_ONLY_EXCEPTIONS = {
     ("factorlasso.cluster._smoothing", "factorlasso.linear_model._estimator"),
 }
 
-#: Modules of the 0.23.0 flat layout, now facades.
+#: Modules of the 0.23.0 flat layout, removed in 1.0.
 LEGACY = {
     "beta_priors", "cluster_lineage", "cluster_smoothing", "cluster_standardization",
     "cluster_statistics", "cluster_utils", "cv", "dependence_utils", "diagonality",
@@ -117,7 +117,7 @@ def edges(sources: Optional[Dict[str, Path]] = None) -> List[Edge]:
 
 
 def _capability(module: str) -> Optional[str]:
-    """Capability subpackage of ``module``, or None for the root, ``_compat`` and facades."""
+    """Capability subpackage of ``module``, or None outside those packages."""
     parts = module.split(".")
     return parts[1] if len(parts) > 1 and parts[1] in ALLOWED else None
 
@@ -133,7 +133,7 @@ def violations(found: Iterable[Edge],
             problems.append(f"{edge.importer} imports {edge.imported}")
             continue
         if source is None:
-            continue                      # root initializer and historical facades
+            continue                      # root initializer
         target = _capability(edge.imported)
         last = edge.imported.split(".")[-1]
         if edge.imported == "factorlasso" or (target is None and last in LEGACY):
@@ -184,19 +184,6 @@ def test_module_level_imports_are_acyclic():
         visit(node, ())
 
 
-def test_facades_hold_no_implementation():
-    """A historical module only imports, declares ``__all__`` and installs its guard."""
-    sources = _sources()
-    for name in sorted(LEGACY):
-        tree = ast.parse(sources[f"factorlasso.{name}"].read_text(encoding="utf-8"))
-        body = tree.body[1:] if ast.get_docstring(tree) is not None else tree.body
-        for node in body:
-            allowed = isinstance(node, (ast.Import, ast.ImportFrom)) or (
-                isinstance(node, ast.Assign)
-                and [getattr(t, "id", None) for t in node.targets] == ["__all__"]) or (
-                isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
-                and getattr(node.value.func, "id", None) == "guard_legacy_module")
-            assert allowed, f"{name}: {ast.dump(node)[:120]}"
 
 
 def test_checker_rejects_injected_violations():

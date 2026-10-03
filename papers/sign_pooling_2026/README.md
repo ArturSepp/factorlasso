@@ -17,7 +17,7 @@ Archived release: [10.5281/zenodo.21000294](https://doi.org/10.5281/zenodo.21000
 
 The working revision of 25 September 2026 adds masked EWMA sign slopes and a
 date-score sandwich gate, with a separate 6,000-design validation. It requires
-FactorLasso 0.20.0.dev5. The original simulation and eQTL exhibits remain
+FactorLasso 1.0.0 for its current canonical module imports. The original simulation and eQTL exhibits remain
 identified as independent-gate results. Research fits explicitly select MOSEK;
 the package default remains CLARABEL.
 

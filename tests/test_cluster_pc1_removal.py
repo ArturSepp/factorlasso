@@ -237,7 +237,7 @@ def _same_partition(left: pd.Series, right: pd.Series) -> bool:
 def test_lasso_model_threads_transform_and_default_is_exact():
     """Direct cluster discovery must thread de-PC1 while NONE remains exact."""
     from factorlasso import DependenceMeasure, LassoModel, LassoModelType
-    from factorlasso.dependence_utils import compute_dependence_matrix
+    from factorlasso.cluster import compute_dependence_matrix
 
     x, y = _fit_panel()
     base = dict(

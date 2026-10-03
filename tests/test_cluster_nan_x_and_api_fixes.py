@@ -23,7 +23,7 @@ import pandas as pd
 import pytest
 
 from factorlasso import LassoModel, LassoModelType
-from factorlasso.lasso_estimator import LassoEstimationResult
+from factorlasso.linear_model import LassoEstimationResult
 from factorlasso.priors._signs import _compute_sign_vector
 
 
@@ -255,7 +255,7 @@ def test_demean_uses_valid_window_mean():
     """The demeaned response has zero mean over its valid window. The
     pre-fix code demeaned by the zero-diluted mean f·μ, leaving a
     residual offset of (1 − f)·μ on the valid rows."""
-    from factorlasso.lasso_estimator import get_x_y_np
+    from factorlasso.utils import get_x_y_np
     rng = np.random.default_rng(9)
     T = 200
     x = pd.DataFrame(rng.standard_normal((T, 2)), columns=["f0", "f1"])
@@ -273,7 +273,7 @@ def test_demean_uses_valid_window_mean():
 def test_demean_full_panel_unchanged():
     """On a fully observed panel the fix is a no-op: the NaN-preserved
     mean equals the zero-filled mean bit-for-bit."""
-    from factorlasso.lasso_estimator import get_x_y_np
+    from factorlasso.utils import get_x_y_np
     rng = np.random.default_rng(10)
     T = 120
     x = pd.DataFrame(rng.standard_normal((T, 3)))
@@ -316,8 +316,8 @@ def test_span_set_clusters_on_ewm_corr():
     """With an EWMA span the partition equals Ward clustering of the
     EWMA(span) correlation — the pre-existing contract, unchanged."""
     from factorlasso import compute_clusters_from_corr_matrix
-    from factorlasso.ewm_utils import compute_ewm_covar
-    from factorlasso.lasso_estimator import get_x_y_np
+    from factorlasso.utils import compute_ewm_covar
+    from factorlasso.utils import get_x_y_np
     rng = np.random.default_rng(12)
     T, N, M = 150, 20, 4
     X = pd.DataFrame(rng.standard_normal((T, M)))
@@ -340,8 +340,8 @@ def test_span_set_clusters_on_ewm_corr():
 def test_cluster_correlation_span_is_independent_of_beta_span():
     """Hold the clustering EWMA fixed while changing the beta-estimation EWMA."""
     from factorlasso import compute_clusters_from_corr_matrix
-    from factorlasso.ewm_utils import compute_ewm_covar
-    from factorlasso.lasso_estimator import get_x_y_np
+    from factorlasso.utils import compute_ewm_covar
+    from factorlasso.utils import get_x_y_np
 
     rng = np.random.default_rng(1208)
     t, n, m = 180, 16, 4

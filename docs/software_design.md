@@ -33,9 +33,10 @@ through a fit, and states where the package ends.
 
 Every public name is exported from the package root and from the one subpackage that owns it;
 the [API reference](api.rst) groups them by the article that documents them. Modules with a
-leading underscore are internal. The modules of the earlier flat layout, such as
-`factorlasso.lasso_estimator` and `factorlasso.cluster_utils`, remain importable and re-export
-their names from the new owners.
+leading underscore are internal. Version 1.0 removes the earlier flat modules such as
+`factorlasso.lasso_estimator` and `factorlasso.cluster_utils`. Use the root or public
+subpackage imports listed in the
+[migration and compatibility policy](https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md).
 
 The import graph runs one way. `utils` imports no other subpackage; `cluster` and `priors`
 import `utils`; `covariance` imports `utils` and `cluster`; `linear_model` imports `utils`,

@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from factorlasso.ewm_utils import compute_ewm_covar
+from factorlasso.utils import compute_ewm_covar
 
 
 @pytest.fixture

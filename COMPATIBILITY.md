@@ -1,219 +1,145 @@
 # factorlasso — API Compatibility Policy
 
-`factorlasso` follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-This document specifies the surface that is committed to be stable and the
-process for changes to it.
+*Author: [Artur Sepp](https://github.com/ArturSepp)*
 
-## Stable surface (0.18 series)
+Software: [factorlasso](https://github.com/ArturSepp/factorlasso).
+Software citation: [CITATION.cff](CITATION.cff).
 
-The names in `factorlasso.__all__` are the authoritative public API for 0.18. Backward-incompatible
-changes to their names, parameter signatures, default values, or documented return contracts will
-not happen within the 0.18.x patch line. Modules that happen to be visible through `dir(factorlasso)`
-but are absent from `__all__` are not additional public entry points.
+Version 1.0.0 establishes the capability subpackages as the supported layout
+and retires the pre-1.0 compatibility facades. It preserves all 74 root exports,
+their signatures and defaults, and the estimation behaviour of 0.25.0.
+factorlasso follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Core estimator
+## Stable surface in 1.x
 
-- `LassoModel`
-  - Constructor parameters:
-    `model_type`, `group_data`, `reg_lambda`, `span`, `span_freq_dict`,
-    `cutoff_fraction`, `linkage_method`, `distance_transform`,
-    `cluster_correlation_transform`, `dependence_measure`, `gerber_threshold`,
-    `n_clusters`, `cluster_smoother_type`, `smoother_delta`, `smoother_lambda`,
-    `recluster_freq`, `group_penalty`, `l1_weight`, `demean`, `solver`,
-    `solver_fallbacks`, `warmup_period`, `nonneg`,
-    `factors_beta_loading_signs`, `factors_beta_prior`,
-    `auto_sign_constraints`, `auto_sign_threshold_t`,
-    `auto_sign_adaptive_weights`, `auto_sign_adaptive_gamma`,
-    `auto_sign_adaptive_floor`, `unilasso_loo`, `unilasso_non_negative`,
-    `cluster_correlation_span`, and `cluster_correlation_span_freq_dict`.
-  - Fitted attributes (trailing underscore):
-    `coef_`, `intercept_`, `alpha_const_`, `estimation_result_`,
-    `clusters_`, `linkage_`, `cutoff_`, `valid_mask_`,
-    `effective_span_`, `effective_cluster_correlation_span_`,
-    `derived_signs_`, `fit_demeaned_`, `nowcast_residuals_`,
-    `nowcast_factors_complete_`, `nowcast_final_response_complete_`, `x_`, and `y_`.
-  - Methods: `fit`, `nowcast`, `predict`, `score`, `get_params`, `set_params`,
-    `copy`, `summary`, and `plot_signs`.
+`factorlasso.__all__` is the authoritative public API. Every name also appears in
+exactly one capability subpackage's `__all__`, resolving to the same object.
+Both import forms are supported throughout 1.x:
 
-- `LassoModelCV`
-  - Constructor: `lambdas`, `n_splits`, `base_model`, `refit`,
-    `use_lambda_path`.
-  - Fitted attributes: `best_lambda_`, `best_score_`, `cv_scores_`,
-    `best_model_`.
-  - Methods: `fit`, `predict`, `score`.
+```python
+from factorlasso import LassoModel, LassoModelCV
+from factorlasso.linear_model import LassoModel
+from factorlasso.model_selection import LassoModelCV
+```
 
-- `LassoModelDiagonalityCV`
-  - Constructor: `lambdas`, `n_splits`, `base_model`, `refit`,
-    `use_lambda_path`, `significance`, `zero_rtol`, and `min_periods`.
-  - Fitted attributes: `best_lambda_`, `best_score_`, `passed_`,
-    `threshold_`, `diagnostics_`, `fold_scores_`, `missing_factors_`, and
-    `best_model_`.
-  - Methods: `fit`, `predict`, `score`.
+The [API reference](https://factorlasso.readthedocs.io/en/latest/api.html) documents
+the public names, parameters and return contracts. The reviewed fixture
+[`tests/data/api_contract.json`](tests/data/api_contract.json) pins root and
+subpackage exports, callable signatures and defaults, enum members, dataclass
+fields, public methods and class module paths. Compatible additions update that
+fixture explicitly. Undocumented names visible through `dir(factorlasso)` are
+not additional public entry points.
 
-- `LassoModelType` enum: `LASSO`, `UNILASSO`, `GROUP_LASSO`,
-  `HIERARCHICAL_CLUSTER_GROUP_LASSO`, `FACTOR_CLUSTER_GROUP_LASSO`,
-  `COOPERATIVE_GROUP_LASSO`, and `COOPERATIVE_CLUSTER_GROUP_LASSO`.
+Within 1.x, existing public names, parameter signatures, defaults, documented
+return contracts and fitted attributes remain compatible. `LassoModel` stores
+constructor parameters unmodified, supports `get_params` and `set_params`,
+returns `self` from `fit`, and names fitted attributes with a trailing underscore.
+Compatible features may be added in minor releases. Bug fixes that correct
+numerical results are identified in the changelog with their affected path.
 
-- `LassoEstimationResult` dataclass: `estimated_beta`, `alpha`, `ss_total`,
-  `ss_res`, and `r2`.
-- `LassoNowcastResult` frozen dataclass: `prediction`, `factor_component`,
-  `target_factors`, `stat_alpha`, `betas`, `residuals`, and `diagnostics`.
+## Upgrade from the flat layout
 
-`LassoModel.nowcast(x, *, alpha_span=None)` is unit-preserving. It requires a fit that recorded
-`demean=True`, exact finite target factor columns, and strictly future sorted unique dates. Its
-statistical alpha is the terminal adjust-false EWMA of the fit-time original-unit residual
-snapshot, with leading missing values removed and interior missing values holding the prior state.
-`alpha_span=None` reuses `effective_span_`; a uniform fit uses the simple residual mean. Prediction
-is exactly `x @ coef_.T + stat_alpha` and includes neither `alpha_const_` nor `intercept_`.
-Diagnostics copy `alpha_const_` and the nominal-span de-meaned solver `ss_total`, `ss_res`, and
-`r2` without clipping, and include Kish effective sample size computed from normalized squared
-solver row weights.
+The 19 modules below were compatibility facades in 0.24 and 0.25. They and
+`factorlasso._compat` are removed in 1.0.0, including their root module aliases
+and `patch_points` helper. This is an explicit breaking change approved for the
+1.0 transition; the former promise of continued facade availability was not
+satisfied by a warning cycle. Install 0.25.0 if those paths are still required,
+or migrate before upgrading.
 
-### Sign-constraint derivation
+Use the package root for any name in `factorlasso.__all__`, or its public home:
 
-- `derive_sign_constraints(x, y, clusters=None, master_constraints=None,
-  auto_sign_threshold_t=0.75, return_slopes=False)`
-- `validate_cluster_signs(x, y, clusters, warn=True)`
+| Removed module (`factorlasso.` prefix) | Public home (`factorlasso.` prefix) |
+|---|---|
+| `beta_priors` | `priors` |
+| `cluster_lineage` | `diagnostics` |
+| `cluster_smoothing` | `cluster` |
+| `cluster_standardization` | `cluster` |
+| `cluster_statistics` | `cluster` |
+| `cluster_utils` | `cluster` |
+| `cv` | `model_selection` |
+| `dependence_utils` | `cluster` |
+| `diagonality` | `model_selection` |
+| `ewm_utils` | `utils` |
+| `expert_prior_map` | `priors` |
+| `factor_covar` | `covariance` |
+| `lasso_estimator` | `linear_model` |
+| `prior_bounds` | `priors` |
+| `prior_inference` | `priors` |
+| `prior_risk` | `priors` |
+| `residual_covar` | `covariance` |
+| `residual_diagnostics` | `diagnostics` |
+| `sign_constraints` | `priors` |
 
-### Clustering, dependence, and smoothing
+This table maps capabilities, not every incidental import in an old module.
+For example, `get_x_y_np` belongs to `utils`, while `LassoModelCV` belongs to
+`model_selection`. The [software design](docs/software_design.md) lists the
+implementation owners. Private helpers and constants formerly re-exported by
+facades remain private. Research instrumentation must patch a helper where
+the implementation looks it up; an imported name may have several such
+namespaces. There is no supported public patch-point API.
 
-- `DistanceTransform`, `ClusterCorrelationTransform`,
-  `ClusterCorrelationTransformResult`, and `DependenceMeasure`.
-- `compute_clusters_from_corr_matrix`, `compute_dependence_matrix`,
-  `compute_gerber_matrix`, `apply_cluster_correlation_transform`, and
-  `remove_first_principal_component`.
-- `get_clusters_by_freq`, `get_cutoffs_by_freq`, `get_linkage_array`,
-  and `get_linkages_by_freq`.
-- `ClusterSmootherType`, `RollingClusterData`,
-  `apply_partition_distance_bonus`, `compute_rolling_smoothed_clusters`, and
-  `smooth_similarity_ewma`.
-- `compute_co_association_panel`, `ClusterStabilityStatistics`, and
-  `compute_cluster_stability_statistics`.
-- `StabilityPoolingType` and `score_with_stability_pooled_clusters`.
+## Persistence
 
-### Factor covariance assembly
+Pickles created with 0.23 or earlier can contain the removed flat module paths
+and cannot be loaded directly in 1.0. Keep their original environment to load
+them and export labelled numerical data or refit in 1.0. Do not rewrite module
+strings in pickle bytes. Existing 0.24/0.25 class module paths remain unchanged
+in 1.0, but arbitrary cross-version pickle compatibility is not guaranteed:
+loading also requires compatible fitted fields and dependency versions.
 
-- `CurrentFactorCovarData` dataclass fields, including `derived_signs`.
-- `RollingFactorCovarData` dataclass fields.
-- `VarianceColumns` enum.
+## Fitted state and input alignment
 
-### Residual validation
+`LassoModel.fit` replaces fitted attributes only when it completes: if an
+exception escapes, every fitted attribute keeps its previous value, while
+parameters set with `set_params` stay as set. A solve that fails without raising
+warns and stores NaN coefficients. `fit_reg_lambda_path` leaves the fitted
+attributes of its model unchanged. `x` and `y` must carry the same index labels;
+an input with the default index `0..n-1` (including NumPy arrays) adopts the
+other input's labels.
 
-- `ResidualDiagnostics`, `Sparsity`, `diagnose_residuals`,
-  `effective_sparsity`, `marchenko_pastur_edge`,
-  `missing_factor_components`, `null_threshold`, `raw_offdiagonal_mass`,
-  `residual_correlation`, and `suggest_tolerance`.
+`LassoModel.nowcast(x, *, alpha_span=None)` is unit-preserving. It requires a fit
+that recorded `demean=True`, exact finite target factor columns, and strictly
+future sorted unique dates. Statistical alpha is the terminal adjust-false EWMA
+of the fit-time original-unit residual snapshot, with leading missing values
+removed and interior missing values holding the prior state. `alpha_span=None`
+reuses `effective_span_`; a uniform fit uses the simple residual mean. Prediction
+is `x @ coef_.T + stat_alpha` and includes neither `alpha_const_` nor `intercept_`.
+Diagnostics copy `alpha_const_` and the nominal-span de-meaned solver `ss_total`,
+`ss_res` and `r2` without clipping, and include Kish effective sample size from
+normalized squared solver row weights.
 
-### Offline cluster lineage
+## Internal surface
 
-- `RiskClusterReport`, `TaxonomyConfig`, `analyze_cluster_lineage`, and
-  `run_cluster_lineage_report`.
+Leading-underscore modules and helpers, names outside the public `__all__`
+lists, and the internal structure of CVXPY problems are not stable APIs.
+Package code imports the private owner directly and follows the enforced
+subpackage layering. Downstream callers should use the public root or
+capability subpackage whenever possible.
 
-### EWMA, group-loading, and solver helpers
+## Future deprecations
 
-- `compute_ewm`, `compute_ewm_covar`, `compute_expanding_power`,
-  `set_group_loadings`.
-- `solve_lasso_cvx_problem`, `solve_group_lasso_cvx_problem`,
-  `solve_group_lasso_path`, `solve_cooperative_group_lasso_cvx_problem`,
-  `solve_unilasso_cvx_problem`, and `get_x_y_np`.
+Breaking changes to the stable 1.x surface require a new major version:
 
-## Internal surface (not stable)
+1. A minor release adds a `DeprecationWarning` identifying the replacement and
+   earliest removal version, with a changelog entry.
+2. The old surface remains available for at least one subsequent minor release.
+3. Removal occurs in a major release, with explicit migration instructions and
+   a `Removed` changelog entry.
 
-Anything absent from `factorlasso.__all__` is internal and may change without notice. In particular:
-
-- All functions and classes with a leading underscore.
-- Module-internal helpers (e.g. `_compute_sign_vector`,
-  `_compute_sign_matrix_per_response`, `_adaptive_penalty_weights`,
-  `_aggregate_to_row_weights`).
-- Dataclass implementation details beyond their documented public fields.
-- The CVXPY problem objects constructed inside `solve_*_cvx_problem`;
-  callers depending on the internal structure of those objects (variables,
-  parameters, constraints by index) are not protected.
-
-## Module layout (from 0.24)
-
-The capability subpackages `factorlasso.utils`, `factorlasso.linear_model`,
-`factorlasso.cluster`, `factorlasso.priors`, `factorlasso.covariance`,
-`factorlasso.diagnostics` and `factorlasso.model_selection` are documented homes of the root
-names. Each subpackage `__all__` lists a subset of `factorlasso.__all__`, and every name resolves
-to the same object as at the root; the subpackages add no public names. Their modules with a
-leading underscore are internal.
-
-The 19 modules of the flat 0.23 layout (`factorlasso.lasso_estimator`,
-`factorlasso.cluster_utils`, `factorlasso.sign_constraints`, ...) remain importable, remain
-attributes of the package, and keep every name they provided in 0.23.0 as a re-export from its
-new owner, including underscore helpers that downstream code is known to import. No removal is
-scheduled; any removal would follow the deprecation policy below. Because these modules no longer
-hold the implementation, assigning one of their names (for example with `monkeypatch.setattr` or
-`unittest.mock.patch.object`) would not change what factorlasso runs. Such an assignment raises
-`AttributeError`. A helper can be imported by name into several implementation modules, each of
-which looks it up in its own namespace; `factorlasso._compat.patch_points(module, name)` lists
-them, the error names them, and patching the name in all of them reproduces the 0.23 effect.
-These internal patch points are not part of the stable surface.
-
-Objects pickled with 0.23.0 load, because the historical module paths still resolve. Classes now
-pickle under their new module path (for example `factorlasso.linear_model._estimator.LassoModel`),
-which later releases keep importable. Loading across versions still requires compatible fitted
-fields; arbitrary cross-version pickle compatibility is not guaranteed.
-
-## Deprecation policy
-
-Any breaking change to the stable surface follows this process:
-
-1. **Deprecation warning** added in a minor release using `DeprecationWarning`.
-   The warning identifies the affected symbol, the replacement (if any), and
-   the earliest release in which the old behaviour may be removed.
-2. **At least one minor-version cycle** between deprecation warning and
-   removal. For example, deprecation in 0.15 means the old surface remains
-   throughout 0.16 and removal occurs no earlier than 0.17.
-3. **Removal** in the next minor or major release after the deprecation
-   cycle has elapsed.
-4. **Changelog entry** in both the deprecation release and the removal
-   release, under a `### Deprecated` or `### Removed` heading
-   respectively.
-
-## Fitted state and input alignment (from 0.25)
-
-`LassoModel.fit` replaces the fitted attributes only when it completes: if an exception
-escapes, every fitted attribute keeps its previous value, while parameters set with
-`set_params` stay as set. A solve that fails without raising is not an exception: it warns and
-stores NaN coefficients. `fit_reg_lambda_path` never changes the fitted attributes of the model
-it is called on. `x` and `y` must carry the same index labels; an input with the default index
-`0..n-1` (including NumPy arrays) adopts the other input's labels.
+The 1.0 removal above is the documented pre-1.0 transition, not a precedent for
+removing supported 1.x imports without this process.
 
 ## Numerical reproducibility
 
-Within the 0.18.x patch line, fitted `coef_`, `derived_signs_`, and
-`estimation_result_.r2` values for a given (data, parameters) tuple are
-guaranteed to be bit-identical across patch releases on the same Python
-and CVXPY version.
+The 1.0 transition changes import paths, not solver formulations, seeds or
+estimator defaults. Reproducibility requires the full environment: Python,
+NumPy/SciPy, CVXPY, the solver and numerical libraries, as well as data and
+parameters. No bit-identical guarantee is made across different environments.
+Supported solvers and dependencies are not pinned by the library; numerical
+results can differ at the last few decimal places across their versions.
+Numerical bug fixes and intended changes are recorded in the changelog and
+validated against appropriate reference results.
 
-Across minor versions, numerical changes may occur only when the changelog
-states the affected path and reason. A change to defaults or a documented
-numerical contract follows the deprecation policy above; where practical, the
-old solver path remains available for one minor cycle through an explicit
-opt-in flag.
-
-## Out of scope
-
-The CVXPY solver dependency (`CLARABEL`, `ECOS`, `SCS`) is not pinned
-beyond the `cvxpy>=1.3` requirement in `pyproject.toml`. Numerical
-results may vary at the last few decimal places across CVXPY versions
-or across underlying solver versions; this is treated as inherent to
-the solver, not as a `factorlasso` regression.
-
-## Version targets
-
-- **0.18.x:** Bug fixes, documentation, and compatible additions only. No
-  backward-incompatible public API or default changes.
-- **Later 0.x minors:** Compatible additions are preferred. Any planned
-  removal follows the deprecation cycle above.
-- **1.0.0:** Requires an explicit maintainer stability review. Scientific-paper
-  review and publication status are tracked separately from software versioning.
-
-## Questions
-
-If you depend on a specific behaviour and are unsure whether it is part
-of the stable surface, open an issue at
-<https://github.com/ArturSepp/factorlasso/issues> and the contract will
-be clarified explicitly in the documentation.
+Report uncertain public contracts in the
+[issue tracker](https://github.com/ArturSepp/factorlasso/issues). Software
+stability and scientific-paper review or publication status are tracked separately.

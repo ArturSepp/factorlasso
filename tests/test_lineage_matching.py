@@ -5,7 +5,7 @@ from itertools import combinations, permutations
 import numpy as np
 import pytest
 
-from factorlasso.cluster_lineage import solve_max_weight_matching
+from factorlasso.diagnostics._lineage import solve_max_weight_matching
 
 
 def _matching_weight(matching: dict[int, int], weights: dict[tuple[int, int], float]) -> float:

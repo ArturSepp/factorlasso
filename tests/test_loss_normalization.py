@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from factorlasso import LassoModel, LassoModelType, LassoModelCV
-from factorlasso import lasso_estimator as le
+import factorlasso.linear_model as le
+from factorlasso.linear_model._solvers.common import _weighted_squared_loss
 
 
 def panel():
@@ -85,8 +86,8 @@ def test_loss_weight_rescaling_and_empty_response():
     residual = np.arange(30, dtype=float).reshape(10, 3) / 10
     weights = np.tile(np.linspace(0.2, 1, 10)[:, None], (1, 3))
     weights[:, 2] = 0
-    a = le._weighted_squared_loss(residual, weights, 10, "weight_sum").value
-    b = le._weighted_squared_loss(residual, 7 * weights, 10, "weight_sum").value
+    a = _weighted_squared_loss(residual, weights, 10, "weight_sum").value
+    b = _weighted_squared_loss(residual, 7 * weights, 10, "weight_sum").value
     reference = sum(np.average(residual[:, k] ** 2, weights=weights[:, k] ** 2) for k in range(2))
     assert a == pytest.approx(reference)
     assert b == pytest.approx(reference)

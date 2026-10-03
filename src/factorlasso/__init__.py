@@ -135,28 +135,6 @@ from factorlasso.utils import (
     set_group_loadings,
 )
 
-# The modules of the 0.23.0 flat layout stay importable, and stay attributes of the package.
-from factorlasso import (  # noqa: F401
-    beta_priors,
-    cluster_lineage,
-    cluster_smoothing,
-    cluster_standardization,
-    cluster_statistics,
-    cluster_utils,
-    cv,
-    dependence_utils,
-    diagonality,
-    ewm_utils,
-    expert_prior_map,
-    factor_covar,
-    lasso_estimator,
-    prior_bounds,
-    prior_inference,
-    prior_risk,
-    residual_covar,
-    residual_diagnostics,
-    sign_constraints,
-)
 
 try:
     __version__ = _pkg_version("factorlasso")

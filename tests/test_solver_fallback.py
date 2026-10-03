@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from factorlasso.lasso_estimator import LassoModel, LassoModelType
+from factorlasso.linear_model import LassoModel, LassoModelType
 
 
 def _panel(T=200, K=4, N=3, seed=1):
