@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 — 2026-10-03
+
+### Changed
+
+- Refresh the 1.0 documentation, migration guidance, citations and runnable examples.
+- Align the OSS lint requirement with Ruff 0.16.9 and lock urllib3 2.8.0 for
+  the optional-extras audit. Runtime APIs and numerical methods are unchanged.
+
 ## 1.0.0 — 2026-10-03
 
 ### Removed
