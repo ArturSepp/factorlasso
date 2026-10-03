@@ -5,12 +5,12 @@ import pytest
 from scipy.linalg import null_space
 from scipy.stats import t
 
-from factorlasso.prior_bounds import compute_expert_prior_statistics
+from factorlasso.priors import compute_expert_prior_statistics
 from factorlasso.priors._inference import (
     _angular_log_density, _ar_covariance, _gaussian_critical, _pivot_tail,
     compute_ar1_prior_interval, compute_prior_hac_geometry, gaussian_prior_critical_value,
 )
-from factorlasso.prior_risk import (
+from factorlasso.priors import (
     gaussian_dominance_information, two_factor_limit_risk, two_factor_minimax_radius,
 )
 

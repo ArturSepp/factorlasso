@@ -31,7 +31,7 @@ statistic, selecting the factor count as ``min { k : xi(k) < 0 }`` where ``xi`` 
 eigenvalue less a vanishing penalty. This class differs by indexing a regularisation path rather
 than a factor count, and by calibrating against a fixed chi-square threshold rather than a
 vanishing penalty. Neither difference is a result. See the references in
-:mod:`factorlasso.residual_diagnostics`, and prefer their criterion when the conclusion rests on
+:mod:`factorlasso.diagnostics`, and prefer their criterion when the conclusion rests on
 the count of missing factors rather than on the choice of penalty.
 
 Examples
@@ -95,7 +95,7 @@ class LassoModelDiagonalityCV:
     Parameters
     ----------
     lambdas : sequence of float, optional
-        Regularisation grid. Default: the 20-point grid of :mod:`factorlasso.cv`.
+        Regularisation grid. Default: the 20-point grid of :mod:`factorlasso.model_selection`.
     n_splits : int, default 5
         Expanding-window folds, as in :class:`~factorlasso.LassoModelCV`.
     base_model : LassoModel, optional

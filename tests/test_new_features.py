@@ -15,7 +15,7 @@ import pandas as pd
 import pytest
 
 from factorlasso import LassoModel, LassoModelCV, LassoModelType
-from factorlasso.cv import expanding_window_splits
+from factorlasso.model_selection._cv import expanding_window_splits
 
 # ═══════════════════════════════════════════════════════════════════════
 # Fixtures

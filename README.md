@@ -6,7 +6,13 @@ shrinkage, data-driven grouped penalties, and consistent factor covariance assem
 It provides LASSO, Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering Group LASSO
 (FCGL), sparse-group, UniLasso, and cooperative penalties through auditable CVXPY formulations.
 
-**Install:** `pip install factorlasso` · **Import:** `factorlasso` · **Status:** Beta
+**Install:** `pip install factorlasso` · **Import:** `factorlasso` · **Status:** Stable
+
+**Upgrading to 1.0:** The old flat module paths (such as `factorlasso.lasso_estimator`
+and `factorlasso.beta_priors`) have been removed. Use the package root or the capability
+subpackages. All 74 root exports retain their signatures and defaults. See the
+[migration guide and 1.x compatibility policy](COMPATIBILITY.md), including the limit
+on loading pre-0.24 pickles.
 
 [![PyPI](https://img.shields.io/pypi/v/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
 [![Python](https://img.shields.io/pypi/pyversions/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
@@ -1186,7 +1192,7 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {0.25.0},
+  version = {1.0.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

@@ -8,13 +8,13 @@ import pytest
 import scipy.cluster.hierarchy as spc
 from scipy.spatial.distance import squareform
 
-from factorlasso.cluster_utils import compute_clusters_from_corr_matrix
+from factorlasso.cluster import compute_clusters_from_corr_matrix
 from factorlasso.cluster._dependence import (
     DEFAULT_DEPENDENCE_MEASURE, DependenceMeasure, _normalised_ewm_weights,
     compute_dependence_matrix, compute_gerber_matrix,
 )
-from factorlasso.ewm_utils import compute_ewm_covar
-from factorlasso.lasso_estimator import LassoModel, LassoModelType
+from factorlasso.utils import compute_ewm_covar
+from factorlasso.linear_model import LassoModel, LassoModelType
 
 
 def _block_panel(seed: int = 0, contamination: float = 0.0, n_blocks: int = 5,

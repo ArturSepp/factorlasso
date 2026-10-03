@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import Lasso
 
-from factorlasso.lasso_estimator import LassoModel, LassoModelType
+from factorlasso.linear_model import LassoModel, LassoModelType
 
 
 def _panel(T=400, K=5, seed=0):

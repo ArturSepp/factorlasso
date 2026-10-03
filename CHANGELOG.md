@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.0.0 — 2026-10-03
+
+### Removed
+
+- Remove all 19 compatibility modules from the former flat layout, including
+  `factorlasso.lasso_estimator`, `factorlasso.beta_priors` and
+  `factorlasso.cluster_utils`, plus `factorlasso._compat`, its `patch_points`
+  helper and the root module aliases. This is a deliberate breaking transition
+  from the pre-1.0 compatibility policy; no warning cycle preceded removal.
+  Use the root or one of the seven public capability subpackages. The full
+  import migration table is in `COMPATIBILITY.md`.
+- Pickles that reference the removed pre-0.24 class paths require an older
+  environment to load. Class paths used by 0.24/0.25 remain unchanged.
+
+### Changed
+
+- Establish the stable 1.x API and major-version deprecation policy. All 74
+  root exports retain their signatures, defaults and subpackage ownership.
+  Solver formulations, seeds and estimation behaviour are unchanged.
+- Migrate tests and current public replication code to canonical imports;
+  retain the archived paper environment and frozen results separately.
+- Check that removed modules are absent from source and installed artifacts,
+  and keep the public API contract without the retired facade records.
+
 ## 0.25.0 — 2026-10-02
 
 - A `LassoModel.fit` that raises now leaves every fitted attribute as it was before the call,

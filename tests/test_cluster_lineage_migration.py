@@ -5,7 +5,7 @@ import inspect
 from pathlib import Path
 
 import factorlasso
-import factorlasso.cluster_lineage as cluster_lineage
+import factorlasso.diagnostics as cluster_lineage
 import factorlasso.diagnostics._lineage as lineage_implementation
 
 

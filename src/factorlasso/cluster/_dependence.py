@@ -4,7 +4,7 @@ Dependence measures for the clustering correlation matrix.
 The hierarchical clustering that drives HCGL/FCGL consumes a correlation
 matrix. Which dependence measure produces that matrix is a modelling
 choice, separate from the correlation-to-distance transform applied
-afterwards (see :mod:`factorlasso.cluster_utils`).
+afterwards (see :mod:`factorlasso.cluster`).
 
 Three measures are available:
 

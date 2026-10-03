@@ -117,7 +117,7 @@ src/factorlasso/
   utils/                      EWMA moments, group loadings, panel preparation (_ewm, _panel)
   cluster/                    dependence, distance/linkage/cut, rolling smoothing, stability,
                               stability-pooled scoring (_dependence, _hierarchical, _smoothing,
-                              _stability, _standardization)
+                              _stability, _standardization, _response)
   priors/                     sign constraints and adaptive weights, OLS prior centres, expert
                               bounds and mapping, prior inference and risk (_signs, _ols, _bounds,
                               _expert_map, _inference, _risk)
@@ -127,10 +127,8 @@ src/factorlasso/
   covariance/                 factor covariance containers and assembly, residual correlation
   diagnostics/                residual diagnostics and effective sparsity, offline lineage
   model_selection/            LassoModelCV and LassoModelDiagonalityCV (_cv, _diagonality)
-  _compat.py                  read-only facades for the 0.23.0 module paths
-  <19 historical modules>     lasso_estimator.py, cluster_utils.py, ...: facades only
 tests/                        test modules (top-level, test_*.py)
-docs/                         Sphinx site: RST utility pages, api.rst, Markdown methodology articles
+docs/                         Sphinx site: Markdown pages and generated api.rst
 docs/images/                  reviewed exhibit previews and analytics_manifest.json
 examples/                     runnable examples; examples/docs/ holds the articles' canonical scripts
 tools/                        check_docs.py, docs_inventory.json, docs_analytics/ (exhibit registry),
@@ -147,13 +145,13 @@ Subpackages import only downward: `cluster` and `priors` use `utils`; `covarianc
 and `cluster`; `linear_model` uses `utils`, `cluster` and `priors`; `diagnostics` uses `utils`
 and `covariance`; `model_selection` uses `utils`, `linear_model` and `diagnostics`
 (`tests/test_import_boundaries.py`). Package code imports the private module that owns a name,
-never a historical facade, the root or another subpackage's `__init__`. Every root export is
+never a removed flat module, the root or another subpackage's `__init__`. Every root export is
 listed in exactly one subpackage `__all__`, and subpackages export nothing else: a new public
-name goes into the root `__all__`, its subpackage `__all__` and an owning article (below). The
-historical modules hold no code: `tests/data/api_contract.json` (written by
-`tools/api_contract.py`) pins every name they provide, and assigning one of them raises because
-it would not reach the implementation. A helper imported by name into several private modules is
-looked up in each; patch every module that `factorlasso._compat.patch_points` returns.
+name goes into the root `__all__`, its subpackage `__all__` and an owning article (below).
+`tests/data/api_contract.json` (written by `tools/api_contract.py`) pins the public contract.
+The 19 historical flat modules and `_compat.py` were removed in 1.0.0; do not restore aliases.
+A helper imported by name into several private modules is looked up in each; instrumentation
+patches those implementation namespaces directly. `COMPATIBILITY.md` explains the 1.x policy.
 
 The ``src`` layout is load-bearing: imports from a checkout must resolve through
 ``src/factorlasso/``, and the wheel job independently tests the built wheel and sdist from outside

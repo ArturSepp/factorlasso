@@ -12,7 +12,7 @@ from factorlasso.cluster._hierarchical import (
     DEFAULT_DISTANCE_TRANSFORM, DistanceTransform, _corr_to_distance,
     compute_clusters_from_corr_matrix,
 )
-from factorlasso.lasso_estimator import LassoModel, LassoModelType
+from factorlasso.linear_model import LassoModel, LassoModelType
 
 
 def _random_corr(n_assets: int = 30, n_obs: int = 200, seed: int = 0) -> pd.DataFrame:

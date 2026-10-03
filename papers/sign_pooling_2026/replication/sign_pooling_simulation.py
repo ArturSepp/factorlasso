@@ -33,11 +33,9 @@ from dataclasses import dataclass, replace
 from typing import Dict, List, Tuple, Optional
 # factorlasso
 from factorlasso import LassoModel, LassoModelType
-from factorlasso.sign_constraints import (
-    _compute_sign_matrix_per_response,
-    derive_sign_constraints,
-)
-from factorlasso.cluster_utils import compute_clusters_from_corr_matrix
+from factorlasso.priors._signs import _compute_sign_matrix_per_response
+from factorlasso.priors import derive_sign_constraints
+from factorlasso.cluster import compute_clusters_from_corr_matrix
 
 
 # --------------------------------------------------------------------- DGP

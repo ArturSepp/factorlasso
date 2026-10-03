@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from factorlasso.cluster_utils import compute_clusters_from_corr_matrix
-from factorlasso.lasso_estimator import LassoModel, LassoModelType
+from factorlasso.cluster import compute_clusters_from_corr_matrix
+from factorlasso.linear_model import LassoModel, LassoModelType
 
 # production overlay that exposed the FCGL block-weights crash at N=1
 _PROD = dict(

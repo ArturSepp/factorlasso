@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 
 from factorlasso import LassoModel, LassoModelType
-from factorlasso.ewm_utils import compute_expanding_power
+from factorlasso.utils import compute_expanding_power
 from factorlasso.linear_model._solvers.common import _compute_solver_weights
 from factorlasso.utils._panel import get_x_y_np
 
