@@ -261,6 +261,8 @@ the estimation errors from the generating loadings.
 python examples/docs/quickstart.py
 ```
 
+The canonical script was rechecked with factorlasso 1.0.0 on 2026-10-03.
+
 The numbers on this page were produced with factorlasso 0.20.0.dev2, CVXPY 1.9 and CLARABEL on
 Python 3.12. Figure 1 is regenerated from the same script by the documentation analytics runner
 described in the [documentation standard](documentation_standard.md); its

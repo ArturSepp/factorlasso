@@ -128,7 +128,7 @@ the market volatility; the dotted line marks the panel on the left. Produced by
 
 ## Implementation in factorlasso
 
-Verified with factorlasso 0.20.0.
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
 
 | Name | Role |
 |---|---|

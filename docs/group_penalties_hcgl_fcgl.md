@@ -255,6 +255,8 @@ counting tolerance by chance; the penalty did not select it out.
 
 ## Implementation in factorlasso
 
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
+
 All names below are exported from the top-level package and documented in the
 [API reference](api.rst).
 

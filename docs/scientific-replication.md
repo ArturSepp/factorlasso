@@ -37,9 +37,15 @@ Methods are cited to these papers; the software itself is cited through
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf),
   [replication tree](https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026)
   and archived research bundle [10.5281/zenodo.21000294](https://doi.org/10.5281/zenodo.21000294).
-- Sepp, A. (2026). *Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market
-  Assumptions*. Working paper, revised 26 September 2026.
+- Sepp, A. (2026). *Exposure-budget floors for factor loadings under correlated factors*.
+  Working paper of 2 October 2026; link to be added.
   Manuscript and replication workspace retained locally; not distributed here.
+
+**Archived precursor**
+
+- Sepp, A. (2026). *Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market
+  Assumptions*. Archived working paper, revised 26 September 2026. Its former workspace has
+  been retired and preserved in external local backups; it is not the current priors draft.
 
 **Published and public working papers**
 
@@ -72,7 +78,7 @@ its study design and is not restated as a general performance claim.
 |---|---|
 | JSS software paper | [Sparse multi-output factor model](sparse_factor_model.md), [EWMA weighting](ewma_weighting_and_ragged_histories.md), [group penalties](group_penalties_hcgl_fcgl.md), [prior targets](prior_targets.md), [credit attribution case study](app_multi_asset_credit_attribution.md), [sign derivation](gated_cluster_pooled_signs.md), [adaptive weights](adaptive_penalty_weights.md), [cooperative LASSO](cooperative_lasso.md), [UniLasso](unilasso.md), [penalty selection](penalty_selection.md), [cluster discovery](cluster_discovery.md) |
 | Gated cluster-pooled sign constraints | [Sign constraints and prior-centred penalties](sign_constraints_and_priors.md), [gated cluster-pooled sign derivation](gated_cluster_pooled_signs.md), [cooperative LASSO](cooperative_lasso.md), [UniLasso](unilasso.md), [cluster discovery](cluster_discovery.md), [yeast eQTL case study](app_sign_pooling_genomics.md) |
-| Selecting priors for fixed-income factor models | [Prior targets](prior_targets.md), [EWMA weighting and loss normalisation](ewma_weighting_and_ragged_histories.md) |
+| Exposure-budget floors for factor loadings under correlated factors | [Prior targets and loading floors](prior_targets.md), [prior uncertainty and conditional floor risk](prior_inference.md) |
 | Robust optimization of strategic and tactical asset allocation | [Sparse multi-output factor model](sparse_factor_model.md), [sign constraints and prior-centred penalties](sign_constraints_and_priors.md), [group penalties](group_penalties_hcgl_fcgl.md), [factor covariance assembly](factor_covariance_assembly.md), [portfolio risk and CMAs case study](app_portfolio_risk_models.md) |
 | Capital market assumptions with multi-asset tradable factors | [Factor covariance assembly](factor_covariance_assembly.md), [credit attribution case study](app_multi_asset_credit_attribution.md), [residual-alpha nowcasting](residual_alpha_nowcasting.md), [portfolio risk and CMAs case study](app_portfolio_risk_models.md) |
 | Rolling-Ward clustering | [Causal smoothing of rolling clusters](rolling_cluster_smoothing.md), [offline cluster lineage](cluster_lineage.md) |
@@ -87,24 +93,29 @@ includes the current approved manuscript, public yeast eQTL inputs, frozen
 reference results in `replication/data/reference/`, replication code and tests.
 Use its README for current commands and external output-directory settings.
 
-The current working revision requires FactorLasso 0.20.0.dev5. The archived
-Zenodo release and `replication/requirements.txt` preserve the historical 0.7.2
+The current working revision requires FactorLasso 1.0.0 for its canonical module imports. The
+archived Zenodo release and `replication/requirements.txt` preserve the historical 0.7.2
 environment. Use the archived bundle for exact historical reproduction; do not
 install that pin over the working development environment and claim equivalence.
 LaTeX compilation additionally requires the Elsevier CAS template.
 
 ## Local paper workspaces
 
-The JSS and fixed-income prior workspaces are retained locally and excluded from
+The JSS and current exposure-budget workspaces are retained locally and excluded from
 Git. Their manuscript files, empirical figures and replication commands are not
 part of the public checkout. This availability decision does not change the
 package API or the published citation metadata.
+
+The exposure-budget paper is cited here without publishing its workspace or inputs. Its
+production-CMA illustration uses static exports prepared in OptimalPortfolios; the
+factorlasso package and its public teaching examples do not depend on that exporter.
 
 The public offline teaching scripts remain available:
 
 ```console
 python examples/docs/app_multi_asset_credit_attribution.py
 python examples/docs/prior_targets.py
+python examples/docs/prior_inference.py
 ```
 
 These examples demonstrate the methodology, not a reproduction of the local

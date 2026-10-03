@@ -23,6 +23,10 @@ no sibling package.
 
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
+The guides and canonical examples are checked against factorlasso 1.0.0. Version 1.0 removes
+the legacy flat modules; use package-root or public subpackage imports as described in the
+[migration policy](https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md).
+
 ## Start here
 
 1. [Install factorlasso and run a first fit](getting-started.md). The core installation command
@@ -37,7 +41,9 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/
 After installation, every example on this site runs offline on fixed synthetic data. Each
 article shows its code inline; the same lines are part of a canonical script under
 [`examples/docs/`](https://github.com/ArturSepp/factorlasso/tree/main/examples/docs) that the
-test suite runs and that asserts every number the article quotes.
+test suite runs. Methodology scripts assert the numerical results quoted in their worked
+examples. Case-study scripts demonstrate the mechanisms on synthetic panels; the historical
+empirical tables and exhibits retain their paper provenance and reproduction requirements.
 
 ## The model in one picture
 
@@ -197,8 +203,8 @@ reproduce each one.
   Cluster-Grouped Sign Constraints in Python*. Submitted to the Journal of Statistical Software.
 - Sepp, A. and Kastenholz, M. (2026). *Gated Cluster-Pooled Sign Constraints for Multi-Output
   Sparse Regression*. Submitted to Computational Statistics & Data Analysis.
-- Sepp, A. (2026). *Selecting Priors for Fixed-Income Factor Models: Validation and Capital
-  Market Assumptions*. Working paper.
+- Sepp, A. (2026). *Exposure-budget floors for factor loadings under correlated factors*.
+  Working paper of 2 October 2026; link to be added.
 - Sepp, A., Ossa, I. and Kastenholz, M. (2026). *Robust Optimization of Strategic and Tactical
   Asset Allocation for Multi-Asset Portfolios*.
   [The Journal of Portfolio Management, 52(4), 86–120](https://www.pm-research.com/content/iijpormgmt/52/4/86).

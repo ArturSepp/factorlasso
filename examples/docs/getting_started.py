@@ -12,6 +12,26 @@ import pandas as pd
 import factorlasso as fl
 
 
+def check_fit_contract(x: pd.DataFrame, y: pd.DataFrame) -> None:
+    """Check positional alignment and retention of fitted state after a rejected refit."""
+    dates = pd.date_range("2020-01-01", periods=len(x), freq="D")
+    labelled_x = x.set_axis(dates)
+    model = fl.LassoModel(reg_lambda=1e-4).fit(x=labelled_x, y=y.to_numpy())
+    assert model.y_.index.equals(dates)
+    coefficients = model.coef_.copy(deep=True)
+    fitted_x, fitted_y = model.x_, model.y_
+
+    mismatched_y = y.set_axis(dates + pd.Timedelta(days=1))
+    try:
+        model.fit(x=labelled_x, y=mismatched_y)
+    except ValueError as error:
+        assert "different index labels" in str(error)
+    else:
+        raise AssertionError("Two labelled panels with different dates must be rejected")
+    pd.testing.assert_frame_equal(model.coef_, coefficients)
+    assert model.x_ is fitted_x and model.y_ is fitted_y
+
+
 def main() -> None:
     rng = np.random.default_rng(7)
     x = pd.DataFrame(rng.normal(size=(120, 3)), columns=["growth", "rates", "inflation"])
@@ -53,6 +73,7 @@ def main() -> None:
         y.to_numpy().mean(axis=0) - x.to_numpy().mean(axis=0) @ model.coef_.to_numpy().T,
         atol=1e-8,
     )
+    check_fit_contract(x, y)
 
 
 if __name__ == "__main__":

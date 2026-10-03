@@ -15,13 +15,15 @@ Examples of [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 Every script listed here runs offline from a checkout, on synthetic data or on data committed to
-the repository, and every one is executed by the test suite. The first table routes from a task to
-the article and script that treat it; the recipes below are short, checked starting points.
+the repository, and every one is executed by the test suite against factorlasso 1.0.0. The first
+table routes from a task to its article and script; the recipes below are checked starting points.
 
 ## Scripts by article
 
 Each article has one canonical script in `examples/docs/`; its code blocks are excerpts of that
-script, and the script asserts every number the article quotes.
+script. Methodology scripts assert their worked-example results. Case-study scripts check the
+mechanisms on synthetic data; the empirical results quoted from papers retain their own
+historical provenance and replication requirements.
 
 | Task | Article | Script |
 |---|---|---|
@@ -65,7 +67,7 @@ The scripts in `examples/` predate the articles and show complete workflows:
 Run any of them from a checkout, for example:
 
 ```console
-python examples/docs/task_guides.py
+python examples/finance_factor_model.py
 ```
 
 ## Recipes

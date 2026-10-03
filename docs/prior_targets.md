@@ -40,9 +40,11 @@ available:
 Automatic centres are a sensible default when nothing is known about a response. They can
 mislead when factors are strongly correlated: the factor with the highest marginal $R^2$ may be a
 proxy, and a marginal slope can have the opposite sign to the loading it stands for. A joint
-centre on a reviewed set of factors avoids that for the factors in the set. The
-fixed-income prior working paper (Sepp, 2026) studies these choices for thirty bond indices and twelve
-funds; the worked example below reproduces its central mechanism on synthetic data.
+centre on a reviewed set of factors avoids that for the factors in the set. The current working
+paper, *Exposure-budget floors for factor loadings under correlated factors* (Sepp, 2026),
+studies how a named-factor floor affects attribution when correlated factors are weakly
+identified. The worked example below demonstrates the omitted-variable mechanism on synthetic
+data.
 
 ## Inputs, notation, and assumptions
 
@@ -171,6 +173,13 @@ are identified in diagnostics. The floor is an attribution restriction derived
 from a smaller regression, not a confidence interval for the full penalized fit.
 It excludes uncertainty in expert or data-driven factor selection and any preprocessing.
 
+Sepp (2026), *Exposure-budget floors for factor loadings under correlated factors*, interprets
+the slack below a named-factor target as a budget for exposure to correlated neighbours. Its
+limiting results distinguish penalties centred at zero, at the prior and at the floor. The
+implemented prior-centred penalties continue to shrink towards the resolved prior target;
+enabling a loading floor does not move that penalty centre to the floor. The paper's exposure
+budget rule is not an automatic calibration of `expert_prior_bound_n_std`.
+
 ## Worked example
 
 The example has one inflation-linked response on a Rates and an Inflation factor. The factors
@@ -283,6 +292,8 @@ above remains available and does not require licensed market histories.
 
 ## Implementation in factorlasso
 
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
+
 Implemented with CVXPY; the public solver default is CLARABEL.
 
 | Parameter or attribute | Role |
@@ -341,21 +352,15 @@ python examples/docs/prior_targets.py
 - **Prediction does not validate attribution.** For two standardised factors with correlation
   $\rho$, an attribution error of $a$ on one factor and $-a$ on the other leaves a prediction error
   with variance $2a^2(1-\rho)$, which vanishes as $\rho$ approaches one, while the error in expected
-  return is $a(\pi_1 - \pi_2)$ for factor premia $\pi_1$ and $\pi_2$. In the paper's known-truth
-  experiments, a deliberately wrong credit mapping raised the loading error of the affected index
-  and yet lowered its expected-return error at the paper's premium calibration (Sepp, 2026,
-  Sections 6 and 8). A small prediction or expected-return error therefore does not confirm a
-  mapping.
+  return is $a(\pi_1 - \pi_2)$ for factor premia $\pi_1$ and $\pi_2$. A small prediction or
+  expected-return error therefore does not confirm a mapping. The exposure-budget paper
+  (Sepp, 2026) distinguishes coefficient risk from risk weighted by factor premia.
 - **Shared penalties spread a change.** Under FCGL a cluster's deviations from its centres are
-  penalised jointly for each factor. In the paper's full monthly estimation block, changing only
-  the inflation-linked centres lowered the fitted $R^2$ of a global investment-grade aggregate from
-  87.86% to 82.58%, although that index's own settings were unchanged (Sepp, 2026, Table 4).
-  Refit the whole estimation block when a mapping changes.
-- **The sign set carries much of the effect.** On the paper's thirty-index panel, the mean fitted
-  $R^2$ was 68.63% with a zero centre and detected signs, 70.32% with the conditional centre and
-  detected signs, and 73.62% when the conditional centre also supplied the signs (Sepp, 2026,
-  Table 3). These are in-sample figures from one fixed-penalty specification; the working paper
-  is a draft whose Monte Carlo tables are marked for a rerun.
+  penalised jointly for each factor, so changing one response's centre can affect other responses
+  in the same cluster. Refit the whole estimation block when a mapping changes.
+- **The sign set also changes the fit.** A non-zero centre can override a detected sign as
+  described above. Compare prior-centred fits together with their resolved sign matrices;
+  a change in fit quality alone does not isolate the penalty's effect.
 
 ## See also
 
@@ -384,9 +389,8 @@ python examples/docs/prior_targets.py
   DOI 10.1093/rfs/hhv131.
 - Craig, E., et al. (2026). Pretraining and the lasso. *Journal of the Royal Statistical Society:
   Series B* 88(1), 261-281. DOI 10.1093/jrsssb/qkaf050.
-- Sepp, A. (2026). Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market
-  Assumptions. Working paper, revised 26 September 2026.
-  Manuscript retained locally; not distributed in this checkout.
+- Sepp, A. (2026). *Exposure-budget floors for factor loadings under correlated factors*.
+  Working paper of 2 October 2026; link to be added. Manuscript and replication remain local.
 - Sepp, A., and Kastenholz, M. A. (2026). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
   Software*. Manuscript retained locally; not distributed in this checkout.

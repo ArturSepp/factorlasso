@@ -11,10 +11,13 @@ Why expanding-window CV?
 Random K-fold puts future observations into the training set and past
 observations into the test set, leaking information forward in time and
 producing optimistic R² estimates. For factor models on returns data
-this is the wrong default. ``LassoModelCV`` uses expanding-window splits
-(sklearn ``TimeSeriesSplit`` semantics): each successive fold trains on
+this is the wrong default. ``LassoModelCV`` uses expanding-window splits:
+each successive fold trains on
 a strictly larger prefix of history and scores on the immediately
 following window — the same way the model is refit and used in production.
+Each test window has floor(T / (n_splits + 1)) rows; any trailing remainder
+is excluded from fold scores but included in the full-data refit. This
+remainder convention differs from scikit-learn's ``TimeSeriesSplit``.
 
 The example below sweeps a 15-point log-spaced grid of ``reg_lambda``
 across 5 folds, picks the lambda with the highest mean fold R², refits

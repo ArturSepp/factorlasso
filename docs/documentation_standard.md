@@ -89,7 +89,7 @@ listed as `retired_titles`, and `tools/check_docs.py` fails when one appears on 
 page, in `CITATION.cff` or in a paper README. The papers fall into three groups:
 
 - the approved manuscript source in `papers/sign_pooling_2026`, whose tracked
-  exhibits articles may display; JSS and prior-targets sources remain local, and
+  exhibits articles may display; JSS and exposure-budget sources remain local, and
   public pages must not embed or link their workspace files;
 - published papers and public working papers, cited with their publisher or SSRN link;
 - working papers without a public copy, cited with the status "Working paper; link to be added"
@@ -98,16 +98,23 @@ page, in `CITATION.cff` or in a paper README. The papers fall into three groups:
 The [research papers page](scientific-replication.md) lists every paper and the articles that
 use it.
 
+The current priors paper is *Exposure-budget floors for factor loadings under correlated
+factors* (Sepp, 2026; working paper of 2 October 2026). Its public documentation entry is a
+citation only: adding citation metadata does not approve tracking the manuscript, replication
+code or inputs, and does not permit links into its ignored workspace. The earlier
+*Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market Assumptions*
+study is archived and is not the current draft.
+
 A reference to other literature is admissible when it is an entry in
 [the public sign-pooling bibliography](../papers/sign_pooling_2026/paper/refs.bib),
-when it was verified against the local JSS or prior-targets bibliography with the
+when it was verified against a local manuscript bibliography or its preserved archive with the
 verification recorded in the working audit, when it is already
 cited in the `References` section of a module docstring, or when it has been checked against the
 publisher or DOI landing page and that check is recorded in the working audit. Authors, year,
 title, venue, volume, pages and DOI are checked against the primary source.
 
 For every statistic or estimator taken from the literature, state what the package's adaptation
-does not inherit from the source. The `References` section of `residual_diagnostics.py` is the
+does not inherit from the source. The `References` section of `diagnostics/_residuals.py` is the
 model. Separate three kinds of statement: a published method, an implementation choice made in
 this package, and an experimental result from one of the papers. A paper result is quoted with
 its study design and is not restated as a general performance claim.
@@ -120,8 +127,15 @@ one methodology article, and an adopted article names each symbol it owns under
 parameter to exactly one article, and an adopted article names each parameter it owns. The
 checker reads the dataclass fields from source, so a new constructor parameter without an owner
 fails the test suite. Fields that end with an underscore hold fitted state and are not owned.
-Verify signatures, keyword names and enum members against the installed package before writing
-an example. Names outside `__all__` are labelled internal or omitted.
+Verify signatures, keyword names and enum members against the package source being documented
+before writing an example. Names outside `__all__` are labelled internal or omitted.
+
+Since 1.0.0, examples import public names from `factorlasso` or their owning capability
+subpackage: `utils`, `cluster`, `priors`, `linear_model`, `covariance`, `diagnostics` or
+`model_selection`. The historical flat modules have been removed; do not use them or private
+modules in teaching examples. The [software design](software_design.md) describes the ownership
+and dependency layers, and the [compatibility policy](https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md)
+records the migration and serialization limits.
 
 The API page is generated when the documentation is built: `docs/conf.py` writes
 `docs/_generated/api_reference.rst` (git-ignored) from `__all__` and the inventory, with one

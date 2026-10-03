@@ -108,6 +108,25 @@ def path_and_loop_agree(x: pd.DataFrame, y: pd.DataFrame) -> tuple[float, float,
     return selectors[0].best_lambda_, selectors[1].best_lambda_, gap
 
 
+def check_path_state(x: pd.DataFrame, y: pd.DataFrame) -> None:
+    """A path leaves its fitted template unchanged and returns separate coefficient matrices."""
+    groups = pd.Series([k // 4 for k in range(N_RESPONSES)], index=y.columns)
+    base = fl.LassoModel(
+        model_type=fl.LassoModelType.GROUP_LASSO, group_data=groups, reg_lambda=1e-5,
+    ).fit(x=x, y=y)
+    coefficients, clusters = base.coef_.copy(deep=True), base.clusters_.copy(deep=True)
+    original_coef = base.coef_
+    models = base.fit_reg_lambda_path(x=x, y=y, reg_lambdas=[1e-5, 1e-4])
+    assert base.coef_ is original_coef and base.reg_lambda == 1e-5
+    pd.testing.assert_frame_equal(base.coef_, coefficients)
+    pd.testing.assert_series_equal(base.clusters_, clusters)
+    assert [model.reg_lambda for model in models] == [1e-5, 1e-4]
+    second_coef = models[1].coef_.copy(deep=True)
+    models[0].coef_.iloc[0, 0] = np.nan
+    pd.testing.assert_frame_equal(models[1].coef_, second_coef)
+    pd.testing.assert_frame_equal(base.coef_, coefficients)
+
+
 def main() -> None:
     curves = {name: selection_curves(*make_panel(omitted))
               for name, omitted in (("complete", False), ("omitted factor", True))}
@@ -150,6 +169,7 @@ def main() -> None:
     assert path_matches_single_solves(x, y) < 1e-6
     loop_lambda, path_lambda, score_gap = path_and_loop_agree(x, y)
     assert loop_lambda == path_lambda and score_gap < 1e-6
+    check_path_state(x, y)
 
 
 if __name__ == "__main__":

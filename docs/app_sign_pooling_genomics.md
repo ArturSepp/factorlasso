@@ -118,6 +118,9 @@ the paper predict for this regime.
 
 ## Reproduce
 
+The canonical synthetic example was verified with factorlasso 1.0.0 on 2026-10-03.
+The empirical paper results retain their historical provenance and replication requirements.
+
 The canonical script
 [`examples/docs/app_sign_pooling_genomics.py`](../examples/docs/app_sign_pooling_genomics.py) reads
 the committed results and recomputes the quoted statistics: the cluster sizes and purities, the

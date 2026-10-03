@@ -175,7 +175,7 @@ the example script.*
 
 ## Implementation in factorlasso
 
-Verified with factorlasso 0.20.0.
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
 
 | Name | Role |
 |---|---|

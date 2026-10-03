@@ -186,6 +186,8 @@ residual volatility of an equal-weight portfolio of block $a$. Produced by
 
 ## Implementation in factorlasso
 
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
+
 | Name | Role |
 |---|---|
 | `estimate_residual_correlation` | The estimate from native residuals, their metadata and the fit date, with optional common `frequency`, `span` and `periods_per_year`. |

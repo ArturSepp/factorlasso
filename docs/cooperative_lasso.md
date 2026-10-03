@@ -124,13 +124,20 @@ two orthonormal factors and 120 dates; the dashed line is the least-squares load
 
 ## Implementation in factorlasso
 
-Verified with factorlasso 0.20.0 and CVXPY with the CLARABEL solver.
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
 
 | Name | Role |
 |---|---|
 | `LassoModelType.COOPERATIVE_GROUP_LASSO` | Cooperative blocks on the groups of `group_data`. |
-| `LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO` | Cooperative blocks on clusters discovered from the responses, or passed as `external_clusters` to `fit`. |
+| `LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO` | Cooperative blocks on clusters discovered from the responses. |
 | `solve_cooperative_group_lasso_cvx_problem` | The CVXPY programme for NumPy inputs with a group-membership matrix; it accepts `factors_beta_prior`, `group_penalty`, `l1_weight`, per-block `col_weights`, `valid_mask`, `span` and `loss_normalization`. |
+
+For supplied groups, use `COOPERATIVE_GROUP_LASSO` with `group_data`. The clustered cooperative
+mode rejects `external_clusters` with `ValueError`; fit-time external partitions are supported
+only by HCGL and FCGL.
+
+The canonical script checks the supplied-group estimator against the low-level cooperative
+solver and verifies that the clustered estimator rejects an external partition.
 
 The cooperative modes take no sign constraint. `LassoModel` rejects `factors_beta_loading_signs`
 and `nonneg=True` for them with `ValueError`; with `auto_sign_constraints=True` they still fit, and

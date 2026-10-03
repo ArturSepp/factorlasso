@@ -45,6 +45,13 @@ $$
 
 ## Data conventions
 
+- **Alignment.** For `LassoModel.fit` and `fit_reg_lambda_path`, two labelled pandas inputs must
+  have identical row indexes; mismatches raise `ValueError`. With equal lengths, a NumPy input
+  or a pandas input with the default
+  `RangeIndex(0, n)` adopts the other input's row labels. This pairs observations by position;
+  the caller must ensure they represent the same dates. The cross-validation selectors and
+  the low-level `get_x_y_np` helper require identically indexed pandas inputs and do not perform
+  this estimator-level coercion.
 - **Returns.** Inputs are decimal returns per observation period. The package does not convert
   between simple and log returns and does not annualise anything.
 - **Covariance units.** Covariance assembly returns the units of its inputs. Say whether the
@@ -162,6 +169,17 @@ non-optimal status; without it the primary solver runs once and its error propag
 solvers return tiny non-zero values instead of exact zeros, so the articles report effective
 sparsity at a stated tolerance rather than a bare non-zero count, and quote solver-sensitive
 numbers to at most three significant figures.
+
+## Fitted state
+
+If `fit` raises, all fitted attributes retain their values from before the call. A fresh model
+remains unfitted. Constructor parameters changed with `set_params` retain those changes; the
+rollback covers fitted state only. A solver that returns without a solution and without raising
+still warns and publishes its result, which can contain NaN coefficients; warmup handling may
+zero short-history responses. Inspect the result before using it.
+
+`fit_reg_lambda_path` returns independent fitted models and leaves the template's fitted state
+unchanged on success and on error. Cross-validation likewise fits copies of `base_model`.
 
 ## Glossary
 

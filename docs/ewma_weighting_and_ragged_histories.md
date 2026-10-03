@@ -108,11 +108,12 @@ $$
 \hat b_i - \hat\beta_i = \frac{\lambda_{\mathrm{wsum}} m_i}{2 \sum_t w_t v_{ti} x_t^2} .
 $$
 
-The first grows by the factor $T/m_i$ when the history shortens; the second does not. The same
-holds for any number of factors: because the LASSO penalty separates across responses, the joint
-fit of response $i$ under the sample convention equals a fit of that response alone, on the same
-arrays restricted to its $T_i$ rows, with the penalty scaled by $T/T_i$. (Demeaning over a
-different window would change the arrays, so the identity is stated without it.)
+At the same numerical penalty, the sample convention's shrinkage is $T/m_i$ times the
+weight-sum convention's. With equal weights, separability also means that the joint LASSO fit
+of response $i$ equals a fit of that response alone on its $T_i$ valid rows, with the penalty
+scaled by $T/T_i$. The identity assumes the same demeaned arrays. Under EWMA, the original
+date weights must also be preserved: deleting gaps or trailing missing rows and restarting
+the decay changes those weights.
 
 ### Converting the penalty
 
@@ -123,9 +124,9 @@ $$
 $$
 
 With ragged histories no single conversion reproduces every earlier fit, because the relative
-weights of the responses change. The fixed-income working paper applies exactly this conversion:
-a sample-normalised penalty of $10^{-5}$ on 318 monthly rows with span 60, whose complete-grid
-mass is 30.49924, becomes $1.0426 \times 10^{-4}$ under the weight sum (Sepp, 2026, Section 2.3).
+weights of the responses change. For example, a sample-normalised penalty of $10^{-5}$ on
+318 monthly rows with span 60, whose complete-grid mass is 30.49924, becomes
+$1.0426 \times 10^{-4}$ under the weight sum by the conversion above.
 
 ### Warmup and mixed frequencies
 
@@ -207,7 +208,7 @@ by `tools/docs_analytics/estimation.py` from the example script.*
 
 ## Implementation in factorlasso
 
-Verified with factorlasso 0.20.0 and CVXPY with the CLARABEL solver.
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
 
 | Name | Role |
 |---|---|
@@ -238,8 +239,10 @@ python examples/docs/ewma_weighting_and_ragged_histories.py
   them from fewer effective observations. The span is a modelling choice; the package does not
   select it.
 - **The weights are anchored at the panel's last date.** A response that stops before the end
-  of the panel has small weights on all its observations, and under either normalisation its
-  fit rests on little effective information.
+  of the panel has smaller weight mass, which strengthens shrinkage under `"sample"`.
+  Under `"weight_sum"`, a common decay factor cancels between its loss and denominator;
+  the effective sample size depends on relative weights, not that common factor. Normalising
+  the mass does not make stale observations current or add observations.
 - **The weight sum changes the relative weight of responses.** A response with a short history
   counts as much as a long one in the joint objective, which is the purpose, but it also means
   that a penalty calibrated under the sample convention must be recalibrated; the conversion
@@ -265,9 +268,6 @@ python examples/docs/ewma_weighting_and_ragged_histories.py
 - Engle, R. (2002). Dynamic conditional correlation: a simple class of multivariate generalized
   autoregressive conditional heteroskedasticity models. *Journal of Business & Economic
   Statistics* 20(3), 339-350. DOI 10.1198/073500102288618487.
-- Sepp, A. (2026). Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market
-  Assumptions. Working paper, revised 26 September 2026.
-  Manuscript retained locally; not distributed in this checkout.
 - Sepp, A., and Kastenholz, M. A. (2026). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
   Software*. Manuscript retained locally; not distributed in this checkout.

@@ -56,6 +56,9 @@ $k$ trains on the first $k h$ observations and tests on the next $h$, so every s
 sample and no fold sees the future. Random $K$-fold splits would leak later observations into
 training and are not offered.
 
+If $T$ is not divisible by $K+1$, the trailing remainder is not scored in the folds. With
+`refit=True`, the selected model is fitted on all $T$ observations.
+
 ### Selection by held-out $R^2$
 
 `LassoModelCV` averages $R^2_{\ell k}$ over the folds and takes the maximiser,
@@ -144,20 +147,24 @@ script.*
 
 ## Implementation in factorlasso
 
-Verified with factorlasso 0.20.0 and CVXPY with the CLARABEL solver.
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
 
 | Name | Role |
 |---|---|
 | `LassoModelCV` | Expanding-window selection by held-out $R^2$; `best_lambda_`, `best_score_`, `cv_scores_` (penalty by fold) and, with `refit=True`, `best_model_` fitted on the full sample. `use_lambda_path` defaults to `False`. |
 | `LassoModelDiagonalityCV` | Expanding-window selection by held-out residual diagonality; `best_lambda_`, `passed_`, `threshold_`, `diagnostics_` (one row per penalty), `fold_scores_`, `missing_factors_` and `best_model_`. `use_lambda_path` defaults to `True`; `significance`, `zero_rtol` and `min_periods` set the test. |
 | `solve_group_lasso_path` | The group-LASSO family over a grid from one canonical form, for NumPy inputs; one `LassoEstimationResult` per penalty, in grid order. |
-| `LassoModel.fit_reg_lambda_path` | One fitted `LassoModel` per penalty, sharing the penalty-independent derivation. |
+| `LassoModel.fit_reg_lambda_path` | Independent fitted models in grid order, sharing the penalty-independent derivation for the group-LASSO family; the template's fitted state stays unchanged on success and error. |
 
 Both selectors inherit every setting of `base_model` except `reg_lambda`, including the model type,
-the sign derivation, the span and `loss_normalization`. A fold whose solver fails is recorded as
-`NaN` and skipped; the fit raises `RuntimeError` only when every fold fails. `LassoModelCV.score`
+the sign derivation, the span and `loss_normalization`, and leave `base_model` unchanged.
+Recognised fold errors (`SolverError`, `DCPError`, `ValueError` and NumPy `LinAlgError`) are
+recorded as `NaN` and skipped; if every grid point lacks a valid fold, selection raises
+`RuntimeError`. Unexpected exceptions propagate, and invalid inputs can raise before any fold
+runs. `LassoModelCV.score`
 returns $R^2$, higher is better; `LassoModelDiagonalityCV.score` returns the sphericity statistic,
-lower is better, so the two are not comparable. To run the example from a checkout:
+lower is better, so the two are not comparable. The canonical script also checks that a path
+preserves its fitted template and returns separate coefficient matrices. To run it from a checkout:
 
 ```console
 python examples/docs/penalty_selection.py

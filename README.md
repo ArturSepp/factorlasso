@@ -1133,7 +1133,7 @@ This package is part of an open-source Python stack for quantitative finance. Th
 
 See [`CHANGELOG.md`](CHANGELOG.md) for release history and
 [`COMPATIBILITY.md`](COMPATIBILITY.md) for the API stability policy
-covering the current 0.18 series.
+covering the stable 1.x API and the upgrade to 1.0.0.
 
 ---
 

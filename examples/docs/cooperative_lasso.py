@@ -104,6 +104,24 @@ def closed_form(z: np.ndarray, threshold: float, split_signs: bool) -> np.ndarra
     return out
 
 
+def check_estimator_groups(x: pd.DataFrame, y: pd.DataFrame, reference: pd.DataFrame) -> None:
+    """Supplied cooperative groups use group_data; the clustered mode rejects external groups."""
+    supplied = fl.LassoModel(
+        model_type=fl.LassoModelType.COOPERATIVE_GROUP_LASSO,
+        group_data=CLUSTERS,
+        reg_lambda=REG_LAMBDA,
+    ).fit(x=x, y=y)
+    np.testing.assert_allclose(supplied.coef_, reference, atol=1e-4, rtol=0.0)
+
+    discovered = fl.LassoModel(model_type=fl.LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO)
+    try:
+        discovered.fit(x=x, y=y, external_clusters=CLUSTERS)
+    except ValueError as error:
+        assert "external_clusters" in str(error)
+    else:
+        raise AssertionError("The clustered cooperative mode must reject external_clusters")
+
+
 def main() -> None:
     # --- the penalty: coherent blocks pay their norm, mixed blocks pay more --------------------
     coherent, mixed = np.array([0.6, 0.8]), np.array([0.6, -0.8])
@@ -117,6 +135,7 @@ def main() -> None:
     x, y = make_panel()
     assert np.allclose(x.T @ x / N_OBS, np.eye(2))
     fits = fit_three(x, y)
+    check_estimator_groups(x, y, fits["cooperative LASSO"])
     z = (x.T @ y / N_OBS).T.to_numpy()                            # least-squares loadings
     table = pd.DataFrame({"least squares": z[:4, 0]} | {
         name: fit.iloc[:4, 0].to_numpy() for name, fit in fits.items()},

@@ -24,7 +24,7 @@ through a fit, and states where the package ends.
 | Subpackage | Internal modules | Responsibility |
 |---|---|---|
 | `factorlasso.utils` | `_ewm`, `_panel` | EWMA means and covariances, group loadings, and the preparation of the panels for the solvers: alignment, validity masks and de-meaning. |
-| `factorlasso.cluster` | `_dependence`, `_hierarchical`, `_smoothing`, `_stability`, `_standardization` | Pearson, Spearman and Gerber dependence; distance, linkage and cut; causal rolling partitions; stability statistics and pooled scoring. |
+| `factorlasso.cluster` | `_dependence`, `_hierarchical`, `_smoothing`, `_stability`, `_standardization`, `_response` | Pearson, Spearman and Gerber dependence; shared response-panel preparation; distance, linkage and cut; causal rolling partitions; stability statistics and pooled scoring. |
 | `factorlasso.priors` | `_signs`, `_ols`, `_bounds`, `_expert_map`, `_inference`, `_risk` | Derived sign constraints and adaptive penalty weights, OLS prior centres and expert bounds, the mapping of expert priors to factors, and prior inference and risk. |
 | `factorlasso.linear_model` | `_estimator`, `_settings`, `_preparation`, `_restrictions`, `_dispatch`, `_state`, `_nowcast`, `_inspection`, `_types`, `_solvers` | `LassoModel`: validation, the penalty-independent preparation, the CVXPY programme of every mode, the fitted state and the nowcast. |
 | `factorlasso.covariance` | `_factor_covar`, `_residual_correlation` | Dated factor-model snapshots, covariance assembly, and the prepared residual correlation. |
@@ -83,9 +83,15 @@ or the settings do not need it.
 5. **Record.** Store the loadings, the intercepts, the fit diagnostics, the clusters and the
    solver-facing signs and centres, and the residual panel for nowcasts.
 
+The fit restores every fitted attribute to its previous value if an exception escapes. This
+includes diagnostics written during preparation. A non-raising solve with no solution still
+warns and publishes its result. The [conventions](conventions.md) distinguish those cases
+and explain labelled versus positional input alignment.
+
 The penalty-independent part of steps 1 to 3 is shared across a grid by
 `LassoModel.fit_reg_lambda_path`, which the selectors use for the group-LASSO family
-([penalty selection](penalty_selection.md)).
+([penalty selection](penalty_selection.md)). It returns independent fitted models and restores
+the template's fitted state on both success and error.
 
 ## A rolling estimation
 

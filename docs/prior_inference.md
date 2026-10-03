@@ -30,6 +30,11 @@ A separate two-factor diagnostic evaluates the limiting coefficient risk of a
 zero-centred nonnegative Lasso with a named-factor floor. Its conditional optimal
 radius is an analytical tuning reference, not a general FCGL setting.
 
+The working paper *Exposure-budget floors for factor loadings under correlated factors*
+(Sepp, 2026) motivates the exposure-budget interpretation of a floor and gives the weighted
+HAC quadratic-form construction in Appendix B. The optional diagnostics below have their own
+stated assumptions; they do not turn the paper's limiting results into a production tuning rule.
+
 ## Inputs, notation, and assumptions
 
 | Input | Meaning | Convention |
@@ -144,6 +149,8 @@ It is not an instruction to set `expert_prior_bound_n_std` to that number.
 
 ## Implementation in factorlasso
 
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
+
 - `compute_prior_hac_geometry` returns `PriorHacGeometry`, including linear and quadratic
   forms and a `statistics` method returning coefficient and HAC SE arrays.
 - `gaussian_prior_critical_value` returns the known-shape two-sided multiplier.
@@ -190,4 +197,6 @@ random-prior-error or prior-centred FCGL optimum.
 - Berger, R. L. and Boos, D. D. (1994). P values maximized over a confidence set for the
   nuisance parameter. *Journal of the American Statistical Association*, 89(427), 1012–1016.
   [DOI](https://doi.org/10.1080/01621459.1994.10476836).
+- Sepp, A. (2026). *Exposure-budget floors for factor loadings under correlated factors*.
+  Working paper of 2 October 2026; link to be added. Manuscript and replication remain local.
 - [factorlasso software citation](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

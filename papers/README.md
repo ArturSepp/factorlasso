@@ -12,7 +12,8 @@ here describes repository availability, not a change in a paper's review status.
 |---|---|
 | [sign_pooling_2026](sign_pooling_2026/README.md) | Approved current manuscript, selected figures, replication code, static inputs and tests |
 | `jss_2026` | Entire workspace retained locally and ignored |
-| `prior_targets_2026` | Moved to `OptimalPortfolios/papers/prior_targets_2026`; entire workspace remains local and ignored |
+| `exposure_budget_floor_2026` | Current draft and analytical replication retained locally and ignored; OP's local `data_export_for_exposure_budget_floor_2026` supplies static production CMA inputs |
+| Former `prior_targets_2026` workspaces | Removed from the active FL and OP trees; historical material retained in verified external backups |
 | Other or future papers | Local and ignored until explicitly approved |
 
 Each paper uses `paper/`, `drafts/`, `presentations/`, `private/`, `replication/`

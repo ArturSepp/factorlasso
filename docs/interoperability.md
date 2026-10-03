@@ -14,8 +14,8 @@ This page belongs to the documentation of [factorlasso](https://github.com/Artur
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 factorlasso follows the estimator conventions that scikit-learn relies on, while keeping
-scikit-learn outside its runtime dependencies. A core installation imports NumPy, pandas, SciPy,
-CVXPY and openpyxl; it neither installs nor imports scikit-learn.
+scikit-learn outside its runtime dependencies. A core installation depends on NumPy, pandas,
+SciPy, CVXPY and openpyxl; it neither installs scikit-learn nor imports it at package root.
 
 ## What is compatible
 

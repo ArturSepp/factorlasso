@@ -154,6 +154,9 @@ mechanism without reproducing the manuscript's empirical panels.
 
 ## Reproduce
 
+The canonical synthetic example was verified with factorlasso 1.0.0 on 2026-10-03.
+The empirical paper results retain their historical provenance and replication requirements.
+
 The synthetic mechanism runs offline after `pip install factorlasso`:
 
 ```console

@@ -328,6 +328,8 @@ In-sample $R^2$ rises monotonically as the penalty falls and cannot be used to c
 
 ## Implementation in factorlasso
 
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
+
 All names below are exported from the top-level package and documented in the
 [API reference](api.rst).
 
@@ -337,7 +339,7 @@ All names below are exported from the top-level package and documented in the
 | `LassoModelType` | Selects the penalty. `LASSO` is the cell-wise L1 penalty of this article; the other members are the group, cluster, cooperative and univariate-guided variants. |
 | `LassoEstimationResult` | Solver output stored as `estimation_result_`: `estimated_beta`, `alpha` (the residual mean that becomes `intercept_`), and the weighted `ss_total`, `ss_res` and `r2` per response. |
 | `solve_lasso_cvx_problem` | The CVXPY programme for NumPy inputs. `LassoModel` calls it after centring; it accepts `valid_mask`, `span`, `factors_beta_loading_signs`, `factors_beta_prior` and `penalty_weights`. |
-| `get_x_y_np` | Converts the panels to the arrays the solver receives: centred, zero-filled where missing, with the validity mask. With an EWMA span the first row is dropped. |
+| `get_x_y_np` | Converts identically indexed pandas panels to the arrays the solver receives: centred, zero-filled where missing, with the validity mask. With EWMA demeaning the first row is dropped. |
 
 The constructor parameters explained in this article are `model_type` (default
 `LassoModelType.LASSO`, which selects the penalty), `reg_lambda`, `demean`, `solver` and
@@ -367,10 +369,13 @@ above:
 python examples/docs/sparse_factor_model.py
 ```
 
-`fit` raises `ValueError` when `x` and `y` do not share an index. A solve with fewer than five
-rows, or one that ends without a solution, returns NaN loadings with a warning instead of an
-exception. An error raised by the solver propagates unless `solver_fallbacks` names solvers to
-try in turn.
+`fit` requires equal row counts and rejects mismatched labelled indexes. An unlabelled input
+adopts the other input's index when lengths agree; see [alignment conventions](conventions.md).
+If an exception escapes, all fitted attributes revert to their values before the call. A
+low-level solve with fewer than five rows, or one that ends without a solution and without
+raising, returns NaN loadings with a warning. Warmup handling may subsequently zero short-history
+responses. Solver exceptions propagate unless `solver_fallbacks` names solvers to try in turn;
+exhausting that chain raises a solver error.
 
 The numbers in this article were produced with factorlasso 0.20.0.dev2, CVXPY 1.9 and CLARABEL on
 Python 3.12. Figure 1 is regenerated from the same script by the documentation analytics runner
@@ -395,12 +400,16 @@ and the hash of the image.
 - **`reg_lambda` is in squared return units.** The default of $10^{-5}$ suits decimal returns of
   monthly to quarterly volatility. Rescale it by $c^2$ when the data are rescaled by $c$, and
   expect a different value for daily data.
-- **Unequal histories are penalised unequally.** The loss of every response is divided by the
-  same $T$, so a short history or a short EWMA span raises the effective penalty.
+- **The default penalises unequal histories unequally.** Under `loss_normalization="sample"`,
+  the loss of every response is divided by the same $T$, so a short history or a short EWMA span
+  raises the effective penalty. The optional `"weight_sum"` convention normalises each
+  response's valid weight mass and changes the penalty scale.
 - **No exact zeros.** Count loadings with `effective_sparsity`, not with `!= 0`. `summary()`
   reports the bare count.
-- **No standard errors.** The package reports point estimates. Inference after selection is a
-  separate problem that the package does not address.
+- **No standard errors after LASSO selection.** The fitted penalised coefficients have no
+  post-selection inference here. The [prior targets](prior_targets.md) and
+  [prior inference](prior_inference.md) tools report uncertainty for selected OLS statistics
+  and specified Gaussian prior models; they do not supply LASSO confidence intervals.
 
 ## See also
 

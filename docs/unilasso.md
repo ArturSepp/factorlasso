@@ -133,7 +133,7 @@ from the example script.*
 
 ## Implementation in factorlasso
 
-Verified with factorlasso 0.20.0 and CVXPY with the CLARABEL solver.
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
 
 | Name | Role |
 |---|---|

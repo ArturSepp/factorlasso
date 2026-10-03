@@ -46,6 +46,13 @@ references:
     authors:
       - given-names: Artur
         family-names: Sepp
+    title: "Exposure-budget floors for factor loadings under correlated factors"
+    year: 2026
+    notes: "Working paper of 2 October 2026. Citation only; manuscript and replication remain local."
+  - type: report
+    authors:
+      - given-names: Artur
+        family-names: Sepp
       - given-names: Emilie
         family-names: Hansen
       - given-names: Mika

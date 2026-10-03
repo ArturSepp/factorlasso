@@ -141,6 +141,9 @@ $\lambda^{\top} \Sigma_F^{-1} \lambda$ is 0.142 and the sleeves achieve 0.137 of
 
 ## Reproduce
 
+The canonical synthetic example was verified with factorlasso 1.0.0 on 2026-10-03.
+The empirical paper results retain their historical provenance and replication requirements.
+
 The canonical script
 [`examples/docs/app_portfolio_risk_models.py`](../examples/docs/app_portfolio_risk_models.py)
 simulates the returns, fits the loadings, assembles the risk model and runs the audit, asserting

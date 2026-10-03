@@ -171,12 +171,18 @@
         "Sign-Constrained Clustered Group-Lasso Estimation of Multi-Asset Factor Loadings"
       ]
     },
+    "exposure_budget_floor": {
+      "title": "Exposure-budget floors for factor loadings under correlated factors",
+      "authors": "Sepp, A.",
+      "status": "Working paper of 2 October 2026; link to be added",
+      "availability": "local-only"
+    },
     "prior_targets": {
       "title": "Selecting Priors for Fixed-Income Factor Models: Validation and Capital Market Assumptions",
       "authors": "Sepp, A.",
-      "status": "Working paper, revised 26 September 2026",
+      "status": "Archived working paper, revised 26 September 2026",
       "availability": "local-only",
-      "local_source": "OptimalPortfolios/papers/prior_targets_2026/paper/manuscript.md"
+      "local_provenance": "papers/exposure_budget_floor_2026/manifests/op_export_workspace_20261003.json"
     },
     "rosaa": {
       "title": "Robust Optimization of Strategic and Tactical Asset Allocation for Multi-Asset Portfolios",

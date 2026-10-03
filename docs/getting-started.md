@@ -21,11 +21,15 @@ factorlasso supports Python 3.10 and later. Install the released package from Py
 python -m pip install factorlasso
 ```
 
+These examples are verified with factorlasso 1.0.0. If upgrading from the earlier flat module
+layout, use the [migration policy](https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md)
+to update imports.
+
 The core installation includes NumPy, pandas, SciPy, CVXPY and openpyxl. It does not install
 scikit-learn or Matplotlib. Interoperability with scikit-learn is achieved by following its
 estimator conventions, and plotting is imported only by the methods that draw. The optional
-`docs` extra installs the documentation toolchain, and the `simulations` extra the dependencies
-of the JSS simulation harness in the source repository.
+`docs` extra installs the documentation toolchain. The `simulations` extra installs dependencies
+for the maintainer's local JSS harness, which is excluded from the public checkout.
 
 ## A deterministic offline fit
 
@@ -88,6 +92,10 @@ True
 
 The [conventions page](conventions.md) defines the shapes, units and sign encoding used on every
 page, and the [API reference](api.rst) lists the complete supported top-level surface.
+
+The canonical script also checks that an unlabelled response array adopts a dated factor
+panel's index, that mismatched labelled dates are rejected, and that a rejected refit preserves
+the previous coefficients. See [input and fitted-state conventions](conventions.md).
 
 ## Next steps
 

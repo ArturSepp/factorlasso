@@ -292,6 +292,8 @@ and this prior. A prior further from the truth helps less and, under a strong pe
 
 ## Implementation in factorlasso
 
+Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
+
 The two inputs are constructor arguments of `LassoModel` and keyword arguments of the low-level
 solvers; this article owns no separate public symbol. All names are documented in the
 [API reference](api.rst).
