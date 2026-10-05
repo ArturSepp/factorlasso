@@ -190,26 +190,41 @@ def override_detected_signs(
 
 def expert_prior_bounds(model, x: pd.DataFrame, y: pd.DataFrame, eff_span: Optional[float],
                         ols_r2: pd.DataFrame, ols_beta_prior: pd.DataFrame,
-                        effective_beta_prior: pd.DataFrame):
+                        effective_beta_prior: pd.DataFrame,
+                        signs_np: Optional[np.ndarray] = None):
     """Individual floors and caps around the selected OLS priors, with diagnostics.
 
     A response without an explicit ``factor_for_prior`` selection uses the same raw
     highest-R-squared winner as the OLS prior, chosen before manual overlays or hard signs.
     It is never reselected after a constraint removes it; ties retain input factor order.
+    ``signs_np`` is the solver-facing sign matrix; it orients the exposure-budget slack.
     """
-    selections = {}
+    budget = model.expert_prior_exposure_budget
+    if budget is not None:
+        unknown = [factor for factor in budget.columns if factor not in x.columns]
+        if unknown:
+            raise ValueError(f'expert_prior_exposure_budget names unknown factors {unknown!r}')
+    selections, named = {}, set()
     for asset in y.columns:
         explicit = (None if model.factor_for_prior is None
                     else model.factor_for_prior.get(asset))
         factors = _selected_prior_factors(explicit)
-        if not factors:
+        if factors:
+            named.add(asset)
+        else:
             scores = ols_r2.loc[asset].dropna()
             factors = (scores.idxmax(),) if not scores.empty else ()
         selections[asset] = factors
+    if signs_np is not None:
+        signs = pd.DataFrame(signs_np, index=y.columns, columns=x.columns)
+    else:
+        signs = pd.DataFrame(1.0 if model.nonneg else np.nan, index=y.columns,
+                             columns=x.columns)
     return _compute_expert_prior_bounds(
         x, y, selections, ols_beta_prior, effective_beta_prior,
         model.factors_beta_prior, eff_span, model.expert_prior_bound_n_std,
-        model.expert_prior_hac_lags, max(3, model.warmup_period or 0))
+        model.expert_prior_hac_lags, max(3, model.warmup_period or 0),
+        budget=budget, signs=signs, scope=model.expert_prior_bound_scope, named=named)
 
 
 def adaptive_penalty_weights(

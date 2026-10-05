@@ -139,7 +139,8 @@
     ],
     "docs/prior_targets.md": [
       "apply_ols_prior", "prior_selection_type", "factor_for_prior",
-        "expert_prior_bound_n_std", "expert_prior_hac_lags", "expert_prior_hac_lags_freq_dict"
+        "expert_prior_bound_n_std", "expert_prior_hac_lags", "expert_prior_hac_lags_freq_dict",
+        "expert_prior_exposure_budget", "expert_prior_bound_centre", "expert_prior_bound_scope"
     ],
     "docs/adaptive_penalty_weights.md": [
       "auto_sign_adaptive_weights", "auto_sign_adaptive_gamma", "auto_sign_adaptive_floor"

@@ -173,12 +173,41 @@ are identified in diagnostics. The floor is an attribution restriction derived
 from a smaller regression, not a confidence interval for the full penalized fit.
 It excludes uncertainty in expert or data-driven factor selection and any preprocessing.
 
-Sepp (2026), *Exposure-budget floors for factor loadings under correlated factors*, interprets
-the slack below a named-factor target as a budget for exposure to correlated neighbours. Its
-limiting results distinguish penalties centred at zero, at the prior and at the floor. The
-implemented prior-centred penalties continue to shrink towards the resolved prior target;
-enabling a loading floor does not move that penalty centre to the floor. The paper's exposure
-budget rule is not an automatic calibration of `expert_prior_bound_n_std`.
+### Exposure-budget floors, floor centre and scope
+
+Sepp (2026), *Exposure-budget floors for factor loadings under correlated factors*, reads the
+slack below a selected target as a budget for exposure to correlated neighbours. Set
+`expert_prior_exposure_budget` to a response-by-factor DataFrame of budgets $d_{im}\ge0$, in
+coefficient units, on the loadings of non-selected factors. A response with at least one finite
+budget replaces $k\widehat{\mathrm{SE}}(\hat c_{ij})$ by the slack
+
+$$
+\kappa_{ij}=\sum_{m\notin J(i)}\left(\mathrm{sign}(\hat c_{ij})\Gamma_{jm}s_{im}\right)_+d_{im},
+\qquad \ell_{ij}=\max\left(0,|\hat c_{ij}|-\kappa_{ij}\right).
+$$
+
+Here $\Gamma_{jm}$ is the coefficient of factor $j$ in the weighted OLS regression of factor $m$
+on the selected factors, with the rows and weights of the target regression, and $s_{im}$ is the
+hard sign of loading $(i,m)$. A free sign counts as $|\Gamma_{jm}|$ and a zero sign as no
+exposure. By the omitted-variable identity, the expected target exceeds the selected loading by
+$\sum_m\Gamma_{jm}\beta_{im}$, so $\kappa_{ij}$ is the largest displacement of the target in its
+own direction that the budgets admit. Missing budgets in a declared row count as zero. Responses
+without a declared row use `expert_prior_bound_n_std`, or carry no floor when it is `None`.
+
+`expert_prior_bound_centre="floor"` moves the penalty centre of each floored loading from its
+prior to its bound. With the LASSO penalty the absolute term is then linear above the floor,
+which is the floor-centred penalty of the paper's Proposition 5(i). In the group modes the
+floored loading stays in its block. Near collinearity the block geometry then decides how the
+room above the floor is shared: equally within an HCGL row, and in one proportion for the whole
+cluster in FCGL when the members are floored on the same factor.
+`expert_prior_bound_scope="named"` floors only responses with an explicit `factor_for_prior`
+selection and records automatic winners as `automatic_selection_not_floored`.
+
+The diagnostics report the slack and its source, the most correlated permitted competitor with
+its slope $\Gamma$ and correlation, and the implied budget $\kappa_{ij}/|\Gamma|$ of that
+competitor. For a one-standard-error floor the implied budget is $\widehat{\mathrm{SE}}/|\Gamma|$,
+the exposure that a single competitor would need to carry to explain the slack. The budgets are
+expert inputs; the package does not estimate them.
 
 ## Worked example
 
@@ -311,8 +340,11 @@ Implemented with CVXPY; the public solver default is CLARABEL.
 | `expert_prior_bound_n_std` | Optional individual floor size in standard errors; `None` disables bounds. Requires OLS priors and a supported constrained LASSO mode. |
 | `expert_prior_hac_lags` | Scalar HAC bandwidth in grid periods, default zero. A standalone fit uses this value. |
 | `expert_prior_hac_lags_freq_dict` | Optional cadence-to-bandwidth map for consumer pipelines to resolve; no frequency is guessed inside a standalone fit. |
+| `expert_prior_exposure_budget` | Optional response-by-factor DataFrame of exposure budgets in coefficient units. A declared row replaces the standard-error slack by the sign-aware budget slack; other responses fall back to `expert_prior_bound_n_std`. Unknown factor columns raise. |
+| `expert_prior_bound_centre` | `"prior"` (default) keeps the prior as the penalty centre of a floored loading; `"floor"` moves it to the bound. |
+| `expert_prior_bound_scope` | `"all"` (default) floors explicit and automatic selections; `"named"` floors explicit `factor_for_prior` selections only. |
 | `prior_lower_bounds_`, `prior_upper_bounds_` | Solver-facing individual bounds; NaN means unbounded. |
-| `prior_bound_diagnostics_`, `effective_prior_hac_lags_` | Per-selected-cell targets, errors, floors and exclusion reasons, and the bandwidth actually used. |
+| `prior_bound_diagnostics_`, `effective_prior_hac_lags_` | Per-selected-cell targets, errors, slack and its source, floors, competitor slope and implied budget, exclusion reasons, and the bandwidth actually used. |
 | `derived_signs_` | The final sign matrix, after a centre's sign has replaced a conflicting detected sign. |
 
 The OLS weights use the effective squared-loss span of the fit, including a span passed to

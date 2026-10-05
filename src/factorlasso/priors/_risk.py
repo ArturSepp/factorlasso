@@ -27,8 +27,9 @@
 
 The radius is an analytic result for zero-centred, nonnegative two-factor
 Lasso with half-quadratic loss. It is not a default or tuning theorem for
-prior-centred FCGL. First let correlation tend to one, then let signal/noise
-increase; a joint limit additionally needs theta*sqrt(1-rho)/s_B -> 0.
+prior-centred FCGL. Correlation tends to one while signal/noise increases; the
+two limits may be taken jointly or in either order, because theta cancels from
+the contrast z2 - rho*z1 that selects the solution face (Sepp 2026, Prop. 2).
 Bounded prior offsets are fixed, not selected from the observed noise.
 """
 from dataclasses import dataclass

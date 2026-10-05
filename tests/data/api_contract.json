@@ -1497,6 +1497,24 @@
       "factory": null
      },
      {
+      "name": "expert_prior_exposure_budget",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "expert_prior_bound_centre",
+      "init": true,
+      "default": "prior",
+      "factory": null
+     },
+     {
+      "name": "expert_prior_bound_scope",
+      "init": true,
+      "default": "all",
+      "factory": null
+     },
+     {
       "name": "prior_lower_bounds_",
       "init": false,
       "default": null,
@@ -1825,6 +1843,21 @@
      "expert_prior_hac_lags_freq_dict",
      "POSITIONAL_OR_KEYWORD",
      null
+    ],
+    [
+     "expert_prior_exposure_budget",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "expert_prior_bound_centre",
+     "POSITIONAL_OR_KEYWORD",
+     "prior"
+    ],
+    [
+     "expert_prior_bound_scope",
+     "POSITIONAL_OR_KEYWORD",
+     "all"
     ]
    ],
    "members": {

@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.1.0.dev0 — 2026-10-05
+
+### Added
+
+- Add `expert_prior_exposure_budget`, the exposure-budget floor of Sepp (2026). Declared
+  response-by-factor budgets in coefficient units replace the standard-error slack by the
+  sign-aware slack `sum_j (sign(target) * Gamma_j * s_j)_+ * d_j`, where `Gamma_j` is the
+  omitted-variable coefficient of factor `j` on the selected factors, computed on the rows and
+  weights of the target regression. Responses without a declared row keep
+  `expert_prior_bound_n_std`.
+- Add `expert_prior_bound_centre` (`"prior"` or `"floor"`). `"floor"` moves the penalty centre
+  of every floored loading to its bound, the floor-centred penalty of the paper's
+  Proposition 5(i) for the LASSO penalty. Group modes keep the cell in its block.
+- Add `expert_prior_bound_scope` (`"all"` or `"named"`). `"named"` floors explicit
+  `factor_for_prior` selections only and records automatic winners as
+  `automatic_selection_not_floored`.
+- Append the slack, its source, the most correlated permitted competitor, its omitted-variable
+  slope and correlation, and the implied budget to `prior_bound_diagnostics_`.
+
+### Fixed
+
+- The two-factor limiting-risk documentation no longer requires
+  `theta * sqrt(1 - rho) / s_B -> 0`. The limits in correlation and signal may be taken jointly,
+  because `theta` cancels from the contrast that selects the solution face.
+
+### Unchanged
+
+- Defaults reproduce 1.0.2 exactly: no budget, prior centre and floors on all selections.
+
 ## 1.0.2 — 2026-10-05
 
 ### Added

@@ -80,9 +80,10 @@ choosing whichever realized interval is narrower is not covered.
 The diagnostic objective is half the standardized quadratic loss plus
 $\lambda(b_1+b_2)$, with nonnegative coefficients. Truth is $(\theta,\eta)$,
 $0\le\eta\le d$, and a fixed prior offset satisfies $\lvert e\rvert\le\tau$.
-The floor is $(z_1-\rho d+e-r)_+$. First take $\rho$ to one, then let the primary
-signal-to-noise ratio grow. A joint limit also requires
-$\theta\sqrt{1-\rho}/s_B\to0$, where $s_B$ is the orthogonal score noise scale.
+The floor is $(z_1-\rho d+e-r)_+$. Take $\rho$ to one and let the primary signal-to-noise
+ratio grow. The two limits may be taken jointly or in either order: $\theta$ cancels from the
+contrast $z_2-\rho z_1$ that selects the solution face, and enters only through the event that
+the floor is positive, whose probability tends to one.
 
 For independent marginal and orthogonal Gaussian score components, the limiting
 worst risk balances fixed positive and negative bias endpoints. When $d=0$, the

@@ -413,6 +413,32 @@ class LassoModel:
     expert_prior_hac_lags_freq_dict : dict or None, default None
         Optional consumer-resolved cadence map. Direct fits use the scalar lag;
         a multi-frequency consumer must select the appropriate scalar explicitly.
+    expert_prior_exposure_budget : pandas.DataFrame or None, default None
+        Exposure-budget floors (Sepp 2026). Response-by-factor budgets ``d_ij >= 0``
+        in coefficient units on the loadings of non-selected factors. A response
+        with at least one finite budget uses the slack
+        ``sum_j (sign(target) * Gamma_j * s_ij)_+ * d_ij`` in place of
+        ``n_std * HAC_SE``, where ``Gamma_j`` is the coefficient of the selected
+        factor in the weighted OLS regression of factor ``j`` on the selected
+        factors (same rows and weights as the target) and ``s_ij`` the hard sign of
+        the loading (a free sign counts as ``abs(Gamma_j)``, a zero sign as no
+        exposure). Missing budgets in a declared row count as zero. Responses
+        without a declared row fall back to ``expert_prior_bound_n_std``, or carry
+        no floor when it is None. Unknown factor columns raise; extra response rows
+        are ignored. Requires ``apply_ols_prior=True``.
+    expert_prior_bound_centre : {'prior', 'floor'}, default 'prior'
+        Penalty centre of a floored loading. ``'prior'`` keeps the resolved prior
+        target. ``'floor'`` moves the centre of every floored cell to its bound.
+        With the elementwise LASSO penalty the penalty is then linear on the
+        feasible side of the floor and constant along the collinear direction of
+        the floored loading and a zero-centred competitor. In the group modes the
+        cell stays in its block, whose geometry shares the room above the floor
+        among the block's loadings. No effect without floors.
+    expert_prior_bound_scope : {'all', 'named'}, default 'all'
+        Which selections receive floors. ``'all'`` floors explicit
+        ``factor_for_prior`` selections and automatic highest-R-squared winners.
+        ``'named'`` floors only responses with an explicit selection and records
+        automatic winners with status ``'automatic_selection_not_floored'``.
 
     Attributes (fitted, set by ``fit()``)
     --------------------------------------
@@ -509,7 +535,10 @@ class LassoModel:
     prior_lower_bounds_, prior_upper_bounds_ : pandas.DataFrame or None
         Fitted individual coefficient bounds, response by factor; NaN is unbounded.
     prior_bound_diagnostics_ : pandas.DataFrame or None
-        Selected-cell OLS/HAC statistics, floor and exclusion reasons.
+        Selected-cell OLS/HAC statistics, floor and exclusion reasons. The slack,
+        its source (``'n_std'`` or ``'budget'``), the most correlated permitted
+        competitor with its slope ``Gamma`` and correlation, and the implied
+        budget ``slack / abs(Gamma)`` of that competitor are appended.
     effective_prior_hac_lags_ : int or None
         Bandwidth used by the current fit, including a consumer's cadence override.
 
@@ -661,10 +690,14 @@ class LassoModel:
     loss_denominator_: Optional[pd.Series] = field(default=None, init=False)
     n_loss_rows_: Optional[int] = field(default=None, init=False)
 
-    # Optional individual floors for explicit OLS selectors, never automatic winners.
+    # Optional individual floors for explicit OLS selectors and automatic winners.
     expert_prior_bound_n_std: Optional[float] = None
     expert_prior_hac_lags: int = 0
     expert_prior_hac_lags_freq_dict: Optional[Dict[str, int]] = None
+    # Appended: exposure-budget slack, floor-centred penalty and selector scope.
+    expert_prior_exposure_budget: Optional[pd.DataFrame] = None
+    expert_prior_bound_centre: str = 'prior'
+    expert_prior_bound_scope: str = 'all'
     prior_lower_bounds_: Optional[pd.DataFrame] = field(default=None, init=False)
     prior_upper_bounds_: Optional[pd.DataFrame] = field(default=None, init=False)
     prior_bound_diagnostics_: Optional[pd.DataFrame] = field(default=None, init=False)

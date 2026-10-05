@@ -39,6 +39,12 @@ def _selected_prior_factors(value) -> tuple:
     return tuple(value)
 
 
+def expert_bounds_enabled(model) -> bool:
+    """Whether the fit resolves individual expert floors (by standard errors or budgets)."""
+    return (model.expert_prior_bound_n_std is not None
+            or model.expert_prior_exposure_budget is not None)
+
+
 def validate_loss_mode(model) -> None:
     """Reject invalid or unsupported objective conventions, including after mutation."""
     _validate_loss_normalization(model.loss_normalization)
@@ -68,10 +74,15 @@ def validate_ols_prior_mode(model) -> None:
     """Reject ambiguous flags and a mode whose solver has no beta prior."""
     _validate_expert_bound_settings(
         model.expert_prior_bound_n_std, model.expert_prior_hac_lags,
-        model.expert_prior_hac_lags_freq_dict)
+        model.expert_prior_hac_lags_freq_dict, model.expert_prior_exposure_budget,
+        model.expert_prior_bound_centre, model.expert_prior_bound_scope)
     if model.expert_prior_bound_n_std is not None:
         if not model.apply_ols_prior:
             raise ValueError('expert_prior_bound_n_std requires apply_ols_prior=True')
+    if model.expert_prior_exposure_budget is not None:
+        if not model.apply_ols_prior:
+            raise ValueError('expert_prior_exposure_budget requires apply_ols_prior=True')
+    if expert_bounds_enabled(model):
         if not _mode_spec(model.model_type).hard_constraints:
             raise ValueError('expert prior bounds require LASSO, group LASSO, HCGL or FCGL')
     _validate_prior_selection_type(model.prior_selection_type)

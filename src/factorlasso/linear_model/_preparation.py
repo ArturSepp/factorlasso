@@ -29,7 +29,8 @@ from factorlasso.linear_model._restrictions import (
     expert_prior_bounds, ols_prior, overlay_explicit_prior, override_detected_signs,
 )
 from factorlasso.linear_model._settings import (
-    validate_excluded_factors, validate_fit_modes, validate_sign_settings,
+    expert_bounds_enabled, validate_excluded_factors, validate_fit_modes,
+    validate_sign_settings,
 )
 from factorlasso.linear_model._types import _mode_spec
 from factorlasso.utils._panel import get_x_y_np
@@ -260,16 +261,18 @@ def prepare_fit(
 
     # ── Expert bounds ──
     lower_bounds_np = upper_bounds_np = None
-    if model.expert_prior_bound_n_std is not None:
+    if expert_bounds_enabled(model):
         lower, upper, diagnostics = expert_prior_bounds(
             model, x, y, eff_span, model.ols_r2_, model.ols_beta_prior_,
-            model.effective_beta_prior_,
+            model.effective_beta_prior_, signs_np=signs_np,
         )
         model.prior_lower_bounds_ = lower
         model.prior_upper_bounds_ = upper
         model.prior_bound_diagnostics_ = diagnostics
         model.effective_prior_hac_lags_ = model.expert_prior_hac_lags
         lower_bounds_np, upper_bounds_np = lower.to_numpy(), upper.to_numpy()
+        if model.expert_prior_bound_centre == 'floor':
+            prior_np = floor_centred_penalty(prior_np, lower_bounds_np, upper_bounds_np)
 
     # ── Adaptive penalty weights (Zou 2006; opt-in) ──
     penalty_weights_np = None
@@ -292,3 +295,19 @@ def prepare_fit(
         row_weights_np=row_weights_np, col_weights_np=col_weights_np,
         lower_bounds_np=lower_bounds_np, upper_bounds_np=upper_bounds_np,
     )
+
+
+def floor_centred_penalty(prior_np: np.ndarray, lower_np: np.ndarray,
+                          upper_np: np.ndarray) -> np.ndarray:
+    """Return the penalty centres with every floored cell moved from its prior to its bound.
+
+    With an elementwise absolute penalty, ``|b - floor|`` is linear on the feasible side of the
+    floor, so the penalty is constant along the collinear direction of the floored loading and
+    a competitor with a zero centre (Sepp 2026, Proposition 5(i)). A group norm keeps the
+    floored cell in its block: the block geometry then shares the room above the floor among
+    the block's loadings, and the result is not the separable one.
+    """
+    centre = prior_np.copy()
+    centre[np.isfinite(lower_np)] = lower_np[np.isfinite(lower_np)]
+    centre[np.isfinite(upper_np)] = upper_np[np.isfinite(upper_np)]
+    return centre
