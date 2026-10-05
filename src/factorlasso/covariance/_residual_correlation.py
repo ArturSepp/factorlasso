@@ -235,6 +235,8 @@ def estimate_residual_correlation(
     frequency: Optional[str] = None,
     span: Optional[float] = None,
     periods_per_year: Optional[float] = None,
+    *,
+    missing_policy: str = 'pairwise_ffill',
 ) -> ResidualCorrelationData:
     """Prepare common-period EWMA correlation, keeping native MATF marginal variances.
 
@@ -254,11 +256,24 @@ def estimate_residual_correlation(
     Positive constant per-asset scaling cancels. Undefined zero-variance residuals,
     nonnested boundaries and fewer than two complete periods per asset fail.
     Alpha continues to use the unchanged native residual panel.
+
+    ``missing_policy='zero_innovation'`` instead decays all second moments on
+    the same calendar, inserting zero scores at missing cells. The resulting
+    sum of outer products is PSD by construction, not by eigenvalue repair.
+    This is an explicit sensitivity estimator: sparse overlap attenuates measured
+    dependence. It does not impute returns or renormalize pairwise observation
+    mass. Native marginal variances and the saved residual panel are unchanged.
+    The chosen policy is recorded in asset_metadata.
     """
+    if missing_policy not in ('pairwise_ffill', 'zero_innovation'):
+        raise ValueError('unknown residual correlation missing_policy')
     common, metadata, frequency, span, _, cutoff = _prepare_common_residuals(
         residuals, metadata, estimation_date, frequency, span, periods_per_year,
     )
     centered = (common - compute_ewm(common, span=span)).iloc[1:].to_numpy()
+    if missing_policy == 'zero_innovation':
+        centered = np.nan_to_num(centered, nan=0.)
+        metadata = metadata.assign(correlation_missing_policy=missing_policy)
     # Preserve NaNs for the existing pair-by-pair FFILL covariance recursion.
     moment = pd.DataFrame(compute_ewm_covar(centered, span=span),
                           index=common.columns, columns=common.columns)

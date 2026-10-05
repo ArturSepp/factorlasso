@@ -36,7 +36,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.linalg import solve_triangular
 
-from factorlasso.priors._inference import _symmetric
+from factorlasso.inference._validation import _symmetric
 
 
 def _nonnegative(value, name):

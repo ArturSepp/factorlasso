@@ -25,6 +25,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 #: Capability subpackages; each exports a subset of the root ``__all__``.
 SUBPACKAGES = (
+    "inference",
     "utils", "linear_model", "cluster", "priors", "covariance", "diagnostics",
     "model_selection",
 )

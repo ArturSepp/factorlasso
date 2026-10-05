@@ -1,6 +1,7 @@
 """Import boundaries between the capability subpackages.
 
-The package is layered: ``utils`` below ``cluster`` and ``priors``; ``covariance`` above
+The package is layered: ``utils`` below ``cluster`` and ``inference``; ``priors`` may use
+``inference`` and neither may import its consumers; ``covariance`` above
 ``cluster``; ``linear_model`` above ``cluster`` and ``priors``; ``diagnostics`` above
 ``covariance``; ``model_selection`` on top. Package code imports the private module that owns
 a name, never a historical facade, the package root or another subpackage's ``__init__``.
@@ -20,9 +21,10 @@ PACKAGE_ROOT = Path(factorlasso.__file__).resolve().parent
 #: Capability subpackage -> the other capabilities it may import.
 ALLOWED = {
     "utils": set(),
+    "inference": {"utils"},
     "cluster": {"utils"},
-    "priors": {"utils"},
-    "covariance": {"utils", "cluster"},
+    "priors": {"utils", "inference"},
+    "covariance": {"utils", "cluster", "inference"},
     "linear_model": {"utils", "cluster", "priors"},
     "diagnostics": {"utils", "covariance"},
     "model_selection": {"utils", "linear_model", "diagnostics"},

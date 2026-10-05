@@ -23,7 +23,8 @@ through a fit, and states where the package ends.
 
 | Subpackage | Internal modules | Responsibility |
 |---|---|---|
-| `factorlasso.utils` | `_ewm`, `_panel` | EWMA means and covariances, group loadings, and the preparation of the panels for the solvers: alignment, validity masks and de-meaning. |
+| `factorlasso.utils` | `_ewm`, `_panel`, `_hac` | EWMA means and covariances, group loadings, and the preparation of the panels for the solvers: alignment, validity masks and de-meaning. |
+| `factorlasso.inference` | `_wls`, `_geometry`, `_sandwich`, `_validation`, `_gaussian`, `_ar1` | Weighted regression statistics, coefficient and mean uncertainty, fixed linear geometry and Gaussian calibration. |
 | `factorlasso.cluster` | `_dependence`, `_hierarchical`, `_smoothing`, `_stability`, `_standardization`, `_response` | Pearson, Spearman and Gerber dependence; shared response-panel preparation; distance, linkage and cut; causal rolling partitions; stability statistics and pooled scoring. |
 | `factorlasso.priors` | `_signs`, `_ols`, `_bounds`, `_expert_map`, `_inference`, `_risk` | Derived sign constraints and adaptive penalty weights, OLS prior centres and expert bounds, the mapping of expert priors to factors, and prior inference and risk. |
 | `factorlasso.linear_model` | `_estimator`, `_settings`, `_preparation`, `_restrictions`, `_dispatch`, `_state`, `_nowcast`, `_inspection`, `_types`, `_solvers` | `LassoModel`: validation, the penalty-independent preparation, the CVXPY programme of every mode, the fitted state and the nowcast. |
@@ -38,8 +39,9 @@ leading underscore are internal. Version 1.0 removes the earlier flat modules su
 subpackage imports listed in the
 [migration and compatibility policy](https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md).
 
-The import graph runs one way. `utils` imports no other subpackage; `cluster` and `priors`
-import `utils`; `covariance` imports `utils` and `cluster`; `linear_model` imports `utils`,
+The import graph runs one way. `utils` imports no other subpackage; `cluster` and
+`inference` import `utils`; `priors` imports `utils` and `inference`; `covariance` may
+import `utils`, `cluster` and `inference`; `linear_model` imports `utils`,
 `cluster` and `priors`; `diagnostics` imports `utils` and `covariance`, because the lineage reads
 covariance snapshots; and `model_selection` imports `utils`, `linear_model` and `diagnostics`.
 The rolling clustering refers to `LassoModel` only for type checking, which keeps the graph
@@ -55,6 +57,9 @@ flowchart TB
     diagnostics["diagnostics: residual tests, offline lineage"]
     selection["model_selection: LassoModelCV, LassoModelDiagonalityCV"]
     utils --> cluster
+    inference["inference: weighted statistics and Gaussian calibration"]
+    utils --> inference
+    inference --> priors
     utils --> priors
     cluster --> linear
     priors --> linear
@@ -63,6 +68,11 @@ flowchart TB
     linear --> selection
     diagnostics --> selection
 ```
+
+The shared utilities support clustering and inference. Prior applications use inference
+while retaining floor and sign policy; alpha reporting retains its recursive weights
+and reuses the existing calendar kernel. Existing prior-facing types keep their
+module paths and delegate numerical work to the inference capability.
 
 ## A fit, step by step
 

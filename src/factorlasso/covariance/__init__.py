@@ -12,8 +12,16 @@ from factorlasso.covariance._factor_covar import (
 from factorlasso.covariance._residual_correlation import (
     ResidualCorrelationData, estimate_residual_correlation,
 )
+from factorlasso.covariance._alpha_uncertainty import (
+    AlphaUncertainty, estimate_alpha_uncertainty, gaussian_quadratic_summary,
+    calibrate_alpha_uncertainty,
+    sample_gaussian_estimates,
+)
 
 __all__ = [
+    "calibrate_alpha_uncertainty",
+    "AlphaUncertainty", "estimate_alpha_uncertainty", "gaussian_quadratic_summary",
+    "sample_gaussian_estimates",
     "CurrentFactorCovarData",
     "ResidualCorrelationData",
     "ResidualType",

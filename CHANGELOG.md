@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.0.2 — 2026-10-05
+
+### Added
+
+- Add conditional recursive EWMA residual-alpha uncertainty, with exact influence
+  weights, joint calendar Bartlett-HAC covariance, overlap and effective-history
+  diagnostics, and explicit initialization targets. Existing alpha values and
+  production defaults are unchanged.
+- Add the `inference` capability for general WLS coefficients, weighted means,
+  optional full HAC covariance, fixed coefficient contrasts and Gaussian/AR1
+  interval calibration with explicit mean and target validation.
+- Add exact unnormalized weighted-mean HAC geometry and an opt-in recursive-alpha
+  adapter. Retain calendar, residual fingerprints and units; unsupported AR1
+  calendars return unavailable bounds.
+- Add generic fixed-linear intervals, a joint residual dependent-wild bootstrap
+  with re-estimated standard errors and optional residual-panel draws for downstream
+  refits, and central Gaussian quadratic quantiles. Bootstrap coverage remains
+  explicitly unvalidated.
+- Add joint Gaussian sensitivity scenarios, conservative quadratic-region bounds
+  with signed noise corrections, and exact joint weighted-mean/HAC covariance
+  expectations under a declared temporal shape and fixed ragged masks.
+- Add offline coverage, joint covariance-bias and production-mask calibration
+  benchmarks. These diagnose declared-model sensitivity and finite-history bias;
+  they do not establish empirical or post-selection coverage.
+- Add explicit common-calendar zero-innovation residual correlation sensitivity;
+  keep existing pairwise-FFILL defaults and reject indefinite matrices without repair.
+
+### Changed
+
+- Move prior numerical inference into reusable implementations while preserving
+  existing public signatures, result fields, class module paths and prior policy.
+  Production prior statistics retain lag-based aggregation without dense geometry.
+- Reuse a shared Bartlett kernel in prior HAC geometry and residual-alpha inference.
+- Document the separation between generic weighted inference, selected-factor
+  prior applications and the existing recursive residual-alpha estimator.
+  Production EWMA, HAC covariance correction and factor-model estimates are unchanged.
+
 ## 1.0.1 — 2026-10-03
 
 ### Changed

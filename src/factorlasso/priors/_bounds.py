@@ -10,6 +10,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from factorlasso.inference._wls import compute_wls_hac_statistics
 from factorlasso.utils._ewm import _validate_span
 
 
@@ -88,56 +89,14 @@ def compute_expert_prior_statistics(
     xx, yy = x.to_numpy(dtype=float), y.to_numpy(dtype=float)
     weights = (np.ones(len(x)) if span is None else
                np.power(1.0 - 2.0 / (span + 1.0), np.arange(len(x)-1, -1, -1)))
-    valid = np.isfinite(xx).all(axis=1) & np.isfinite(yy) & (weights > 0)
-    weights = np.where(valid, weights, 0.0)
-    n, p = int(valid.sum()), len(x.columns) + 1
-    positions = np.flatnonzero(valid)
-    gaps = int(positions[-1] - positions[0] + 1 - n) if n else 0
-    if n:
-        weights /= weights.max()  # common rescaling leaves OLS and its sandwich unchanged
-    effective_n = weights.sum()**2 / (weights @ weights) if n else 0.0
-    result = pd.DataFrame(dict(reference_beta=np.nan, se_hac=np.nan,
-                               observations=n, effective_n=effective_n,
-                               calendar_gaps=gaps, hac_lags=hac_lags,
-                               status='insufficient_observations'), index=x.columns)
-    if n < max(3, min_periods) or n <= p:
-        return result
-    # Centre and scale before solving to protect large offsets and factor units.
-    observed_x = xx[valid] - xx[valid][-1]
-    observed_y = yy[valid] - yy[valid][-1]
-    w = weights[valid]
-    observed_x -= np.average(observed_x, axis=0, weights=w)
-    observed_y -= np.average(observed_y, weights=w)
-    scales = np.sqrt(np.average(observed_x**2, axis=0, weights=w))
-    if np.any(scales == 0):
-        result['status'] = 'rank_deficient'
-        return result
-    design = np.zeros((len(x), p))
-    response = np.zeros(len(x))
-    design[valid, 0] = 1.0
-    design[valid, 1:] = observed_x / scales
-    response[valid] = observed_y
-    root = np.sqrt(weights)
-    weighted_design = root[:, None] * design
-    u, singular, vt = np.linalg.svd(weighted_design, full_matrices=False)
-    if singular[-1] <= singular[0] * max(weighted_design.shape) * np.finfo(float).eps:
-        result['status'] = 'rank_deficient'
-        return result
-    coefficients = vt.T @ ((u.T @ (root * response)) / singular)
-    bread = (vt.T / singular**2) @ vt
-    residuals = response - design @ coefficients
-    scores = weights[:, None] * design * residuals[:, None]
-    # Direct influence form of bread @ HAC(scores) @ bread; no compression of gaps.
-    influence = scores @ bread
-    variance = np.sum(influence**2, axis=0)
-    for lag in range(1, min(hac_lags, len(x)-1) + 1):
-        variance += 2 * (1 - lag / (hac_lags + 1)) * np.sum(
-            influence[lag:] * influence[:-lag], axis=0)
-    variance *= n / (n-p)
-    result['reference_beta'] = coefficients[1:] / scales
-    result['se_hac'] = np.sqrt(np.maximum(variance[1:], 0.0)) / scales
-    result['status'] = 'ok'
-    return result
+    statistics = compute_wls_hac_statistics(xx, yy, weights, hac_lags, min_periods)
+    return pd.DataFrame(dict(reference_beta=statistics.coefficients[1:],
+                             se_hac=statistics.standard_error[1:],
+                             observations=statistics.observations,
+                             effective_n=statistics.effective_n,
+                             calendar_gaps=statistics.calendar_gaps, hac_lags=hac_lags,
+                             status=statistics.status), index=x.columns)
+
 
 
 def _compute_expert_prior_bounds(x, y, selections, raw_prior, effective_prior,

@@ -111,6 +111,12 @@ from factorlasso.linear_model import (
     solve_unilasso_cvx_problem,
 )
 from factorlasso.model_selection import LassoModelCV, LassoModelDiagonalityCV
+from factorlasso.inference import (
+    compute_weighted_mean_hac_geometry, gaussian_quadratic_quantile, weighted_mean_hac_expectation,
+    quadratic_confidence_summary, linear_confidence_intervals, bootstrap_weighted_means,
+    Ar1Interval, LinearHacGeometry, WlsHacStatistics, compute_ar1_interval,
+    compute_wls_hac_geometry, compute_wls_hac_statistics, gaussian_critical_value,
+)
 from factorlasso.priors import (
     Ar1PriorInterval,
     ExpertPriorResolution,
@@ -134,6 +140,11 @@ from factorlasso.utils import (
     get_x_y_np,
     set_group_loadings,
 )
+from factorlasso.covariance import (
+    calibrate_alpha_uncertainty,
+    AlphaUncertainty, estimate_alpha_uncertainty, gaussian_quadratic_summary,
+    sample_gaussian_estimates,
+)
 
 
 try:
@@ -142,6 +153,15 @@ except PackageNotFoundError:  # pragma: no cover - editable install before metad
     __version__ = "0.0.0+unknown"
 
 __all__ = [
+    "weighted_mean_hac_expectation",
+    "compute_weighted_mean_hac_geometry", "gaussian_quadratic_quantile",
+    "quadratic_confidence_summary", "linear_confidence_intervals", "bootstrap_weighted_means",
+    "calibrate_alpha_uncertainty",
+    "WlsHacStatistics", "compute_wls_hac_statistics", "LinearHacGeometry",
+    "compute_wls_hac_geometry", "gaussian_critical_value", "Ar1Interval",
+    "compute_ar1_interval",
+    "AlphaUncertainty", "estimate_alpha_uncertainty", "gaussian_quadratic_summary",
+    "sample_gaussian_estimates",
     # Core estimator
     "LassoModel",
     "LassoModelCV",

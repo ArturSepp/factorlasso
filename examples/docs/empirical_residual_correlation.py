@@ -109,6 +109,17 @@ def main() -> None:
     gapped = residuals.copy()
     gapped.iloc[60, 0] = np.nan
     gapped_prepared = estimate(gapped, metadata)
+    calendar_estimate = fl.estimate_residual_correlation(gapped, metadata, ESTIMATION_DATE,
+        frequency='QE', span=prepared.span, periods_per_year=4., missing_policy='zero_innovation')
+    z = (calendar_estimate.residual_returns-fl.compute_ewm(
+        calendar_estimate.residual_returns, span=prepared.span)).iloc[1:].fillna(0).to_numpy()
+    moment = np.zeros((len(NAMES), len(NAMES)))
+    decay = 1-2/(prepared.span+1)
+    for row in z:
+        moment = decay*moment+(1-decay)*np.outer(row, row)
+    vol_ref = np.sqrt(np.diag(moment))
+    np.testing.assert_allclose(calendar_estimate.correlation,
+                               moment/np.outer(vol_ref, vol_ref), atol=1e-14)
     quarter = gapped.index[60] + pd.offsets.QuarterEnd()
     assert np.isnan(gapped_prepared.residual_returns.loc[quarter, NAMES[0]])
     assert gapped_prepared.residual_returns.loc[quarter, NAMES[1:]].notna().all()

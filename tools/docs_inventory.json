@@ -3,6 +3,8 @@
   "project": "factorlasso",
   "description": "Explicit ownership of reader-facing pages, of every name in factorlasso.__all__ and of every LassoModel configuration parameter, plus the paper citation ledger. Read by tools/check_docs.py and by docs/conf.py, which generates the API reference from 'symbols' and 'parameters' in the order given here (the order of the sidebar). 'retained' marks README and legacy RST pages kept in their native format; 'planned' lists pages that are not written yet. An optional 'example' names the canonical script of a page: every Python block of the page must be a verbatim excerpt of it unless marked as a fragment. Move a page from 'planned' to 'pages' when its file is created, and mark it 'adopted' only after the verification in docs/documentation_standard.md. Paper titles are taken from the LaTeX source of each manuscript; a retired title may not appear on any reader-facing page, in CITATION.cff or in a paper README.",
   "pages": {
+    "docs/weighted_inference.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/weighted_inference.py"},
+    "docs/alpha_uncertainty.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/alpha_uncertainty.py"},
     "README.md": {"form": "utility", "status": "retained"},
     "docs/index.md": {"form": "utility", "status": "adopted"},
     "docs/getting-started.md": {"form": "utility", "status": "adopted", "example": "examples/docs/getting_started.py"},
@@ -42,6 +44,18 @@
   },
   "planned": {},
   "symbols": {
+    "docs/weighted_inference.md": [
+      "compute_weighted_mean_hac_geometry", "gaussian_quadratic_quantile", "weighted_mean_hac_expectation",
+      "quadratic_confidence_summary", "linear_confidence_intervals", "bootstrap_weighted_means",
+      "WlsHacStatistics", "compute_wls_hac_statistics", "LinearHacGeometry",
+      "compute_wls_hac_geometry", "gaussian_critical_value", "Ar1Interval",
+      "compute_ar1_interval"
+    ],
+    "docs/alpha_uncertainty.md": [
+      "calibrate_alpha_uncertainty",
+      "AlphaUncertainty", "estimate_alpha_uncertainty", "gaussian_quadratic_summary",
+      "sample_gaussian_estimates"
+    ],
     "docs/sparse_factor_model.md": [
       "LassoModel", "LassoModelType", "LassoEstimationResult", "solve_lasso_cvx_problem", "get_x_y_np"
     ],

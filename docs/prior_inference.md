@@ -61,50 +61,19 @@ more positive-weight observations than design columns. Rolling calls must use pa
 
 ## Methodology
 
-### The actual weighted HAC statistic
+### Shared weighted inference
 
-Let $H=(D^{\top}WD)^{-1}D^{\top}W$, let $h^{\top}$ be its selected coefficient row,
-and let $R=I-DH$. With Bartlett kernel K and the existing finite-sample correction,
+The [weighted inference article](weighted_inference.md) gives the WLS sandwich, linear and
+quadratic forms, known-shape Gaussian pivot and continuous AR1 calibration. Those numerical
+implementations live in `factorlasso.inference`. The prior entry points preserve their
+existing signatures, result classes and validation behaviour through wrappers.
 
-$$
-\widehat b=h^{\top}y,\qquad
-\widehat v=y^{\top}Qy,\qquad
-Q=\frac{T_{obs}}{T_{obs}-P}R^{\top}\operatorname{diag}(h)K\operatorname{diag}(h)R.
-$$
-
-Both weight factors are present in Q. Effective sample size does not replace the
-observed-row count in this correction. A weighted SVD constructs H; the library checks
-rank and computes the variance after removing the fitted mean for numerical stability.
-
-For known covariance shape $V=CC^{\top}$, the unknown-scale pivot is
-$\lvert a^{\top}\xi\rvert/\sqrt{\xi^{\top}B\xi}$, where $a=C^{\top}h$,
-$B=C^{\top}QC$ and $\xi$ is standard Gaussian. Numerator and denominator are generally
-dependent. A one-positive-eigenvalue Gaussian quadratic-form integral calibrates its
-tail; no estimated Student degrees of freedom are substituted. Gaussian quadratic-form
-probabilities are classical (Imhof, 1961); this implementation uses a specialized
-nonoscillatory integral rather than the general Imhof inversion algorithm.
-
-### Unknown AR dependence
-
-With covariance entries $V_{ij}=\phi^{\lvert i-j\rvert}$ and
-$\lvert\phi\rvert\le\phi_{max}$, divide the atanh parameter into equal cells of
-half-width h. Throughout a cell the covariance is bounded above and below by its
-centre covariance multiplied by $\exp(2h)$ and $\exp(-2h)$. The Gaussian directional
-density ratio is then at most $\exp(2Th)$.
-
-Full-domain mode calibrates each cell centre at tail $\alpha\exp(-2Th)$ and takes
-the largest critical value. It does not spend an error budget on an unused shape set.
-Adaptive mode removes the unknown mean and scale with residual contrasts. Their angular
-central Gaussian densities (Tyler, 1987) define a fixed-mixture likelihood-ratio confidence
-set with error at most delta. Retaining whole cells that could meet the density threshold
-covers continuous off-grid values. Calibrating the retained cells at
-$(\alpha-\delta)\exp(-2Th)$ and maximizing their critical values gives the desired
-union-bound guarantee, following the nuisance-confidence-set principle of Berger and
-Boos (1994). The mixture is fixed before observing the response; a fitted likelihood
-maximum cannot replace it in this expectation argument.
-
-The adaptive mode is not uniformly narrower. Selecting the narrower realized interval
-from the two modes has no guarantee from these calculations.
+For prior applications, choose the factors and mean model independently of response noise
+when using the Gaussian coverage statements. The coefficient estimate and HAC SE describe
+that selected small regression. A floor is a separate policy applied to a fitted loading;
+interval calibration does not automatically select a risk-optimal floor or change production
+defaults. Full-domain and adaptive AR intervals retain their separate error allocations;
+choosing whichever realized interval is narrower is not covered.
 
 ### Conditional floor risk and information
 

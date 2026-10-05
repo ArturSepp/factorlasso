@@ -5,9 +5,10 @@ import pytest
 from scipy.linalg import null_space
 from scipy.stats import t
 
+from factorlasso.inference._ar1 import _angular_log_density, _ar_covariance
+from factorlasso.inference._gaussian import _gaussian_critical, _pivot_tail
 from factorlasso.priors import compute_expert_prior_statistics
 from factorlasso.priors._inference import (
-    _angular_log_density, _ar_covariance, _gaussian_critical, _pivot_tail,
     compute_ar1_prior_interval, compute_prior_hac_geometry, gaussian_prior_critical_value,
 )
 from factorlasso.priors import (

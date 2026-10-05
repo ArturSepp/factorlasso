@@ -124,6 +124,10 @@ structure; and the covariance is assembled from the fitted loadings.
 
 ## Selection and diagnostics
 
+- [Weighted regression and mean inference](weighted_inference.md): reusable WLS statistics,
+  classical versus HC/HAC standard errors, EWMA effective sample size, coefficient contrasts
+  and normal, Gaussian/AR1 or experimental bootstrap interval calibration.
+
 - [Residual diagnostics for strict factor structure](residual_diagnostics.md): the sphericity
   statistic, the Marchenko–Pastur edge, missing-factor components and effective sparsity.
 
@@ -275,6 +279,7 @@ unilasso
 :maxdepth: 1
 :caption: Selection and diagnostics
 
+weighted_inference
 residual_diagnostics
 penalty_selection
 ```
@@ -299,6 +304,7 @@ cluster_lineage
 factor_covariance_assembly
 empirical_residual_correlation
 residual_alpha_nowcasting
+alpha_uncertainty
 ```
 
 ```{toctree}

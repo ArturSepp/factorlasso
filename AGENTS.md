@@ -118,6 +118,7 @@ src/factorlasso/
   cluster/                    dependence, distance/linkage/cut, rolling smoothing, stability,
                               stability-pooled scoring (_dependence, _hierarchical, _smoothing,
                               _stability, _standardization, _response)
+  inference/                  WLS statistics, linear HAC geometry and Gaussian/AR1 calibration
   priors/                     sign constraints and adaptive weights, OLS prior centres, expert
                               bounds and mapping, prior inference and risk (_signs, _ols, _bounds,
                               _expert_map, _inference, _risk)
@@ -141,8 +142,9 @@ COMPARISON.md                 empirical comparison against competing packages
 COMPATIBILITY.md              scikit-learn compatibility notes
 ```
 
-Subpackages import only downward: `cluster` and `priors` use `utils`; `covariance` uses `utils`
-and `cluster`; `linear_model` uses `utils`, `cluster` and `priors`; `diagnostics` uses `utils`
+Subpackages import only downward: `cluster` and `inference` use `utils`; `priors` uses `utils`
+and `inference`; `covariance` may use `utils`, `cluster` and `inference`; `linear_model` uses
+`utils`, `cluster` and `priors`; `diagnostics` uses `utils`
 and `covariance`; `model_selection` uses `utils`, `linear_model` and `diagnostics`
 (`tests/test_import_boundaries.py`). Package code imports the private module that owns a name,
 never a removed flat module, the root or another subpackage's `__init__`. Every root export is

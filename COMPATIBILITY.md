@@ -10,6 +10,11 @@ and retires the pre-1.0 compatibility facades. It preserves all 74 root exports,
 their signatures and defaults, and the estimation behaviour of 0.25.0.
 factorlasso follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Version 1.0.2 adds `factorlasso.inference` for general weighted regression
+and mean inference. Existing prior-facing entry points retain their defaults, result
+fields and subpackage ownership. `PriorHacGeometry` and `Ar1PriorInterval` retain their
+original class module paths; generic types have separate names and ownership.
+
 ## Stable surface in 1.x
 
 `factorlasso.__all__` is the authoritative public API. Every name also appears in

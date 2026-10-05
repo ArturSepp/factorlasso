@@ -23,58 +23,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Optional finite-Gaussian calibration of weighted OLS/HAC prior uncertainty.
+"""Prior-facing compatibility types and fixed-model inference entry points.
 
-These routines do not alter LassoModel or its default prior floors. The mean
-model and factor identity must be fixed independently of the response. Coverage
-is for that model's coefficient, not a selected factor or a drifting endpoint.
-All rows must be observed on a regular calendar for the AR(1) construction.
-
-References
-----------
-Imhof (1961), Biometrika 48, 419-426, doi:10.1093/biomet/48.3-4.419:
-Gaussian quadratic forms. Here a one-positive-eigenvalue pivot uses a
-nonoscillatory integral, rather than Imhof's general inversion algorithm.
-Tyler (1987), Biometrika 74, 579-589, doi:10.1093/biomet/74.3.579:
-angular central Gaussian densities. A fixed-mixture Markov inequality is used
-here to obtain a residual-direction confidence set.
-Berger and Boos (1994), JASA 89, 1012-1016,
-doi:10.1080/01621459.1994.10476836: nuisance confidence sets and error allocation.
-The AR cell domination bound below is an explicit implementation choice.
+Numerical implementations live in factorlasso.inference. Existing class module
+paths, fields, signatures and validation behaviour remain available here.
 """
 from dataclasses import dataclass
-from numbers import Integral
 
 import numpy as np
-from scipy.integrate import quad
-from scipy.optimize import brentq
-from scipy.special import logsumexp
 
-
-def _probability(value, name):
-    """Validate a strictly interior, finite probability."""
-    if not np.isscalar(value) or not np.isfinite(value) or not 0 < value < 1:
-        raise ValueError(f'{name} must be finite and strictly between zero and one')
-    return float(value)
-
-
-def _symmetric(matrix, size, name, positive_definite=False):
-    """Validate a finite symmetric covariance or quadratic form without silently symmetrizing."""
-    value = np.asarray(matrix, dtype=float)
-    if value.shape != (size, size) or not np.isfinite(value).all():
-        raise ValueError(f'{name} must be a finite {size} by {size} matrix')
-    scale = np.max(np.abs(value))
-    if scale == 0 or not np.allclose(value, value.T, rtol=0, atol=1e-12*scale):
-        raise ValueError(f'{name} must be nonzero and symmetric')
-    value = (value+value.T)/2
-    if positive_definite:
-        try:
-            np.linalg.cholesky(value)
-        except np.linalg.LinAlgError as error:
-            raise ValueError(f'{name} must be positive definite') from error
-    elif np.linalg.eigvalsh(value)[0] < -1e-10*scale:
-        raise ValueError(f'{name} must be positive semidefinite')
-    return value
+from factorlasso.inference._ar1 import _ar1_interval
+from factorlasso.inference._gaussian import _known_shape_critical
+from factorlasso.inference._geometry import _geometry_statistics, _wls_geometry_arrays
 
 
 @dataclass(frozen=True)
@@ -105,22 +65,7 @@ class PriorHacGeometry:
         estimates, standard_errors : ndarray
             One-dimensional arrays, including for a single input response.
         """
-        y = _responses(responses, len(self.design))
-        # Remove the fitted mean first to avoid cancellation in y'Qy.
-        residual = y @ self.residual_map.T
-        variance = np.einsum('ij,jk,ik->i', residual, self.quadratic, residual)
-        return y @ self.linear, np.sqrt(np.maximum(variance, 0.))
-
-
-def _responses(responses, size):
-    """Validate a complete scalar or batched response, without dropping calendar gaps."""
-    values = np.asarray(responses, dtype=float)
-    if values.ndim == 1:
-        values = values[None, :]
-    if (values.ndim != 2 or values.shape[1] != size or len(values) == 0
-            or not np.isfinite(values).all()):
-        raise ValueError('responses must be finite with shape (T,) or (N, T); gaps are unsupported')
-    return values
+        return _geometry_statistics(self, responses)
 
 
 def compute_prior_hac_geometry(design, weights=None, hac_lags=0, coefficient=1):
@@ -146,81 +91,8 @@ def compute_prior_hac_geometry(design, weights=None, hac_lags=0, coefficient=1):
         Uses the existing prior statistic's n_obs/(n_obs-P) correction. No
         effective-sample-size substitution or additional degrees-of-freedom fit.
     """
-    d = np.asarray(design, dtype=float)
-    if d.ndim != 2 or min(d.shape) == 0 or not np.isfinite(d).all():
-        raise ValueError('design must be a nonempty finite matrix')
-    n, p = d.shape
-    if (isinstance(hac_lags, (bool, np.bool_)) or not isinstance(hac_lags, Integral)
-            or hac_lags < 0):
-        raise ValueError('hac_lags must be a nonnegative integer')
-    if (isinstance(coefficient, (bool, np.bool_)) or not isinstance(coefficient, Integral)
-            or not 0 <= coefficient < p):
-        raise ValueError('coefficient must index a design column')
-    w = np.ones(n) if weights is None else np.asarray(weights, dtype=float)
-    if w.shape != (n,) or not np.isfinite(w).all() or np.any(w < 0):
-        raise ValueError('weights must be finite, nonnegative and match design rows')
-    nobs = np.count_nonzero(w)
-    if nobs <= p:
-        raise ValueError('positive residual degrees of freedom required')
-    w = w / np.max(w)
-    root = np.sqrt(w)
-    scales = np.linalg.norm(root[:, None]*d, axis=0)
-    if np.any(scales == 0):
-        raise ValueError('design must have full weighted column rank')
-    u, singular, vt = np.linalg.svd(root[:, None]*(d/scales), full_matrices=False)
-    if singular[-1] <= singular[0]*max(d.shape)*np.finfo(float).eps:
-        raise ValueError('design must have full weighted column rank')
-    hmap = ((vt.T/singular) @ u.T)*root[None, :]/scales[:, None]
-    h = hmap[coefficient]
-    residual = np.eye(n)-d @ hmap
-    distance = np.abs(np.arange(n)[:, None]-np.arange(n)[None, :])
-    kernel = np.maximum(0., 1-distance/(hac_lags+1))
-    influence = h[:, None]*residual
-    q = nobs/(nobs-p)*(influence.T @ kernel @ influence)
-    return PriorHacGeometry(d.copy(), h.copy(), (q+q.T)/2, residual)
+    return PriorHacGeometry(*_wls_geometry_arrays(design, weights, hac_lags, coefficient))
 
-
-def _pivot_tail(critical, a, b):
-    """Integrate the central Gaussian ratio tail via its single positive eigenvalue."""
-    if critical == 0:
-        return 1.
-    matrix = np.outer(a, a)-critical**2*b
-    eigen = np.linalg.eigvalsh((matrix+matrix.T)/2)
-    tolerance = 1e-12*max(np.max(np.abs(eigen)), np.finfo(float).tiny)
-    positive = eigen[eigen > tolerance]
-    if len(positive) == 0:
-        return 0.
-    if len(positive) != 1:
-        raise ArithmeticError('Pivot numerator has more than one positive eigenvalue')
-    ratios = -eigen[eigen < -tolerance]/positive[0]
-
-    def integrand(angle):
-        """Evaluate the stable nonoscillatory Gaussian tail integrand."""
-        return np.exp(-.5*np.log1p(ratios/np.sin(angle)**2).sum())
-
-    value, error = quad(integrand, 0., np.pi/2, epsabs=2e-10, epsrel=2e-10)
-    if error > 1e-7:
-        raise ArithmeticError('Gaussian pivot quadrature did not converge')
-    return float(2/np.pi*value)
-
-
-def _gaussian_critical(h, q, covariance, alpha):
-    """Calibrate an already validated nondegenerate Gaussian pivot."""
-    c = np.linalg.cholesky(covariance)
-    a = c.T @ h
-    b = c.T @ q @ c
-    scale = np.linalg.norm(a)
-    if not np.isfinite(scale) or scale == 0:
-        raise ValueError('nonzero finite coefficient variance required')
-    a, b = a/scale, b/scale**2
-    if np.trace(b) <= 0:
-        raise ValueError('nonzero HAC variance form required')
-    upper = 2.
-    while _pivot_tail(upper, a, b) > alpha:
-        upper *= 2
-        if upper > 1e6:
-            raise ArithmeticError('Could not bracket Gaussian pivot critical value')
-    return float(brentq(lambda k: _pivot_tail(k, a, b)-alpha, 0., upper, xtol=1e-9))
 
 
 def gaussian_prior_critical_value(geometry, covariance_shape, alpha=.05):
@@ -243,51 +115,8 @@ def gaussian_prior_critical_value(geometry, covariance_shape, alpha=.05):
         Quadrature and eigensolver tolerances are numerical, not an interval-
         arithmetic proof. A fitted covariance shape does not inherit validity.
     """
-    alpha = _probability(alpha, 'alpha')
-    h = np.asarray(geometry.linear, float)
-    if h.ndim != 1 or not np.isfinite(h).all():
-        raise ValueError('geometry.linear must be a finite vector')
-    q = _symmetric(geometry.quadratic, len(h), 'quadratic')
-    covariance = _symmetric(covariance_shape, len(h), 'covariance_shape', True)
-    return _gaussian_critical(h, q, covariance, alpha)
+    return _known_shape_critical(geometry, covariance_shape, alpha)
 
-
-def _ar_covariance(size, phi):
-    """Return stationary AR(1) unit-marginal covariance on a regular grid."""
-    return phi**np.abs(np.arange(size)[:, None]-np.arange(size)[None, :])
-
-
-def _angular_log_density(design, responses, phis):
-    """Evaluate residual-direction densities using tridiagonal AR precision."""
-    # An orthonormal basis preserves the mean space and protects rescaled designs.
-    d = np.linalg.qr(design, mode='reduced')[0]
-    n, p = d.shape
-    y = responses-(responses @ d) @ d.T
-    yy = np.sum(y*y, axis=1)
-    if np.any(yy <= np.finfo(float).eps**2*np.sum(responses*responses, axis=1)):
-        raise ValueError('AR shape inference requires a nonzero residual direction')
-    if np.any(yy <= np.finfo(float).tiny):
-        raise ValueError('AR shape inference requires a nonzero residual direction')
-    adjacent = np.sum(y[:, 1:]*y[:, :-1], axis=1)
-    interior = np.sum(y[:, 1:-1]**2, axis=1)
-    dt0 = y @ d
-    dt1 = y[:, 1:] @ d[:-1]+y[:, :-1] @ d[1:]
-    dt2 = y[:, 1:-1] @ d[1:-1]
-    m0 = d.T @ d
-    m1 = d[1:].T @ d[:-1]+d[:-1].T @ d[1:]
-    m2 = d[1:-1].T @ d[1:-1]
-    logdet0 = np.linalg.slogdet(m0)[1]
-    result = []
-    for phi in phis:
-        matrix = m0-phi*m1+phi*phi*m2
-        vector = dt0-phi*dt1+phi*phi*dt2
-        rss = yy-2*phi*adjacent+phi*phi*interior
-        rss -= np.sum(vector*np.linalg.solve(matrix, vector.T).T, axis=1)
-        if np.any(rss <= 0):
-            raise ArithmeticError('Nonpositive profiled residual quadratic form')
-        result.append(.5*np.log1p(-phi*phi)-.5*np.linalg.slogdet(matrix)[1]
-                      +.5*logdet0-.5*(n-p)*np.log(rss/yy))
-    return np.column_stack(result)
 
 
 @dataclass(frozen=True)
@@ -313,6 +142,7 @@ class Ar1PriorInterval:
     delta: float
     calibration_alpha: float
     adaptive: bool
+
 
 
 def compute_ar1_prior_interval(geometry, responses, *, phi_max=.7, cells=401,
@@ -348,41 +178,6 @@ def compute_ar1_prior_interval(geometry, responses, *, phi_max=.7, cells=401,
         calibration tolerances. It does not cover omitted means, irregularly spaced
         rows, estimated factor selection, arbitrary drift or non-Gaussian errors.
     """
-    alpha = _probability(alpha, 'alpha')
-    if not isinstance(adaptive, (bool, np.bool_)):
-        raise ValueError('adaptive must be boolean')
-    delta = _probability(delta, 'delta') if adaptive else 0.
-    if delta >= alpha:
-        raise ValueError('adaptive delta must be smaller than alpha')
-    if not np.isscalar(phi_max) or not np.isfinite(phi_max) or not 0 < phi_max < 1:
-        raise ValueError('phi_max must be finite and strictly between zero and one')
-    if isinstance(cells, (bool, np.bool_)) or not isinstance(cells, Integral) or cells < 3:
-        raise ValueError('cells must be an integer at least three')
-    n = len(geometry.design)
-    y = _responses(responses, n)
-    endpoint = np.arctanh(phi_max)
-    psi_edges = np.linspace(-endpoint, endpoint, cells+1)
-    phis = np.tanh((psi_edges[:-1]+psi_edges[1:])/2)
-    half_width = endpoint/cells
-    corrected_alpha = (alpha-delta)*np.exp(-2*n*half_width)
-    if corrected_alpha <= 1e-9:
-        raise ValueError('cells too coarse for stable calibration; increase cells')
-    q = _symmetric(geometry.quadratic, n, 'quadratic')
-    critical = np.array([
-        _gaussian_critical(geometry.linear, q, _ar_covariance(n, phi), corrected_alpha)
-        for phi in phis])
-    if adaptive:
-        density = _angular_log_density(geometry.design, y, phis)
-        mixture = logsumexp(density, axis=1)-np.log(cells)
-        allowance = 2*(n-geometry.design.shape[1])*half_width
-        retained = density+allowance >= np.log(delta)+mixture[:, None]
-        if not retained.any(axis=1).all():
-            raise ArithmeticError('Empty AR confidence cover')
-    else:
-        retained = np.ones((len(y), cells), dtype=bool)
-    selected = np.max(np.where(retained, critical[None, :], -np.inf), axis=1)
-    estimate, standard_error = geometry.statistics(y)
-    width = selected*standard_error
-    return Ar1PriorInterval(estimate, standard_error, estimate-width, estimate+width,
-                            selected, phis, np.tanh(psi_edges), retained, critical,
-                            alpha, delta, float(corrected_alpha), bool(adaptive))
+    result = _ar1_interval(geometry, responses, phi_max=phi_max, cells=cells,
+                           alpha=alpha, adaptive=adaptive, delta=delta)
+    return Ar1PriorInterval(**vars(result))

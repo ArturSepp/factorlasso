@@ -1,5 +1,23 @@
 {
  "root_all": [
+  "weighted_mean_hac_expectation",
+  "compute_weighted_mean_hac_geometry",
+  "gaussian_quadratic_quantile",
+  "quadratic_confidence_summary",
+  "linear_confidence_intervals",
+  "bootstrap_weighted_means",
+  "calibrate_alpha_uncertainty",
+  "WlsHacStatistics",
+  "compute_wls_hac_statistics",
+  "LinearHacGeometry",
+  "compute_wls_hac_geometry",
+  "gaussian_critical_value",
+  "Ar1Interval",
+  "compute_ar1_interval",
+  "AlphaUncertainty",
+  "estimate_alpha_uncertainty",
+  "gaussian_quadratic_summary",
+  "sample_gaussian_estimates",
   "LassoModel",
   "LassoModelCV",
   "LassoModelType",
@@ -76,6 +94,926 @@
   "partition_variance_share"
  ],
  "exports": {
+  "weighted_mean_hac_expectation": {
+   "kind": "function",
+   "signature": [
+    [
+     "weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "observed",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ],
+    [
+     "calendar",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ],
+    [
+     "covariance_shape",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ],
+    [
+     "bandwidth",
+     "KEYWORD_ONLY",
+     6.0
+    ],
+    [
+     "scale",
+     "KEYWORD_ONLY",
+     1.0
+    ]
+   ]
+  },
+  "compute_weighted_mean_hac_geometry": {
+   "kind": "function",
+   "signature": [
+    [
+     "weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "calendar",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ],
+    [
+     "bandwidth",
+     "KEYWORD_ONLY",
+     6.0
+    ],
+    [
+     "scale",
+     "KEYWORD_ONLY",
+     1.0
+    ]
+   ]
+  },
+  "gaussian_quadratic_quantile": {
+   "kind": "function",
+   "signature": [
+    [
+     "eigenvalues",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "confidence",
+     "POSITIONAL_OR_KEYWORD",
+     0.95
+    ]
+   ]
+  },
+  "quadratic_confidence_summary": {
+   "kind": "function",
+   "signature": [
+    [
+     "mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "metric",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "confidence",
+     "KEYWORD_ONLY",
+     0.95
+    ],
+    [
+     "method",
+     "KEYWORD_ONLY",
+     "weighted_chi2"
+    ],
+    [
+     "errors",
+     "KEYWORD_ONLY",
+     null
+    ]
+   ]
+  },
+  "linear_confidence_intervals": {
+   "kind": "function",
+   "signature": [
+    [
+     "mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "confidence",
+     "KEYWORD_ONLY",
+     0.95
+    ],
+    [
+     "method",
+     "KEYWORD_ONLY",
+     "normal"
+    ],
+    [
+     "errors",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "replicate_standard_errors",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "simultaneous",
+     "KEYWORD_ONLY",
+     false
+    ]
+   ]
+  },
+  "bootstrap_weighted_means": {
+   "kind": "function",
+   "signature": [
+    [
+     "residuals",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "calendar",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ],
+    [
+     "bandwidth",
+     "KEYWORD_ONLY",
+     6.0
+    ],
+    [
+     "scale",
+     "KEYWORD_ONLY",
+     1.0
+    ],
+    [
+     "contrasts",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "draws",
+     "KEYWORD_ONLY",
+     1000
+    ],
+    [
+     "seed",
+     "KEYWORD_ONLY",
+     0
+    ],
+    [
+     "batch_size",
+     "KEYWORD_ONLY",
+     32
+    ],
+    [
+     "return_residuals",
+     "KEYWORD_ONLY",
+     false
+    ]
+   ]
+  },
+  "calibrate_alpha_uncertainty": {
+   "kind": "function",
+   "signature": [
+    [
+     "result",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "residuals",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "method",
+     "KEYWORD_ONLY",
+     "normal"
+    ],
+    [
+     "confidence",
+     "KEYWORD_ONLY",
+     0.95
+    ],
+    [
+     "covariance_shapes",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "phi_max",
+     "KEYWORD_ONLY",
+     0.7
+    ],
+    [
+     "cells",
+     "KEYWORD_ONLY",
+     401
+    ],
+    [
+     "adaptive",
+     "KEYWORD_ONLY",
+     false
+    ],
+    [
+     "delta",
+     "KEYWORD_ONLY",
+     0.01
+    ]
+   ]
+  },
+  "WlsHacStatistics": {
+   "kind": "class",
+   "module": "factorlasso.inference._wls",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "coefficients",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "standard_error",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "covariance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "observations",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "effective_n",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "calendar_gaps",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "hac_lags",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "status",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "coefficients",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "standard_error",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "observations",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "effective_n",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "calendar_gaps",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "hac_lags",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "status",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "compute_wls_hac_statistics": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "hac_lags",
+     "POSITIONAL_OR_KEYWORD",
+     0
+    ],
+    [
+     "min_periods",
+     "POSITIONAL_OR_KEYWORD",
+     3
+    ],
+    [
+     "fit_intercept",
+     "KEYWORD_ONLY",
+     true
+    ],
+    [
+     "return_covariance",
+     "KEYWORD_ONLY",
+     false
+    ]
+   ]
+  },
+  "LinearHacGeometry": {
+   "kind": "class",
+   "module": "factorlasso.inference._geometry",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "design",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "linear",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "quadratic",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "residual_map",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "target_contrast",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "design",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "linear",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "quadratic",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "residual_map",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "target_contrast",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {
+    "statistics": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "responses",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ]
+     ]
+    }
+   }
+  },
+  "compute_wls_hac_geometry": {
+   "kind": "function",
+   "signature": [
+    [
+     "design",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "hac_lags",
+     "POSITIONAL_OR_KEYWORD",
+     0
+    ],
+    [
+     "coefficient",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "contrast",
+     "KEYWORD_ONLY",
+     null
+    ]
+   ]
+  },
+  "gaussian_critical_value": {
+   "kind": "function",
+   "signature": [
+    [
+     "geometry",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance_shape",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "alpha",
+     "POSITIONAL_OR_KEYWORD",
+     0.05
+    ]
+   ]
+  },
+  "Ar1Interval": {
+   "kind": "class",
+   "module": "factorlasso.inference._ar1",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "estimate",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "standard_error",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "lower",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "upper",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "critical_value",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "phi_centres",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "phi_edges",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "retained_cells",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "cell_critical_values",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "alpha",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "delta",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "calibration_alpha",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "adaptive",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimate",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "standard_error",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "lower",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "upper",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "critical_value",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "phi_centres",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "phi_edges",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "retained_cells",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "cell_critical_values",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "alpha",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "delta",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "calibration_alpha",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "adaptive",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "compute_ar1_interval": {
+   "kind": "function",
+   "signature": [
+    [
+     "geometry",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "responses",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "phi_max",
+     "KEYWORD_ONLY",
+     0.7
+    ],
+    [
+     "cells",
+     "KEYWORD_ONLY",
+     401
+    ],
+    [
+     "alpha",
+     "KEYWORD_ONLY",
+     0.05
+    ],
+    [
+     "adaptive",
+     "KEYWORD_ONLY",
+     false
+    ],
+    [
+     "delta",
+     "KEYWORD_ONLY",
+     0.01
+    ]
+   ]
+  },
+  "AlphaUncertainty": {
+   "kind": "class",
+   "module": "factorlasso.covariance._alpha_uncertainty",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "estimates",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "covariance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "diagnostics",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "weights",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "overlap",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "method",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimates",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "diagnostics",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "overlap",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "method",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "estimate_alpha_uncertainty": {
+   "kind": "function",
+   "signature": [
+    [
+     "residuals",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "spans",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "calendar",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ],
+    [
+     "bandwidth",
+     "KEYWORD_ONLY",
+     6.0
+    ],
+    [
+     "scale",
+     "KEYWORD_ONLY",
+     1.0
+    ],
+    [
+     "confidence",
+     "KEYWORD_ONLY",
+     0.95
+    ],
+    [
+     "min_observations",
+     "KEYWORD_ONLY",
+     3
+    ],
+    [
+     "min_overlap",
+     "KEYWORD_ONLY",
+     3
+    ]
+   ]
+  },
+  "gaussian_quadratic_summary": {
+   "kind": "function",
+   "signature": [
+    [
+     "mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "metric",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "confidence",
+     "KEYWORD_ONLY",
+     0.95
+    ],
+    [
+     "method",
+     "KEYWORD_ONLY",
+     "spectral"
+    ]
+   ]
+  },
+  "sample_gaussian_estimates": {
+   "kind": "function",
+   "signature": [
+    [
+     "mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "draws",
+     "KEYWORD_ONLY",
+     1000
+    ],
+    [
+     "seed",
+     "KEYWORD_ONLY",
+     0
+    ]
+   ]
+  },
   "LassoModel": {
    "kind": "class",
    "module": "factorlasso.linear_model._estimator",
@@ -3263,6 +4201,11 @@
      "periods_per_year",
      "POSITIONAL_OR_KEYWORD",
      null
+    ],
+    [
+     "missing_policy",
+     "KEYWORD_ONLY",
+     "pairwise_ffill"
     ]
    ]
   },
@@ -5443,6 +6386,21 @@
   }
  },
  "subpackages": {
+  "inference": [
+   "weighted_mean_hac_expectation",
+   "compute_weighted_mean_hac_geometry",
+   "gaussian_quadratic_quantile",
+   "quadratic_confidence_summary",
+   "linear_confidence_intervals",
+   "bootstrap_weighted_means",
+   "WlsHacStatistics",
+   "compute_wls_hac_statistics",
+   "LinearHacGeometry",
+   "compute_wls_hac_geometry",
+   "gaussian_critical_value",
+   "Ar1Interval",
+   "compute_ar1_interval"
+  ],
   "utils": [
    "compute_ewm",
    "compute_ewm_covar",
@@ -5503,6 +6461,11 @@
    "validate_cluster_signs"
   ],
   "covariance": [
+   "calibrate_alpha_uncertainty",
+   "AlphaUncertainty",
+   "estimate_alpha_uncertainty",
+   "gaussian_quadratic_summary",
+   "sample_gaussian_estimates",
    "CurrentFactorCovarData",
    "ResidualCorrelationData",
    "ResidualType",

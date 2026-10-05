@@ -86,6 +86,16 @@ and a pair never observed together retains zero. This is the existing kernel con
 not divide each entry by its own accumulated weight mass. Finally,
 $R_{ij} = M_{ij} / \sqrt{M_{ii}M_{jj}}$. A positive constant multiplier of any response cancels.
 
+The optional `missing_policy='zero_innovation'` uses the same causal mean and
+common-grid EWMA span, but sets missing centred scores to zero before the moment
+update. Every moment then decays on the same calendar. The result is a weighted
+sum of outer products and is positive semidefinite without a matrix repair.
+This is a sensitivity estimator: sparse overlap attenuates dependence. It does
+not impute returns, renormalize pairwise masses or change native marginal risk.
+The returned residual panel retains its NaNs and the alternative policy is recorded
+in `asset_metadata`. The default remains `pairwise_ffill`, which rejects a materially
+indefinite result caused by asynchronous observation gaps.
+
 ### Observation date and availability date
 
 The last grid period with at least one valid response is the observation date; the fit date is the estimation date,

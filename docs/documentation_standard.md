@@ -131,7 +131,7 @@ Verify signatures, keyword names and enum members against the package source bei
 before writing an example. Names outside `__all__` are labelled internal or omitted.
 
 Since 1.0.0, examples import public names from `factorlasso` or their owning capability
-subpackage: `utils`, `cluster`, `priors`, `linear_model`, `covariance`, `diagnostics` or
+subpackage: `utils`, `inference`, `cluster`, `priors`, `linear_model`, `covariance`, `diagnostics` or
 `model_selection`. The historical flat modules have been removed; do not use them or private
 modules in teaching examples. The [software design](software_design.md) describes the ownership
 and dependency layers, and the [compatibility policy](https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md)

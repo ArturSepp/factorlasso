@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "factorlasso"
-version = "1.0.1"
+version = "1.0.2"
 description = "Sparse multi-output factor-model estimation with sign constraints, prior-centered shrinkage, data-driven grouped penalties, and consistent factor covariance assembly"
 readme = "README.md"
 license = "GPL-3.0-or-later"
