@@ -4,6 +4,8 @@ import importlib.metadata
 import json
 import re
 import runpy
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -42,6 +44,41 @@ def test_indexing_extension_and_verification_tag_are_configured(monkeypatch):
     assert config["html_context"]["google_site_verification"] == config["GOOGLE_SITE_VERIFICATION"]
     # The tag must not depend on rst_prolog, which Markdown pages such as index.md never see.
     assert "google-site-verification" not in config["rst_prolog"]
+
+
+def test_page_titles_use_the_short_project_name(tmp_path):
+    """Pages are titled '<page> - <project>'; the homepage and sidebar keep html_title."""
+    pytest.importorskip("sphinx")
+    pytest.importorskip("furo")
+    site_title = "proj - a long descriptive site title"
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "conf.py").write_text(
+        "project = 'proj'\n"
+        "html_theme = 'furo'\n"
+        f"html_title = {site_title!r}\n"
+        f"templates_path = [{str(DOCS / '_templates')!r}]\n",
+        encoding="utf-8",
+    )
+    (source / "index.rst").write_text(
+        "Home\n====\n\n.. toctree::\n\n   method\n", encoding="utf-8"
+    )
+    (source / "method.rst").write_text("Method\n======\n\nA distinct method.\n", encoding="utf-8")
+    output = tmp_path / "html"
+    result = subprocess.run(
+        [sys.executable, "-m", "sphinx", "-W", "-b", "html", str(source), str(output)],
+        capture_output=True, text=True, timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    def head_titles(name):
+        html = (output / f"{name}.html").read_text(encoding="utf-8")
+        return re.findall(r"<title>(.*?)</title>", html.split("</head>")[0])
+
+    assert head_titles("index") == [site_title]
+    assert head_titles("method") == ["Method - proj"]
+    method = (output / "method.html").read_text(encoding="utf-8")
+    assert re.findall(r'<span class="sidebar-brand-text">(.*?)</span>', method) == [site_title]
 
 
 def test_markdown_articles_use_portable_dollar_math(monkeypatch):
