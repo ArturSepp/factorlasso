@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Documentation
+
+- Title each documentation page as `<page title> - factorlasso` instead of appending the full
+  site title, which pushed page titles past what search results display. The homepage and the
+  sidebar keep the full site title. No signature or computed value changes.
+
 ## 1.0.3 — 2026-10-07
 
 ### Added
