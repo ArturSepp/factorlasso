@@ -3,6 +3,7 @@
   "project": "factorlasso",
   "description": "Explicit ownership of reader-facing pages, of every name in factorlasso.__all__ and of every LassoModel configuration parameter, plus the paper citation ledger. Read by tools/check_docs.py and by docs/conf.py, which generates the API reference from 'symbols' and 'parameters' in the order given here (the order of the sidebar). 'retained' marks README and legacy RST pages kept in their native format; 'planned' lists pages that are not written yet. An optional 'example' names the canonical script of a page: every Python block of the page must be a verbatim excerpt of it unless marked as a fragment. Move a page from 'planned' to 'pages' when its file is created, and mark it 'adopted' only after the verification in docs/documentation_standard.md. Paper titles are taken from the LaTeX source of each manuscript; a retired title may not appear on any reader-facing page, in CITATION.cff or in a paper README.",
   "pages": {
+    "docs/hierarchical_pooling.md": {"form": "methodology", "status": "pending", "example": "examples/docs/hierarchical_pooling.py"},
     "docs/weighted_inference.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/weighted_inference.py"},
     "docs/alpha_uncertainty.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/alpha_uncertainty.py"},
     "README.md": {"form": "utility", "status": "retained"},
@@ -44,7 +45,11 @@
   },
   "planned": {},
   "symbols": {
+    "docs/hierarchical_pooling.md": ["HierarchicalMeanPosterior", "pool_gaussian_means"],
     "docs/weighted_inference.md": [
+      "calibrate_covariance_moments",
+      "joint_wls_gaussian_region",
+      "quadratic_scalar_confidence_summary", "positive_part_confidence_summary",
       "compute_weighted_mean_hac_geometry", "gaussian_quadratic_quantile", "weighted_mean_hac_expectation",
       "quadratic_confidence_summary", "linear_confidence_intervals", "bootstrap_weighted_means",
       "WlsHacStatistics", "compute_wls_hac_statistics", "LinearHacGeometry",

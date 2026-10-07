@@ -316,6 +316,109 @@ bootstrap errors. None of these procedures makes plug-in covariance exact or val
 post-selection coverage. The reported noise correction remains signed and its reliability
 depends separately on covariance estimation.
 
+### Scalar quadratic and positive-part bounds
+
+The scalar interfaces target a functional of a Gaussian mean directly. They require a
+fixed metric and known estimation-error covariance for their coverage interpretation.
+They use the full covariance spectrum, including cross-coordinate dependence.
+
+For $Y\sim N(\theta,S)$, let $Q=\lVert Y\rVert^2$, $k=\lVert\theta\rVert^2$,
+and let $L$ and $\lambda_j$ denote the largest and individual eigenvalues of $S$.
+The exact Gaussian moment-generating function (MGF) implies the direction-uniform envelope
+
+$$
+\log E[\exp(tQ)]\leq c(t)+\frac{tk}{1-2tL},\qquad
+c(t)=-\frac12\sum_j\log(1-2t\lambda_j),\qquad t<\frac{1}{2L}.
+$$
+
+The bound holds for either sign of $t$: $t/(1-2t\lambda)$ is increasing in
+$\lambda$ on this domain. With tail probability $\delta=(1-\mathrm{confidence})/2$
+and observed value $q$, define
+
+$$
+h(t,q)=\frac{\log\delta+tq-c(t)}{t}(1-2tL).
+$$
+
+Chernoff's inequality gives a lower endpoint $\max(0,\sup_{0<t<1/(2L)}h(t,q))$
+and an upper endpoint $\max(0,\inf_{t<0}h(t,q))$. The implementation searches
+a bounded reparameterization of $t$. Any admissible search candidate gives a conservative
+endpoint; a missed optimum can widen it. A zero covariance gives the observed value exactly.
+`quadratic_scalar_confidence_summary` applies this construction to
+$\widehat a^{\top}M\widehat a$ using $Y=M^{1/2}\widehat a$ and
+$S=M^{1/2}VM^{1/2}$. Its signed noise correction is
+$\widehat a^{\top}M\widehat a-\operatorname{tr}(MV)$.
+
+`positive_part_confidence_summary` instead targets
+$k_+=\sum_i w_i\max(a_i,0)^2$ for fixed nonnegative metric weights $w_i$.
+Transform coordinates by $\sqrt{w_i}$ and use the resulting $S$ and $L$.
+The inequality $\lVert(\theta+e)_+\rVert\leq\lVert\theta_++e\rVert$ permits
+the same upper-sampling-tail bound and hence the same lower confidence endpoint.
+For the other endpoint, convexity of $g(\theta)=\lVert\theta_+\rVert$ gives a
+supporting direction whose Gaussian error variance is at most $L$. Therefore
+
+$$
+U_+=\left(\sqrt{q_+}+z_{1-\delta}\sqrt L\right)^2.
+$$
+
+This uses the true supporting direction only in the proof; it does not freeze an estimated
+positive set. The zero target is covered by nonnegativity. A fixed trace subtraction is
+not valid across changing positive sets, so its noise correction is unavailable.
+
+These envelope inversions and their positive-part combination are implementation derivations.
+[Hsu, Kakade and Zhang (2012)](https://doi.org/10.1214/ECP.v17-2079) provide background on
+MGF bounds for quadratic forms; their broader subgaussian setting is not asserted here.
+Zero-signal quadratics have a vanishing first derivative, making ordinary first-order
+Wald and bootstrap arguments unsuitable without further justification; see
+[Chen and Fang (2019)](https://doi.org/10.1016/j.jeconom.2019.01.011).
+These bounds remain conservative and need not be narrower than the error-norm bounds.
+Taking the narrowest endpoints across different interval methods is not generally justified.
+
+### Joint coefficient and residual-variance regions
+
+`joint_wls_gaussian_region` provides a conservative region for every coefficient and
+residual variance in a prespecified panel regression. It fits the full weighted design,
+including an intercept. It does not use a selected LASSO support as though it were fixed.
+The marginal noise law for asset $i$ must be Gaussian with covariance $\sigma_i^2 R$,
+where $R$ is a known temporal shape with unit diagonal. Cross-asset dependence is unrestricted.
+Fixed missing masks subset $R$ on the original calendar; they do not compress serial distances.
+
+Write $H_i$ for the WLS coefficient map, $P_i=I-D_iH_i$ for its residual map and
+$Q_i=P_i^{\top}W_iP_i/\operatorname{tr}(W_i)$. The normalized residual statistic is
+
+$$
+v_i=\frac{y_i^{\top}Q_i y_i}{\operatorname{tr}(Q_iR_i)}.
+$$
+
+Its expectation is $\sigma_i^2$. The distribution of $v_i/\sigma_i^2$ is a weighted
+sum of independent chi-square variables with one degree of freedom. The weights are
+the eigenvalues of $R_i^{1/2}Q_iR_i^{1/2}/\operatorname{tr}(Q_iR_i)$.
+The existing quadratic-quantile implementation supplies the two tail quantiles.
+
+For total failure probability $\alpha$, allocate $\alpha/(2N)$ to each two-sided
+variance interval and $\alpha/(2NP)$ to each of the $NP$ coefficient-error events,
+where $P=M+1$. The variance endpoints are $v_i/q_{1-\alpha/(4N)}$ and
+$v_i/q_{\alpha/(4N)}$. If $U_i$ denotes the variance upper endpoint, coefficient $j$
+has the conservative interval
+
+$$
+\widehat\theta_{ij}\pm z_{1-\alpha/(4NP)}
+\sqrt{U_i h_{ij}^{\top}R_i h_{ij}}.
+$$
+
+On the intersection of the variance and Gaussian-error events, every endpoint encloses
+its target. Bonferroni's inequality gives simultaneous coverage at least $1-\alpha$;
+independence between coefficient and variance estimates is unnecessary. This error-budget
+split and upper-scale construction are implementation choices. They can produce wide bounds.
+The guarantee is conditional on the fixed correct Gaussian mean and covariance shape,
+subject to numerical quadrature tolerances; substituting an estimated shape is insufficient.
+
+WLS normalizes its loss weights. To target the production initialized EWMA residual alpha,
+the caller must scale the fitted intercept by the original EWMA mass and the return
+annualization factor using `coefficient_scale`. Loadings can retain unit scale. Residual
+variance outputs remain per observation and require a separate stated annualization.
+Batch input reuses geometry for panels with identical missing masks. Confidence applies
+to each panel's parameter family, not simultaneously to the simulation batch.
+
 ## Worked example
 
 ### Compare the same mean with classical and HAC uncertainty
@@ -371,6 +474,35 @@ interval = (estimate-critical*standard_error, estimate+critical*standard_error)
 The identity covariance is a declared model in this synthetic example. Substituting a fitted
 covariance matrix would require separate treatment of its estimation uncertainty.
 
+### Joint region for an ordinary mean and variance
+
+The same offline script checks the joint-region result for one response and no factors
+against the independent sample-variance chi-square formula. Here the variance statistic
+reduces to the unbiased sample variance. This is an arithmetic reference for the error
+allocation; it does not establish robustness to non-Gaussian returns.
+
+```python
+joint = joint_wls_gaussian_region(
+    np.empty((n, 0)), observations[:, None], np.ones((n, 1)),
+    covariance_shape=np.eye(n))
+```
+
+### Scalar targets with a correlated covariance
+
+The same synthetic example retains correlation and checks the quadratic target, its trace
+correction and the positive-part upper endpoint against direct algebra.
+
+```python
+mean = np.array([.3, -.2, .5])
+covariance = np.array([[.1, .08, -.02], [.08, .2, .03], [-.02, .03, .08]])
+weights = np.array([2., .5, 1.])
+quadratic = quadratic_scalar_confidence_summary(mean, covariance, np.diag(weights))
+positive = positive_part_confidence_summary(mean, covariance, weights)
+```
+
+Here covariance is declared known. This arithmetic example does not establish empirical
+coverage after substituting an estimated HAC covariance or estimating the metric.
+
 ## Implementation in factorlasso
 
 ### Choosing the covariance and the interval
@@ -402,6 +534,8 @@ monthly lag positions; this is a different parameter convention from a lag count
 - `LinearHacGeometry` and `compute_wls_hac_geometry` represent a fixed coefficient or contrast
   and its quadratic variance. `statistics` accepts one response or a batch of response rows.
 - `gaussian_critical_value` returns the two-sided multiplier for known covariance shape.
+- `joint_wls_gaussian_region` combines a full-design WLS inference anchor with simultaneous
+  coefficient and residual-variance bounds under a known Gaussian temporal shape.
 - `Ar1Interval` and `compute_ar1_interval` return intervals and a continuous-cell audit,
   including retained cells, edges, centre critical values and the allocated tail probability.
 - `compute_weighted_mean_hac_geometry` represents a fixed weighted mean without normalizing
@@ -411,16 +545,31 @@ monthly lag positions; this is a different parameter convention from a lag count
   original input units, with the original missing cells and common multipliers.
   This supports downstream factor refits. Refitting and optimisation are owned
   by the caller; the output remains an unvalidated bootstrap approximation.
+  With `return_covariances=True`, `covariance_draws` contains each replicate's full
+  joint HAC estimate, including off-diagonal dependence. Its diagonal equals the
+  squared reported SEs. These draws describe a bootstrap estimator distribution;
+  they are not draws from a Bayesian covariance posterior.
 - `weighted_mean_hac_expectation` computes exact joint covariance factors and expected
   centered HAC factors under a declared separable temporal covariance and fixed observation
   masks. It retains initialization masses and native observation counts. Elementwise ratios
   diagnose covariance attenuation; applying those ratios to a sample covariance is not
   guaranteed to preserve positive semidefiniteness or deliver calibrated intervals.
+- `calibrate_covariance_moments` applies a PSD-preserving congruence to one covariance
+  or a batch. Given a fixed declared expectation $M$ and target $V$, it uses principal
+  symmetric roots to form $T = V^{1/2}M^{-1/2}$ and returns $TST^{\top}$.
+  The identity $TMT^{\top}=V$ corrects the first moment when $M=E[S]$ is correct.
+  It requires numerically positive-definite $M$, applies no ridge or pseudoinverse,
+  and does not remove covariance estimation noise. Fitted moments require separate
+  validation; moment matching alone does not calibrate confidence or credible intervals.
 - `linear_confidence_intervals` provides explicit normal or experimental studentized intervals,
   with pointwise or simultaneous scope and unavailable-result handling.
 - `gaussian_quadratic_quantile` computes central positive Gaussian quadratic quantiles.
 - `quadratic_confidence_summary` reports observed/noise/corrected quadratics and error-norm
   bounds, keeping the statistical method and its limitations in the returned metadata.
+- `quadratic_scalar_confidence_summary` and `positive_part_confidence_summary` provide
+  opt-in scalar Gaussian bounds with explicit plug-in limitations. They accept one mean
+  vector or a batch of row vectors sharing the same covariance and fixed metric. Confidence
+  is pointwise for each functional and row, not simultaneous across the batch.
 
 These names are exported from `factorlasso` and `factorlasso.inference`. The existing
 prior-facing types and functions retain their signatures, result fields, module paths and
@@ -459,6 +608,12 @@ eigenvalues, quadrature and root finding. Its numerical tolerances are not an in
 proof. The coverage is pointwise, with no automatic adjustment for factor selection, multiple
 reported coefficients, omitted means, penalized bias or a drifting endpoint.
 
+The scalar bounds also require known Gaussian estimation covariance. Plug-in HAC input is
+accepted with explicit unvalidated status; a simulation pilot cannot establish coverage for
+every fitted model. A metric chosen from the same data introduces additional uncertainty.
+Dividing a functional and its endpoints by the number of coordinates rescales the result
+without improving its relative precision.
+
 Recursive EWMA residual alpha can have initialization weight mass below one. Its target is
 then that mass times the constant residual mean. Reusing the kernel does not justify silently
 normalizing alpha into the WLS mean. The alpha interface retains its original recurrence,
@@ -478,6 +633,14 @@ behind a common interface.
 
 ## References
 
+- Hsu, D., Kakade, S. M. and Zhang, T. (2012). A tail inequality for quadratic forms of
+  subgaussian random vectors. *Electronic Communications in Probability*, 17, paper 52.
+  [DOI](https://doi.org/10.1214/ECP.v17-2079).
+- Chen, Q. and Fang, Z. (2019). Inference on functionals under first order degeneracy.
+  *Journal of Econometrics*, 210(2), 459–481.
+  [DOI](https://doi.org/10.1016/j.jeconom.2019.01.011).
+- NIST/SEMATECH. *e-Handbook of Statistical Methods*, Section 7.4.7.3,
+  [Bonferroni's method](https://www.itl.nist.gov/div898/handbook/prc/section4/prc473.htm).
 - NIST/SEMATECH. *e-Handbook of Statistical Methods*, Section 1.3.5.2,
   [Confidence limits for the mean](https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm).
 - White, H. (1980). A heteroskedasticity-consistent covariance matrix estimator and a direct

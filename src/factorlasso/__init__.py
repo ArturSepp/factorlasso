@@ -112,6 +112,10 @@ from factorlasso.linear_model import (
 )
 from factorlasso.model_selection import LassoModelCV, LassoModelDiagonalityCV
 from factorlasso.inference import (
+    calibrate_covariance_moments,
+    HierarchicalMeanPosterior, pool_gaussian_means,
+    joint_wls_gaussian_region,
+    quadratic_scalar_confidence_summary, positive_part_confidence_summary,
     compute_weighted_mean_hac_geometry, gaussian_quadratic_quantile, weighted_mean_hac_expectation,
     quadratic_confidence_summary, linear_confidence_intervals, bootstrap_weighted_means,
     Ar1Interval, LinearHacGeometry, WlsHacStatistics, compute_ar1_interval,
@@ -153,6 +157,10 @@ except PackageNotFoundError:  # pragma: no cover - editable install before metad
     __version__ = "0.0.0+unknown"
 
 __all__ = [
+    "calibrate_covariance_moments",
+    "HierarchicalMeanPosterior", "pool_gaussian_means",
+    "joint_wls_gaussian_region",
+    "quadratic_scalar_confidence_summary", "positive_part_confidence_summary",
     "weighted_mean_hac_expectation",
     "compute_weighted_mean_hac_geometry", "gaussian_quadratic_quantile",
     "quadratic_confidence_summary", "linear_confidence_intervals", "bootstrap_weighted_means",
