@@ -16,7 +16,7 @@ from factorlasso.utils._hac import bartlett_kernel, score_covariance
 
 def bootstrap_weighted_means(residuals, weights, *, calendar, bandwidth=6., scale=1.,
                              contrasts=None, draws=1000, seed=0, batch_size=32,
-                             return_residuals=False):
+                             return_residuals=False, return_covariances=False):
     """Resample a residual panel using common calendar multipliers and fixed weights.
 
     Parameters
@@ -43,6 +43,11 @@ def bootstrap_weighted_means(residuals, weights, *, calendar, bandwidth=6., scal
         preserving every missing cell. This opt-in allocation supports caller-owned
         factor refits with the same joint multipliers; scale and contrasts affect
         the mean outputs only. Refitting does not establish calibrated coverage.
+    return_covariances : bool, default False
+        Also return ``covariance_draws`` with shape (draws, J, J), the full joint
+        HAC covariance re-estimated in each replicate. Its diagonal equals the
+        squared target SEs. These are bootstrap estimator draws, not a Bayesian
+        covariance posterior or a guarantee of calibrated interval coverage.
 
     Returns
     -------
@@ -53,6 +58,8 @@ def bootstrap_weighted_means(residuals, weights, *, calendar, bandwidth=6., scal
     """
     if not isinstance(return_residuals, (bool, np.bool_)):
         raise ValueError('return_residuals must be boolean')
+    if not isinstance(return_covariances, (bool, np.bool_)):
+        raise ValueError('return_covariances must be boolean')
     x, q = np.asarray(residuals, float), np.asarray(weights, float)
     if (x.ndim != 2 or min(x.shape) == 0 or q.shape != x.shape or np.isinf(x).any()
             or not np.isfinite(q).all() or np.any(q < 0)):
@@ -93,6 +100,7 @@ def bootstrap_weighted_means(residuals, weights, *, calendar, bandwidth=6., scal
     errors = np.empty((draws, len(c)))
     standard_errors = np.empty_like(errors)
     panels = np.empty((draws, *x.shape)) if return_residuals else None
+    covariance_draws = np.empty((draws, len(c), len(c))) if return_covariances else None
     rng = np.random.default_rng(seed)
     for start in range(0, draws, batch_size):
         stop = min(start+batch_size, draws)
@@ -105,8 +113,13 @@ def bootstrap_weighted_means(residuals, weights, *, calendar, bandwidth=6., scal
         scores_draws = h*(innovation_draws-mean_shift[:, None, :])*correction
         target_scores = scores_draws @ c.T
         flat = target_scores.transpose(1, 0, 2).reshape(len(x), -1)
-        variance = np.sum(flat*sparse_kernel.dot(flat), axis=0).reshape(stop-start, len(c))
+        weighted_flat = sparse_kernel.dot(flat)
+        variance = np.sum(flat*weighted_flat, axis=0).reshape(stop-start, len(c))
         standard_errors[start:stop] = np.sqrt(np.maximum(variance, 0.))
+        if covariance_draws is not None:
+            weighted_scores = weighted_flat.reshape(len(x), stop-start, len(c)).transpose(1, 0, 2)
+            joint = target_scores.transpose(0, 2, 1) @ weighted_scores
+            covariance_draws[start:stop] = (joint+joint.transpose(0, 2, 1))/2
     result = dict(estimate=c @ (centre*masses*scales), covariance=target_covariance,
                 errors=errors, standard_errors=standard_errors,
                 method='residual_dependent_wild_bootstrap', bandwidth=float(bandwidth),
@@ -114,4 +127,6 @@ def bootstrap_weighted_means(residuals, weights, *, calendar, bandwidth=6., scal
                 status='bootstrap_approximation_unvalidated')
     if panels is not None:
         result['residual_draws'] = panels
+    if covariance_draws is not None:
+        result['covariance_draws'] = covariance_draws
     return result
