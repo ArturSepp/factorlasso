@@ -1,5 +1,44 @@
 # Changelog
 
+## [Unreleased]
+
+### Documentation
+
+- Title each documentation page as `<page title> - factorlasso` instead of appending the full
+  site title, which pushed page titles past what search results display. The homepage and the
+  sidebar keep the full site title. No signature or computed value changes.
+
+## 1.0.3 — 2026-10-07
+
+### Added
+
+- Add `joint_wls_gaussian_region`, an opt-in full-design WLS inference anchor with
+  simultaneous coefficient and residual-variance bounds. It reuses WLS geometry
+  and Gaussian quadratic quantiles with an explicit Bonferroni error allocation.
+  Fixed Gaussian mean/temporal-shape assumptions are required; empirical or
+  selected-LASSO coverage is not asserted. Batched panels retain identical ragged
+  masks and caller-supplied coefficient scaling, including initialized EWMA mass.
+  Verify its ordinary-mean reduction against chi-square formulas.
+- Add opt-in `quadratic_scalar_confidence_summary` and
+  `positive_part_confidence_summary`. They invert scalar Gaussian tail bounds
+  uniformly over the unknown mean direction, including zero signal and changing
+  positive sets. Batch means share a fixed covariance and metric. Document the
+  known-covariance assumptions and retain explicit unvalidated plug-in status.
+  Independent noncentral chi-square, normal and MGF references test the new path.
+- Add opt-in `pool_gaussian_means` and `HierarchicalMeanPosterior` for hierarchical
+  partial pooling with full correlated measurement-error covariance. Integrate
+  uncertain group centres and dispersions, retain coupled posterior draws, and
+  report explicit priors and numerical quadrature diagnostics. Posterior credible
+  intervals are distinct from the existing analytical confidence bounds.
+- Add `calibrate_covariance_moments` for opt-in PSD-preserving covariance moment
+  matching with explicit fixed-moment assumptions and no coverage guarantee.
+- Add `return_covariances` to `bootstrap_weighted_means` to expose each replicate's
+  full re-estimated joint HAC covariance. Defaults and seeded mean/SE draws remain
+  unchanged. Bootstrap covariance draws are not a Bayesian covariance posterior.
+
+Existing estimators, residual alphas, regression, covariance and inference defaults
+are unchanged.
+
 ## 1.0.2 — 2026-10-05
 
 ### Added

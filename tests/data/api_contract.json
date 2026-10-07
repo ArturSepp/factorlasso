@@ -1,5 +1,11 @@
 {
  "root_all": [
+  "calibrate_covariance_moments",
+  "HierarchicalMeanPosterior",
+  "pool_gaussian_means",
+  "joint_wls_gaussian_region",
+  "quadratic_scalar_confidence_summary",
+  "positive_part_confidence_summary",
   "weighted_mean_hac_expectation",
   "compute_weighted_mean_hac_geometry",
   "gaussian_quadratic_quantile",
@@ -94,6 +100,281 @@
   "partition_variance_share"
  ],
  "exports": {
+  "calibrate_covariance_moments": {
+   "kind": "function",
+   "signature": [
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "expected_covariance",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ],
+    [
+     "target_covariance",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ]
+   ]
+  },
+  "HierarchicalMeanPosterior": {
+   "kind": "class",
+   "module": "factorlasso.inference._pooling",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "estimates",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "covariance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "draws",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "group_mean_draws",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "group_scale_draws",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "groups",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "quadrature",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "diagnostics",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimates",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "draws",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "group_mean_draws",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "group_scale_draws",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "groups",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "quadrature",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "diagnostics",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "pool_gaussian_means": {
+   "kind": "function",
+   "signature": [
+    [
+     "mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "groups",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "mean_prior_scale",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ],
+    [
+     "dispersion_prior_scale",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ],
+    [
+     "mean_prior_location",
+     "KEYWORD_ONLY",
+     0.0
+    ],
+    [
+     "quadrature_order",
+     "KEYWORD_ONLY",
+     24
+    ],
+    [
+     "draws",
+     "KEYWORD_ONLY",
+     8192
+    ],
+    [
+     "confidence",
+     "KEYWORD_ONLY",
+     0.95
+    ],
+    [
+     "seed",
+     "KEYWORD_ONLY",
+     0
+    ],
+    [
+     "max_nodes",
+     "KEYWORD_ONLY",
+     250000
+    ],
+    [
+     "adapt_quadrature",
+     "KEYWORD_ONLY",
+     true
+    ]
+   ]
+  },
+  "joint_wls_gaussian_region": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "responses",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance_shape",
+     "KEYWORD_ONLY",
+     "<no default>"
+    ],
+    [
+     "confidence",
+     "KEYWORD_ONLY",
+     0.95
+    ],
+    [
+     "coefficient_scale",
+     "KEYWORD_ONLY",
+     null
+    ]
+   ]
+  },
+  "quadratic_scalar_confidence_summary": {
+   "kind": "function",
+   "signature": [
+    [
+     "mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "metric",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "confidence",
+     "KEYWORD_ONLY",
+     0.95
+    ]
+   ]
+  },
+  "positive_part_confidence_summary": {
+   "kind": "function",
+   "signature": [
+    [
+     "mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "confidence",
+     "KEYWORD_ONLY",
+     0.95
+    ]
+   ]
+  },
   "weighted_mean_hac_expectation": {
    "kind": "function",
    "signature": [
@@ -294,6 +575,11 @@
     ],
     [
      "return_residuals",
+     "KEYWORD_ONLY",
+     false
+    ],
+    [
+     "return_covariances",
      "KEYWORD_ONLY",
      false
     ]
@@ -6387,6 +6673,12 @@
  },
  "subpackages": {
   "inference": [
+   "calibrate_covariance_moments",
+   "HierarchicalMeanPosterior",
+   "pool_gaussian_means",
+   "quadratic_scalar_confidence_summary",
+   "positive_part_confidence_summary",
+   "joint_wls_gaussian_region",
    "weighted_mean_hac_expectation",
    "compute_weighted_mean_hac_geometry",
    "gaussian_quadratic_quantile",
