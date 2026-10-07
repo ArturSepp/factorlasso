@@ -280,6 +280,7 @@ unilasso
 :caption: Selection and diagnostics
 
 weighted_inference
+hierarchical_pooling
 residual_diagnostics
 penalty_selection
 ```

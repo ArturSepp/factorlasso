@@ -3,10 +3,13 @@ import numpy as np
 from scipy.stats import chi2, norm, t as student_t
 
 from factorlasso import (
+    calibrate_covariance_moments,
+    joint_wls_gaussian_region,
     compute_ar1_interval, compute_wls_hac_geometry, compute_wls_hac_statistics,
     gaussian_critical_value, weighted_mean_hac_expectation,
     compute_weighted_mean_hac_geometry, gaussian_quadratic_quantile,
     quadratic_confidence_summary, linear_confidence_intervals, bootstrap_weighted_means,
+    quadratic_scalar_confidence_summary, positive_part_confidence_summary,
 )
 
 
@@ -144,10 +147,56 @@ def run_example():
     np.testing.assert_allclose(expectation['true_covariance'], [[q @ q]])
     np.testing.assert_allclose(expectation['expected_hac_covariance'],
                                [[np.trace(initialized.quadratic)]])
+    calibrated = calibrate_covariance_moments(bootstrap['covariance'],
+        expected_covariance=expectation['expected_hac_covariance'],
+        target_covariance=expectation['true_covariance'])
+    np.testing.assert_allclose(calibrated['covariance'],
+        bootstrap['covariance']*(q @ q)/np.trace(initialized.quadratic))
+    joint = bootstrap_weighted_means(response[:, None], q[:, None],
+        calendar=np.arange(24), bandwidth=3., draws=199, seed=4, return_covariances=True)
+    np.testing.assert_array_equal(joint['errors'], bootstrap['errors'])
+    np.testing.assert_allclose(joint['covariance_draws'][:, 0, 0],
+                               joint['standard_errors'][:, 0]**2)
     return statistics, interval, ar_interval
 
 
+def check_joint_region():
+    """Verify the one-asset joint region against independent chi-square algebra."""
+    observations = np.array([-.4, .2, 1.1, -.7, .8, .1, .3, -.2])
+    n = len(observations)
+    joint = joint_wls_gaussian_region(
+        np.empty((n, 0)), observations[:, None], np.ones((n, 1)),
+        covariance_shape=np.eye(n))
+    expected_variance = (n-1)*observations.var(ddof=1)/chi2.ppf([.9875, .0125], n-1)
+    np.testing.assert_allclose([joint['variance_lower'][0], joint['variance_upper'][0]],
+                               expected_variance, rtol=2e-7)
+    radius = norm.isf(.0125)*np.sqrt(expected_variance[1]/n)
+    np.testing.assert_allclose(joint['coefficient_lower'], [[observations.mean()-radius]],
+                               rtol=2e-7)
+
+
+def check_scalar_intervals():
+    """Check scalar targets and the positive-part upper endpoint independently."""
+    mean = np.array([.3, -.2, .5])
+    covariance = np.array([[.1, .08, -.02], [.08, .2, .03], [-.02, .03, .08]])
+    weights = np.array([2., .5, 1.])
+    quadratic = quadratic_scalar_confidence_summary(mean, covariance, np.diag(weights))
+    positive = positive_part_confidence_summary(mean, covariance, weights)
+    np.testing.assert_allclose(quadratic['observed'], sum(weights*mean**2))
+    np.testing.assert_allclose(quadratic['noise'], sum(weights*np.diag(covariance)))
+    np.testing.assert_allclose(positive['observed'], sum(weights*mean**2*(mean > 0)))
+    transformed = np.diag(np.sqrt(weights)) @ covariance @ np.diag(np.sqrt(weights))
+    largest = np.linalg.eigvalsh(transformed)[-1]
+    reference_upper = (np.sqrt(sum(weights*mean**2*(mean > 0)))+norm.ppf(.975)*np.sqrt(largest))**2
+    np.testing.assert_allclose(positive['upper'], reference_upper)
+    assert quadratic['lower'] <= quadratic['upper']
+    assert positive['lower'] <= positive['upper']
+    assert positive['status'] == 'known_covariance_formula_plugin_unvalidated'
+
+
 if __name__ == '__main__':
+    check_scalar_intervals()
+    check_joint_region()
     compare_standard_errors()
     run_example()
     print('Classical/HC/HAC, weighted regression, mean and calibration checks passed.')
