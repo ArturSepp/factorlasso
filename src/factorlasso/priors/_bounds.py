@@ -7,14 +7,15 @@ exposure-budget slack
 
     kappa = sum_j (sign(c) * Gamma_j * s_j)_+ * d_j,
 
-where d_j >= 0 is a declared budget on the loading of a non-selected factor j,
+where d_j >= 0 is a resolved budget on the loading of a non-selected factor j,
 s_j its hard sign (a free sign counts as |Gamma_j|) and Gamma_j the coefficient
 of the selected factor in the weighted OLS regression of factor j on the selected
 factors. By the omitted-variable identity, E[c] equals the selected loading plus
 sum_j Gamma_j * beta_j on the same rows and weights, so kappa is the largest
 displacement of c that the budgets admit in the direction of c.
 
-No cluster pooling enters this calculation. Bartlett HAC products retain the
+The caller resolves declared or cluster-derived budgets before this calculation.
+Bartlett HAC products retain the
 original observation grid, with zero scores at missing rows. EWMA weights are
 sampling weights, so each score contains w (and its outer product w squared).
 
@@ -25,7 +26,7 @@ Bartlett sandwich. Sepp (2026), "Exposure-budget floors for factor loadings
 under correlated factors" (working paper), for the exposure-budget slack and
 the floor-centred penalty. The sign-aware many-factor slack is stated there
 without a many-factor optimality proof; this module implements the slack, not
-an optimality guarantee. The budgets are expert inputs and are not estimated.
+an optimality guarantee. Data-derived budgets are experimental limits, not coverage claims.
 """
 from numbers import Integral, Real
 from typing import Optional
@@ -239,7 +240,8 @@ def _competitor_diagnostics(slopes, correlations, signs, slack):
 
 def _compute_expert_prior_bounds(x, y, selections, raw_prior, effective_prior,
                                  manual_prior, span, n_std, hac_lags, min_periods, *,
-                                 budget=None, signs=None, scope='all', named=()):
+                                 budget=None, signs=None, scope='all', named=(),
+                                 geometry_cache=None):
     """Resolve each selected OLS cell's floor after scope, manual and hard-sign precedence.
 
     A response with at least one finite declared budget uses the exposure-budget slack; other
@@ -285,6 +287,8 @@ def _compute_expert_prior_bounds(x, y, selections, raw_prior, effective_prior,
                         raise ValueError('Expert OLS prior and bound regression disagree')
                     if geometry is None:
                         geometry = _competitor_geometry(x, y[asset], factors, span, min_periods)
+                        if geometry_cache is not None:
+                            geometry_cache[asset] = geometry
                     slopes = geometry[0].loc[factor]
                     asset_signs = signs.loc[asset]
                     if declared is not None:

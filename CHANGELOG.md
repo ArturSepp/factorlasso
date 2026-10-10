@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.1.0rc1 — 2026-10-11
+
+### Added
+
+- Add `max_named_factors=2` and `named_set_max_vif=2.5`. A named pair above
+  the weighted VIF threshold retains its first factor and returns its second
+  to the competitor set, with a warning and conditioning diagnostics.
+- Add `expert_prior_budget_rule`, with `n_std` and experimental `cluster_mean`.
+  The latter uses leave-one-out mean absolute loadings from a zero-centred,
+  unfloored clone with the same grouping, signs and adaptive-weight settings.
+  Clusters below three fall back to standard-error slack, using one SE when
+  `expert_prior_bound_n_std` is unset.
+- Resolve finite declarations cell by cell. Explicit zeros are `declared_zero`.
+  Undeclared cells of a declared row use the data rule. Under `n_std`, positive
+  displacement weights left at zero warn as `undeclared_zero`.
+- Add first-pass coefficients, resolved budgets, source and named-set attributes,
+  and `prior_bound_contributions_`. Preserve `prior_bound_diagnostics_` columns.
+  One-SE contributions are unallocated and missing. Separate implied budgets
+  describe each competitor. Declared and cluster terms add to the total slack.
+- Add the Expert inputs documentation page and independent numerical checks.
+- Conditioning and cluster-rule evidence [TODO: BM7].
+
+### Compatibility
+
+- Existing budget-rule and penalty-centre defaults remain `n_std` and `prior`.
+  The new two-factor limit and VIF guard are intentional changes to named-set
+  behaviour. `named_set_max_vif=None` retains legacy joint-prior geometry for
+  pairs. No automatic selection or one-factor numerical rule changes.
+- Cluster budgets depend on the penalty, so lambda paths fit each point separately.
+- This is a release candidate on the development branch. No package release or
+  production configuration change is made.
+
 ## 1.1.0.dev0 — 2026-10-05
 
 ### Added

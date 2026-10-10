@@ -260,6 +260,7 @@ ewma_weighting_and_ragged_histories
 sign_constraints_and_priors
 gated_cluster_pooled_signs
 prior_targets
+expert_inputs
 prior_inference
 adaptive_penalty_weights
 ```

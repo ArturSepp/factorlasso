@@ -23,6 +23,7 @@ from factorlasso.cluster._dependence import DependenceMeasure
 from factorlasso.linear_model._solvers.common import _validate_loss_normalization
 from factorlasso.linear_model._types import LassoModelType, _mode_spec
 from factorlasso.priors._bounds import _validate_expert_bound_settings
+from factorlasso.priors._budget_modes import BudgetRule
 from factorlasso.utils._ewm import _validate_span
 
 
@@ -42,7 +43,8 @@ def _selected_prior_factors(value) -> tuple:
 def expert_bounds_enabled(model) -> bool:
     """Whether the fit resolves individual expert floors (by standard errors or budgets)."""
     return (model.expert_prior_bound_n_std is not None
-            or model.expert_prior_exposure_budget is not None)
+            or model.expert_prior_exposure_budget is not None
+            or model.expert_prior_budget_rule == BudgetRule.CLUSTER_MEAN)
 
 
 def validate_loss_mode(model) -> None:
@@ -72,6 +74,24 @@ def validate_sign_inputs_mode(model) -> None:
 
 def validate_ols_prior_mode(model) -> None:
     """Reject ambiguous flags and a mode whose solver has no beta prior."""
+    if (isinstance(model.max_named_factors, (bool, np.bool_))
+            or not isinstance(model.max_named_factors, (int, np.integer))
+            or model.max_named_factors not in (1, 2)):
+        raise ValueError(f'max_named_factors must be 1 or 2, got {model.max_named_factors!r}')
+    vif = model.named_set_max_vif
+    if vif is not None and (isinstance(vif, (bool, np.bool_))
+                            or not isinstance(vif, (int, float, np.number))
+                            or not np.isfinite(vif) or vif < 1):
+        raise ValueError(f'named_set_max_vif must be finite and >= 1 or None, got {vif!r}')
+    try:
+        rule = BudgetRule(model.expert_prior_budget_rule)
+    except (ValueError, TypeError):
+        raise ValueError(f'unknown expert_prior_budget_rule {model.expert_prior_budget_rule!r}')
+    if rule == BudgetRule.CLUSTER_MEAN:
+        if not model.apply_ols_prior:
+            raise ValueError('expert_prior_budget_rule=cluster_mean requires apply_ols_prior=True')
+        if _mode_spec(model.model_type).grouping not in ('user', 'discovered'):
+            raise ValueError(f'cluster_mean requires clusters, got model_type={model.model_type!r}')
     _validate_expert_bound_settings(
         model.expert_prior_bound_n_std, model.expert_prior_hac_lags,
         model.expert_prior_hac_lags_freq_dict, model.expert_prior_exposure_budget,
@@ -96,8 +116,11 @@ def validate_ols_prior_mode(model) -> None:
         if (isinstance(model.factor_for_prior, pd.Series)
                 and not model.factor_for_prior.index.is_unique):
             raise ValueError('factor_for_prior response labels must be unique')
-        for _, value in model.factor_for_prior.items():
-            _selected_prior_factors(value)
+        for response, value in model.factor_for_prior.items():
+            factors = _selected_prior_factors(value)
+            if len(factors) > model.max_named_factors:
+                raise ValueError(f'factor_for_prior[{response!r}] has {len(factors)} factors, '
+                                 f'max_named_factors={model.max_named_factors}')
     if model.model_type == LassoModelType.UNILASSO:
         if model.apply_ols_prior:
             raise ValueError('apply_ols_prior is not supported by the UNILASSO solver')

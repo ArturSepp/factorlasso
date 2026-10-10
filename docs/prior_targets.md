@@ -21,6 +21,11 @@ $R^2$, or the univariate or joint OLS slopes of factors named for that response.
 matters twice, because a finite non-zero centre also decides the sign of a loading where the
 automatically detected sign disagrees with it.
 
+From 1.1.0rc1, named selections contain at most two factors and a pair's largest
+weighted variance inflation factor must be at most 2.5. See [Expert inputs](expert_inputs.md).
+The controlled joint-prior example below uses `named_set_max_vif=None` to retain
+its original correlated-pair illustration. This explicitly disables the new guard.
+
 ## Overview
 
 The [sign constraints and prior-centred penalties](sign_constraints_and_priors.md) article
@@ -243,6 +248,7 @@ Each policy is fitted as a LASSO with automatically derived signs:
 def fit(x: pd.DataFrame, y: pd.DataFrame, reg_lambda: float, **policy) -> fl.LassoModel:
     """LASSO with automatically derived signs and the given prior-centre policy."""
     model = fl.LassoModel(
+        named_set_max_vif=None,  # Controlled legacy joint-prior illustration.
         model_type=fl.LassoModelType.LASSO,
         reg_lambda=reg_lambda,
         auto_sign_constraints=True,

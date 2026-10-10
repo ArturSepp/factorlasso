@@ -1537,6 +1537,66 @@
       "init": false,
       "default": null,
       "factory": null
+     },
+     {
+      "name": "max_named_factors",
+      "init": true,
+      "default": 2,
+      "factory": null
+     },
+     {
+      "name": "named_set_max_vif",
+      "init": true,
+      "default": 2.5,
+      "factory": null
+     },
+     {
+      "name": "expert_prior_budget_rule",
+      "init": true,
+      "default": "n_std",
+      "factory": null
+     },
+     {
+      "name": "effective_factor_for_prior_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "named_set_diagnostics_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "prior_bound_contributions_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "budget_first_pass_coef_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "resolved_budgets_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "budget_sources_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "budget_rule_status_",
+      "init": false,
+      "default": null,
+      "factory": null
      }
     ]
    },
@@ -1858,6 +1918,21 @@
      "expert_prior_bound_scope",
      "POSITIONAL_OR_KEYWORD",
      "all"
+    ],
+    [
+     "max_named_factors",
+     "POSITIONAL_OR_KEYWORD",
+     2
+    ],
+    [
+     "named_set_max_vif",
+     "POSITIONAL_OR_KEYWORD",
+     2.5
+    ],
+    [
+     "expert_prior_budget_rule",
+     "POSITIONAL_OR_KEYWORD",
+     "n_std"
     ]
    ],
    "members": {

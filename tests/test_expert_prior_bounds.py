@@ -230,7 +230,8 @@ def test_nonidentifiable_or_insignificant_prior_never_creates_spurious_floor(kin
         return
     else:
         n_std = 1e6
-    model = LassoModel(apply_ols_prior=True, factor_for_prior={'asset':factors},
+    model = LassoModel(named_set_max_vif=None, apply_ols_prior=True,
+        factor_for_prior={'asset':factors},
         expert_prior_bound_n_std=n_std, span=span).fit(x, y)
     assert model.prior_lower_bounds_.loc['asset'].isna().all()
     assert model.prior_upper_bounds_.loc['asset'].isna().all()

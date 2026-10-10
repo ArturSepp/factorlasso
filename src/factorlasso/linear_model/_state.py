@@ -2,7 +2,9 @@
 
 A fitted model's state has two parts. The preparation state (signs, priors, bounds, adaptive
 weights; :data:`~factorlasso.linear_model._preparation.PREPARATION_STATE`) does not depend on
-``reg_lambda``; :func:`preparation_state` copies it from the model that was prepared.
+``reg_lambda`` for fixed budgets. Cluster-mean budgets depend on a first fit at the current
+penalty, so those paths prepare each point separately. :func:`preparation_state` copies
+the state from the model that was prepared.
 :func:`fitted_state` enumerates the solve-dependent attributes. :func:`install_fitted_state`
 stores a record. A single fit and every point of a regularisation path share this
 post-processing, so a path model carries exactly the diagnostics of a fresh fit.
@@ -92,6 +94,15 @@ def fitted_state(
         est_beta, index=y.columns, columns=x.columns,
     )
     state["coef_"] = coef
+    contributions = model.prior_bound_contributions_
+    if contributions is not None and not contributions.empty:
+        contributions = contributions.copy(deep=True)
+        signed_slack = np.array([
+            coef.at[row.response, row.named_factor] * row.direction - row.floor
+            for row in contributions.itertuples()])
+        imposed = contributions.bound_status.eq('imposed').to_numpy()
+        contributions['binding'] = imposed & (signed_slack < 1e-6)
+        state['prior_bound_contributions_'] = contributions
     # Capture one original-unit T x N residual panel for causal nowcasts.
     # Existing x_/y_ intentionally preserve their historical aliasing
     # contract, so eligibility and alpha cannot be reconstructed from

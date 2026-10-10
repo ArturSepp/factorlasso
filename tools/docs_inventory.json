@@ -3,6 +3,7 @@
   "project": "factorlasso",
   "description": "Explicit ownership of reader-facing pages, of every name in factorlasso.__all__ and of every LassoModel configuration parameter, plus the paper citation ledger. Read by tools/check_docs.py and by docs/conf.py, which generates the API reference from 'symbols' and 'parameters' in the order given here (the order of the sidebar). 'retained' marks README and legacy RST pages kept in their native format; 'planned' lists pages that are not written yet. An optional 'example' names the canonical script of a page: every Python block of the page must be a verbatim excerpt of it unless marked as a fragment. Move a page from 'planned' to 'pages' when its file is created, and mark it 'adopted' only after the verification in docs/documentation_standard.md. Paper titles are taken from the LaTeX source of each manuscript; a retired title may not appear on any reader-facing page, in CITATION.cff or in a paper README.",
   "pages": {
+    "docs/expert_inputs.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/expert_inputs.py"},
     "docs/weighted_inference.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/weighted_inference.py"},
     "docs/alpha_uncertainty.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/alpha_uncertainty.py"},
     "README.md": {"form": "utility", "status": "retained"},
@@ -124,6 +125,7 @@
     ]
   },
   "parameters": {
+    "docs/expert_inputs.md": ["max_named_factors", "named_set_max_vif", "expert_prior_budget_rule"],
     "docs/sparse_factor_model.md": [
       "model_type", "reg_lambda", "demean", "solver", "solver_fallbacks"
     ],
