@@ -20,7 +20,12 @@
   One-SE contributions are unallocated and missing. Separate implied budgets
   describe each competitor. Declared and cluster terms add to the total slack.
 - Add the Expert inputs documentation page and independent numerical checks.
-- Conditioning and cluster-rule evidence [TODO: BM7].
+- Conditioning checks reproduce independent weighted VIF calculations, with one
+  demotion among 392 named-pair fund-date checks. In the 512-draw cluster experiment,
+  aggregate coefficient risk falls versus one-SE floors, but IG, HY and IL risk
+  rises versus no floor, so the prespecified candidate-default gate fails.
+  The all-fund forward comparison passes the +0.5% non-inferiority margin.
+  The cluster rule remains experimental and existing defaults are retained.
 
 ### Compatibility
 
