@@ -250,6 +250,9 @@ def map_expert_factor_priors(
             source = 'name' if selected is not None else (
                 'ambiguous' if rule == 'mixed_factor_name' else 'automatic')
         if isinstance(selected, (list, tuple)):
+            if len(selected) > 2:
+                raise ValueError(f'expert-prior rule for {ticker!r} yields {len(selected)} '
+                                 'factors, maximum is 2')
             if (not selected or any(not isinstance(factor, str) or not factor.strip()
                                     for factor in selected)
                     or len(set(selected)) != len(selected)):

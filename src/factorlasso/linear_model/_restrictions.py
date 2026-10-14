@@ -1,8 +1,8 @@
 """Loading restrictions of one fit: signs, prior centres, expert bounds and penalty weights.
 
 Each function computes one layer from the prepared arrays and the estimator settings and
-returns NumPy arrays; none of them stores fitted state. The precedence between the layers is
-the estimator's documented contract:
+returns NumPy arrays. Named-set selection and budget resolution also store their diagnostic
+state on the estimator. The precedence between the layers is the documented contract:
 
 1. automatic signs from univariate slopes, pooled within clusters for the group modes;
 2. ``auto_sign_excluded_factors`` removes columns from the automatic constraint layer only;
@@ -29,6 +29,9 @@ from factorlasso.priors._ols import _compute_joint_ols_prior, _compute_ols_prior
 from factorlasso.linear_model._settings import _selected_prior_factors
 from factorlasso.linear_model._types import _mode_spec
 from factorlasso.priors._bounds import _compute_expert_prior_bounds
+from factorlasso.priors._budget_modes import (
+    contribution_diagnostics, resolve_named_sets, resolve_budgets,
+)
 from factorlasso.utils._ewm import set_group_loadings
 
 #: Sign-derivation diagnostics and the fitted attribute that stores each one.
@@ -126,10 +129,18 @@ def ols_prior(model, x: pd.DataFrame, y: pd.DataFrame,
         x.to_numpy(dtype=float), y.to_numpy(dtype=float), span=eff_span,
         min_periods=max(3, model.warmup_period or 0),
         prior_selection_type=model.prior_selection_type,
+        excluded_mask=(None if model.excluded_factor_mask_ is None
+                       else model.excluded_factor_mask_.to_numpy()),
     )
-    if model.factor_for_prior is not None:
-        for response, selection in model.factor_for_prior.items():
-            factors = _selected_prior_factors(selection)
+    requested = {response: _selected_prior_factors(
+        None if model.factor_for_prior is None else model.factor_for_prior.get(response))
+        for response in y.columns}
+    model.effective_factor_for_prior_, model.named_set_diagnostics_ = resolve_named_sets(
+        selections=requested, x=x, y=y, span=eff_span,
+        min_periods=max(3, model.warmup_period or 0), threshold=model.named_set_max_vif)
+    if model.effective_factor_for_prior_:
+        for response, selection in model.effective_factor_for_prior_.items():
+            factors = tuple(selection)
             if not factors:
                 continue
             missing = [factor for factor in factors if factor not in x.columns]
@@ -190,26 +201,60 @@ def override_detected_signs(
 
 def expert_prior_bounds(model, x: pd.DataFrame, y: pd.DataFrame, eff_span: Optional[float],
                         ols_r2: pd.DataFrame, ols_beta_prior: pd.DataFrame,
-                        effective_beta_prior: pd.DataFrame):
+                        effective_beta_prior: pd.DataFrame,
+                        signs_np: Optional[np.ndarray] = None):
     """Individual floors and caps around the selected OLS priors, with diagnostics.
 
     A response without an explicit ``factor_for_prior`` selection uses the same raw
     highest-R-squared winner as the OLS prior, chosen before manual overlays or hard signs.
     It is never reselected after a constraint removes it; ties retain input factor order.
+    ``signs_np`` is the solver-facing sign matrix; it orients the exposure-budget slack.
     """
-    selections = {}
+    # Repeated diagnostic calls may change declarations without a new fit.
+    # Only cluster mode owns a first-pass frame from this preparation.
+    budget = (model.resolved_budgets_ if model.expert_prior_budget_rule == 'cluster_mean'
+              else None)
+    if budget is not None:
+        unknown = [factor for factor in budget.columns if factor not in x.columns]
+        if unknown:
+            raise ValueError(f'expert_prior_exposure_budget names unknown factors {unknown!r}')
+    selections, named = {}, set()
     for asset in y.columns:
-        explicit = (None if model.factor_for_prior is None
-                    else model.factor_for_prior.get(asset))
-        factors = _selected_prior_factors(explicit)
-        if not factors:
+        factors = model.effective_factor_for_prior_.get(asset, ())
+        if factors:
+            named.add(asset)
+        else:
             scores = ols_r2.loc[asset].dropna()
+            if model.excluded_factor_mask_ is not None:
+                scores = scores.loc[~model.excluded_factor_mask_.loc[asset, scores.index]]
             factors = (scores.idxmax(),) if not scores.empty else ()
         selections[asset] = factors
-    return _compute_expert_prior_bounds(
+    if signs_np is not None:
+        signs = pd.DataFrame(signs_np, index=y.columns, columns=x.columns)
+    else:
+        signs = pd.DataFrame(1.0 if model.nonneg else np.nan, index=y.columns,
+                             columns=x.columns)
+    if budget is None:
+        budget, model.budget_sources_ = resolve_budgets(
+            responses=y.columns, factors=x.columns,
+            declared=model.expert_prior_exposure_budget, automatic=None)
+        model.resolved_budgets_ = budget
+    geometry_cache = {}
+    n_std = model.expert_prior_bound_n_std
+    if model.expert_prior_budget_rule == 'cluster_mean' and n_std is None:
+        n_std = 1.0
+    result = _compute_expert_prior_bounds(
         x, y, selections, ols_beta_prior, effective_beta_prior,
-        model.factors_beta_prior, eff_span, model.expert_prior_bound_n_std,
-        model.expert_prior_hac_lags, max(3, model.warmup_period or 0))
+        model.factors_beta_prior, eff_span, n_std,
+        model.expert_prior_hac_lags, max(3, model.warmup_period or 0),
+        budget=budget, signs=signs, scope=model.expert_prior_bound_scope, named=named,
+        geometry_cache=geometry_cache)
+    model.prior_bound_contributions_ = contribution_diagnostics(
+        x=x, y=y, diagnostics=result[2], named=model.named_set_diagnostics_,
+        budgets=budget, sources=model.budget_sources_, signs=signs, span=eff_span,
+        min_periods=max(3, model.warmup_period or 0), cluster_status=model.budget_rule_status_,
+        geometry_cache=geometry_cache)
+    return result
 
 
 def adaptive_penalty_weights(

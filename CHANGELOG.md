@@ -8,6 +8,84 @@
   site title, which pushed page titles past what search results display. The homepage and the
   sidebar keep the full site title. No signature or computed value changes.
 
+## 1.1.0rc2 — 2026-10-14
+
+### Added
+
+- Add `LassoModel.excluded_factors`: reusable per-response hard-zero declarations
+  for LASSO, group LASSO, HCGL and FCGL, including prior-aware fits and paths.
+- Restrict automatic prior selection and floors to admissible factors. Reject
+  unknown factors and conflicting named/nonzero numerical priors. Preserve raw
+  OLS diagnostics and expose `excluded_factor_mask_`.
+- Omitted exclusions preserve existing behaviour. This is a local development
+  update; no package-index publication is implied.
+
+## 1.1.0rc1 — 2026-10-11
+
+### Added
+
+- Add `max_named_factors=2` and `named_set_max_vif=2.5`. A named pair above
+  the weighted VIF threshold retains its first factor and returns its second
+  to the competitor set, with a warning and conditioning diagnostics.
+- Add `expert_prior_budget_rule`, with `n_std` and experimental `cluster_mean`.
+  The latter uses leave-one-out mean absolute loadings from a zero-centred,
+  unfloored clone with the same grouping, signs and adaptive-weight settings.
+  Clusters below three fall back to standard-error slack, using one SE when
+  `expert_prior_bound_n_std` is unset.
+- Resolve finite declarations cell by cell. Explicit zeros are `declared_zero`.
+  Undeclared cells of a declared row use the data rule. Under `n_std`, positive
+  displacement weights left at zero warn as `undeclared_zero`.
+- Add first-pass coefficients, resolved budgets, source and named-set attributes,
+  and `prior_bound_contributions_`. Preserve `prior_bound_diagnostics_` columns.
+  One-SE contributions are unallocated and missing. Separate implied budgets
+  describe each competitor. Declared and cluster terms add to the total slack.
+- Add the Expert inputs documentation page and independent numerical checks.
+- Conditioning checks reproduce independent weighted VIF calculations, with one
+  demotion among 392 named-pair fund-date checks. In the 512-draw cluster experiment,
+  aggregate coefficient risk falls versus one-SE floors, but IG, HY and IL risk
+  rises versus no floor, so the prespecified candidate-default gate fails.
+  The all-fund forward comparison passes the +0.5% non-inferiority margin.
+  The cluster rule remains experimental and existing defaults are retained.
+
+### Compatibility
+
+- Existing budget-rule and penalty-centre defaults remain `n_std` and `prior`.
+  The new two-factor limit and VIF guard are intentional changes to named-set
+  behaviour. `named_set_max_vif=None` retains legacy joint-prior geometry for
+  pairs. No automatic selection or one-factor numerical rule changes.
+- Cluster budgets depend on the penalty, so lambda paths fit each point separately.
+- This is a release candidate on the development branch. No package release or
+  production configuration change is made.
+
+## 1.1.0.dev0 — 2026-10-05
+
+### Added
+
+- Add `expert_prior_exposure_budget`, the exposure-budget floor of Sepp (2026). Declared
+  response-by-factor budgets in coefficient units replace the standard-error slack by the
+  sign-aware slack `sum_j (sign(target) * Gamma_j * s_j)_+ * d_j`, where `Gamma_j` is the
+  omitted-variable coefficient of factor `j` on the selected factors, computed on the rows and
+  weights of the target regression. Responses without a declared row keep
+  `expert_prior_bound_n_std`.
+- Add `expert_prior_bound_centre` (`"prior"` or `"floor"`). `"floor"` moves the penalty centre
+  of every floored loading to its bound, the floor-centred penalty of the paper's
+  Proposition 5(i) for the LASSO penalty. Group modes keep the cell in its block.
+- Add `expert_prior_bound_scope` (`"all"` or `"named"`). `"named"` floors explicit
+  `factor_for_prior` selections only and records automatic winners as
+  `automatic_selection_not_floored`.
+- Append the slack, its source, the most correlated permitted competitor, its omitted-variable
+  slope and correlation, and the implied budget to `prior_bound_diagnostics_`.
+
+### Fixed
+
+- The two-factor limiting-risk documentation no longer requires
+  `theta * sqrt(1 - rho) / s_B -> 0`. The limits in correlation and signal may be taken jointly,
+  because `theta` cancels from the contrast that selects the solution face.
+
+### Unchanged
+
+- Defaults reproduce 1.0.2 exactly: no budget, prior centre and floors on all selections.
+
 ## 1.0.3 — 2026-10-07
 
 ### Added
