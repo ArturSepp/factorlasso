@@ -21,7 +21,7 @@ $R^2$, or the univariate or joint OLS slopes of factors named for that response.
 matters twice, because a finite non-zero centre also decides the sign of a loading where the
 automatically detected sign disagrees with it.
 
-From 1.1.0rc1, named selections contain at most two factors and a pair's largest
+From 1.0.4, named selections contain at most two factors and a pair's largest
 weighted variance inflation factor must be at most 2.5. See [Expert inputs](expert_inputs.md).
 The controlled joint-prior example below uses `named_set_max_vif=None` to retain
 its original correlated-pair illustration. This explicitly disables the new guard.
