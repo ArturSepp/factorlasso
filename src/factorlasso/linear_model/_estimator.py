@@ -411,6 +411,12 @@ class LassoModel:
         threshold only the first-listed factor stays named. None disables the
         check and preserves legacy joint-prior behaviour, including singular
         pairs. The constructor mapping is never modified.
+    excluded_factors : mapping or pandas.Series, optional
+        Response labels mapped to one factor label or a list/tuple of labels.
+        These loadings are constrained to zero, independently of sign detection.
+        Automatic OLS priors select among remaining factors. Conflicting named
+        or nonzero numerical priors raise. Extra response rows support subset fits;
+        unknown factors raise. Supported by LASSO, group LASSO, HCGL and FCGL.
     expert_prior_budget_rule : {'n_std', 'cluster_mean'}, default 'n_std'
         Standard-error slack or leave-one-response-out mean absolute loadings
         from a zero-centred, unfloored first pass. Cluster mode requires a group
@@ -730,6 +736,9 @@ class LassoModel:
     resolved_budgets_: Optional[pd.DataFrame] = field(default=None, init=False)
     budget_sources_: Optional[pd.DataFrame] = field(default=None, init=False)
     budget_rule_status_: Optional[pd.Series] = field(default=None, init=False)
+    # Appended to preserve historical constructor positions.
+    excluded_factors: Optional[Union[Mapping, pd.Series]] = None
+    excluded_factor_mask_: Optional[pd.DataFrame] = field(default=None, init=False)
 
     def __post_init__(self):
         """Validate the configuration; see :mod:`factorlasso.linear_model._settings`."""

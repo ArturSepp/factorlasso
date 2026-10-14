@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0rc2 — 2026-10-14
+
+### Added
+
+- Add `LassoModel.excluded_factors`: reusable per-response hard-zero declarations
+  for LASSO, group LASSO, HCGL and FCGL, including prior-aware fits and paths.
+- Restrict automatic prior selection and floors to admissible factors. Reject
+  unknown factors and conflicting named/nonzero numerical priors. Preserve raw
+  OLS diagnostics and expose `excluded_factor_mask_`.
+- Omitted exclusions preserve existing behaviour. This is a local development
+  update; no package-index publication is implied.
+
 ## 1.1.0rc1 — 2026-10-11
 
 ### Added

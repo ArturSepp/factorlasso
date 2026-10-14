@@ -110,6 +110,22 @@ the example recovers a budget of 0.4 and slack of 0.14 to solver tolerance.
 
 ## Implementation in factorlasso
 
+`excluded_factors` supplies hard zeros independently of named priors. Pass a
+mapping or Series from response labels to a factor label or list/tuple, for
+example `{'Government': ('Credit HY', 'Credit EM')}`. A missing response or blank
+selection has no exclusion. Extra response rows are permitted for frequency and
+rolling subsets, while unknown factor labels and duplicate selections raise.
+An excluded factor cannot also be a named prior or carry a nonzero numerical
+prior. Automatic priors and their floors select only among admissible factors;
+raw OLS slopes and R-squared remain available for diagnostics.
+
+The constraints enter the LASSO, group LASSO, HCGL and FCGL solve itself.
+Unsupported solvers reject them. `excluded_factor_mask_` records the resolved
+response-by-factor mask, and fitted excluded coefficients are exactly zero after
+removing equality-solver roundoff. This differs from `auto_sign_excluded_factors`,
+which removes an automatic sign restriction rather than excluding a regressor.
+With no exclusions, the numerical path is unchanged.
+
 `LassoModel` adds `max_named_factors=2`, `named_set_max_vif=2.5` and
 `expert_prior_budget_rule='n_std'`. Existing budget-rule and penalty-centre defaults
 remain `n_std` and `prior`. The new conditioning guard deliberately changes pairs

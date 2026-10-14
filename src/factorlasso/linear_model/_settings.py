@@ -25,6 +25,7 @@ from factorlasso.linear_model._types import LassoModelType, _mode_spec
 from factorlasso.priors._bounds import _validate_expert_bound_settings
 from factorlasso.priors._budget_modes import BudgetRule
 from factorlasso.utils._ewm import _validate_span
+from factorlasso.linear_model._exclusions import validate_exclusion_settings
 
 
 def _selected_prior_factors(value) -> tuple:
@@ -58,6 +59,7 @@ def validate_loss_mode(model) -> None:
 
 def validate_sign_inputs_mode(model) -> None:
     """Reject hard sign inputs for the solvers that cannot enforce them."""
+    validate_exclusion_settings(model)
     if _mode_spec(model.model_type).hard_constraints:
         return
     if model.factors_beta_loading_signs is not None:

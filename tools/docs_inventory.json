@@ -125,7 +125,7 @@
     ]
   },
   "parameters": {
-    "docs/expert_inputs.md": ["max_named_factors", "named_set_max_vif", "expert_prior_budget_rule"],
+    "docs/expert_inputs.md": ["max_named_factors", "named_set_max_vif", "expert_prior_budget_rule", "excluded_factors"],
     "docs/sparse_factor_model.md": [
       "model_type", "reg_lambda", "demean", "solver", "solver_fallbacks"
     ],

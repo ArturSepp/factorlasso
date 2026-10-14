@@ -30,6 +30,14 @@ def run() -> LassoModel:
         np.testing.assert_allclose(model.resolved_budgets_.loc[fund], peers, atol=1e-12)
     np.testing.assert_allclose(model.resolved_budgets_.b, .4, atol=1e-6)
     np.testing.assert_allclose(model.prior_bound_diagnostics_.slack, .35 * .4, atol=1e-6)
+    # A zero loading is estimated as a constraint; the remaining loading refits.
+    restricted = LassoModel(
+        excluded_factors={'fund0': ('b', 'c')},
+        reg_lambda=0., span=None, demean=False,
+    ).fit(x=x, y=y[['fund0']])
+    assert restricted.coef_.loc['fund0', ['b', 'c']].eq(0).all()
+    expected = np.linalg.lstsq(x[['a']], y.fund0, rcond=None)[0]
+    np.testing.assert_allclose(restricted.coef_.loc['fund0', ['a']], expected, atol=1e-6)
     return model
 
 

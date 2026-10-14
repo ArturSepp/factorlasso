@@ -36,6 +36,7 @@ from factorlasso.linear_model._settings import (
 )
 from factorlasso.linear_model._types import _mode_spec
 from factorlasso.utils._panel import get_x_y_np
+from factorlasso.linear_model._exclusions import exclusion_mask, overlay_exclusions
 
 #: Prior and bound diagnostics, reset at the start of every preparation.
 PRIOR_DIAGNOSTICS = (
@@ -44,6 +45,7 @@ PRIOR_DIAGNOSTICS = (
     'effective_prior_hac_lags_',
     'effective_factor_for_prior_', 'named_set_diagnostics_', 'prior_bound_contributions_',
     'budget_first_pass_coef_', 'resolved_budgets_', 'budget_sources_', 'budget_rule_status_',
+    'excluded_factor_mask_',
 )
 
 #: Sign diagnostics, reset after the sign settings have been validated. ``derived_signs_``
@@ -204,6 +206,7 @@ def prepare_fit(
         setattr(model, name, None)
     validate_excluded_factors(model, x)
     excluded = model.auto_sign_excluded_factors
+    model.excluded_factor_mask_ = exclusion_mask(model, x, y)
 
     asset_clusters, linkage, cutoff, is_lasso_mode = asset_partition(
         model, x, y, y_np, valid_mask, eff_span, eff_cluster_correlation_span,
@@ -256,6 +259,7 @@ def prepare_fit(
         explicit_signs_np = model.factors_beta_loading_signs.loc[
             y.columns, x.columns
         ].to_numpy()
+    explicit_signs_np = overlay_exclusions(explicit_signs_np, model.excluded_factor_mask_)
     auto_constraint_signs, signs_np = combine_signs(
         auto_signs_np, explicit_signs_np, excluded, x.columns,
     )

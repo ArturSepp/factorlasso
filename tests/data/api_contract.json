@@ -1597,6 +1597,18 @@
       "init": false,
       "default": null,
       "factory": null
+     },
+     {
+      "name": "excluded_factors",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "excluded_factor_mask_",
+      "init": false,
+      "default": null,
+      "factory": null
      }
     ]
    },
@@ -1933,6 +1945,11 @@
      "expert_prior_budget_rule",
      "POSITIONAL_OR_KEYWORD",
      "n_std"
+    ],
+    [
+     "excluded_factors",
+     "POSITIONAL_OR_KEYWORD",
+     null
     ]
    ],
    "members": {

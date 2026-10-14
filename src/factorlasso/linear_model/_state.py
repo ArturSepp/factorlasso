@@ -46,6 +46,12 @@ def fitted_state(
     """
     # Zero out betas for variables with insufficient history
     est_beta = result.estimated_beta
+    if model.excluded_factor_mask_ is not None:
+        fixed = model.excluded_factor_mask_.to_numpy() & np.isfinite(est_beta)
+        if np.any(np.abs(est_beta[fixed]) > 1e-7):
+            raise RuntimeError('Solver did not satisfy excluded-factor zero constraints')
+        # Remove only solver roundoff from equality-constrained cells.
+        est_beta[fixed] = 0.0
     short_assets: Optional[pd.Index] = None
     if model.warmup_period is not None:
         n_valid = np.count_nonzero(~np.isnan(y.to_numpy()), axis=0)

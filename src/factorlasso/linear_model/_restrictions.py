@@ -129,6 +129,8 @@ def ols_prior(model, x: pd.DataFrame, y: pd.DataFrame,
         x.to_numpy(dtype=float), y.to_numpy(dtype=float), span=eff_span,
         min_periods=max(3, model.warmup_period or 0),
         prior_selection_type=model.prior_selection_type,
+        excluded_mask=(None if model.excluded_factor_mask_ is None
+                       else model.excluded_factor_mask_.to_numpy()),
     )
     requested = {response: _selected_prior_factors(
         None if model.factor_for_prior is None else model.factor_for_prior.get(response))
@@ -223,6 +225,8 @@ def expert_prior_bounds(model, x: pd.DataFrame, y: pd.DataFrame, eff_span: Optio
             named.add(asset)
         else:
             scores = ols_r2.loc[asset].dropna()
+            if model.excluded_factor_mask_ is not None:
+                scores = scores.loc[~model.excluded_factor_mask_.loc[asset, scores.index]]
             factors = (scores.idxmax(),) if not scores.empty else ()
         selections[asset] = factors
     if signs_np is not None:
