@@ -38,6 +38,7 @@ def _compute_ols_prior(
     span: Optional[float],
     min_periods: int = 3,
     prior_selection_type: str = 'highest_r2',
+    excluded_mask: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Return response-by-factor slopes, weighted R-squared and raw priors.
 
@@ -56,6 +57,9 @@ def _compute_ols_prior(
         highest weighted R-squared. R-squared equals one minus weighted residual
         sum of squares divided by the weighted sum of squares about the response
         mean.
+    excluded_mask : ndarray, optional
+        Boolean response-by-factor mask. Excluded cells cannot be automatic
+        winners; their raw slopes and R-squared remain available for diagnostics.
 
     Returns
     -------
@@ -101,8 +105,13 @@ def _compute_ols_prior(
     r_squared = np.divide(cov * cov, vx * vy, out=np.full_like(cov, np.nan), where=valid)
     r_squared = np.clip(r_squared, 0.0, 1.0)
     prior = np.zeros_like(beta)
-    rows = np.flatnonzero(valid.any(axis=1))
-    winners = np.argmax(np.where(valid, r_squared, -np.inf), axis=1)[rows]
+    eligible = valid
+    if excluded_mask is not None:
+        if excluded_mask.shape != valid.shape or excluded_mask.dtype != bool:
+            raise ValueError('excluded_mask must be a boolean response-by-factor array')
+        eligible = valid & ~excluded_mask
+    rows = np.flatnonzero(eligible.any(axis=1))
+    winners = np.argmax(np.where(eligible, r_squared, -np.inf), axis=1)[rows]
     prior[rows, winners] = beta[rows, winners]
     return beta, r_squared, prior
 

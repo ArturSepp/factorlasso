@@ -402,6 +402,30 @@ class LassoModel:
         non-negative, so each final loading keeps the sign of its univariate
         slope.
 
+    max_named_factors : int, default 2
+        Maximum explicit factors per response, either 1 or 2. Longer selections
+        raise with the response and count. Automatic selection keeps one factor.
+    named_set_max_vif : float or None, default 2.5
+        Largest allowed variance inflation factor of a named pair, computed on
+        the rows and EWMA weights of its joint prior regression. Above this
+        threshold only the first-listed factor stays named. None disables the
+        check and preserves legacy joint-prior behaviour, including singular
+        pairs. The constructor mapping is never modified.
+    excluded_factors : mapping or pandas.Series, optional
+        Response labels mapped to one factor label or a list/tuple of labels.
+        These loadings are constrained to zero, independently of sign detection.
+        Automatic OLS priors select among remaining factors. Conflicting named
+        or nonzero numerical priors raise. Extra response rows support subset fits;
+        unknown factors raise. Supported by LASSO, group LASSO, HCGL and FCGL.
+    expert_prior_budget_rule : {'n_std', 'cluster_mean'}, default 'n_std'
+        Standard-error slack or leave-one-response-out mean absolute loadings
+        from a zero-centred, unfloored first pass. Cluster mode requires a group
+        model and OLS priors. Finite declarations override either data rule,
+        including explicit zero. Missing cells of a declared row use the cluster
+        mean, or zero under n_std with an undeclared_zero warning. Clusters below
+        three fall back to n_std, using one SE when n_std is None. The first pass
+        retains configured signs and adaptive weights but has no OLS or manual
+        centres. Each regularisation-path point needs its own first pass.
     expert_prior_bound_n_std : float or None, default None
         Optional individual sign-oriented magnitude floor from expert-selected or
         automatic highest-R-squared OLS targets: max(0, abs(target) - n_std * HAC_SE).
@@ -413,6 +437,32 @@ class LassoModel:
     expert_prior_hac_lags_freq_dict : dict or None, default None
         Optional consumer-resolved cadence map. Direct fits use the scalar lag;
         a multi-frequency consumer must select the appropriate scalar explicitly.
+    expert_prior_exposure_budget : pandas.DataFrame or None, default None
+        Exposure-budget floors (Sepp 2026). Response-by-factor budgets ``d_ij >= 0``
+        in coefficient units on the loadings of non-selected factors. A response
+        with at least one finite budget uses the slack
+        ``sum_j (sign(target) * Gamma_j * s_ij)_+ * d_ij`` in place of
+        ``n_std * HAC_SE``, where ``Gamma_j`` is the coefficient of the selected
+        factor in the weighted OLS regression of factor ``j`` on the selected
+        factors (same rows and weights as the target) and ``s_ij`` the hard sign of
+        the loading (a free sign counts as ``abs(Gamma_j)``, a zero sign as no
+        exposure). Missing budgets in a declared row count as zero. Responses
+        without a declared row fall back to ``expert_prior_bound_n_std``, or carry
+        no floor when it is None. Unknown factor columns raise; extra response rows
+        are ignored. Requires ``apply_ols_prior=True``.
+    expert_prior_bound_centre : {'prior', 'floor'}, default 'prior'
+        Penalty centre of a floored loading. ``'prior'`` keeps the resolved prior
+        target. ``'floor'`` moves the centre of every floored cell to its bound.
+        With the elementwise LASSO penalty the penalty is then linear on the
+        feasible side of the floor and constant along the collinear direction of
+        the floored loading and a zero-centred competitor. In the group modes the
+        cell stays in its block, whose geometry shares the room above the floor
+        among the block's loadings. No effect without floors.
+    expert_prior_bound_scope : {'all', 'named'}, default 'all'
+        Which selections receive floors. ``'all'`` floors explicit
+        ``factor_for_prior`` selections and automatic highest-R-squared winners.
+        ``'named'`` floors only responses with an explicit selection and records
+        automatic winners with status ``'automatic_selection_not_floored'``.
 
     Attributes (fitted, set by ``fit()``)
     --------------------------------------
@@ -509,7 +559,10 @@ class LassoModel:
     prior_lower_bounds_, prior_upper_bounds_ : pandas.DataFrame or None
         Fitted individual coefficient bounds, response by factor; NaN is unbounded.
     prior_bound_diagnostics_ : pandas.DataFrame or None
-        Selected-cell OLS/HAC statistics, floor and exclusion reasons.
+        Selected-cell OLS/HAC statistics, floor and exclusion reasons. The slack,
+        its source (``'n_std'`` or ``'budget'``), the most correlated permitted
+        competitor with its slope ``Gamma`` and correlation, and the implied
+        budget ``slack / abs(Gamma)`` of that competitor are appended.
     effective_prior_hac_lags_ : int or None
         Bandwidth used by the current fit, including a consumer's cadence override.
 
@@ -661,14 +714,31 @@ class LassoModel:
     loss_denominator_: Optional[pd.Series] = field(default=None, init=False)
     n_loss_rows_: Optional[int] = field(default=None, init=False)
 
-    # Optional individual floors for explicit OLS selectors, never automatic winners.
+    # Optional individual floors for explicit OLS selectors and automatic winners.
     expert_prior_bound_n_std: Optional[float] = None
     expert_prior_hac_lags: int = 0
     expert_prior_hac_lags_freq_dict: Optional[Dict[str, int]] = None
+    # Appended: exposure-budget slack, floor-centred penalty and selector scope.
+    expert_prior_exposure_budget: Optional[pd.DataFrame] = None
+    expert_prior_bound_centre: str = 'prior'
+    expert_prior_bound_scope: str = 'all'
     prior_lower_bounds_: Optional[pd.DataFrame] = field(default=None, init=False)
     prior_upper_bounds_: Optional[pd.DataFrame] = field(default=None, init=False)
     prior_bound_diagnostics_: Optional[pd.DataFrame] = field(default=None, init=False)
     effective_prior_hac_lags_: Optional[int] = field(default=None, init=False)
+    max_named_factors: int = 2
+    named_set_max_vif: Optional[float] = 2.5
+    expert_prior_budget_rule: str = 'n_std'
+    effective_factor_for_prior_: Optional[Dict] = field(default=None, init=False)
+    named_set_diagnostics_: Optional[pd.DataFrame] = field(default=None, init=False)
+    prior_bound_contributions_: Optional[pd.DataFrame] = field(default=None, init=False)
+    budget_first_pass_coef_: Optional[pd.DataFrame] = field(default=None, init=False)
+    resolved_budgets_: Optional[pd.DataFrame] = field(default=None, init=False)
+    budget_sources_: Optional[pd.DataFrame] = field(default=None, init=False)
+    budget_rule_status_: Optional[pd.Series] = field(default=None, init=False)
+    # Appended to preserve historical constructor positions.
+    excluded_factors: Optional[Union[Mapping, pd.Series]] = None
+    excluded_factor_mask_: Optional[pd.DataFrame] = field(default=None, init=False)
 
     def __post_init__(self):
         """Validate the configuration; see :mod:`factorlasso.linear_model._settings`."""
@@ -895,20 +965,21 @@ class LassoModel:
         external_clusters: Optional[pd.Series] = None,
         external_linkage: Optional[np.ndarray] = None,
         external_cutoff: Optional[float] = None,
+        budget_first_pass: Optional[Any] = None,
     ) -> "_PreparedFit":
-        """derive the reg_lambda-independent solver inputs.
+        """Derive solver inputs and store preparation diagnostics.
 
-        Clustering, the sign matrix, the prior, and the adaptive penalty
-        weights do not depend on ``reg_lambda``. Extracted verbatim from
-        ``fit`` so a regularisation path derives them once and reuses them
-        across the grid. Sets ``self.derived_signs_`` as the in-line code
-        did.
+        Fixed-budget paths reuse clustering, signs, priors and adaptive weights.
+        Cluster-mean budgets require a first fit at the current ``reg_lambda``
+        and are prepared separately at each point. An internal execution adapter
+        may supply that fitted clone after configuration and panel validation.
         """
         return prepare_fit(
             self, x=x, y=y, x_np=x_np, y_np=y_np, valid_mask=valid_mask, eff_span=eff_span,
             eff_cluster_correlation_span=eff_cluster_correlation_span,
             external_clusters=external_clusters, external_linkage=external_linkage,
             external_cutoff=external_cutoff,
+            budget_first_pass=budget_first_pass,
         )
 
     def _finalize_fit(
@@ -957,7 +1028,8 @@ class LassoModel:
         path is solved with :func:`solve_group_lasso_path`, which reuses one
         canonical form across the grid. LASSO, the cooperative estimators,
         and UniLasso have no path solver, so each grid point is a full
-        :meth:`fit`.
+        :meth:`fit`. Cluster-mean budgets also use full fits because the budgets
+        depend on the first-pass coefficients at the current penalty.
 
         Each returned model owns its fitted state: it holds the complete
         sign, prior, bound and adaptive-weight diagnostics of a fresh fit,
@@ -987,7 +1059,8 @@ class LassoModel:
         if len(lambdas) == 0:
             raise ValueError("reg_lambdas must be non-empty")
 
-        if not _mode_spec(self.model_type).lambda_path:
+        if (not _mode_spec(self.model_type).lambda_path
+                or self.expert_prior_budget_rule == 'cluster_mean'):
             # No path solver for these modes; a full fit per grid point. The
             # derivation repeats, but the result is identical to fit().
             return self._fit_each(lambdas, x, y, verbose, span, cluster_correlation_span)

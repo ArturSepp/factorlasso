@@ -61,6 +61,7 @@ def population_marginal_slopes() -> np.ndarray:
 def fit(x: pd.DataFrame, y: pd.DataFrame, reg_lambda: float, **policy) -> fl.LassoModel:
     """LASSO with automatically derived signs and the given prior-centre policy."""
     model = fl.LassoModel(
+        named_set_max_vif=None,  # Controlled legacy joint-prior illustration.
         model_type=fl.LassoModelType.LASSO,
         reg_lambda=reg_lambda,
         auto_sign_constraints=True,

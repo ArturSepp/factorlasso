@@ -1,12 +1,64 @@
 # Changelog
 
-## [Unreleased]
+## 1.0.4 — 2026-10-15
 
-### Documentation
+### Added
 
-- Title each documentation page as `<page title> - factorlasso` instead of appending the full
-  site title, which pushed page titles past what search results display. The homepage and the
-  sidebar keep the full site title. No signature or computed value changes.
+- Add `LassoModel.excluded_factors`: reusable per-response hard-zero declarations
+  for LASSO, group LASSO, HCGL and FCGL, including prior-aware fits and paths.
+  Restrict automatic prior selection and floors to admissible factors. Reject
+  unknown factors and conflicting named/nonzero numerical priors. Preserve raw
+  OLS diagnostics and expose `excluded_factor_mask_`.
+- Add `expert_prior_exposure_budget`. Declared response-by-factor budgets in
+  coefficient units replace standard-error slack using sign-aware omitted-variable
+  contributions on the target regression's rows and weights. Responses without
+  a declared row retain `expert_prior_bound_n_std`.
+- Add `expert_prior_bound_centre` (`"prior"` or `"floor"`) and
+  `expert_prior_bound_scope` (`"all"` or `"named"`). Floor centring moves each
+  floored loading's penalty centre to its bound; group modes retain its block.
+  Named scope floors explicit `factor_for_prior` selections only.
+- Add `max_named_factors=2` and `named_set_max_vif=2.5`. A named pair above
+  the weighted VIF threshold retains its first factor and returns its second
+  to the competitor set, with a warning and conditioning diagnostics.
+- Add `expert_prior_budget_rule`, with `n_std` and experimental `cluster_mean`.
+  The latter uses leave-one-out mean absolute loadings from a zero-centred,
+  unfloored clone with the same grouping, signs and adaptive-weight settings.
+  Clusters below three fall back to standard-error slack, using one SE when
+  `expert_prior_bound_n_std` is unset.
+- Resolve finite budget declarations cell by cell. Explicit zeros are
+  `declared_zero`; undeclared cells of a declared row use the data rule.
+  Under `n_std`, positive displacement weights left at zero warn as
+  `undeclared_zero`.
+- Add first-pass coefficients, resolved budgets, source and named-set attributes,
+  and `prior_bound_contributions_`. Preserve `prior_bound_diagnostics_` columns
+  while appending slack, its source, competitor slope/correlation and implied
+  budget. One-SE contributions are unallocated and missing; declared and cluster
+  terms add to total slack.
+- Add the Expert inputs documentation page and independent numerical checks.
+
+### Compatibility and validation
+
+- Existing budget-rule and penalty-centre defaults remain `n_std` and `prior`.
+  Omitted exclusions preserve existing behaviour. The new two-factor limit and
+  VIF guard intentionally change named-set behaviour. `named_set_max_vif=None`
+  retains legacy joint-prior geometry for pairs. No automatic-selection or
+  one-factor numerical rule changes.
+- Cluster budgets depend on the penalty, so lambda paths fit each point separately.
+- Conditioning checks reproduce independent weighted VIF calculations, with one
+  demotion among 392 named-pair fund-date checks. In the 512-draw cluster experiment,
+  aggregate coefficient risk falls versus one-SE floors, but IG, HY and IL risk
+  rises versus no floor, so the prespecified candidate-default gate fails.
+  The all-fund forward comparison passes the +0.5% non-inferiority margin.
+  The cluster rule remains experimental and existing budget defaults are retained.
+
+### Documentation and maintenance
+
+- Shorten documentation page titles to `<page title> - factorlasso`; retain the
+  full site title on the homepage and sidebar.
+- Correct the two-factor limiting-risk discussion: the joint correlation and
+  signal limit does not require `theta * sqrt(1 - rho) / s_B -> 0`, because
+  `theta` cancels from the contrast selecting the solution face.
+- Refresh dependency locks and CI tooling, including uv 0.12.23.
 
 ## 1.0.3 — 2026-10-07
 

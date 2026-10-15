@@ -34,12 +34,14 @@ def test_joint_ols_prior_and_automatic_fallback(span):
     """Named factors get joint slopes; blank assets retain their automatic priors."""
     x, y = sample()
     mapping = pd.Series({'il': ('Rates', 'Inflation'), 'other': None})
-    model = LassoModel(apply_ols_prior=True, span=span, factor_for_prior=mapping).fit(x,y)
+    model = LassoModel(named_set_max_vif=None,
+                      apply_ols_prior=True, span=span, factor_for_prior=mapping).fit(x,y)
     expected = reference(x[['Rates','Inflation']],y.il,span)
     np.testing.assert_allclose(model.ols_beta_prior_.loc['il',['Rates','Inflation']],expected,
                                rtol=1e-11,atol=1e-11)
     assert model.ols_beta_prior_.loc['il','Equity'] == 0
-    auto = LassoModel(apply_ols_prior=True,span=span).fit(x,y)
+    auto = LassoModel(named_set_max_vif=None,
+                      apply_ols_prior=True,span=span).fit(x,y)
     pd.testing.assert_series_equal(model.ols_beta_prior_.loc['other'],auto.ols_beta_prior_.loc['other'])
     assert clone(model).factor_for_prior.equals(mapping)
     subset = clone(model).fit(x,y[['other']])
@@ -50,7 +52,8 @@ def test_joint_priors_override_detected_signs_but_preserve_explicit_hard_signs()
     """The selected positive Inflation prior takes precedence over detected negative signs."""
     x,y=sample()
     y=y[['il']]
-    model=LassoModel(apply_ols_prior=True,auto_sign_constraints=True,auto_sign_threshold_t=0.,
+    model=LassoModel(named_set_max_vif=None,
+                      apply_ols_prior=True,auto_sign_constraints=True,auto_sign_threshold_t=0.,
                       factor_for_prior={'il':['Rates','Inflation']}).fit(x,y)
     assert model.ols_betas_.loc['il','Inflation'] < 0
     assert model.effective_beta_prior_.loc['il','Inflation'] > 0
@@ -66,7 +69,8 @@ def test_joint_priors_override_detected_signs_but_preserve_explicit_hard_signs()
 def test_invalid_joint_selections_rejected(bad):
     """Ambiguous empty, repeated or nested selections cannot be accepted."""
     with pytest.raises((ValueError,TypeError),match='factor_for_prior'):
-        LassoModel(apply_ols_prior=True,factor_for_prior={'il':bad})
+        LassoModel(named_set_max_vif=None,
+                      apply_ols_prior=True,factor_for_prior={'il':bad})
 
 
 @pytest.mark.parametrize('mode',['constant','collinear','few_rows'])
@@ -79,7 +83,8 @@ def test_unidentifiable_joint_prior_is_neutral(mode):
         x['Inflation']=2*x.Rates
     else:
         x.loc[:118,'Inflation']=np.nan
-    model=LassoModel(apply_ols_prior=True,factor_for_prior={'il':['Rates','Inflation']}).fit(x,y)
+    model=LassoModel(named_set_max_vif=None,
+                      apply_ols_prior=True,factor_for_prior={'il':['Rates','Inflation']}).fit(x,y)
     assert model.ols_beta_prior_.loc['il'].eq(0).all()
 
 
@@ -97,7 +102,8 @@ def test_joint_prior_recomputed_within_cv_training_windows(monkeypatch):
         observed.append(len(kwargs['x']))
         return out
     monkeypatch.setattr(LassoModel,'_prepare_fit',capture)
-    model=LassoModel(apply_ols_prior=True,span=24,factor_for_prior={'il':('Rates','Inflation')})
+    model=LassoModel(named_set_max_vif=None,
+                      apply_ols_prior=True,span=24,factor_for_prior={'il':('Rates','Inflation')})
     LassoModelCV(base_model=model,lambdas=[.01,.02],n_splits=3,refit=False,
                  use_lambda_path=True).fit(x,y)
     assert set(observed)=={30,60,90} and max(observed)<len(x)

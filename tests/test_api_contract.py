@@ -138,7 +138,7 @@ def test_preparation_seam_is_retained():
     assert parameters == [
         "self", "x", "y", "x_np", "y_np", "valid_mask", "eff_span",
         "eff_cluster_correlation_span", "external_clusters", "external_linkage",
-        "external_cutoff",
+        "external_cutoff", "budget_first_pass",
     ]
     assert [field.name for field in dataclasses.fields(_PreparedFit)] == [
         "asset_clusters", "linkage", "cutoff", "is_lasso_mode", "signs_np", "prior_np",
