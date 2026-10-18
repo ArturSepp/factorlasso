@@ -135,6 +135,7 @@ extend-select = ["TID251", "TID253", "ICN"]
 "trendfollowing".msg = "A1: factorlasso is a leaf."
 "privateassets".msg = "A1: factorlasso is a leaf."
 "stochvolmodels".msg = "A1: factorlasso is a leaf."
+"tradablefactors".msg = "A1: factorlasso is a leaf; TradableFactors consumes its fitted results."
 "bbg_fetch".msg = "A1: factorlasso has no declared dependency on bbg_fetch."
 "goal_based_allocation".msg = "A1: factorlasso has no declared dependency on goal_based_allocation."
 "option_chain_analytics".msg = "A1: factorlasso has no declared dependency on option_chain_analytics."

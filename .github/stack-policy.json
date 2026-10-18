@@ -12,6 +12,7 @@
     "privateassets",
     "qis",
     "stochvolmodels",
+    "tradablefactors",
     "trendfollowing",
     "vanilla_option_pricers"
   ],

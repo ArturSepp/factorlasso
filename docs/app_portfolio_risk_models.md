@@ -77,10 +77,11 @@ def capital_market_assumptions(betas: pd.DataFrame) -> pd.Series:
     return RISK_FREE + betas @ PREMIA + ADJUSTMENTS.reindex(betas.index).fillna(0.0)
 ```
 
-In production, OptimalPortfolios builds rolling risk models of this kind from factorlasso fits;
-its [covariance estimators](https://optimalportfolios.readthedocs.io/en/latest/covariance_estimators.html)
-and [rolling factor covariance from CSV](https://optimalportfolios.readthedocs.io/en/latest/rolling_factor_covar_from_csv.html)
-pages document that workflow.
+The financial pipeline in [tradablefactors](https://github.com/ArturSepp/tradablefactors)
+builds rolling risk models of this kind using factorlasso fits. OptimalPortfolios
+consumes supplied alphas and covariance for optimisation. The factorlasso
+[completed-estimator example](completed_estimator.md) stops after inspecting the
+fitted estimator, before either downstream workflow.
 
 ## Results
 

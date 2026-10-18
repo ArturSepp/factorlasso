@@ -16,10 +16,11 @@ multi-output regression and factor-model estimation. It fits the loadings of man
 common set of factors in one problem, under cell-level sign constraints, shrinkage towards prior
 loadings and group penalties built from supplied or discovered clusters of responses. It then
 tests the residuals for strict factor structure and assembles the factor covariance that the
-model implies. The estimator follows scikit-learn conventions. factorlasso is a leaf of the
-ArturSepp open-source stack: portfolio construction in
-[OptimalPortfolios](https://github.com/ArturSepp/OptimalPortfolios) consumes it, and it depends on
-no sibling package.
+model implies. The estimator follows scikit-learn conventions. Its standalone output is a
+[completed estimator](completed_estimator.md), with loadings, intercepts and fit diagnostics
+that can be inspected before any downstream use. factorlasso is a leaf of the ArturSepp
+open-source stack: [tradablefactors](https://github.com/ArturSepp/tradablefactors) uses it for
+the financial factor-model pipeline, and factorlasso depends on no sibling package.
 
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
@@ -33,6 +34,8 @@ the legacy flat modules; use package-root or public subpackage imports as descri
    is `python -m pip install factorlasso`.
 2. Follow the [quickstart](quickstart.md): penalty selection, estimation with derived signs,
    residual diagnostics and covariance assembly on one synthetic panel with known loadings.
+   For the package completion point, run [a completed estimator](completed_estimator.md)
+   and inspect its fitted fields, units, date metadata and copied numerical tables.
 3. Keep the [conventions and glossary](conventions.md) at hand: shapes, units, EWMA spans, the
    sign encoding and the precedence of signs and priors are defined there once for every page.
 4. Browse the [analytics gallery](analytics_gallery.md) for every exhibit with its question,
@@ -238,6 +241,7 @@ Four further working papers use factorlasso; they are listed with their status o
 
 Installation and first fit <getting-started>
 quickstart
+completed_estimator
 conventions
 analytics_gallery
 Examples and recipes <task-guides>

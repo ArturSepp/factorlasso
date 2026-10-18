@@ -59,3 +59,17 @@ orchestration.
 
 The [compatibility policy](https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md)
 defines the stable surface, the deprecation cycle and the numerical reproducibility boundary.
+
+## Downstream financial applications
+
+A fitted `LassoModel` is already a [completed estimator](completed_estimator.md).
+Inspect and copy the required numerical fields before passing them elsewhere; retain
+the caller's return units, frequency, training cutoff and data-availability metadata.
+
+[tradablefactors](https://github.com/ArturSepp/tradablefactors) owns factor definitions,
+histories and the financial estimation/covariance pipeline using factorlasso.
+[OptimalPortfolios](https://github.com/ArturSepp/OptimalPortfolios) optimises provided
+alphas and covariance, and [QIS](https://github.com/ArturSepp/QuantInvestStrats) supplies
+general risk analytics and reporting. Those packages do not enter the factorlasso
+runtime dependency surface. The canonical completed-estimator script runs without
+them and exports labelled tables explicitly using pandas.

@@ -11,6 +11,7 @@
     "docs/index.md": {"form": "utility", "status": "adopted"},
     "docs/getting-started.md": {"form": "utility", "status": "adopted", "example": "examples/docs/getting_started.py"},
     "docs/quickstart.md": {"form": "utility", "status": "adopted", "example": "examples/docs/quickstart.py"},
+    "docs/completed_estimator.md": {"form": "utility", "status": "adopted", "example": "examples/docs/completed_estimator.py"},
     "docs/conventions.md": {"form": "utility", "status": "adopted"},
     "docs/analytics_gallery.md": {"form": "utility", "status": "adopted"},
     "docs/task-guides.md": {"form": "utility", "status": "adopted", "example": "examples/docs/task_guides.py"},

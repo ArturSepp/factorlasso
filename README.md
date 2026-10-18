@@ -6,6 +6,14 @@ shrinkage, data-driven grouped penalties, and consistent factor covariance assem
 It provides LASSO, Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering Group LASSO
 (FCGL), sparse-group, UniLasso, and cooperative penalties through auditable CVXPY formulations.
 
+Its standalone output is a fitted `LassoModel` with labelled loadings, intercepts and
+diagnostics. [Inspect a completed estimator](docs/completed_estimator.md), including
+units, dates, failure states and explicit table export, with the
+[canonical offline example](examples/docs/completed_estimator.py). The financial
+factor-model pipeline belongs to [tradablefactors](https://github.com/ArturSepp/tradablefactors);
+OptimalPortfolios optimises supplied alphas and covariance, and QIS supplies general
+risk analytics and reports. None is required to complete a factorlasso fit.
+
 **Install:** `pip install factorlasso` · **Import:** `factorlasso` · **Status:** Stable
 
 **Upgrading to 1.0:** The old flat module paths (such as `factorlasso.lasso_estimator`
@@ -1029,7 +1037,7 @@ migration API and no span or scale override on the getters; snapshots written by
 development builds are rebuilt from source returns and saved betas. A positive semi-definite `R`
 with non-negative residual variances and weights gives a positive semi-definite `D`. `D` is a
 model of residual risk. It is not claimed to equal an annualised common-period empirical
-covariance. In OptimalPortfolios, `FactorCovarEstimator(residual_type="empirical")` prepares the
+covariance. In tradablefactors, `FactorCovarEstimator(residual_type="empirical")` prepares the
 correlation during fitting.
 
 ## When to use it — and when not
@@ -1111,8 +1119,9 @@ This package is part of an open-source Python stack for quantitative finance. Th
 | Package | Purpose |
 |---|---|
 | [`qis`](https://github.com/ArturSepp/QuantInvestStrats) | Performance analytics, factsheets, and visualisation |
-| [`optimalportfolios`](https://github.com/ArturSepp/OptimalPortfolios) | Portfolio construction and backtesting |
-| [`factorlasso`](https://github.com/ArturSepp/factorlasso) *(this package)* | Sparse factor models and factor covariance estimation |
+| [`optimalportfolios`](https://github.com/ArturSepp/OptimalPortfolios) | Portfolio optimisation with supplied alphas and covariance |
+| [`tradablefactors`](https://github.com/ArturSepp/tradablefactors) | Factor definitions, histories, fitted loadings and covariance |
+| [`factorlasso`](https://github.com/ArturSepp/factorlasso) *(this package)* | Sparse factor-model estimation and numerical covariance containers |
 | [`bbg-fetch`](https://github.com/ArturSepp/BloombergFetch) | Bloomberg data fetching |
 | [`option-chain-analytics`](https://github.com/ArturSepp/OptionChainAnalytics) | Point-in-time option-chain normalisation, reconstruction, querying, and visualisation |
 | [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) | Vectorised vanilla option pricers and implied volatility fitters |
@@ -1122,7 +1131,7 @@ This package is part of an open-source Python stack for quantitative finance. Th
 | [`goal-based-allocation`](https://github.com/ArturSepp/GoalBasedAllocation) | Dynamic MV allocation under regime-switching jump-diffusions |
 
 `factorlasso` has no runtime dependency on another package in the stack. It is consumed by
-`optimalportfolios` and, through its optional `factors` extra, by `privateassets`.
+`tradablefactors` and, through its optional `factors` extra, by `privateassets`.
 
 ## Feedback & contributing
 

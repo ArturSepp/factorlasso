@@ -17,6 +17,11 @@ methodology article, and the sections follow the order of the sidebar. A test fa
 export or a new ``LassoModel`` parameter has no owning article, so the page cannot drift from the
 package.
 
+Start with :doc:`completed_estimator` for the standalone ``LassoModel`` output:
+actual fitted fields, units, caller-owned date metadata, failure states, mutability
+and explicit numerical-table export. The API reference below supplies the individual
+method contracts; downstream portfolio construction is a separate use of the result.
+
 .. py:module:: factorlasso
 
 .. include:: _generated/api_reference.rst

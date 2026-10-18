@@ -19,6 +19,11 @@ derivation of clusters, signs and priors beside it, selection and diagnostics ar
 covariance containers after it. This page maps the modules to those roles, follows the data
 through a fit, and states where the package ends.
 
+The [completed-estimator contract](completed_estimator.md) defines that endpoint:
+a fitted `LassoModel` with usable labelled coefficients, intercepts and diagnostics,
+plus caller-maintained units and date metadata. Its offline example reaches and
+inspects this object before any downstream application.
+
 ## Module layers
 
 | Subpackage | Internal modules | Responsibility |
@@ -108,9 +113,10 @@ the template's fitted state on both success and error.
 The package estimates one date at a time; the rolling loop belongs to the caller. A rolling
 consumer computes causal partitions with `compute_rolling_smoothed_clusters`, fits a `LassoModel`
 per date with `external_clusters`, and stores each date's loadings, factor covariance and residual
-variances in a `CurrentFactorCovarData`, collected in a `RollingFactorCovarData`. OptimalPortfolios
-does this in its
-[factor covariance estimators](https://optimalportfolios.readthedocs.io/en/latest/covariance_estimators.html).
+variances in a `CurrentFactorCovarData`, collected in a `RollingFactorCovarData`.
+[tradablefactors](https://github.com/ArturSepp/tradablefactors) owns this financial
+orchestration, including the factor covariance estimator. OptimalPortfolios consumes
+supplied alphas and covariance for optimisation.
 Stability statistics and pooled scoring read the partitions; the offline lineage reads the
 rolling container and is the only component that looks at the whole panel at once
 ([offline cluster lineage](cluster_lineage.md)).
@@ -128,7 +134,7 @@ cross-validation does not ([scikit-learn interoperability](interoperability.md))
 The runtime dependencies are NumPy, pandas, SciPy, CVXPY and openpyxl. The default solver,
 CLARABEL, is installed with CVXPY; other CVXPY solvers can be named in `solver` and
 `solver_fallbacks`. factorlasso is a leaf of the author's package stack: it imports none of the
-other packages, and OptimalPortfolios depends on it rather than the reverse. The linter bans
+other packages, while tradablefactors depends on its estimation API. The linter bans
 imports of the other stack packages outright and bans a module-level scikit-learn import.
 
 ## See also
