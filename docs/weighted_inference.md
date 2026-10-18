@@ -199,6 +199,47 @@ For positive lags, the extra terms involve $g_tg_{t-\ell}^{\top}$ and its transp
 Thus the relevant serial dependence for regression inference is in weighted regressor-residual
 products, rather than the residual series alone.
 
+### Joint equations and transformed exposures
+
+The source-only `1.0.5.dev1` interface adds coefficient influences to the WLS
+statistics result when `return_influence=True`. Each row is expressed in the
+original coefficient units and already includes the square-root correction
+$\sqrt{n/(n-P)}$. Missing and zero-weight observations retain zero rows;
+unidentified regressions return NaN influences and must remain unavailable.
+Existing statistics calls retain their defaults and numerical results.
+
+Place all required coefficient influences on one regular calendar before
+estimating joint covariance. For monthly and quarterly regressions, one explicit
+choice is to sum monthly influences within quarters and retain quarterly
+influences at their endpoints. `aggregate_influence_calendar` constructs that
+grid, including empty periods. Extending shorter histories with zero influences
+does not invent observations or impose a common regression sample. One lag on
+this quarterly grid is a distinct convention from three monthly lags.
+
+Let $U$ contain the aligned coefficient influences, $V=U^{\top}KU$ their joint
+Bartlett covariance, and $g(\theta)$ a prespecified vector of transformed
+exposures. For its Jacobian $J$ evaluated at the fitted coefficients, the
+first-order target covariance is $JVJ^{\top}$. `delta_method_hac_intervals`
+computes the equivalent covariance from $UJ^{\top}$ and applies pointwise normal
+critical values at the requested confidence levels, defaulting to 95% only
+(`confidence_levels=(.95,)`). Other levels are opt-in; for example,
+`confidence_levels=(.8, .95)` requests both 80% and 95%. Changing this argument
+changes only the interval endpoints returned, not the estimates, influences,
+covariance or standard errors.
+
+For example, sleeve exposures $a_m,a_q$ and conversion slopes $b_m,b_q$ give
+$g=a_m b_m+a_q b_q$. The Jacobian, in that coefficient order, is
+$J=(b_m,b_q,a_m,a_q)$. Both conversion stages and their cross-covariances enter
+the result. Treating the conversion slopes as fixed or adding independent
+coefficient variances omits terms. Application code owns return definitions,
+exposure weights, the chosen calendar and the target/Jacobian; FactorLasso owns
+the fit, score aggregation, covariance and interval calculations.
+
+These are first-order fixed-model approximations. They do not create confidence
+bands around penalised or selected estimates. A zero derivative of a nonlinear
+target can give zero first-order variance without identifying the target, and
+short effective histories require a separate support assessment.
+
 ### EWMA weights and effective sample size
 
 EWMA loss weights express recency. They do not assert that older observations have larger
@@ -503,6 +544,30 @@ positive = positive_part_confidence_summary(mean, covariance, weights)
 Here covariance is declared known. This arithmetic example does not establish empirical
 coverage after substituting an estimated HAC covariance or estimating the metric.
 
+### Joint exposure and conversion uncertainty
+
+The synthetic `check_joint_hac_targets` example fits a response slope and a
+separate conversion slope on monthly observations, then aggregates their scores
+to a quarterly calendar. It verifies both stages and their cross-covariance
+against a dense Bartlett kernel, independently of the implementation's lag loop.
+The default result contains only the 95% interval. An explicit request for both
+levels verifies that the 95% interval contains the 80% interval and is unchanged
+by the additional level. The complete deterministic example is
+in [weighted_inference.py](../examples/docs/weighted_inference.py).
+
+```python
+    quarterly = aggregate_influence_calendar(scores, frequency='Q')
+    result = delta_method_hac_intervals([a*b], quarterly, [[b, a]], hac_lags=1)
+```
+
+The interval is available as `result['intervals'][.95]`, with `lower`, `upper`
+and `standard_error` arrays in the target's units. To include 80% explicitly:
+
+```python
+    both = delta_method_hac_intervals([a*b], quarterly, [[b, a]], hac_lags=1,
+                                      confidence_levels=(.8, .95))
+```
+
 ## Implementation in factorlasso
 
 ### Choosing the covariance and the interval
@@ -531,6 +596,14 @@ monthly lag positions; this is a different parameter convention from a lag count
 
 - `WlsHacStatistics` and `compute_wls_hac_statistics` provide coefficients, standard errors,
   optional full covariance, observation counts, effective sample size, gaps and fit status.
+  The development `return_influence` option exposes corrected original-grid influences
+  and the condition number of the original weighted design.
+- `aggregate_influence_calendar` sums dated coefficient scores onto a regular period grid.
+  `compute_hac_covariance` computes joint estimation-error covariance from aligned scores.
+  `delta_method_hac_intervals` transforms those scores by a caller-supplied Jacobian and
+  returns target influences, covariance and pointwise normal intervals keyed by level
+  (95% only by default).
+  These three interfaces are source-only additions in `1.0.5.dev1`.
 - `LinearHacGeometry` and `compute_wls_hac_geometry` represent a fixed coefficient or contrast
   and its quadratic variance. `statistics` accepts one response or a batch of response rows.
 - `gaussian_critical_value` returns the two-sided multiplier for known covariance shape.

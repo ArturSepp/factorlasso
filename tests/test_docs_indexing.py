@@ -2,7 +2,7 @@
 
 Adapted from ``QuantInvestStrats/src/qis/tests/documentation_indexing_test.py`` (MIT License,
 Copyright (c) Artur Sepp; notice retained). factorlasso consolidates the moving Read the Docs
-aliases onto ``latest``.
+aliases under their own version URLs.
 """
 
 import runpy
@@ -39,11 +39,11 @@ def make_app(tmp_path, *, base=BASE, builder="html"):
 @pytest.mark.parametrize(("base", "expected_base"), [
     (BASE, BASE),
     (BASE.rstrip("/"), BASE),
-    (BASE.replace("/latest/", "/stable/"), BASE),
+    (BASE.replace("/latest/", "/stable/"), BASE.replace("/latest/", "/stable/")),
     (BASE.replace("/latest/", "/0.20.0/"), BASE.replace("/latest/", "/0.20.0/")),
 ])
-def test_homepage_canonical_and_sitemap_consolidate_moving_aliases(tmp_path, base, expected_base):
-    """Use latest for both moving aliases while preserving numbered release URLs."""
+def test_homepage_canonical_and_sitemap_preserve_version_urls(tmp_path, base, expected_base):
+    """Keep stable, latest and numbered release URLs separate."""
     app = make_app(tmp_path, base=base)
     context = {"pageurl": base.rstrip("/") + "/index.html"}
     SEO["set_canonical_url"](app, "index", "page.html", context, None)
@@ -112,10 +112,77 @@ def test_real_sphinx_theme_uses_the_same_urls_as_the_sitemap(tmp_path):
             if tag == "link" and attrs.get("rel") == "canonical":
                 self.urls.append(attrs["href"])
 
-    expected = {"index": BASE, "method": BASE + "method.html"}
+    stable = BASE.replace("/latest/", "/stable/")
+    expected = {"index": stable, "method": stable + "method.html"}
     for name, url in expected.items():
         parser = Canonicals()
         parser.feed((output / f"{name}.html").read_text(encoding="utf-8"))
         assert parser.urls == [url]
     tree = ElementTree.parse(output / "sitemap.xml")
     assert {node.text for node in tree.findall(LOC)} == set(expected.values())
+
+PACKAGE = 'factorlasso'
+
+
+def test_generated_navigation_uses_real_exports_and_is_deterministic(tmp_path):
+    """Reject invented exports and keep generated navigation stable across reruns."""
+    package = __import__(PACKAGE)
+    names = SEO['public_api_names']()
+    assert names and names == sorted(set(names))
+    assert all(hasattr(package, name) for name in names)
+    app = make_app(tmp_path)
+    name = names[0]
+    app.config.release = '1.2.3'
+    app.env.titles = {}
+    app.env.get_domain = lambda domain: SimpleNamespace(get_objects=lambda: [
+        (PACKAGE + '.' + name, name, 'class', 'index', 'real-anchor', 1),
+        (PACKAGE + '.invented_export', 'invented_export', 'class', 'index', 'fake', 1),
+    ])
+    SEO['write_llms'](app, None)
+    initial = (tmp_path / 'llms.txt').read_bytes()
+    api = (tmp_path / 'llms-api.txt').read_text(encoding='utf-8')
+    assert 'invented_export' not in api
+    assert PACKAGE + '.' + name in api and '#real-anchor' in api
+    assert '_modules/' not in initial.decode() and 'search.html' not in initial.decode()
+    assert 'llms-api.txt' in initial.decode()
+    SEO['write_llms'](app, None)
+    assert (tmp_path / 'llms.txt').read_bytes() == initial
+    assert (tmp_path / 'llms-api.txt').read_text(encoding='utf-8') == api
+
+
+@pytest.mark.parametrize('builder,base,exception', [
+    ('latex', BASE, None), ('html', '', None), ('html', BASE, RuntimeError('failed')),
+])
+def test_failed_and_non_html_builds_publish_no_llm_index(tmp_path, builder, base, exception):
+    """Publish indexes only for successful HTML builds with an absolute base URL."""
+    SEO['write_llms'](make_app(tmp_path, builder=builder, base=base), exception)
+    assert not (tmp_path / 'llms.txt').exists()
+    assert not (tmp_path / 'llms-api.txt').exists()
+
+
+@pytest.mark.parametrize('channel,label', [('stable', 'Released'), ('latest', 'Development')])
+def test_release_navigation_uses_verified_release_fallback(tmp_path, channel, label):
+    """Link channel roots rather than guessing that the same page exists in both."""
+    base = BASE.replace('/stable/', '/' + channel + '/').replace('/latest/', '/' + channel + '/')
+    app = make_app(tmp_path, base=base)
+    app.config.release = '<unsafe>'
+    context = {'body': '<p>Page</p>'}
+    SEO['set_release_navigation'](app, 'index', 'page.html', context, None)
+    assert label in context['body'] and '&lt;unsafe&gt;' in context['body']
+    assert SEO['RELEASED_DOCS_URL'] in context['body'] and '/en/latest/' in context['body']
+    assert 'href="https://factorlasso.readthedocs.io/en/stable/"' not in context['body']
+    assert context['body'].endswith('<p>Page</p>')
+
+
+def test_stale_api_inventory_fails_closed(monkeypatch):
+    """A misspelled or removed declared export must stop index generation."""
+    import json
+
+    package = __import__(PACKAGE)
+    if PACKAGE == 'optimalportfolios':
+        inventory = {'symbols': {'docs/index.md': ['invented_export']}, 'external_symbols': {}}
+        monkeypatch.setattr(json, 'loads', lambda *args, **kwargs: inventory)
+    else:
+        monkeypatch.setattr(package, '__all__', [*package.__all__, 'invented_export'])
+    with pytest.raises(ValueError, match='invented_export'):
+        SEO['public_api_names']()

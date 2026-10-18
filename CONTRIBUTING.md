@@ -1,4 +1,16 @@
+---
+myst:
+  html_meta:
+    description: >-
+      Contribution scope, reproducible starter tasks, development checks and review for FactorLasso.
+---
+
 # Contributing to factorlasso
+
+*Author: [Artur Sepp](https://github.com/ArturSepp)*
+
+Project: [FactorLasso](https://github.com/ArturSepp/factorlasso).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 Thanks for your interest in `factorlasso`. `factorlasso` accompanies a paper under review at the *Journal of Statistical Software*, so reproducibility of published numbers takes priority over convenience.
 
@@ -25,6 +37,74 @@ writing code:
 - Portfolio construction, which belongs in
   [`optimalportfolios`](https://github.com/ArturSepp/OptimalPortfolios)
 
+## Starter tasks
+
+These are proposed, unassigned tasks, not reports of confirmed numerical defects. Check for
+existing or completed work and agree a bounded scope before starting. The
+[shared contributor guide](https://github.com/ArturSepp/ArturSepp/blob/main/docs/contributing_to_stack.md)
+explains setup, review, attribution and validation of automation-assisted work. Reuse this
+repository's [feature request form](.github/ISSUE_TEMPLATE/feature_request.yml), or its
+[bug report form](.github/ISSUE_TEMPLATE/bug_report.yml) for an observed defect.
+No starter label implies that numerical redesign is included.
+
+Commands below use PowerShell's `& $py`, where `$py` is the selected development interpreter.
+Run them from the repository source root (a C-local source export on the maintainer host).
+Follow [development setup](#development-setup) first; for this Windows/OneDrive checkout,
+use the external environment and generated-state helper described in `AGENTS.md` before
+running Python or uv. The shared guide gives the exact interpreter table. Each command is
+a focused check, not a substitute for the package's documentation and PR gates.
+
+### FL-1: Add an interpretation key for quickstart diagnostics
+
+**Owner and code home:** FactorLasso; [docs/quickstart.md](docs/quickstart.md).
+**Read first:** [examples/docs/quickstart.py](examples/docs/quickstart.py).
+
+**Current gap:** The example prints several estimation diagnostics, without a single compact output-to-check interpretation key.
+
+**Reproduce:** Run the canonical offline script and locate the assertions behind selected regularisation, loading RMSE, residual sphericity and covariance relative error.
+
+**Acceptance and scope:** Add a short four-row key linking those printed groups to the existing example assertions and owning methodology pages. Distinguish held-out estimator score from in-sample diagnostics and covariance error against synthetic truth. Do not describe these as portfolio performance or empirical investment evidence. Preserve code excerpts, seeds and displayed numbers.
+
+**Useful verification:**
+
+```powershell
+& $py examples/docs/quickstart.py
+```
+
+### FL-2: Pin nested Pipeline parameter updates before fitting
+
+**Owner and code home:** FactorLasso; [tests/test_sklearn_interop.py](tests/test_sklearn_interop.py).
+**Read first:** [docs/interoperability.md](docs/interoperability.md).
+
+**Current gap:** The existing Pipeline test checks prediction shape; this module does not explicitly exercise a model__reg_lambda update through Pipeline.set_params.
+
+**Reproduce:** Inspect test_pipeline_with_ndarray and run the interoperability module. Search the current suite for the proposed assertion before adding it, to avoid duplicate coverage.
+
+**Acceptance and scope:** Extend the existing Pipeline test or add one narrowly scoped test: set model__reg_lambda, read it back through get_params, and confirm the fitted model retained it. Use the existing synthetic panel and importorskip convention. Verify a deliberately wrong expected value fails, then restore it. Do not change the estimator, add sklearn at package root or assert fragile solver decimals.
+
+**Useful verification:**
+
+```powershell
+& $py -m pytest tests/test_sklearn_interop.py -q
+```
+
+### FL-3: Explain a skipped interoperability check versus an offline example pass
+
+**Owner and code home:** FactorLasso; [docs/interoperability.md](docs/interoperability.md).
+**Read first:** [tests/test_sklearn_interop.py](tests/test_sklearn_interop.py), [tests/test_examples.py](tests/test_examples.py).
+
+**Current gap:** The page describes optional sklearn support but lacks a contributor checklist for interpreting skipped checks and the separate socket-blocked example lane.
+
+**Reproduce:** Read importorskip in the interoperability module and the socket guards in test_examples.py. Run the focused canonical quickstart example test below.
+
+**Acceptance and scope:** Add a short checklist that records installed extras, collected/passed/skipped counts and skip reasons; distinguishes missing optional sklearn from a passing sklearn integration; and points to the existing test dependency setup. Explain that the quickstart example test blocks sockets and rejects output files. Never count a skip as verified interoperability or add sklearn to core dependencies.
+
+**Useful verification:**
+
+```powershell
+& $py -m pytest tests/test_examples.py -k quickstart -q
+```
+
 ## Reporting a bug
 
 Open an issue using the bug report template. A report needs the `factorlasso` version, your
@@ -39,6 +119,13 @@ welcome; where a question is really about the published papers, please say which
 and section you are reading.
 
 ## Development setup
+
+For the maintainer's Windows/OneDrive checkout, first run the setup helper named in
+`AGENTS.md` and select the registered C:\Python interpreter. Set
+`UV_PROJECT_ENVIRONMENT` to that external environment before any uv project operation;
+never use the unqualified uv examples below against a OneDrive-local environment.
+Keep generated output and pure verification source exports on C: as described in the
+[shared contributor guide](https://github.com/ArturSepp/ArturSepp/blob/main/docs/contributing_to_stack.md#setup-and-a-first-check).
 
 ```bash
 git clone https://github.com/ArturSepp/factorlasso.git

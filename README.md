@@ -1201,7 +1201,7 @@ software itself:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {1.0.4},
+  version = {1.0.5.dev1},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 ```

@@ -1,5 +1,8 @@
 {
  "root_all": [
+  "aggregate_influence_calendar",
+  "compute_hac_covariance",
+  "delta_method_hac_intervals",
   "calibrate_covariance_moments",
   "HierarchicalMeanPosterior",
   "pool_gaussian_means",
@@ -100,6 +103,80 @@
   "partition_variance_share"
  ],
  "exports": {
+  "aggregate_influence_calendar": {
+   "kind": "function",
+   "signature": [
+    [
+     "influence",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "frequency",
+     "KEYWORD_ONLY",
+     "Q"
+    ],
+    [
+     "start",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "end",
+     "KEYWORD_ONLY",
+     null
+    ]
+   ]
+  },
+  "compute_hac_covariance": {
+   "kind": "function",
+   "signature": [
+    [
+     "influence",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "hac_lags",
+     "POSITIONAL_OR_KEYWORD",
+     0
+    ]
+   ]
+  },
+  "delta_method_hac_intervals": {
+   "kind": "function",
+   "signature": [
+    [
+     "estimate",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "influence",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "jacobian",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "hac_lags",
+     "KEYWORD_ONLY",
+     0
+    ],
+    [
+     "confidence_levels",
+     "KEYWORD_ONLY",
+     {
+      "tuple": [
+       0.95
+      ]
+     }
+    ]
+   ]
+  },
   "calibrate_covariance_moments": {
    "kind": "function",
    "signature": [
@@ -688,6 +765,20 @@
       "init": true,
       "default": "<no default>",
       "factory": null
+     },
+     {
+      "name": "influence",
+      "init": true,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "condition_number",
+      "init": true,
+      "default": {
+       "float": "nan"
+      },
+      "factory": null
      }
     ]
    },
@@ -736,6 +827,18 @@
      "status",
      "POSITIONAL_OR_KEYWORD",
      "<no default>"
+    ],
+    [
+     "influence",
+     "POSITIONAL_OR_KEYWORD",
+     null
+    ],
+    [
+     "condition_number",
+     "POSITIONAL_OR_KEYWORD",
+     {
+      "float": "nan"
+     }
     ]
    ],
    "members": {}
@@ -775,6 +878,11 @@
     ],
     [
      "return_covariance",
+     "KEYWORD_ONLY",
+     false
+    ],
+    [
+     "return_influence",
      "KEYWORD_ONLY",
      false
     ]
@@ -6798,6 +6906,9 @@
  },
  "subpackages": {
   "inference": [
+   "aggregate_influence_calendar",
+   "compute_hac_covariance",
+   "delta_method_hac_intervals",
    "calibrate_covariance_moments",
    "HierarchicalMeanPosterior",
    "pool_gaussian_means",

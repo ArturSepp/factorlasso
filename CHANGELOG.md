@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.5.dev1 — Unreleased
+
+### Added
+
+- Expose optional original-grid coefficient influences and weighted-design
+  condition numbers from `compute_wls_hac_statistics(return_influence=True)`.
+  Influences retain missing masks and include the square-root small-sample
+  correction; existing calls and numerical outputs are unchanged.
+- Add `aggregate_influence_calendar`, `compute_hac_covariance` and
+  `delta_method_hac_intervals` for joint multi-equation uncertainty, mixed
+  observation frequencies and multi-stage products of slopes. The default
+  pointwise level is 95%; other levels, including 80%, are explicit opt-ins via
+  `confidence_levels`. Cross-asset and cross-stage covariance is
+  retained without introducing a runtime dependency on Statsmodels or QIS.
+- These intervals describe unpenalised fixed-model WLS benchmarks; they do not
+  provide post-selection or penalised-estimator coverage.
+
 ## 1.0.4 — 2026-10-15
 
 ### Added

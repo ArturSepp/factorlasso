@@ -49,6 +49,7 @@
   "symbols": {
     "docs/hierarchical_pooling.md": ["HierarchicalMeanPosterior", "pool_gaussian_means"],
     "docs/weighted_inference.md": [
+      "aggregate_influence_calendar", "compute_hac_covariance", "delta_method_hac_intervals",
       "calibrate_covariance_moments",
       "joint_wls_gaussian_region",
       "quadratic_scalar_confidence_summary", "positive_part_confidence_summary",

@@ -6,6 +6,9 @@ from factorlasso.inference._ar1 import Ar1Interval, compute_ar1_interval
 from factorlasso.inference._gaussian import gaussian_critical_value
 from factorlasso.inference._geometry import LinearHacGeometry, compute_wls_hac_geometry
 from factorlasso.inference._wls import WlsHacStatistics, compute_wls_hac_statistics
+from factorlasso.inference._joint_hac import (
+    aggregate_influence_calendar, compute_hac_covariance, delta_method_hac_intervals,
+)
 from factorlasso.inference._mean import (
     compute_weighted_mean_hac_geometry, weighted_mean_hac_expectation,
 )
@@ -21,6 +24,7 @@ from factorlasso.inference._scalar_capacity import (
 )
 
 __all__ = [
+    "aggregate_influence_calendar", "compute_hac_covariance", "delta_method_hac_intervals",
     "calibrate_covariance_moments",
     "HierarchicalMeanPosterior", "pool_gaussian_means",
     "quadratic_scalar_confidence_summary", "positive_part_confidence_summary",

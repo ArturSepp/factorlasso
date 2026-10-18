@@ -1,8 +1,10 @@
 """Offline weighted regression and mean inference with independent covariance checks."""
 import numpy as np
+import pandas as pd
 from scipy.stats import chi2, norm, t as student_t
 
 from factorlasso import (
+    aggregate_influence_calendar, compute_hac_covariance, delta_method_hac_intervals,
     calibrate_covariance_moments,
     joint_wls_gaussian_region,
     compute_ar1_interval, compute_wls_hac_geometry, compute_wls_hac_statistics,
@@ -194,7 +196,47 @@ def check_scalar_intervals():
     assert positive['status'] == 'known_covariance_formula_plugin_unvalidated'
 
 
+def check_joint_hac_targets():
+    """Aggregate native equations and verify two-stage uncertainty independently."""
+    rng = np.random.default_rng(91)
+    dates = pd.date_range('2000-01-01', periods=120, freq='MS')
+    vx = rng.normal(size=120)
+    equity = -.008*vx + .01*rng.normal(size=120)
+    asset = .4*equity + .004*rng.normal(size=120)
+    weights = (35/37)**np.arange(119, -1, -1)
+    fit = compute_wls_hac_statistics(equity[:, None], asset, weights,
+                                      return_influence=True)
+    conversion = compute_wls_hac_statistics(vx[:, None], equity, weights,
+                                             return_influence=True)
+    a, b = fit.coefficients[1], conversion.coefficients[1]
+    scores = pd.DataFrame({'a': fit.influence[:, 1], 'b': conversion.influence[:, 1]},
+                          index=dates)
+    quarterly = aggregate_influence_calendar(scores, frequency='Q')
+    result = delta_method_hac_intervals([a*b], quarterly, [[b, a]], hac_lags=1)
+    # Independent dense kernel and explicit product-rule reference.
+    t = np.arange(len(quarterly))
+    kernel = np.maximum(0., 1-np.abs(t[:, None]-t[None, :])/2)
+    joint = quarterly.to_numpy().T @ kernel @ quarterly.to_numpy()
+    reference = b*b*joint[0, 0] + a*a*joint[1, 1] + 2*a*b*joint[0, 1]
+    np.testing.assert_allclose(compute_hac_covariance(quarterly, 1), joint, atol=1e-14)
+    np.testing.assert_allclose(result['covariance'], [[reference]], rtol=1e-13)
+    for level, interval in result['intervals'].items():
+        radius = norm.ppf((1+level)/2)*np.sqrt(reference)
+        np.testing.assert_allclose([interval['lower'][0], interval['upper'][0]],
+                                  [a*b-radius, a*b+radius])
+    assert set(result['intervals']) == {.95}
+    both = delta_method_hac_intervals([a*b], quarterly, [[b, a]], hac_lags=1,
+                                      confidence_levels=(.8, .95))
+    np.testing.assert_array_equal(both['intervals'][.95]['lower'],
+                                  result['intervals'][.95]['lower'])
+    np.testing.assert_array_equal(both['intervals'][.95]['upper'],
+                                  result['intervals'][.95]['upper'])
+    assert both['intervals'][.95]['lower'][0] < both['intervals'][.8]['lower'][0]
+    return result
+
+
 if __name__ == '__main__':
+    check_joint_hac_targets()
     check_scalar_intervals()
     check_joint_region()
     compare_standard_errors()

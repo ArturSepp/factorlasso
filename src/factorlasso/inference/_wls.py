@@ -31,10 +31,13 @@ class WlsHacStatistics:
     calendar_gaps: int
     hac_lags: int
     status: str
+    influence: Optional[np.ndarray] = None
+    condition_number: float = np.nan
 
 
 def compute_wls_hac_statistics(x, y, weights=None, hac_lags=0, min_periods=3, *,
-                               fit_intercept=True, return_covariance=False):
+                               fit_intercept=True, return_covariance=False,
+                               return_influence=False):
     """Estimate weighted regression coefficients and original-grid Bartlett HAC.
 
     Parameters
@@ -56,6 +59,11 @@ def compute_wls_hac_statistics(x, y, weights=None, hac_lags=0, min_periods=3, *,
     return_covariance : bool, default False
         Also return the full coefficient covariance. Neither mode builds a dense
         T by T matrix; finite-sample correction is n/(n-P).
+    return_influence : bool, default False
+        Return original-unit coefficient influences on the full input grid,
+        including the square-root n/(n-P) correction, and the condition number
+        of the original weighted design. Missing/zero-weight rows have zero
+        influence. Unidentified fits instead return an all-NaN influence array.
 
     Returns
     -------
@@ -69,7 +77,9 @@ def compute_wls_hac_statistics(x, y, weights=None, hac_lags=0, min_periods=3, *,
     for value, name in ((hac_lags, 'hac_lags'), (min_periods, 'min_periods')):
         if isinstance(value, (bool, np.bool_)) or not isinstance(value, Integral) or value < 0:
             raise ValueError(f'{name} must be a nonnegative integer')
-    for value, name in ((fit_intercept, 'fit_intercept'), (return_covariance, 'return_covariance')):
+    for value, name in ((fit_intercept, 'fit_intercept'),
+                        (return_covariance, 'return_covariance'),
+                        (return_influence, 'return_influence')):
         if not isinstance(value, (bool, np.bool_)):
             raise ValueError(f'{name} must be boolean')
     p = xx.shape[1] + int(fit_intercept)
@@ -91,8 +101,9 @@ def compute_wls_hac_statistics(x, y, weights=None, hac_lags=0, min_periods=3, *,
     def unidentified(status):
         """Return support diagnostics without inventing unidentified coefficients."""
         covariance = np.full((p, p), np.nan) if return_covariance else None
+        influence = np.full((len(xx), p), np.nan) if return_influence else None
         return WlsHacStatistics(np.full(p, np.nan), np.full(p, np.nan), covariance,
-                                n, effective_n, gaps, hac_lags, status)
+                                n, effective_n, gaps, hac_lags, status, influence)
 
     if n < max(3, min_periods) or n <= p:
         return unidentified('insufficient_observations')
@@ -139,11 +150,21 @@ def compute_wls_hac_statistics(x, y, weights=None, hac_lags=0, min_periods=3, *,
                                             diagonal=True)[0]*n/(n-p)
         standard_error[0] = np.sqrt(max(intercept_variance, 0.))
     covariance = None
-    if return_covariance:
+    original_influence = None
+    condition_number = np.nan
+    if return_covariance or return_influence:
         original_influence = influence.copy()
         original_influence[:, start:] /= scales
         if fit_intercept:
             original_influence[:, 0] = intercept_influence
+    if return_covariance:
         covariance = lag_covariance(original_influence, hac_lags)*n/(n-p)
+    if return_influence:
+        original_influence *= np.sqrt(n/(n-p))
+        original_design = (np.column_stack([np.ones(n), xx[valid]])
+                           if fit_intercept else xx[valid])
+        condition_number = float(np.linalg.cond(np.sqrt(w)[:, None]*original_design))
+    else:
+        original_influence = None
     return WlsHacStatistics(estimates, standard_error, covariance, n, effective_n,
-                            gaps, hac_lags, 'ok')
+                            gaps, hac_lags, 'ok', original_influence, condition_number)

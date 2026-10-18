@@ -19,6 +19,11 @@ the penalty, fit the loadings, read the fit, test the residuals, and assemble th
 matrix. Each step names the article that defines the method. For installation and the smallest
 possible fit, start with [installation and first fit](getting-started.md).
 
+Minimum supported released version for this example: **`factorlasso>=1.0.4`**.
+This conservative support floor was checked against the released API. See
+[versions and compatibility](index.md#versions-and-compatibility) for channel selection,
+capability boundaries and dependency licences.
+
 ## The model and the five steps
 
 For $N$ response series $Y_t$ and $M$ factor series $X_t$ observed over $T$ periods, the package

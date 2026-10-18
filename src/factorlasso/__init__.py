@@ -112,6 +112,7 @@ from factorlasso.linear_model import (
 )
 from factorlasso.model_selection import LassoModelCV, LassoModelDiagonalityCV
 from factorlasso.inference import (
+    aggregate_influence_calendar, compute_hac_covariance, delta_method_hac_intervals,
     calibrate_covariance_moments,
     HierarchicalMeanPosterior, pool_gaussian_means,
     joint_wls_gaussian_region,
@@ -157,6 +158,7 @@ except PackageNotFoundError:  # pragma: no cover - editable install before metad
     __version__ = "0.0.0+unknown"
 
 __all__ = [
+    "aggregate_influence_calendar", "compute_hac_covariance", "delta_method_hac_intervals",
     "calibrate_covariance_moments",
     "HierarchicalMeanPosterior", "pool_gaussian_means",
     "joint_wls_gaussian_region",

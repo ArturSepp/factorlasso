@@ -15,8 +15,11 @@ Examples of [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 Every script listed here runs offline from a checkout, on synthetic data or on data committed to
-the repository, and every one is executed by the test suite against factorlasso 1.0.0. The first
-table routes from a task to its article and script; the recipes below are checked starting points.
+the repository. The minimum supported released version for this catalogue is
+**`factorlasso>=1.0.4`**; the test suite executes the canonical scripts. See
+[versions and compatibility](index.md#versions-and-compatibility) for the support-floor meaning.
+The first table routes from a task to its article and script; the recipes below are checked
+starting points.
 
 ## Scripts by article
 
