@@ -1,5 +1,5 @@
 # Portions adapted from OptimalPortfolios research references (MIT).
-# This FactorLasso implementation is distributed under GPL-3.0-or-later;
+# This FactorLasso implementation is distributed under the MIT License;
 # the original permission notice for those portions is retained below.
 # MIT License
 #

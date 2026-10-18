@@ -6,7 +6,7 @@ mathematics, local links) are adapted from ``OptimalPortfolios/tools/check_docs.
 
     Copyright (c) Artur Sepp. Those files are distributed under the MIT License; the
     permission notice of that licence is retained for the adapted portions. This file, as
-    part of factorlasso, is distributed under GPL-3.0-or-later.
+    part of factorlasso, is distributed under the MIT License.
 
 Local additions are the ``retained`` page status for legacy RST pages, the ``planned`` article
 list, the ``case_study`` page form, and three ownership checks:

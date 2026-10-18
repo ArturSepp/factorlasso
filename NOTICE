@@ -1,0 +1,60 @@
+FactorLasso source attribution and licensing scope
+
+FactorLasso 1.0.4.post1 and subsequent source incorporating this notice are
+distributed under the MIT License in LICENSE. Earlier published GPL artifacts
+and their licence grants remain unchanged. The maintainer confirmed ownership
+of the relevant first-party source and contributions before this transition.
+Authorship and scholarly acknowledgements remain in the source and CITATION.cff.
+
+The following first-party sibling adaptations retain their MIT attribution:
+
+- OptimalPortfolios research references: factorlasso/inference/_ar1.py,
+  _gaussian.py, _geometry.py and _validation.py; factorlasso/priors/_inference.py
+  and _risk.py. Their original full MIT notices remain in each source file.
+- OptimalPortfolios/tools/check_docs.py and QuantInvestStrats/tools/check_docs.py:
+  tools/check_docs.py.
+- OptimalPortfolios/tools/docs_analytics/registry.py, itself adapted from
+  QuantInvestStrats/tools/docs_analytics/run.py: tools/docs_analytics/registry.py.
+- QuantInvestStrats/docs/_ext/qis_indexing.py: docs/_ext/factorlasso_indexing.py.
+- QuantInvestStrats/src/qis/tests/documentation_indexing_test.py:
+  tests/test_docs_indexing.py.
+
+The sibling source permission notice is reproduced below. These paths identify
+source origins; tooling and tests need not be included in every distribution.
+
+MIT License
+
+Copyright (c) 2024 Artur Sepp
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Scope and separate material
+
+The package licence applies to cleared first-party source and applicable
+documentation, examples and synthetic fixtures. Third-party dependencies retain
+their own licences. Vendor datasets and SDKs, manuscript versions and other
+separately licensed material are not relicensed by this notice. Python wheels
+and source distributions exclude the paper and agent workspaces. The separate
+paper replication workspaces retain their recorded licensing terms.
+
+References to mathematical methods, including uniLasso, are scholarly
+attributions and are retained. No copied or translated implementation from grplasso, gglasso, glmnet or glasso
+was identified in the reviewed release source;
+the estimator expresses its optimisation problems through CVXPY. This finding
+describes the reviewed source and is not a licence claim about those packages.

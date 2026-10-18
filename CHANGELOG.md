@@ -17,6 +17,16 @@
 - These intervals describe unpenalised fixed-model WLS benchmarks; they do not
   provide post-selection or penalised-estimator coverage.
 
+## 1.0.4.post1 — 2026-10-18 (UTC)
+
+### Changed
+
+- Distribute the rights-cleared package under MIT, with full licence and retained
+  source notices included in both wheel and source distribution. Earlier GPL
+  releases, tags and grants remain unchanged.
+- This licence-only post release preserves the 1.0.4 numerical implementation,
+  public API, defaults and dependencies; independent 1.0.5 development is excluded.
+
 ## 1.0.4 — 2026-10-15
 
 ### Added

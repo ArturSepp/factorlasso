@@ -48,8 +48,11 @@ covers existing root `__all__` names, signatures, defaults, return contracts and
 attributes. Numerical corrections are documented in the changelog. Version 1.0 removed legacy
 flat modules; use package-root or documented public subpackage imports.
 
-FactorLasso is [GPL-3.0-or-later licensed](https://github.com/ArturSepp/FactorLasso/blob/main/LICENSE),
-including when consumed by an MIT-licensed package. Dependencies retain their own licences.
+FactorLasso is [MIT licensed](https://github.com/ArturSepp/FactorLasso/blob/main/LICENSE)
+from `1.0.4.post1`; earlier GPL releases retain their original terms.
+Dependencies retain their own licences. The
+[retained notices](https://github.com/ArturSepp/FactorLasso/blob/main/NOTICE)
+describe source attribution and scope.
 It has no core dependency on QIS or OptimalPortfolios.
 
 Each successful HTML build also emits `llms.txt` and `llms-api.txt`. The page notice links
@@ -258,7 +261,7 @@ Four further working papers use factorlasso; they are listed with their status o
   [contributor guide](https://github.com/ArturSepp/factorlasso/blob/main/CONTRIBUTING.md).
 - [Compatibility policy](https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md) and
   [changelog](https://github.com/ArturSepp/factorlasso/blob/main/CHANGELOG.md).
-- [License](https://github.com/ArturSepp/factorlasso/blob/main/LICENSE): GPL-3.0-or-later.
+- [License](https://github.com/ArturSepp/factorlasso/blob/main/LICENSE): MIT from `1.0.4.post1`.
 
 <!-- The sidebar mirrors the grouped links above. Keep each document in one toctree. -->
 

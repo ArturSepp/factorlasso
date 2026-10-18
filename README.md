@@ -1210,4 +1210,8 @@ software itself:
 
 ## License
 
-GPL-3.0-or-later — see [`LICENSE`](LICENSE).
+MIT — see [`LICENSE`](LICENSE) and the retained attributions in [`NOTICE`](NOTICE).
+
+`1.0.4.post1` is the first verified MIT release after the GPL release series. It changes licensing and release documentation; the 1.0.4 estimator API, numerical implementation and defaults are unchanged. Earlier GPL releases and their grants remain available under their original terms.
+
+This licence covers the package source and applicable documentation, examples and synthetic fixtures. Dependencies, vendor data and SDKs, and manuscripts retain their own terms; the package licence does not relicense them.

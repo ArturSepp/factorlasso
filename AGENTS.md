@@ -62,8 +62,7 @@ API is scikit-learn compatible (`fit` / `predict` / `score`).
 
 It is the estimation engine behind `optimalportfolios` and the companion code to a
 paper under review at the *Journal of Statistical Software*. Distribution and import
-name `factorlasso`. Licensed **GPL-3.0** (`LICENSE`) — unlike most of the stack, which
-is MIT.
+name `factorlasso`. Licensed **MIT** (`LICENSE`); retain the source attributions and scope in `NOTICE`.
 
 ## Ecosystem position
 

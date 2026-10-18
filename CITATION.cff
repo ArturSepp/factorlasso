@@ -12,7 +12,7 @@ authors:
     family-names: Kastenholz
 repository-code: "https://github.com/ArturSepp/factorlasso"
 url: "https://github.com/ArturSepp/factorlasso"
-license: GPL-3.0-or-later
+license: MIT
 version: "1.0.5.dev1"
 # Development snapshot; date-released is set when published.
 keywords:

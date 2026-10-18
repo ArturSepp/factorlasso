@@ -180,5 +180,8 @@ not.
 
 ## Licence
 
-This project is licensed under the GNU General Public License v3.0, unlike most of the other packages in the stack, which are MIT. By contributing, you agree that your contributions are licensed under
-the GPL-3.0 licence of this project.
+This project is licensed under the [MIT License](LICENSE). By contributing source or
+applicable documentation, examples or synthetic fixtures, you agree to distribute
+your contribution under that licence and confirm that you have the right to do so.
+Preserve existing copyright and permission notices. Dependencies, vendor material
+and manuscripts retain their own terms; see [NOTICE](NOTICE).
