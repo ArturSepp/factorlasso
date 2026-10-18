@@ -125,5 +125,8 @@ substitute live data or claim a new run is the historical archive.
 
 ## License
 
-Code under GPL-3, matching `factorlasso`. Manuscript copyright remains with the
-authors. This reorganization grants no additional publication rights.
+The replication code in this workspace retains its recorded GPL-3 terms.
+FactorLasso package source starting with the 1.0.4.post1 MIT transition uses the
+MIT License; this does not change the replication workspace's licence.
+Manuscript copyright remains with the authors, and data retain their documented
+source terms. This transition grants no additional publication rights.

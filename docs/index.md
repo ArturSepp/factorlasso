@@ -230,7 +230,7 @@ Four further working papers use factorlasso; they are listed with their status o
   [contributor guide](https://github.com/ArturSepp/factorlasso/blob/main/CONTRIBUTING.md).
 - [Compatibility policy](https://github.com/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md) and
   [changelog](https://github.com/ArturSepp/factorlasso/blob/main/CHANGELOG.md).
-- [License](https://github.com/ArturSepp/factorlasso/blob/main/LICENSE): GPL-3.0-or-later.
+- [License](https://github.com/ArturSepp/factorlasso/blob/main/LICENSE): MIT from `1.0.4.post1`.
 
 <!-- The sidebar mirrors the grouped links above. Keep each document in one toctree. -->
 

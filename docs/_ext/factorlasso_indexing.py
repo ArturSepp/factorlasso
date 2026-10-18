@@ -4,7 +4,7 @@ Adapted from ``QuantInvestStrats/docs/_ext/qis_indexing.py``:
 
     Copyright (c) Artur Sepp. That file is distributed under the MIT License; the permission
     notice of that licence is retained for the adapted portions. This file, as part of
-    factorlasso, is distributed under GPL-3.0-or-later.
+    factorlasso, is distributed under the MIT License.
 
 Read the Docs serves the default version's sitemap at the domain root. Listing the actual pages
 gives crawlers one preferred discovery path instead of only the version roots. The moving

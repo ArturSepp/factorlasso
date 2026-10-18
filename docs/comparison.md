@@ -33,6 +33,10 @@ The factorlasso column includes OLS prior centres, individual prior bounds, per-
 normalisation and empirical residual correlation. The competitor columns describe the dated
 releases above; they are not a claim about later releases.
 
+The historical licence cell below describes factorlasso 1.0.0. The licence-only
+`1.0.4.post1` release uses [MIT](https://github.com/ArturSepp/factorlasso/blob/main/LICENSE);
+the older GPL releases and this dated comparison are unchanged.
+
 ## Choose by task
 
 - Choose **scikit-learn** for standard Lasso or Elastic Net inside its pipelines, preprocessing,

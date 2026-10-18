@@ -6,7 +6,7 @@ The image-reference parser and the coverage comparison are adapted from
 
     Copyright (c) Artur Sepp. Those files are distributed under the MIT License; the
     permission notice of that licence is retained for the adapted portions. This file, as
-    part of factorlasso, is distributed under GPL-3.0-or-later.
+    part of factorlasso, is distributed under the MIT License.
 
 Two kinds of asset are registered. A ``paper`` asset is an exhibit committed under ``papers/``
 with its own producer script and frozen inputs; documentation tooling displays it and never
