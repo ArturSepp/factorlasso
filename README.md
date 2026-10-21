@@ -5,22 +5,15 @@ shrinkage, data-driven grouped penalties, and consistent factor covariance assem
 
 It provides LASSO, Hierarchical Clustering Group LASSO (HCGL), Factor-Clustering Group LASSO
 (FCGL), sparse-group, UniLasso, and cooperative penalties through auditable CVXPY formulations.
-
 Its standalone output is a fitted `LassoModel` with labelled loadings, intercepts and
-diagnostics. [Inspect a completed estimator](docs/completed_estimator.md), including
-units, dates, failure states and explicit table export, with the
-[canonical offline example](examples/docs/completed_estimator.py). The financial
-factor-model pipeline belongs to [tradablefactors](https://github.com/ArturSepp/tradablefactors);
-OptimalPortfolios optimises supplied alphas and covariance, and QIS supplies general
-risk analytics and reports. None is required to complete a factorlasso fit.
+diagnostics; [inspect a completed estimator](docs/completed_estimator.md), including units,
+dates, failure states and explicit table export, with the
+[canonical offline example](examples/docs/completed_estimator.py). The financial factor-model
+pipeline belongs to [factormodels](https://github.com/ArturSepp/FactorModels); OptimalPortfolios
+optimises supplied alphas and covariance, and QIS supplies general risk analytics and reports.
+None is required to complete a factorlasso fit.
 
 **Install:** `pip install factorlasso` · **Import:** `factorlasso` · **Status:** Stable
-
-**Upgrading to 1.0:** The old flat module paths (such as `factorlasso.lasso_estimator`
-and `factorlasso.beta_priors`) have been removed. Use the package root or the capability
-subpackages. All 74 root exports retain their signatures and defaults. See the
-[migration guide and 1.x compatibility policy](COMPATIBILITY.md), including the limit
-on loading pre-0.24 pickles.
 
 [![PyPI](https://img.shields.io/pypi/v/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
 [![Python](https://img.shields.io/pypi/pyversions/factorlasso?style=flat-square)](https://pypi.org/project/factorlasso/)
@@ -30,58 +23,151 @@ on loading pre-0.24 pickles.
 [![Downloads](https://static.pepy.tech/badge/factorlasso)](https://pepy.tech/project/factorlasso)
 [![Monthly](https://static.pepy.tech/badge/factorlasso/month)](https://pepy.tech/project/factorlasso)
 
-**Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Sparse
-Multi-Output Regression with Cluster-Grouped Sign Constraints in Python*,
-submitted to the *Journal of Statistical
-Software*. Its manuscript and replication workspace are retained locally.
-See [Citation](#citation) for the BibTeX entry and the
-[paper index](papers/README.md) for public availability.
+**Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Sparse Multi-Output Regression with
+Cluster-Grouped Sign Constraints in Python*, submitted to the *Journal of Statistical Software*.
+**Methodology:** Sepp, A. and Kastenholz, M. (2026), *Gated Cluster-Pooled Sign Constraints for
+Multi-Output Sparse Regression*, submitted to *Computational Statistics and Data Analysis*. See
+[Statement of need](#statement-of-need) for what each paper contributes, [Citation](#citation)
+for the BibTeX entries and the [paper index](papers/README.md) for public availability.
 
-**Methodology:** The cluster-pooled sign derivation and the noise-floor gate
-are developed in Sepp, A. and Kastenholz, M. (2026), *Gated Cluster-Pooled Sign
-Constraints for Multi-Output Sparse Regression*, submitted to *Computational
-Statistics and Data Analysis*. The replication material for that paper is in
-[`papers/sign_pooling_2026/`](papers/sign_pooling_2026/).
+**Documentation:** [factorlasso.readthedocs.io](https://factorlasso.readthedocs.io/en/latest/) ·
+[getting started](docs/getting-started.md) · [task guides](docs/task-guides.md) ·
+[choice guide](docs/comparison.md)
 
-`factorlasso` is a small, dependency-light Python package for fitting sparse
-multi-output linear models
+---
+
+## Why factorlasso
+
+Factor models are central to quantitative finance, underpinning the commercial risk systems in
+industry use (among others, MSCI Barra, Axioma, and Bloomberg's multi-asset-class models). These
+systems decompose asset returns into a few common factors and an idiosyncratic residual
+(Rosenberg and McKibben 1973; Connor 1995). Practitioners who build factor-risk and
+capital-market-assumption systems must estimate the loadings of *N* asset returns on *M*
+tradable factors over a sample of length *T*, and they need software that produces loadings
+stable enough to feed a portfolio optimiser. In financial applications the estimation regime is
+adverse on four counts. First, the sample is short by statistical standards, because most core
+cross-asset indices and funds launched in the late 2000s and 2010s, giving 5 to 25 years of
+data. Second, the factors are often strongly correlated, so the design carries severe
+multicollinearity. Third, the cross-section is moderate (*N* ∈ [50, 200] at the
+multi-asset-class level). Fourth, the true coefficient matrix β ∈ ℝ^(N×M) exhibits a cluster
+structure that the practitioner does not know a priori, and traditional provider-based asset
+classifications are a weak proxy for the interdependence of assets. Assets in the same economic
+group (regional equity, investment-grade credit, hedge funds, and so on) typically share signs on
+the dominant factors, and an estimator that exploits this structure can outperform one that
+treats each asset independently.
+
+`factorlasso` fits the sparse multi-output linear model
 
 $$
 Y = X\beta^\top + \varepsilon,
 \qquad \beta \in \mathbb{R}^{N \times M}
 $$
 
-with L1 and L2 penalties along with sign constraints on factor loadings.
+with L1 and L2 penalties along with sign constraints on factor loadings. It is written in pure
+numpy/pandas/scipy/cvxpy — no numba, no custom coordinate descent. The solver is CVXPY (default
+`CLARABEL`), so problem formulation is explicit and auditable. It is useful when:
 
-It targets the financial data and regime where standard sparse-regression tools quietly
-misattribute risk: short samples, strongly correlated factors, and a known
-group structure or inferred cluster structure. On a multi-asset benchmark it matches scikit-learn, skglm,
-and asgl on generic accuracy while recovering a collinear credit factor that
-every one of them shrinks to zero (see [Empirical
-illustration](#empirical-illustration)).
+- some coefficients **must be zero, non-negative, or non-positive**, by asset, by factor, or both;
+- you have a **prior** β₀ and want to penalise `‖β − β₀‖`, not `‖β‖`;
+- you want **structured sparsity** with groups supplied by you or discovered by hierarchical
+  clustering of the response correlation matrix, in either grouping geometry (HCGL over each
+  asset's loadings, FCGL over a cluster's assets on each factor);
+- you want **group-level selection with within-group elementwise sparsity** (sparse group LASSO);
+- you want the **sign coherence within a group to be soft** (cooperative LASSO) or a
+  **per-response univariate-guided** estimator with no grouping (UniLasso).
 
-`factorlasso` is useful when four things matter:
+### Key differentiators
 
-- Some coefficients **must be zero, non-negative, or non-positive**, possibly by
-  asset, by factor, or both.
-- You have a **prior** β₀ and want to penalise `‖β − β₀‖`, not `‖β‖`.
-- You want **structured sparsity** — groups of responses entering or leaving
-  the model together — where the groups are either user-supplied or discovered
-  by hierarchical clustering of the response correlation matrix. Two grouping
-  geometries are offered: **HCGL** (Hierarchical Clustering Group LASSO), which
-  groups the penalty over each asset's factor loadings, and **FCGL**
-  (Factor-Clustering Group LASSO), which groups it over a cluster's assets on
-  each factor.
-- You want to combine **group-level selection with within-group elementwise
-  sparsity** via a tunable mix of group L2 and L1 penalties (Sparse Group
-  LASSO).
-- You want the **sign coherence within a group to be soft**, so the data can
-  overrule it, through the cooperative LASSO, or a **per-response
-  univariate-guided** estimator that needs no grouping, through UniLasso.
+**1. Per-element sign constraints.** An `(N × M)` matrix `factors_beta_loading_signs` with
+entries in `{0, 1, -1, NaN}` encodes equality-to-zero, non-negative, non-positive or free, so one
+fit carries structural knowledge across responses. Scikit-learn's `Lasso` supports one
+`positive` flag for the whole matrix; this is the custom CVXPY problem, packaged. See
+[sign constraints and priors](docs/sign_constraints_and_priors.md).
 
-It is written in pure numpy/pandas/scipy/cvxpy. No numba, no custom
-coordinate descent. The solver is CVXPY (default `CLARABEL`), so problem
-formulation is explicit and auditable.
+**2. Data-driven sign constraints with a noise-floor gate.** `auto_sign_constraints=True`
+derives signs inside `fit()` from pooled univariate slopes on the same EWMA-demeaned arrays the
+solver consumes, pooling per `model_type` (per response for LASSO, per group or discovered
+cluster for the grouped modes). `auto_sign_threshold_t` (default `0.75`, not a significance test)
+pins factors below the noise floor to zero; explicit sign entries override the derived matrix
+per cell; `auto_sign_adaptive_weights=True` adds Zou (2006) adaptive L1 weights from the same
+slopes. See [gated cluster-pooled signs](docs/gated_cluster_pooled_signs.md) and
+[adaptive penalty weights](docs/adaptive_penalty_weights.md).
+
+**3. Prior-centered regularisation.** `factors_beta_prior` penalises `‖β − β₀‖` instead of
+`‖β‖`; the prior is a soft target controlled by `reg_lambda`. `apply_ols_prior=True` builds an
+empirical prior from weighted one-factor OLS slopes (`prior_selection_type="highest_r2"`, with
+`factor_for_prior` overrides), re-estimated inside every training window. See
+[prior targets](docs/prior_targets.md), [prior inference](docs/prior_inference.md) and the
+[offline example](examples/ols_prior.py).
+
+**4. Hierarchical Clustering Group LASSO (HCGL).** EWMA correlation of the responses → Ward's
+linkage → a cut by `cutoff_fraction` or `n_clusters` → a row-grouped penalty weighted by cluster
+size. `DistanceTransform` (`ONE_MINUS_RHO`, `CHORD`, `ARCCOS`), `DependenceMeasure` (`PEARSON`,
+`SPEARMAN`, `GERBER`) and the opt-in `ClusterCorrelationTransform.REMOVE_PC1` diagnostic
+control the partition; all measures are signed because the partition feeds sign pooling. See
+[group penalties](docs/group_penalties_hcgl_fcgl.md), [cluster discovery](docs/cluster_discovery.md)
+and [common-mode removal](docs/common_mode_removal.md).
+
+**5. Sparse Group LASSO.** `l1_weight` = α ∈ [0, 1] adds an elementwise L1 term to the group L2
+penalty (Simon, Friedman, Hastie and Tibshirani 2013): group-then-prune. `α = 0` reduces exactly
+to pure group LASSO and drops the term from the problem. See
+[group penalties](docs/group_penalties_hcgl_fcgl.md).
+
+**6. Factor-Clustering Group LASSO (FCGL).** The complementary geometry: the L2 norm runs over a
+cluster's assets on each factor, so a cluster-by-factor block enters or leaves together. Sign
+derivation and adaptive weights are shared with HCGL; FCGL is one coupled cone programme and
+matches HCGL in wall-clock to within a couple of percent at N = 500. Neither mode dominates in
+general. See [group penalties](docs/group_penalties_hcgl_fcgl.md).
+
+**7. UniLasso.** Per-response two-stage estimation with no grouping: univariate fits, then a
+non-negative combination that keeps each univariate sign (`unilasso_loo`,
+`unilasso_non_negative`), following Chatterjee, Hastie and Tibshirani (2025). See
+[UniLasso](docs/unilasso.md).
+
+**8. Cooperative LASSO.** Soft within-group sign coherence (Chiquet, Grandvalet and Charbonnier
+2012): positive and negative parts are penalised as separate groups, on supplied groups
+(`COOPERATIVE_GROUP_LASSO`) or discovered clusters (`COOPERATIVE_CLUSTER_GROUP_LASSO`). No hard
+sign is derived or imposed. See [cooperative LASSO](docs/cooperative_lasso.md).
+
+**9. Residual validation.** `diagnose_residuals` tests the strict-factor-structure assertion
+`Σ = B Σ_F B' + D` directly, with the sphericity statistic against its chi-square null and the
+largest residual eigenvalue against the Marchenko–Pastur edge; `missing_factor_components` names
+the series that would define an omitted factor. `LassoModelDiagonalityCV` selects `reg_lambda`
+on that criterion; `effective_sparsity` and `suggest_tolerance` count loadings at a
+scale-aware tolerance. See [residual diagnostics](docs/residual_diagnostics.md) and
+[penalty selection](docs/penalty_selection.md).
+
+**10. Empirical residual correlation.** `CurrentFactorCovarData.get_y_covar` and
+`RollingFactorCovarData.get_y_covars` assemble `B F B' + w D`; with
+`residual_type="empirical"`, `D = S[(1 − ρ)I + ρR]S` adds a prepared common-period EWMA residual
+correlation `R` while keeping the stored residual variances on the diagonal. See
+[empirical residual correlation](docs/empirical_residual_correlation.md) and
+[factor covariance assembly](docs/factor_covariance_assembly.md).
+
+### When to use it — and when not
+
+**Use it when:**
+
+- Multi-output LASSO with heterogeneous sign constraints across the coefficient matrix.
+- You have a prior `β₀` that should shrink the fit instead of zero.
+- You need discovered-group structured sparsity (HCGL or FCGL), or group-level selection with
+  within-group elementwise sparsity (sparse group LASSO at small-to-moderate α).
+- You need to test whether the residual covariance is actually diagonal, or to select the
+  penalty on that criterion rather than on prediction error.
+- You want an auditable CVXPY formulation where heterogeneous constraints matter more than
+  specialized-solver throughput.
+
+**Reach for something else when:**
+
+- You need non-linear models, random effects, or GLM link functions.
+- You need the financial factor-model pipeline (factor definitions, NAVs, mixed-cadence
+  covariance, premia): that is `factormodels`. Portfolio construction is `optimalportfolios`.
+
+The maintained [choice guide](https://factorlasso.readthedocs.io/en/latest/comparison.html)
+compares FactorLasso with scikit-learn, skglm, and groupyr by workflow fit, constraint and
+grouping geometry, multi-output behaviour, missing-data handling, covariance assembly, solver
+trade-offs, interoperability, dependencies, and license; it is dated, cites primary sources, and
+includes cases favoring every project. The repository pointer is [`COMPARISON.md`](COMPARISON.md).
 
 ## Installation
 
@@ -89,7 +175,101 @@ formulation is explicit and auditable.
 pip install factorlasso
 ```
 
-Requires Python ≥ 3.10, CVXPY ≥ 1.5.2, SciPy ≥ 1.15.0, and numpy / pandas / openpyxl.
+Upgrade using
+
+```bash
+pip install --upgrade factorlasso
+```
+
+Requires Python ≥ 3.10, CVXPY ≥ 1.5.2, SciPy ≥ 1.15.0, and numpy / pandas / openpyxl. Matplotlib
+is not a runtime dependency; `plot_signs()` and `RiskClusterReport.to_figures()` import it only
+when called.
+
+**Upgrading to 1.0:** the old flat module paths (such as `factorlasso.lasso_estimator` and
+`factorlasso.beta_priors`) have been removed. Use the package root or the capability
+subpackages. All 74 root exports retain their signatures and defaults. See the
+[migration guide and 1.x compatibility policy](COMPATIBILITY.md), including the limit on loading
+pre-0.24 pickles.
+
+## Table of contents
+
+1. [Why factorlasso](#why-factorlasso)
+2. [Installation](#installation)
+3. [Statement of need](#statement-of-need)
+4. [Overview](#overview)
+5. [Five-minute quickstart](#five-minute-quickstart)
+6. [Examples](#examples)
+7. [Testing](#testing)
+8. [Changelog](#changelog)
+9. [Feedback & contributing](#feedback-contributing)
+10. [Citation](#citation)
+11. [Ecosystem](#ecosystem)
+12. [License](#license)
+13. [Disclaimer](#disclaimer)
+
+## Statement of need
+
+Standard sparse-regression tools quietly misattribute risk in the regime financial factor models
+live in: short samples, strongly correlated factors, and a group or cluster structure in the
+loadings. `factorlasso` targets that regime. On a multi-asset benchmark it matches scikit-learn,
+skglm, and asgl on generic accuracy while recovering a collinear credit factor that every one of
+them shrinks to zero; the [credit-attribution case study](docs/app_multi_asset_credit_attribution.md)
+and its [offline synthetic example](examples/docs/app_multi_asset_credit_attribution.py)
+show how sign constraints, prior centres and grouped penalties affect factor attribution.
+`factorlasso` is the estimation engine behind a multi-asset capital market assumptions and
+allocation framework: the loadings it produces feed the ROSAA framework for robust strategic and
+tactical asset allocation and the MATF-CMA framework for capital market assumptions.
+
+| Paper | Implemented analytics | Where |
+|---|---|---|
+| Sepp, A. and Kastenholz, M. (2026), *factorlasso: Sparse Multi-Output Regression with Cluster-Grouped Sign Constraints in Python*, submitted to the Journal of Statistical Software | The estimator: `LassoModel` with its model types, sign constraints, priors, cross-validation, residual diagnostics and factor covariance assembly; sklearn interoperability | [sparse factor model](docs/sparse_factor_model.md), [software design](docs/software_design.md), [research availability](docs/scientific-replication.md) (manuscript and replication workspace retained locally) |
+| Sepp, A. and Kastenholz, M. (2026), *Gated Cluster-Pooled Sign Constraints for Multi-Output Sparse Regression*, submitted to Computational Statistics and Data Analysis | The cluster-pooled sign derivation and the noise-floor gate (`auto_sign_constraints`, `auto_sign_threshold_t`) and the adaptive penalty weights | [gated cluster-pooled signs](docs/gated_cluster_pooled_signs.md), [`papers/sign_pooling_2026/`](papers/sign_pooling_2026/) (approved manuscript, figures, replication code and tests) |
+| Sepp, A., Ossa, I. and Kastenholz, M. (2026), *Robust Optimization of Strategic and Tactical Asset Allocation for Multi-Asset Portfolios*, The Journal of Portfolio Management 52(4), 86–120 | The loadings that feed the ROSAA risk model, consumed through `factormodels` and `optimalportfolios` | [portfolio risk models](docs/app_portfolio_risk_models.md) |
+| Sepp, A., Hansen, E. and Kastenholz, M. (2026), *Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors*, [SSRN 6785958](https://ssrn.com/abstract=6785958) | The loadings and factor covariance behind the MATF capital market assumptions, consumed through `factormodels` | [factor covariance assembly](docs/factor_covariance_assembly.md) |
+
+## Overview
+
+The package root re-exports the public API; the capability subpackages are `linear_model`
+(the `LassoModel` estimator, its dispatch over model types, nowcasting, the production
+bootstrap and test inversion), `priors` (sign derivation, OLS priors, expert maps, bounds and
+budget modes), `cluster` (dependence measures, hierarchical clustering, rolling smoothing and
+stability statistics), `model_selection` (cross-validation and the diagonality selector),
+`diagnostics` (residual diagnostics and cluster lineage), `covariance` (factor covariance
+containers, residual correlation and alpha uncertainty), `inference` (weighted and HAC
+inference, resampling and intervals) and `utils` (EWM, HAC and panel helpers).
+The [software design](docs/software_design.md) page draws the imports and the
+[API reference](https://factorlasso.readthedocs.io/en/latest/api.html) lists every public object.
+
+### Methods
+
+| `LassoModelType` | Penalty | Selected by | Article | Example |
+|---|---|---|---|---|
+| `LASSO` | `λ ‖β − β₀‖₁` with per-element sign constraints | default | [sign constraints and priors](docs/sign_constraints_and_priors.md) | [`sign_constraints_and_priors.py`](examples/docs/sign_constraints_and_priors.py) |
+| `GROUP_LASSO` | group L2 over supplied `group_data` | `group_data` | [group penalties](docs/group_penalties_hcgl_fcgl.md) | [`group_penalties_hcgl_fcgl.py`](examples/docs/group_penalties_hcgl_fcgl.py) |
+| `HIERARCHICAL_CLUSTER_GROUP_LASSO` | `(1−α) λ Σ_g w_g ‖β_g − β₀‖_{2,1} + α λ ‖β − β₀‖₁` over each asset's loading row, clusters discovered from the response correlation | `cutoff_fraction` or `n_clusters`, `span`, `l1_weight` | [group penalties](docs/group_penalties_hcgl_fcgl.md), [cluster discovery](docs/cluster_discovery.md) | [`cluster_discovery.py`](examples/docs/cluster_discovery.py) |
+| `FACTOR_CLUSTER_GROUP_LASSO` | `(1−α) λ Σ_g w_g Σ_j ‖β_{g,j} − β⁰_{g,j}‖₂ + α λ ‖β − β⁰‖₁` over a cluster's assets on each factor | as HCGL | [group penalties](docs/group_penalties_hcgl_fcgl.md) | [`group_penalties_hcgl_fcgl.py`](examples/docs/group_penalties_hcgl_fcgl.py) |
+| `UNILASSO` | stage-1 univariate fits, stage-2 non-negative combination | `unilasso_loo`, `unilasso_non_negative` | [UniLasso](docs/unilasso.md) | [`unilasso.py`](examples/docs/unilasso.py) |
+| `COOPERATIVE_GROUP_LASSO`, `COOPERATIVE_CLUSTER_GROUP_LASSO` | positive and negative parts penalised as separate groups | `group_data` or `cutoff_fraction` | [cooperative LASSO](docs/cooperative_lasso.md) | [`cooperative_lasso.py`](examples/docs/cooperative_lasso.py) |
+
+Data-driven signs (`auto_sign_constraints`) and the empirical prior (`apply_ols_prior`) compose
+with every prior-aware type; UniLasso rejects the prior flag and the cooperative types never
+gate. Observation weighting is EWMA with the effective `span` (uniform when `None`); see
+[EWMA weighting and ragged histories](docs/ewma_weighting_and_ragged_histories.md).
+
+### Analytics at a glance
+
+| Area | What the package computes |
+|---|---|
+| Estimation | `LassoModel.fit(x, y)` → `coef_` (N × M), `alpha_const_`, `intercept_`, `predict`, `score`, `summary()`, `plot_signs()`; NumPy or pandas inputs; `__sklearn_tags__` for `Pipeline`, `GridSearchCV` and `cross_val_score` |
+| Sign derivation | `derived_signs_` from gated, cluster-pooled univariate slopes; explicit overrides per cell; adaptive L1 and adaptive group weights |
+| Priors | explicit `factors_beta_prior`; empirical OLS prior with `ols_betas_`, `ols_r2_`, `ols_beta_prior_`, `effective_beta_prior_`; expert-input maps described in [expert inputs](docs/expert_inputs.md) |
+| Cluster discovery | `clusters_`, `linkage_`, `compute_clusters_from_corr_matrix`, `compute_rolling_smoothed_clusters` with an eligibility panel, `remove_first_principal_component` diagnostics |
+| Cluster lineage and stability | `analyze_cluster_lineage` → persistent derived tracks and `RiskClusterReport` (offline diagnostic, not a signal); `compute_cluster_stability_statistics`, `score_with_stability_pooled_clusters`, `compute_co_association_panel` — point-in-time co-association weights; see [cluster lineage](docs/cluster_lineage.md) and [stability and pooled scoring](docs/cluster_stability_and_pooled_scoring.md) |
+| Penalty selection | `LassoModelCV` (time-series expanding-window splits) and `LassoModelDiagonalityCV` (residual diagonality criterion) on shared splits and grid |
+| Residual diagnostics | `diagnose_residuals`, `missing_factor_components`, `effective_sparsity`, `suggest_tolerance` |
+| Factor covariance | `CurrentFactorCovarData`, `RollingFactorCovarData` → `B F B' + w D` with orthogonal or empirical residuals; `estimate_residual_correlation` → `ResidualCorrelationData`; ticker filtering and Excel save/load |
+| Nowcasting | `LassoModel.nowcast(target_factors, alpha_span)` → `LassoNowcastResult` with factor component, statistical alpha, residuals and diagnostics; fails closed on look-ahead; see [residual-alpha nowcasting](docs/residual_alpha_nowcasting.md) |
+| Production inference | [production-estimator bootstrap](docs/production_bootstrap.md): full FCGL refits and joint coefficient draws with signed portfolio weights (95% percentile ranges labelled as stability ranges); [production test inversion](docs/production_test_inversion.md): candidate exposures tested through complete null refits |
 
 ## Five-minute quickstart
 
@@ -125,978 +305,62 @@ print(model.predict(X).shape)    # fitted response panel
 (200, 10)
 ```
 
-The API mirrors scikit-learn: `fit(x, y)`, `predict(x)`, `score(x, y)`,
-`get_params()`, `set_params()`. Fitted attributes carry a trailing underscore.
-`fit`/`predict`/`score` accept NumPy arrays as well as pandas objects, and the
-estimator declares `__sklearn_tags__`, so it composes directly with
-`sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`. A fitted
-model also exposes `summary()`. The `plot_signs()` heatmap requires Matplotlib,
-which is not a runtime dependency and must be installed separately.
-
-### Residual-alpha nowcasting
-
-A fitted, de-meaned model can extrapolate a missing response return once the realised factor
-return for that target date is available:
-
-```python
-target_factors = pd.DataFrame(
-    [[0.01, -0.002, 0.004, 0.0]],
-    index=[dates[-1] + pd.offsets.MonthEnd()],
-    columns=model.coef_.columns,
-)
-nowcast = model.nowcast(target_factors, alpha_span=None)
-```
-
-`alpha_span=None` reuses the effective beta span recorded by `fit()`. The model stores one
-deep-copied original-unit residual panel at fit finalisation and applies an adjust-false recursive
-EWMA to each response after dropping its leading missing residuals. Interior missing observations
-hold the previous state. If the fit used uniform weights (`effective_span_ is None`), statistical
-alpha is the simple available-observation residual mean instead. In the fitted return units,
-
-```text
-residuals        = y_history - X_history @ beta
-stat_alpha       = terminal_residual_mean(residuals, alpha_span)
-factor_component = X_target @ beta
-prediction       = factor_component + stat_alpha
-```
-
-The prediction contains statistical alpha exactly once. It contains neither the economic
-`alpha_const_` nor the mechanical de-meaned solver `intercept_`; both would be different
-quantities. `LassoNowcastResult` separately returns copied predictions, factor components, target
-factors, statistical alpha, betas, residuals, and response-level diagnostics. Diagnostics retain
-the fitted `alpha_const_`, nominal-span de-meaned solver sums of squares and R-squared under
-explicit names, including negative R-squared, and report Kish effective sample size from the
-actual normalised quadratic-loss weights.
-
-The method fails closed unless the fit recorded `demean=True`, all fitted and target factor rows
-are finite, the final response row is fully observed, factor columns match exactly in identity and
-order, and sorted unique target dates are strictly after the sorted unique fit cutoff. It therefore
-does not infer reporting cadence or decide which missing cells are eligible; those are consumer
-responsibilities.
-
-Retained nowcast state is one `T x N` float residual DataFrame plus its index and columns. No
-additional full copies of fitted `X` and `Y` are retained. A regularisation path with `K` fitted
-models consequently adds `O(K T N)` residual storage, measured in tests with
-`DataFrame.memory_usage(index=True, deep=True)`; each path model owns exactly one independent
-snapshot.
-
----
-
-## Offline cluster lineage
-
-`analyze_cluster_lineage` turns independently estimated per-date risk clusters in a
-`RollingFactorCovarData` panel into persistent derived tracks. The default deterministic sparse
-matcher handles consecutive links and bridge gaps without NetworkX; its calibrated output is an
-offline, full-panel reporting diagnostic and never a point-in-time trading signal. The report's
-table methods need only core dependencies. `RiskClusterReport.to_figures()` imports Matplotlib
-only when called, so plotting remains optional.
-
-## Causal cluster-stability statistics
-
-`compute_cluster_stability_statistics` turns a regular monthly or quarterly sequence of operating
-partitions into one reusable, point-in-time `ClusterStabilityStatistics` object. Its `w_i` panel
-contains asset-level peer co-association weights and `w_g` contains their current-cluster means.
-Both use only partitions observed through the row date. A configurable `min_history` returns exact
-unit weights during warmup, so opting into the statistics object alone cannot change an existing
-score.
-
-```python
-from factorlasso import (
-    StabilityPoolingType,
-    compute_cluster_stability_statistics,
-    score_with_stability_pooled_clusters,
-)
-
-stability = compute_cluster_stability_statistics(
-    rolling_clusters,
-    span_by_freq={"ME": 36, "QE": 18},
-    min_history=12,
-)
-scores = score_with_stability_pooled_clusters(
-    raw_signal,
-    rolling_clusters,
-    stability_weights=stability.w_i,
-    min_cluster_size=10,
-    pooling_type=StabilityPoolingType.ASSET_VARIANCE,
-)
-```
-
-Pooling changes only the within-cluster denominator: the cluster mean remains local, while its
-variance is shrunk toward the contemporaneous global variance. `CLUSTER_VARIANCE` uses one mean
-stability weight per group; `ASSET_VARIANCE` retains the asset weights. `NONE` is the default and
-reproduces the unpooled score exactly. Clusters at or below `min_cluster_size` continue to use the
-global mean and variance and never enter the pooling calculation.
-
-For direct diagnostics, `compute_co_association_panel` exposes the same causal weights with either
-the established flat trailing `window` or an opt-in EWMA `span`. Supplying neither new keyword
-preserves the pre-0.16 flat-window calculation exactly.
-
----
-
-## Why factorlasso
-
-Factor models are central to quantitative finance, underpinning the
-commercial risk systems in industry use (among others, MSCI Barra, Axioma,
-and Bloomberg's multi-asset-class models). These systems decompose asset
-returns into a few common factors and an idiosyncratic residual
-(Rosenberg and McKibben 1973; Connor 1995). Practitioners who build
-factor-risk and capital-market-assumption systems must estimate the loadings
-of *N* asset returns on *M* tradable factors over a sample of length *T*,
-and they need software that produces loadings stable enough to feed a
-portfolio optimiser. In financial applications the estimation regime is
-adverse on four counts. First, the sample is short by statistical standards,
-because most core cross-asset indices and funds launched in the late 2000s
-and 2010s, giving 5 to 25 years of data. Second, the factors are often
-strongly correlated, so the design carries severe multicollinearity. Third,
-the cross-section is moderate (*N* ∈ [50, 200] at the multi-asset-class
-level). Fourth, the true coefficient matrix β ∈ ℝ^(N×M) exhibits a cluster
-structure that the practitioner does not know a priori, and traditional
-provider-based asset classifications are a weak proxy for the interdependence
-of assets. The cluster structure matters: assets in the same economic group
-(regional equity, investment-grade credit, hedge funds, and so on) typically
-share signs on the dominant factors, and an estimator that exploits this
-structure can outperform one that treats each asset independently.
-
-`factorlasso` is the estimation engine behind a multi-asset capital market
-assumptions and allocation framework. The loadings it produces feed the ROSAA framework for robust strategic and tactical
-asset allocation (Sepp, Ossa and Kastenholz 2026) and the
-MATF-CMA framework for capital market assumptions (Sepp, Hansen and
-Kastenholz 2026). Both papers are listed
-under [Citation](#citation).
-
----
-
-## Key differentiators
-
-### 1. Per-element sign constraints
-
-A `(N × M)` matrix drives the constraints. Each entry is one of
-`{0, 1, -1, NaN}`: equality-to-zero, non-negative, non-positive, or free.
-This lets a single fit encode structural knowledge that spans multiple
-responses.
-
-```python
-signs = pd.DataFrame(np.nan, index=Y.columns, columns=X.columns)
-signs.loc["y0", "f0"] = 1      # β[y0, f0] ≥ 0
-signs.loc["y0", "f1"] = 0      # β[y0, f1] == 0
-signs.loc["y1", "f0"] = -1     # β[y1, f0] ≤ 0
-
-model = LassoModel(
-    reg_lambda=1e-5,
-    factors_beta_loading_signs=signs,
-).fit(x=X, y=Y)
-```
-
-Scikit-learn's `Lasso` supports only a single `positive` flag across the whole
-coefficient matrix. Arbitrary per-element sign constraints are not expressible
-without a custom CVXPY problem; this is that custom problem, packaged.
-
-### 2. Data-driven sign constraints with a noise-floor gate
-
-Hand-coding an `(N × M)` sign matrix scales poorly. Setting
-`auto_sign_constraints=True` derives signs inside `fit()` from pooled
-univariate slopes computed on the same EWMA-demeaned arrays the CVXPY
-solver consumes (no train/test inconsistency, automatic per-fold
-derivation under `LassoModelCV`).
-
-```python
-model = LassoModel(
-    reg_lambda=1e-5,
-    auto_sign_constraints=True,    # derive signs from univariate slopes
-    auto_sign_threshold_t=0.75,    # noise floor (default 0.75)
-).fit(x=X, y=Y)
-
-# Inspect the matrix the solver actually saw
-model.derived_signs_
-```
-
-How the pooling is dispatched depends on `model_type`:
-
-| `model_type` | Sign-derivation pooling |
-|---|---|
-| `LASSO` (or single-column `y`) | Per-`y`-column independent univariate fit. Rows of `derived_signs_` may differ across responses. |
-| `GROUP_LASSO` | Pool `y` within each `group_data` group. All members of a group share their `derived_signs_` row. |
-| `HIERARCHICAL_CLUSTER_GROUP_LASSO` | Pool `y` within each HCGL asset cluster (the same clustering the solver uses). |
-| `FACTOR_CLUSTER_GROUP_LASSO` | Pool `y` within each FCGL asset cluster — sign derivation is identical to HCGL; the modes differ only in the group norm of the penalty. |
-| `UNILASSO` | Per-`y`-column, like `LASSO`, with no grouping. The sign is handled by the stage-2 non-negativity, not by gated derivation. |
-| `COOPERATIVE_GROUP_LASSO` | No hard sign is derived or imposed. The cooperative penalty couples the positive and negative parts of each `group_data` group, so members tend to share a sign while the data can overrule it. |
-| `COOPERATIVE_CLUSTER_GROUP_LASSO` | As above, on the discovered clusters rather than `group_data`. |
-
-**The threshold gate.** `auto_sign_threshold_t` (default `0.75`) is a noise
-floor on the per-column univariate t-statistic. Factors with `|t| <`
-threshold have their sign pinned to `0`, forcing `β = 0` in the fit.
-Rationale: under weak L1 (typical of factor models with `reg_lambda` ≪ 1
-and `l1_weight = 0`), an unfiltered slope sign drawn from sampling noise
-becomes a hard constraint that the solver can exploit to fit residual
-variance via offsetting loading pairs (e.g. +Credit ↔ −Inflation on a
-factor whose true effect is zero). The gate is **not a significance test**
-— `|t| = 0.75` corresponds to two-sided `p ≈ 0.45`. It is a defensive
-filter that removes only the worst noise-driven sign constraints.
-
-Set `auto_sign_threshold_t=None` to disable the gate entirely
-(reproduces v0.3.6 behaviour, every univariate sign is enforced regardless
-of evidence strength).
-
-**Explicit overrides still work.** Setting `factors_beta_loading_signs`
-alongside `auto_sign_constraints=True` overlays the user's matrix on top
-of the auto-derived signs per-cell — non-NaN entries win, NaN cells
-inherit the auto value. Use this for asset-specific constraints that no
-amount of marginal-correlation data could surface (e.g. forcing a
-mandate-restricted bond fund to zero equity loading regardless of
-spurious sample correlations).
-
-**Adaptive L1 penalty weights (Zou 2006).** Set
-`auto_sign_adaptive_weights=True` (default `False`) alongside
-`auto_sign_constraints=True` to reweight the L1 penalty elementwise by
-the inverse univariate-slope magnitude:
-
-```python
-model = LassoModel(
-    reg_lambda=1e-5,
-    auto_sign_constraints=True,
-    auto_sign_adaptive_weights=True,   # opt in to magnitude-aware L1
-    auto_sign_adaptive_gamma=1.0,      # Zou (2006) exponent γ
-    auto_sign_adaptive_floor=1e-3,     # stabiliser on tiny slopes
-).fit(x=X, y=Y)
-```
-
-The L1 penalty becomes
-
-```
-λ · |β_kj − β⁰_kj| / max(|β̂_uni_kj|, floor)^γ
-```
-
-where `β̂_uni_kj` is the same pooled univariate slope used to derive the
-sign matrix. Strong-evidence factors (large `|β̂_uni|`) get a lighter L1
-penalty and can take larger multivariate coefficients; weak-evidence
-factors get a heavier penalty and are pushed harder toward the prior.
-This is the Zou (2006) adaptive Lasso oracle property: the penalty
-becomes magnitude-aware without being a thresholding operator. The
-univariate-guided *sign* constraint of Richland et al. (2025) eq. (3.3)
-is a separate mechanism, applied via the sign matrix above; here the
-univariate slope supplies only the magnitude-aware penalty weight.
-
-The adaptive layer is independent of the threshold gate: cells pinned
-to `β = 0` by the gate continue to be forced to zero by the hard sign
-constraint, with the adaptive weight acting only on the non-pinned
-cells. Default behaviour (`auto_sign_adaptive_weights=False`)
-reproduces v0.3.8 fits bit-for-bit on fully observed panels. (On panels
-with leading-`NaN` inception prefixes, v0.4.1 corrects the univariate
-slope and gate `t`-statistic to accumulate only over valid observations;
-see the CHANGELOG. Fully observed panels are unaffected.)
-
-**Group LASSO mode (`l1_weight=0`).** In pure group-LASSO configurations
-where the L1 term is inactive, the adaptive reweighting is routed
-through the group L2 norms following Wang & Leng (2008)'s adaptive
-group lasso. Per-cell weights are aggregated per-asset by
-root-mean-square over the non-pinned factors:
-
-```
-W_k  =  sqrt( mean_{j: s_kj ≠ 0} W_kj² )
-```
-
-and each asset's contribution `‖β_k − β⁰_k‖₂` to the group penalty is
-scaled by `W_k`. This is what gives the adaptive flag actual impact in
-the production `HIERARCHICAL_CLUSTER_GROUP_LASSO` configuration where the L1 term
-is zero-weighted. Assets with uniformly strong univariate evidence
-across factors get `W_k → 1` (preserved); assets with uniformly weak
-evidence get `W_k > 1` (shrunk harder toward the prior). Assets with
-all cells pinned by the gate fall back to `W_k = 1` (no-op).
-
-**Related work and intellectual lineage.** The univariate-slope-as-
-sign-constraint mechanism is adapted from the **uniLasso** framework of
-Chatterjee, Hastie & Tibshirani (2025) and its biobank-scale follow-up
-by Richland et al. (2025). Specifically, Richland et al. (2025)
-eq. (3.3) imposes `sign(γ_j) = sign(β̃_j)` as a hard constraint on the
-original variables — structurally identical to what
-`factors_beta_loading_signs` encodes here. The broader idea of using
-univariate marginal evidence to guide a multivariate fit goes back to
-Zou (2006)'s adaptive Lasso, which uses univariate *magnitudes* as
-adaptive penalty weights.
-
-Two things factorlasso does *not* inherit from uniLasso, worth flagging
-to avoid overclaiming:
-
-* uniLasso's stage-2 architecture (Chatterjee et al. 2025 §2.1) fits a
-  non-negative Lasso on leave-one-out fitted values used as new
-  features. factorlasso instead constrains coefficients directly on
-  the original variables via the CVXPY sign-constraint set — simpler
-  in financial-panel sizes where `n` is typically in the hundreds,
-  not the hundreds of thousands.
-* The hard t-statistic noise floor (`auto_sign_threshold_t`) is not in
-  uniLasso. uniLasso's LOO machinery achieves a smoother form of
-  noise downweighting via stage-2 regularization on out-of-sample
-  predictions. The threshold gate here is conceptually closer to
-  **Sure Independence Screening** (Fan & Lv 2008): screen marginal
-  evidence first, then regularize.
-
-References:
-* Sepp, A., & Kastenholz, M. (2026). Gated Cluster-Pooled Sign Constraints
-  for Multi-Output Sparse Regression. *Computational Statistics & Data
-  Analysis*. Submitted. (The method implemented in this section.)
-* Chatterjee, S., Hastie, T., & Tibshirani, R. (2025). Univariate-
-  guided sparse regression. *Harvard Data Science Review* 7(3).
-* Fan, J., & Lv, J. (2008). Sure independence screening for ultrahigh
-  dimensional feature space. *J. R. Stat. Soc. B* 70(5), 849–911.
-* Richland, J., Kiiskinen, T., Wang, W., Lu, S., Narasimhan, B.,
-  Hastie, T., Rivas, M., & Tibshirani, R. (2025). Univariate-guided
-  sparse regression for biobank-scale high-dimensional -omics data.
-  arXiv:2511.22049.
-* Wang, H., & Leng, C. (2008). A note on adaptive group lasso.
-  *Comput. Stat. Data Anal.* 52(12), 5277–5286.
-* Zou, H. (2006). The adaptive Lasso and its oracle properties.
-  *J. Amer. Stat. Assoc.* 101(476), 1418–1429.
-
-### 3. Prior-centered regularisation
-
-Pass a `(N × M)` DataFrame `factors_beta_prior` to penalise `‖β − β₀‖` instead
-of `‖β‖`. The prior is a soft target, not a hard constraint — the penalty
-tension between data fit and prior is still controlled by `reg_lambda`.
-
-```python
-prior = 0.5 * np.sign(X.corrwith(Y["y0"]).to_numpy())
-# ... build an (N, M) DataFrame `prior_df` with that structure ...
-
-model = LassoModel(
-    reg_lambda=1e-5,
-    factors_beta_prior=prior_df,
-).fit(x=X, y=Y)
-```
-
-For an empirical prior, set `apply_ols_prior=True` (default `False`):
-
-```python
-model = LassoModel(
-    span=36, apply_ols_prior=True, prior_selection_type="highest_r2",
-).fit(x=X, y=Y)
-model.ols_betas_             # one-factor OLS slopes, response by factor
-model.ols_r2_                # centred weighted R-squared
-model.ols_beta_prior_        # selected centres before constraints and overrides
-model.effective_beta_prior_  # centres actually supplied to the solver
-```
-
-Each response is regressed separately on each factor with an intercept.
-`factor_for_prior={"IG index": "IG factor"}` optionally chooses the factor
-for a response while estimating its prior magnitude from that factor's weighted
-OLS slope. A list or tuple, such as `{"IL index": ["Rates", "Inflation"]}`,
-uses both slopes from one joint weighted regression with an intercept.
-Complete finite rows retain their original time-grid weights. Rank-deficient
-joint regressions give neutral zero centres. Unmapped responses (or missing
-map values) retain automatic selection.
-The selected row has zero centres on other factors; finite explicit priors
-and sign filtering still apply afterward. An unestimable selected slope gives
-a zero row. The map requires `apply_ols_prior=True` and is refitted within each
-training window, including cross-validation.
-
-`prior_selection_type="highest_r2"` is the default and only supported selector.
-It selects the factor with the highest
-EWMA-weighted R-squared and assigns its full OLS beta as the prior; other
-automatic priors are zero. R-squared is one minus weighted residual sum of
-squares divided by weighted total sum of squares about the weighted mean.
-
-For response $i$ and factor $f$, the selected prior before overrides and sign filtering is
-
-$$
-\beta^{\mathrm{prior}}_{if} =
-\widehat\beta^{\mathrm{OLS}}_{if}\mathbf{1}_{f=\arg\max_g R^2_{ig}}.
-$$
-
-Ties use factor-column order. The winning factor is invariant to nonzero
-factor rescaling before sign constraints and overrides are applied; its
-beta changes inversely with the factor's units.
-The regressions use the effective LASSO **squared-loss span**, including
-fit-time overrides, with weights `(1 - 2 / (span + 1)) ** age`. `span=None`
-gives equal weights. Inputs are the original observations with a fitted
-intercept, before the LASSO's rolling-mean preprocessing. Missing pairs retain
-their original time-grid age; constant or insufficient pairs receive no automatic prior.
-No annualisation or volatility standardisation is applied.
-
-Selection is per asset, even for clustered models. After selection and any
-explicit prior overrides, a positive-only factor loses a negative prior, a
-negative-only factor loses a positive prior, and a forced-zero factor always
-gets zero. A prohibited PE exposure therefore cannot acquire a PE prior.
-Blocked priors are not reassigned. The existing sign-selection and t-statistic
-gate still apply. With this flag enabled, finite `factors_beta_prior` entries
-(including zero) override automatic values, and NaN defers to the automatic
-value; with it disabled, the historical NaN-as-zero behavior is preserved.
-
-This is a package heuristic for penalty centres, not a posterior estimate or
-a guaranteed loading. Absolute-beta selection depends on factor units, and
-correlated factors can compete for the same explanation. All prior-aware
-LASSO variants support it; UNILASSO rejects the flag. Grouped lambda paths
-compute the prior once, and cross-validation recomputes it inside each
-training fold. The offline [example](examples/ols_prior.py) checks weighted
-OLS against an independent least-squares calculation and demonstrates PE
-exclusion.
-
-### 4. Hierarchical Clustering Group LASSO (HCGL)
-
-The groups in classical group LASSO are user-specified. HCGL discovers them
-from the data: EWMA correlation of the response matrix → Ward's linkage →
-dendrogram cut at `cutoff_fraction × max(pdist)` → row-grouped penalty on
-the resulting clusters. The penalty is the L2 norm of each response's loading
-row, weighted by the size of its cluster: it removes whole responses and
-shrinks kept rows, and the cluster enters through the weight (and through the
-pooled sign derivation below). For a penalty that selects a factor for a whole
-cluster, see FCGL in section 6.
-
-```python
-model = LassoModel(
-    model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-    reg_lambda=1e-5,
-    cutoff_fraction=0.5,   # tune granularity; smaller → tighter clusters
-    span=60,               # EWMA span for correlation estimate
-).fit(x=X, y=Y)
-
-model.coef_        # (N, M)
-model.clusters_    # pd.Series of cluster labels per response
-model.linkage_     # scipy linkage matrix
-```
-
-Useful when you suspect group structure in the responses but don't know the
-partition — or when the correct partition drifts over time, so any manual
-grouping would need to be refit anyway.
-
-#### Distance transform (0.9.0)
-
-The correlation-to-distance step is selectable via `DistanceTransform`:
-`ONE_MINUS_RHO` (`d = 1 - ρ`, the default), `CHORD` (`d = √(2(1 - ρ))`, the
-exact Euclidean distance between unit-norm standardised return vectors, so
-Ward's variance criterion is exact under it — Mantegna 1999), and `ARCCOS`
-(`d = arccos(ρ)`, the geodesic arc). All three are monotone in ρ, so
-rank-based linkages (`single`, `complete`) build the identical merge tree
-under any of them; Ward, average, centroid, and median read magnitudes and
-react to the choice.
-
-```python
-from factorlasso import DistanceTransform, LassoModel, LassoModelType
-
-model = LassoModel(
-    model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-    reg_lambda=1e-5,
-    distance_transform=DistanceTransform.CHORD,  # or 'chord'
-    cutoff_fraction=0.5 ** 0.5,                  # see calibration note below
-).fit(x=X, y=Y)
-```
-
-`cutoff_fraction` is calibrated per transform and does not port across
-transforms: the transforms remap merge heights nonlinearly, so a shared
-fraction changes the partition granularity. On mostly-positive correlation
-panels, `CHORD` at the `ONE_MINUS_RHO`-calibrated `0.5` shatters the
-partition into near-singletons. To preserve the implied pairwise merge
-threshold when switching from `ONE_MINUS_RHO` at fraction `f`, use `√f`
-under `CHORD` (panel-independent) and `arccos(ρ*)/arccos(ρ_min)` with
-`ρ* = 1 - f(1 - ρ_min)` under `ARCCOS` (panel-dependent through the minimum
-off-diagonal correlation `ρ_min`). At matched granularity the three
-transforms typically produce identical partitions on block correlation
-structures, which is the robustness property the partition is meant to
-have: it pools signs and groups the penalty, it makes no metric claim.
-
-The default reproduces the pre-0.9.0 behaviour exactly, and the same
-keyword is available on `compute_clusters_from_corr_matrix` directly.
-
-#### Dependence measure (0.10.0)
-
-Upstream of the distance transform sits the choice of dependence measure
-itself, via `DependenceMeasure`: `PEARSON` (the default), `SPEARMAN`
-(Pearson correlation of ranks) and `GERBER` (the co-movement statistic of
-Gerber et al. 2022, counting concordant minus discordant observations
-that pierce `gerber_threshold × σ` on both legs). Pearson is efficient
-under clean data and fragile under outliers; both alternatives are
-robust, and on contaminated block panels both recover the true structure
-where Pearson does not.
-
-All three are *signed*. That is a requirement rather than a preference:
-the partition feeds cluster-pooled sign derivation, so a measure
-discarding the sign of the relationship (`|ρ|`, distance correlation,
-mutual information) would pool assets with opposite factor exposures.
-
-```python
-from factorlasso import DependenceMeasure, LassoModel, LassoModelType
-
-model = LassoModel(
-    model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-    reg_lambda=1e-5,
-    dependence_measure=DependenceMeasure.GERBER,  # or 'spearman'
-    gerber_threshold=0.5,
-    n_clusters=8,          # the portable cut, see below
-).fit(x=X, y=Y)
-```
-
-Every measure honours the clustering-correlation observation weighting:
-uniform when its effective span is `None`, EWMA otherwise. By default this
-span equals the effective beta-estimation `span`; set
-`cluster_correlation_span` (or its downstream per-frequency map) to separate
-cluster discovery from beta estimation. For Gerber the
-EWMA generalisation is exact rather than approximate, because both the
-numerator and the denominator are counts of indicator variables. It
-recovers the published equal-weight statistic as `span → ∞` and admits a
-first-order recursion, so roll-forward updates cost O(1) per new
-observation. Spearman has no such property: ranks must be recomputed, at
-O(T log T) per update.
-
-#### Diagnostic dominant common-mode removal (0.15.0)
-
-`ClusterCorrelationTransform.REMOVE_PC1` is an opt-in robustness diagnostic.
-It removes the largest algebraic eigencomponent from the signed dependence
-matrix and restandardizes the residual matrix to unit diagonal before
-distance, linkage, and cutting. `NONE` remains the production default and is
-an exact numerical bypass.
-
-Inspect the transform and its audit quantities without fitting a model:
-
-```python
-from factorlasso import remove_first_principal_component
-
-diagnostic = remove_first_principal_component(Y.corr())
-diagnostic.removed_variance_share
-diagnostic.eigengap
-diagnostic.dominant_component_unique
-residual_correlation = diagnostic.correlation
-```
-
-The result also records the removed eigenvalue, minimum residual variance,
-number of neutral-filled missing pairs, and any numerical-floor assets that
-were retained as isolated residual series. To use the residual correlation in
-an HCGL/FCGL robustness fit:
-
-```python
-from factorlasso import ClusterCorrelationTransform, LassoModel, LassoModelType
-
-model = LassoModel(
-    model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-    cluster_correlation_transform=ClusterCorrelationTransform.REMOVE_PC1,
-).fit(x=X, y=Y)
-```
-
-The operation affects cluster discovery only: it does not residualize response
-returns, fitted factor loadings, or the assembled covariance matrix. Different
-clusters can still change fitted loadings and covariance *indirectly* when the
-group penalty or cluster-pooled sign rule consumes the diagnostic partition.
-This is why `REMOVE_PC1` is documented as a robustness specification rather
-than an automatic production replacement.
-
-For rolling point-in-time universes, pass a Boolean `eligibility` panel to
-`compute_rolling_smoothed_clusters`. FactorLasso intersects it with the data
-warmup mask, restricts the current dependence matrix, removes the common mode,
-and only then applies temporal smoothing. Thus a future-listed or currently
-ineligible asset cannot influence the PC estimated at date `t`.
-
-This operation removes one dominant common mode only. It is not random-matrix
-noise-bulk filtering and it does not project to a nearest correlation matrix;
-see Plerou et al. (2002), *Physical Review E* 65, 066126, and MacMahon and
-Garlaschelli (2015), *Physical Review X* 5, 021006.
-
-For like-for-like partition comparisons, set the same `n_clusters` in the raw
-and de-PC1 arms. Holding `cutoff_fraction` fixed is also valid, but then the
-diagnostic intentionally includes the change in partition granularity caused
-by the transformed distance scale.
-
-#### Cutting the dendrogram: `cutoff_fraction` or `n_clusters`
-
-`compute_clusters_from_corr_matrix` and `LassoModel` accept either. Use
-`n_clusters` whenever partitions are **compared** across configurations.
-The fractional cut is calibrated against the scale of the distance
-matrix, and that scale moves with both the transform (hence the `√f`
-mapping above) and the dependence measure — the Gerber statistic shrinks
-correlations toward zero by a data-dependent, non-affine factor, so no
-closed-form remapping exists. A shared `n_clusters` removes the scale
-question by construction and makes the comparison like-for-like.
-
-`n_clusters=None` (default) keeps the fractional cut and the pre-0.10.0
-behaviour.
-
-### 5. Sparse Group LASSO
-
-Group LASSO selects whole groups in or out — every response inside an
-"active" group gets a non-zero loading. When the discovered groups are
-slightly heterogeneous (and HCGL clusters often are, especially at coarser
-`cutoff_fraction`), this admits noisy within-group loadings on responses
-that don't actually load on the factor.
-
-The `l1_weight` mixing parameter α ∈ [0, 1] adds an elementwise L1 penalty
-on top of the group L2 (Simon, Friedman, Hastie & Tibshirani 2013):
-
-$$
-\mathcal{P}(\beta) = (1 - \alpha)\,\lambda \sum_g w_g \, \|\beta_g - \beta_0\|_{2,1}
-\;+\; \alpha\,\lambda \, \|\beta - \beta_0\|_1
-$$
-
-```python
-model = LassoModel(
-    model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
-    reg_lambda=1e-5,
-    cutoff_fraction=0.65,   # coarser clusters
-    l1_weight=0.10,         # α — group L2 still primary, L1 corrects within-group
-).fit(x=X, y=Y)
-```
-
-The interpretation is "group-then-prune": the group L2 term still drives
-group-level selection, while the L1 term zeros individual asset-factor
-coefficients within active groups whose contribution is noise. Setting
-`l1_weight=0.0` (the default) reduces exactly to pure group LASSO and is
-backward-compatible — the L1 term is dropped from the CVX problem entirely
-when α = 0, with zero runtime cost.
-
-Typical research range: α ∈ [0.05, 0.20]. Above ~0.30 the group structure
-stops driving the model and the result reverts toward plain LASSO. The
-penalty is centered on the same prior `β₀` as the group term, so the two
-shrinkage mechanisms compose consistently.
-
-The L1 term respects the same per-element sign constraints and the same
-prior as the group term, so all four features in this section compose: a
-single fit can simultaneously enforce sign constraints, shrink toward a
-prior, group-select via HCGL clusters, and apply within-group elementwise
-sparsity.
-
-### 6. Factor-Clustering Group LASSO (FCGL)
-
-HCGL groups the penalty along the **rows** of the loading matrix: the L2
-norm runs over each asset's factor loadings, and the discovered cluster
-enters only through the per-cluster weight. `factorlasso` also offers the
-complementary grouping, FCGL (`FACTOR_CLUSTER_GROUP_LASSO`), in which the
-L2 norm runs over the **assets of a cluster on each factor**:
-
-$$
-\mathcal{P}(\beta) = (1 - \alpha)\,\lambda \sum_g w_g \sum_{j}
-\,\|\beta_{g, j} - \beta^0_{g, j}\|_2 \;+\; \alpha\,\lambda \, \|\beta - \beta^0\|_1
-$$
-
-where $\beta_{g, j}$ collects the loadings of cluster $g$'s assets on
-factor $j$. In FCGL the cluster is the group of the norm itself, so a
-whole cluster-by-factor block enters or leaves the model together.
-
-```python
-model = LassoModel(
-    model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-    reg_lambda=1e-5,
-    cutoff_fraction=0.5,
-    auto_sign_constraints=True,   # sign derivation is identical to HCGL
-).fit(x=X, y=Y)
-```
-
-The two modes encode different beliefs about where loadings are sparse.
-HCGL treats each asset as the unit and lets loadings vary freely within a
-cluster, which fits a heterogeneous cluster. FCGL shrinks a cluster's
-loadings on a factor jointly toward the prior through the per-block norm,
-which fits a homogeneous cluster: when the shrinkage binds fully the block
-collapses to the prior, and when the cluster carries a strong shared signal
-the block retains loadings away from the prior, shrunk as a group rather
-than equalised. The
-sign derivation and adaptive reweighting are shared; the modes differ only
-in the group norm. FCGL is **not** block-separable across assets (it
-couples a cluster's assets through the per-block norm) and is solved as
-one coupled cone programme. In practice this coupling does not add a
-measurable runtime cost at production scale — FCGL matches HCGL in
-wall-clock to within a couple of percent at N = 500 — because the extra
-cone constraints are of the same order as the row-grouped norm. Neither
-mode dominates in general — the appropriate choice depends on the
-within-cluster homogeneity of the application.
-
-### 7. UniLasso (per-response univariate-guided)
-
-UniLasso fits each response in two stages and uses no grouping. Stage one runs
-a univariate regression of the response on each factor separately. Stage two
-combines those univariate fits with a non-negative coefficient on each, so the
-final loading keeps the sign of its univariate slope. The estimator follows
-Chatterjee, Hastie, and Tibshirani (2025).
-
-```python
-model = LassoModel(
-    model_type=LassoModelType.UNILASSO,
-    reg_lambda=1e-3,
-    unilasso_loo=True,            # leave-one-out (prevalidated) stage-1 fits
-    unilasso_non_negative=True,   # theta >= 0 in stage 2, so signs follow the univariate slope
-).fit(x=X, y=Y)
-```
-
-UniLasso ignores `group_data` and `cutoff_fraction`, since it neither groups nor
-clusters. It suits the case where a univariate sign is trustworthy per response
-and no cluster structure is assumed. The trade-off is that it cannot borrow
-strength across related responses, so a group method recovers more when the
-responses share structure and the per-response sample is small.
-
-### 8. Cooperative LASSO (soft within-group sign coherence)
-
-The cluster methods above impose a hard pooled sign through the gate. The
-cooperative LASSO of Chiquet, Grandvalet, and Charbonnier (2012) instead
-encourages the members of a group to share a sign without forcing it. It splits
-each coefficient into a positive and a negative part and penalises the two parts
-as separate groups, so a group tends to load on a factor with one sign while the
-data can still overrule it.
-
-```python
-# external groups
-model = LassoModel(
-    model_type=LassoModelType.COOPERATIVE_GROUP_LASSO,
-    reg_lambda=1e-3,
-    group_data=group_data,
-).fit(x=X, y=Y)
-
-# discovered clusters
-model = LassoModel(
-    model_type=LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO,
-    reg_lambda=1e-3,
-    cutoff_fraction=0.5,
-).fit(x=X, y=Y)
-```
-
-The cooperative modes never gate and never set a hard sign constraint, so
-`auto_sign_constraints` does not apply. They suit the case where a group's sign
-is a soft prior rather than a known fact. On correlated factors a soft penalty
-recovers more of the signs at lower coefficient error than a hard constraint, at
-the cost of a higher sign-flip rate when the leakage is strong.
-
-### 9. Residual validation: is the factor structure actually strict?
-
-A sparse factor model asserts a strict factor structure, `Σ = B Σ_F B' + D`
-with `D` diagonal. Nothing in the estimation enforces that assertion. A penalty
-set too high leaves common variation in the residual while the fit still scores
-well on out-of-sample R², so `LassoModelCV` cannot detect the failure, and every
-downstream object that inverts `D` is affected.
-
-`diagnose_residuals` tests the assertion directly. Let `R` be the residual
-correlation matrix of `p` series and let `ν = n - k - 1` be the degrees of
-freedom left after fitting `k` loadings per response. Under the null that the
-residual covariance is exactly diagonal, the sphericity statistic
-`S = ν Σ_{i<j} r_ij²` is chi-square with `p(p-1)/2` degrees of freedom, and the
-largest eigenvalue of `R` sits below the Marchenko-Pastur edge `(1 + √(p/ν))²`.
-
-```python
-import factorlasso as fl
-
-model = fl.LassoModel(model_type=fl.LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
-                      reg_lambda=1e-4).fit(x=X, y=Y)
-sparsity = fl.effective_sparsity(model.estimated_betas)
-diag = fl.diagnose_residuals(Y - model.predict(X),
-                             n_fitted_per_asset=sparsity.per_asset)
-diag.passes          # residual covariance indistinguishable from diagonal?
-diag.n_above_edge    # eigenvalues above the edge: factors the model omits
-```
-
-When the test fails, `missing_factor_components` reports the eigenvectors, so
-the failure names the series that would define the missing factor. The remedy is
-to extend the factor set, not to retune the penalty.
-
-`LassoModelDiagonalityCV` selects `reg_lambda` on that criterion, evaluated out
-of fold. It is a sibling of `LassoModelCV` and shares its splits and grid, so
-the two selectors are directly comparable and can be made to disagree:
-
-```python
-sel = fl.LassoModelDiagonalityCV(n_splits=5).fit(x=X, y=Y)
-sel.best_lambda_, sel.passed_
-sel.missing_factors_          # when nothing passes, this is the useful output
-```
-
-The criterion is not minimised. Raw off-diagonal mass falls with model density
-and then flattens, so its minimum sits in a flat region and moves with sampling
-noise rather than with structure. Each penalty is compared against the fixed
-null threshold instead, and the sparsest passing penalty is taken.
-
-`effective_sparsity` exists because an interior-point solver returns
-numerically-zero loadings as small non-zero values, so `(betas != 0).sum()`
-reports every cell as occupied and any sparsity statement built on it is
-vacuous. It counts at a scale-aware tolerance and reports the tolerance applied,
-flags a factor no response loads on (which makes `B' D⁻¹ B` singular), and keeps
-a failed solve from reading as a sparse one. `suggest_tolerance` locates the gap
-between solver dust and live loadings on a particular fit.
-
-**Which regime the calibration assumes.** `S` is calibrated for small `p`
-against large `ν`, the classical regime, where the chi-square limit is the right
-one. The Marchenko-Pastur edge is asymptotic in both dimensions and is a crude
-bound at small `p`, so on a short cross-section read `n_above_edge` as
-descriptive and put the weight on `sphericity`. When `p` and `ν` are comparable,
-or when `ν` is the smaller of the two, the references below give calibrations
-built for that corner and this package's chi-square threshold is not the right
-instrument.
-
-**References.** None of these statistics originates here.
-
-- Schott, J. R. (2005), "Testing for complete independence in high dimensions,"
-  *Biometrika* 92(4), 951–956. The sum of squared sample correlations as a test
-  of complete independence. `S` is its fixed-`p` chi-square limit; the
-  `ν = n - k - 1` charge for fitted loadings is a heuristic correction and is not
-  part of that result.
-- Marchenko, V. A., and Pastur, L. A. (1967), for the spectral edge. Laloux, L.,
-  Cizeau, P., Bouchaud, J.-P., and Potters, M. (1999), "Noise dressing of
-  financial correlation matrices," *Physical Review Letters* 83(7), 1467–1470,
-  for its use on financial correlation matrices.
-- Gagliardini, P., Ossola, E., and Scaillet, O. (2019), "A diagnostic criterion
-  for approximate factor structure," *Journal of Econometrics* 212(2), 503–521.
-  Reads the largest eigenvalue of a residual covariance as a test for an omitted
-  common factor, and selects the factor count as the smallest `k` whose penalised
-  eigenvalue turns negative. That is the published form of both the diagnostic
-  and the selection rule above, which differs only by indexing a regularisation
-  path rather than a factor count. Their calibration accounts for the loadings
-  being estimated, and this package's does not, so prefer their criterion when
-  the conclusion rests on the count of missing factors.
-- Onatski, A. (2009), *Econometrica* 77(5), 1447–1479, and Ahn, S. C., and
-  Horenstein, A. R. (2013), *Econometrica* 81(3), 1203–1227, reach a factor count
-  from the same residual eigenvalues under proportional asymptotics.
-
----
-
-### 10. Empirical residual correlation
-
-`CurrentFactorCovarData.get_y_covar` and `RollingFactorCovarData.get_y_covars` assemble
-`B F B' + w D`, where `w` is `residual_var_weight`. With `residual_type="orthogonal"` (the
-default) `D` is the diagonal of stored residual variances. With `residual_type="empirical"` the
-same diagonal is kept and residual dependence is added:
-
-$$
-D = S \left[(1 - \rho) I + \rho R\right] S
-$$
-
-`S` is the diagonal matrix of current residual standard deviations, `R` is a prepared
-common-period EWMA residual correlation, and ρ is `residual_corr_weight` in `[0, 1]` (default
-`1`). At ρ = 0 the result equals the orthogonal matrix exactly, and at every ρ the diagonal of `D`
-equals the stored residual variances. `ResidualType.ORTHOGONAL` and `ResidualType.EMPIRICAL` are
-the equivalent enum values. Both modes assume zero factor-residual cross covariance. `w` scales
-the whole residual block, so `w = 0` removes all residual risk. Passing a `residual_corr_weight`
-other than `1` with orthogonal residuals raises `ValueError`.
-
-Prepare `R` with `estimate_residual_correlation` and pass the returned
-`ResidualCorrelationData` to the snapshot:
-
-```python
-import numpy as np
-import pandas as pd
-
-import factorlasso as fl
-
-rng = np.random.default_rng(3)
-dates = pd.date_range("2015-01-31", periods=96, freq="ME")
-assets = ["asset_a", "asset_b", "asset_c"]
-common = 0.01 * rng.standard_normal(96)
-residuals = pd.DataFrame(
-    0.02 * rng.standard_normal((96, 3)) + common[:, None], index=dates, columns=assets
-)
-metadata = pd.DataFrame(
-    {"frequency": "ME", "beta_span": 36.0, "annualisation_factor": 12.0, "residual_scale": 1.0},
-    index=assets,
-)
-prepared = fl.estimate_residual_correlation(residuals, metadata, estimation_date=dates[-1])
-
-snapshot = fl.CurrentFactorCovarData(
-    x_covar=pd.DataFrame([[0.04]], index=["market"], columns=["market"]),
-    y_betas=pd.DataFrame([[1.0], [0.8], [0.5]], index=assets, columns=["market"]),
-    y_variances=pd.DataFrame(
-        {fl.VarianceColumns.RESIDUAL_VARS.value: [0.010, 0.012, 0.008]}, index=assets
-    ),
-    estimation_date=dates[-1],
-    residual_correlation=prepared,
-)
-orthogonal = snapshot.get_y_covar()
-empirical = snapshot.get_y_covar(residual_type="empirical", residual_corr_weight=0.5)
-
-print(np.allclose(np.diag(empirical), np.diag(orthogonal)))
-print(np.allclose(
-    snapshot.get_y_covar(residual_type="empirical", residual_corr_weight=0.0), orthogonal
-))
-```
-
-```text
-True
-True
-```
-
-`metadata` is indexed by asset and declares `frequency`, `beta_span`, `annualisation_factor` and
-`residual_scale`. The input residuals are additive log-return residuals at their native
-frequencies. The stored multiplier `residual_scale` is undone first, and complete native
-intervals are then summed to the common grid. The default grid is the lowest compatible native
-frequency: monthly plus quarterly assets use `QE`. The default span is the beta span of that
-lowest-frequency bucket, so monthly span 36 with quarterly span 12 gives quarterly span 12. A
-`frequency` coarser than every native grid needs `periods_per_year`, which converts the decay as
-`lambda_common = lambda_native ** (A_native / A_common)`; it converts decay, not covariance units.
-An explicit `span` counts common-grid observations. Differing or unweighted beta spans within the
-lowest-frequency bucket require an explicit `span`.
-
-A causal EWMA mean is removed before the EWMA second moment is normalised to a correlation.
-Positive constant scaling of any asset cancels, and no annual covariance multiplier is applied to
-`R`. The native residual panel and the alpha computed from it are unchanged.
-
-Leading and trailing incomplete common periods are excluded, and an interior gap fails. Nothing is
-zero-filled, interpolated, prorated or extrapolated. Native interval boundaries must nest exactly
-within the common grid: weekly residuals that cross quarter ends have to be rebuilt from finer
-source returns first. Business-day panels use the declared pandas business-day calendar. A
-residual series with zero variance fails, because its correlation is undefined.
-
-Each `ResidualCorrelationData` records its last complete `observation_date` and its
-`estimation_date`, the date it became available. `get_corr(date)` refuses a date before the
-`estimation_date`, so a correlation refitted with today's betas is never backdated. A rolling
-producer may hold `R` between completed common periods while loadings, factor covariance and
-residual variances update at every fit. `RollingFactorCovarData.get_residual_correlations()`
-returns the distinct `R` vintages keyed by availability date,
-`get_residual_covars(residual_type="empirical")` assembles `D` at every fit or query date, and
-`get_y_covars(dates=requested_dates, ...)` selects the latest available snapshot without
-refitting. The correlation, its common-period returns and the native metadata survive ticker
-filtering and Excel save/load.
-
-Correlation is the only prepared empirical state. There is no residual-covariance class, no
-migration API and no span or scale override on the getters; snapshots written by earlier
-development builds are rebuilt from source returns and saved betas. A positive semi-definite `R`
-with non-negative residual variances and weights gives a positive semi-definite `D`. `D` is a
-model of residual risk. It is not claimed to equal an annualised common-period empirical
-covariance. In tradablefactors, `FactorCovarEstimator(residual_type="empirical")` prepares the
-correlation during fitting.
-
-## When to use it — and when not
-
-**Use it when:**
-
-- Multi-output LASSO with heterogeneous sign constraints across the coefficient
-  matrix.
-- You have a prior `β₀` that should shrink the fit instead of zero.
-- You need discovered-group structured sparsity (HCGL).
-- You need group-level selection with within-group elementwise sparsity
-  (sparse group LASSO at small-to-moderate α).
-- You need to test whether the residual covariance is actually diagonal, or to
-  select the penalty on that criterion rather than on prediction error.
-- You want an auditable CVXPY formulation where heterogeneous constraints matter
-  more than specialized-solver throughput.
-
-**Reach for something else when:**
-
-- You need non-linear models, random effects, or GLM link functions.
-
-### Feature comparison
-
-The maintained [choice guide](https://factorlasso.readthedocs.io/en/latest/comparison.html)
-compares FactorLasso with scikit-learn, skglm, and groupyr by workflow fit,
-constraint and grouping geometry, multi-output behaviour, missing-data handling,
-covariance assembly, solver trade-offs, interoperability, dependencies, and
-license. It is dated, cites primary sources, and includes cases favoring every
-project; it is not a popularity or speed ranking. The repository pointer is
-[`COMPARISON.md`](COMPARISON.md).
-
----
-
-## Credit-attribution example
-
-The [credit-attribution case study](docs/app_multi_asset_credit_attribution.md)
-explains how sign constraints, prior centres and grouped penalties affect factor
-attribution. Its [offline synthetic example](examples/docs/app_multi_asset_credit_attribution.py)
-is included in this checkout. The JSS manuscript and its empirical exhibits are
-retained locally; see the [research availability page](docs/scientific-replication.md).
-
----
+The API mirrors scikit-learn: `fit(x, y)`, `predict(x)`, `score(x, y)`, `get_params()`,
+`set_params()`. Fitted attributes carry a trailing underscore. `fit`/`predict`/`score` accept
+NumPy arrays as well as pandas objects, and the estimator declares `__sklearn_tags__`, so it
+composes directly with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`. The
+[quickstart article](docs/quickstart.md) continues from return panels to a factor covariance
+with [its script](examples/docs/quickstart.py).
 
 ## Examples
 
-Four runnable examples in [`examples/`](examples/):
+### Highlighted examples
 
-- [`alpha_const_vs_intercept.py`](examples/alpha_const_vs_intercept.py) —
-  shows the economic intercept and CVXPY solver intercept conventions explicitly.
-- [`genomics_factor_model.py`](examples/genomics_factor_model.py) —
-  QTL-style multi-response LASSO: genotype matrix → expression panel, with
-  sign constraints derived from biological priors.
-- [`finance_factor_model.py`](examples/finance_factor_model.py) —
-  Multi-asset factor decomposition with sign constraints and HCGL clustering.
-- [`cv_lambda_selection.py`](examples/cv_lambda_selection.py) —
-  Time-series cross-validated `reg_lambda` selection via `LassoModelCV` with
-  expanding-window splits.
+- [Completed estimator](docs/completed_estimator.md) — what a finished `LassoModel` carries, its
+  units, dates, failure states and table export:
+  [`examples/docs/completed_estimator.py`](examples/docs/completed_estimator.py).
+- [Credit-attribution case study](docs/app_multi_asset_credit_attribution.md) — sign constraints,
+  prior centres and grouped penalties on a collinear credit factor:
+  [`examples/docs/app_multi_asset_credit_attribution.py`](examples/docs/app_multi_asset_credit_attribution.py).
+- [Residual-alpha nowcasting](docs/residual_alpha_nowcasting.md) — a fitted, de-meaned model
+  extrapolates a missing response return once the realised factor return is known:
+  [`examples/docs/residual_alpha_nowcasting.py`](examples/docs/residual_alpha_nowcasting.py).
+- [Cluster lineage](docs/cluster_lineage.md) and
+  [stability-pooled scoring](docs/cluster_stability_and_pooled_scoring.md) — persistent cluster
+  tracks and point-in-time co-association weights from a rolling partition sequence:
+  [`examples/docs/cluster_lineage.py`](examples/docs/cluster_lineage.py),
+  [`examples/docs/cluster_stability_and_pooled_scoring.py`](examples/docs/cluster_stability_and_pooled_scoring.py).
 
----
+### Runnable examples
+
+Self-contained scripts at the top of [`examples/`](examples/):
+
+- [`alpha_const_vs_intercept.py`](examples/alpha_const_vs_intercept.py) — the economic intercept
+  and the CVXPY solver intercept conventions, explicitly.
+- [`genomics_factor_model.py`](examples/genomics_factor_model.py) — QTL-style multi-response
+  LASSO: genotype matrix → expression panel, with sign constraints derived from biological priors.
+- [`finance_factor_model.py`](examples/finance_factor_model.py) — multi-asset factor decomposition
+  with sign constraints and HCGL clustering.
+- [`cv_lambda_selection.py`](examples/cv_lambda_selection.py) — time-series cross-validated
+  `reg_lambda` selection via `LassoModelCV` with expanding-window splits.
+- [`ols_prior.py`](examples/ols_prior.py) — weighted OLS prior checked against an independent
+  least-squares calculation, with a prohibited-exposure (PE) exclusion.
+
+Every documentation article has a canonical script of the same name under
+[`examples/docs/`](examples/docs/); the [analytics gallery](docs/analytics_gallery.md) collects
+their figures.
+
+### From method to implementation
+
+| Method | Implementation | Article · script |
+|---|---|---|
+| Gated cluster-pooled sign derivation and noise-floor gate (CSDA paper) | `auto_sign_constraints`, `auto_sign_threshold_t`, `derived_signs_` | [article](docs/gated_cluster_pooled_signs.md) · [`gated_cluster_pooled_signs.py`](examples/docs/gated_cluster_pooled_signs.py) |
+| Adaptive L1 and adaptive group weights (Zou 2006; Wang and Leng 2008) | `auto_sign_adaptive_weights`, `auto_sign_adaptive_gamma`, `auto_sign_adaptive_floor` | [article](docs/adaptive_penalty_weights.md) · [`adaptive_penalty_weights.py`](examples/docs/adaptive_penalty_weights.py) |
+| HCGL and FCGL group penalties, sparse-group mixing | `HIERARCHICAL_CLUSTER_GROUP_LASSO`, `FACTOR_CLUSTER_GROUP_LASSO`, `l1_weight` | [article](docs/group_penalties_hcgl_fcgl.md) · [`group_penalties_hcgl_fcgl.py`](examples/docs/group_penalties_hcgl_fcgl.py) |
+| Distance transforms, dependence measures, dominant common-mode removal | `DistanceTransform`, `DependenceMeasure`, `ClusterCorrelationTransform` | [cluster discovery](docs/cluster_discovery.md), [common-mode removal](docs/common_mode_removal.md) · [`common_mode_removal.py`](examples/docs/common_mode_removal.py) |
+| Strict-factor-structure test and diagonality-based penalty selection | `diagnose_residuals`, `LassoModelDiagonalityCV`, `effective_sparsity` | [residual diagnostics](docs/residual_diagnostics.md), [penalty selection](docs/penalty_selection.md) · [`residual_diagnostics.py`](examples/docs/residual_diagnostics.py) |
+| Factor covariance with orthogonal or empirical residuals | `CurrentFactorCovarData`, `RollingFactorCovarData`, `estimate_residual_correlation` | [factor covariance assembly](docs/factor_covariance_assembly.md), [empirical residual correlation](docs/empirical_residual_correlation.md) · [`factor_covariance_assembly.py`](examples/docs/factor_covariance_assembly.py) |
+| Production bootstrap and test inversion | FCGL refits with joint coefficient draws; null refits of candidate exposures | [production bootstrap](docs/production_bootstrap.md), [production test inversion](docs/production_test_inversion.md) · [`production_bootstrap.py`](examples/docs/production_bootstrap.py), [`production_test_inversion.py`](examples/docs/production_test_inversion.py) |
 
 ## Testing
 
@@ -1108,56 +372,38 @@ uv run --locked --only-group lint ruff check src/factorlasso tests
 
 The suite covers estimator contracts, independent EWMA references, covariance assembly, cluster
 diagnostics, and numerical parity with scikit-learn and skglm on their shared LASSO surface.
+Matplotlib-dependent tests skip when it is not installed, so a core install stays green.
 
----
+## Changelog
 
-## Ecosystem
+Release history is maintained in [CHANGELOG.md](CHANGELOG.md).
 
-This package is part of an open-source Python stack for quantitative finance. The
-[ArturSepp profile](https://github.com/ArturSepp) is the canonical full catalogue:
-
-| Package | Purpose |
-|---|---|
-| [`qis`](https://github.com/ArturSepp/QuantInvestStrats) | Performance analytics, factsheets, and visualisation |
-| [`optimalportfolios`](https://github.com/ArturSepp/OptimalPortfolios) | Portfolio optimisation with supplied alphas and covariance |
-| [`tradablefactors`](https://github.com/ArturSepp/tradablefactors) | Factor definitions, histories, fitted loadings and covariance |
-| [`factorlasso`](https://github.com/ArturSepp/factorlasso) *(this package)* | Sparse factor-model estimation and numerical covariance containers |
-| [`bbg-fetch`](https://github.com/ArturSepp/BloombergFetch) | Bloomberg data fetching |
-| [`option-chain-analytics`](https://github.com/ArturSepp/OptionChainAnalytics) | Point-in-time option-chain normalisation, reconstruction, querying, and visualisation |
-| [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) | Vectorised vanilla option pricers and implied volatility fitters |
-| [`stochvolmodels`](https://github.com/ArturSepp/StochVolModels) | Stochastic volatility pricing analytics |
-| [`trendfollowing`](https://github.com/ArturSepp/TrendFollowingSystems) | Trend-following systems: closed-form theory and replication |
-| [`privateassets`](https://github.com/ArturSepp/privateassets) | Money-weighted multi-factor alpha from private-asset cash flows |
-| [`goal-based-allocation`](https://github.com/ArturSepp/GoalBasedAllocation) | Dynamic MV allocation under regime-switching jump-diffusions |
-
-`factorlasso` has no runtime dependency on another package in the stack. It is consumed by
-`tradablefactors` and, through its optional `factors` extra, by `privateassets`.
-
-## Feedback & contributing
+## Feedback & contributing <a name="feedback-contributing"></a>
 
 - **Bug:** use the [bug-report form](https://github.com/ArturSepp/factorlasso/issues/new?template=bug_report.yml) with the version, Python/platform, a minimal reproducer, and expected versus actual output.
 - **Feature:** use the [feature-request form](https://github.com/ArturSepp/factorlasso/issues/new?template=feature_request.yml) and describe the estimation goal, current workaround, and smallest useful API. In particular: which grouping, constraint, or covariance diagnostic is missing?
 - **Question or methodology:** search or open an [issue](https://github.com/ArturSepp/factorlasso/issues) and identify the estimator, paper section, or convention involved.
 - **Contribution:** follow [CONTRIBUTING.md](CONTRIBUTING.md) and look for [`good first issue`](https://github.com/ArturSepp/factorlasso/labels/good%20first%20issue) or [`help wanted`](https://github.com/ArturSepp/factorlasso/labels/help%20wanted) work.
 
-See [`CHANGELOG.md`](CHANGELOG.md) for release history and
-[`COMPATIBILITY.md`](COMPATIBILITY.md) for the API stability policy
-covering the stable 1.x API and the upgrade to 1.0.0.
-
----
-
 ## Citation
 
 A machine-readable citation is available in [`CITATION.cff`](CITATION.cff).
 
-If you use `factorlasso` in academic work, please cite the software
-paper describing the package (submitted to the *Journal of Statistical
-Software*), the methodology paper for the cluster-pooled sign derivation
-and noise-floor gate (submitted to *Computational Statistics and Data
-Analysis*), the framework papers in which it was developed, and the
-software itself:
+If you use `factorlasso` in academic work, please cite the software, the software paper
+(submitted to the *Journal of Statistical Software*), the methodology paper for the
+cluster-pooled sign derivation and noise-floor gate (submitted to *Computational Statistics and
+Data Analysis*), and the framework papers in which it was developed:
 
 ```bibtex
+@software{factorlasso,
+  author  = {Sepp, Artur and Kastenholz, Mika},
+  title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
+             {Python}},
+  year    = {2026},
+  version = {1.0.5.dev1},
+  url     = {https://github.com/ArturSepp/factorlasso},
+}
+
 @article{SeppKastenholz2026factorlasso,
   author  = {Sepp, Artur and Kastenholz, Mika},
   title   = {{factorlasso}: Sparse Multi-Output Regression with
@@ -1176,15 +422,6 @@ software itself:
   note    = {Submitted.}
 }
 
-@misc{SeppHansenKastenholz2026MATF,
-  author       = {Sepp, Artur and Hansen, Emilie and Kastenholz, Mika},
-  title        = {Capital Market Assumptions and Strategic Asset Allocation Using
-                  Multi-Asset Tradable Factors},
-  year         = {2026},
-  howpublished = {Working paper, SSRN 6785958},
-  url          = {https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6785958}
-}
-
 @article{SeppOssaKastenholz2026,
   author  = {Sepp, Artur and Ossa, Ivan and Kastenholz, Mika},
   title   = {Robust Optimization of Strategic and Tactical Asset Allocation
@@ -1196,22 +433,52 @@ software itself:
   pages   = {86--120},
 }
 
-@software{factorlasso,
-  author  = {Sepp, Artur and Kastenholz, Mika},
-  title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
-             {Python}},
-  year    = {2026},
-  version = {1.0.5.dev1},
-  url     = {https://github.com/ArturSepp/factorlasso},
+@misc{SeppHansenKastenholz2026MATF,
+  author       = {Sepp, Artur and Hansen, Emilie and Kastenholz, Mika},
+  title        = {Capital Market Assumptions and Strategic Asset Allocation Using
+                  Multi-Asset Tradable Factors},
+  year         = {2026},
+  howpublished = {Working paper, SSRN 6785958},
+  url          = {https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6785958}
 }
 ```
 
----
+## Ecosystem
+
+This package is part of an open-source Python stack for quantitative finance. The
+[ArturSepp profile](https://github.com/ArturSepp) is the canonical catalogue:
+
+| Package | Purpose |
+|---|---|
+| [`qis`](https://github.com/ArturSepp/QuantInvestStrats) | Performance analytics, backtesting, and factsheet reporting |
+| [`optimalportfolios`](https://github.com/ArturSepp/OptimalPortfolios) | Portfolio construction and rolling backtesting |
+| [`factorlasso`](https://github.com/ArturSepp/factorlasso) *(this package)* | Sparse factor-model estimation |
+| [`bbg-fetch`](https://github.com/ArturSepp/BloombergFetch) | Bloomberg data in pandas DataFrames |
+| [`option-chain-analytics`](https://github.com/ArturSepp/OptionChainAnalytics) | Point-in-time option-chain data and queries |
+| [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) | Numba-vectorised BSM and Bachelier pricing |
+| [`stochvolmodels`](https://github.com/ArturSepp/StochVolModels) | Stochastic-volatility pricing and calibration |
+| [`trendfollowing`](https://github.com/ArturSepp/TrendFollowingSystems) | Closed-form trend-following analytics |
+| [`privateassets`](https://github.com/ArturSepp/privateassets) | Multi-factor PME for private assets |
+| [`goal-based-allocation`](https://github.com/ArturSepp/GoalBasedAllocation) | Goal-based allocation under regime-switching jump-diffusions |
+
+`factorlasso` has no runtime dependency on another package in the stack. It is consumed by
+[`factormodels`](https://github.com/ArturSepp/FactorModels) and, through its optional `factors`
+extra, by `privateassets`.
 
 ## License
 
 MIT — see [`LICENSE`](LICENSE) and the retained attributions in [`NOTICE`](NOTICE).
 
-`1.0.4.post1` is the first verified MIT release after the GPL release series. It changes licensing and release documentation; the 1.0.4 estimator API, numerical implementation and defaults are unchanged. Earlier GPL releases and their grants remain available under their original terms.
+`1.0.4.post1` is the first verified MIT release after the GPL release series. It changes
+licensing and release documentation; the 1.0.4 estimator API, numerical implementation and
+defaults are unchanged. Earlier GPL releases and their grants remain available under their
+original terms. This licence covers the package source and applicable documentation, examples
+and synthetic fixtures. Dependencies, vendor data and SDKs, and manuscripts retain their own
+terms; the package licence does not relicense them.
 
-This licence covers the package source and applicable documentation, examples and synthetic fixtures. Dependencies, vendor data and SDKs, and manuscripts retain their own terms; the package licence does not relicense them.
+## Disclaimer
+
+`factorlasso` is distributed FREE & WITHOUT ANY WARRANTY under the MIT License. See
+[LICENSE](LICENSE) in the release for details. Use the routes in
+[Feedback & contributing](#feedback-contributing) for bugs, feature requests and
+methodology questions.
