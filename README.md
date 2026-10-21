@@ -9,7 +9,7 @@ Its standalone output is a fitted `LassoModel` with labelled loadings, intercept
 diagnostics; [inspect a completed estimator](docs/completed_estimator.md), including units,
 dates, failure states and explicit table export, with the
 [canonical offline example](examples/docs/completed_estimator.py). The financial factor-model
-pipeline belongs to [factormodels](https://github.com/ArturSepp/FactorModels); OptimalPortfolios
+pipeline belongs to the private `factormodels` package; OptimalPortfolios
 optimises supplied alphas and covariance, and QIS supplies general risk analytics and reports.
 None is required to complete a factorlasso fit.
 
@@ -462,7 +462,7 @@ This package is part of an open-source Python stack for quantitative finance. Th
 | [`goal-based-allocation`](https://github.com/ArturSepp/GoalBasedAllocation) | Goal-based allocation under regime-switching jump-diffusions |
 
 `factorlasso` has no runtime dependency on another package in the stack. It is consumed by
-[`factormodels`](https://github.com/ArturSepp/FactorModels) and, through its optional `factors`
+`factormodels` (private) and, through its optional `factors`
 extra, by `privateassets`.
 
 ## License
