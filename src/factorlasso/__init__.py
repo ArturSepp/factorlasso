@@ -49,6 +49,12 @@ BibTeX entries.
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
+from factorlasso.linear_model._bootstrap import FactorBootstrapResult, bootstrap_factor_betas
+from factorlasso.linear_model._test_inversion import (
+    FactorTestInversion, FactorTestInversionResult, TestInversionCalibration,
+    calibrate_inversion_tests,
+)
+
 from factorlasso.cluster import (
     ClusterCorrelationTransform,
     ClusterCorrelationTransformResult,
@@ -158,6 +164,12 @@ except PackageNotFoundError:  # pragma: no cover - editable install before metad
     __version__ = "0.0.0+unknown"
 
 __all__ = [
+    "FactorTestInversion",
+    "FactorTestInversionResult",
+    "TestInversionCalibration",
+    "calibrate_inversion_tests",
+    "FactorBootstrapResult",
+    "bootstrap_factor_betas",
     "aggregate_influence_calendar", "compute_hac_covariance", "delta_method_hac_intervals",
     "calibrate_covariance_moments",
     "HierarchicalMeanPosterior", "pool_gaussian_means",

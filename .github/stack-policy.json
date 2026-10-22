@@ -6,13 +6,13 @@
   "optional": [],
   "forbidden": [
     "bbg_fetch",
+    "factormodels",
     "goal_based_allocation",
     "optimalportfolios",
     "option_chain_analytics",
     "privateassets",
     "qis",
     "stochvolmodels",
-    "tradablefactors",
     "trendfollowing",
     "vanilla_option_pricers"
   ],

@@ -115,7 +115,7 @@ The completed estimator can predict responses, support residual diagnostics or
 provide loadings for the existing [covariance containers](factor_covariance_assembly.md).
 These are optional operations on an already completed fit.
 
-[tradablefactors](https://github.com/ArturSepp/tradablefactors) owns the financial
+[factormodels](https://github.com/ArturSepp/tradablefactors) owns the financial
 pipeline: factor definitions and histories, point-in-time estimation orchestration
 using factorlasso, fitted factor-model covariance and model-specific inference.
 [OptimalPortfolios](https://github.com/ArturSepp/OptimalPortfolios) consumes supplied

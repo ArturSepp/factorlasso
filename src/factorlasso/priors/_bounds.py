@@ -206,6 +206,24 @@ def _declared_budgets(budget, asset, factors):
     return row.drop(labels=[f for f in factors if f in row.index]).fillna(0.0)
 
 
+def _fixed_design_competitor_geometry(x, y, factors, span, min_periods, cache):
+    """Reuse factor-only geometry during inference; never reuse response statistics.
+
+    The default estimation path supplies no cache. Keys include every input used
+    by the factor regressions, including the response's finite-observation mask.
+    Selected factors are a key, not a cached selection. Results are defensive copies.
+    """
+    if cache is None:
+        return _competitor_geometry(x, y, factors, span, min_periods)
+    key = (tuple(x.columns), x.shape, x.to_numpy(dtype=float).tobytes(),
+           np.isfinite(y.to_numpy(dtype=float)).tobytes(), tuple(factors), span, min_periods)
+    if key not in cache:
+        if len(cache) >= 256:
+            cache.pop(next(iter(cache)))
+        cache[key] = _competitor_geometry(x, y, factors, span, min_periods)
+    return tuple(frame.copy(deep=True) for frame in cache[key])
+
+
 def _budget_slack(slopes, budgets, signs, direction):
     """Sign-aware slack sum_j (direction * slope_j * s_j)_+ * d_j; NaN if a slope is missing."""
     total = 0.0
@@ -241,7 +259,7 @@ def _competitor_diagnostics(slopes, correlations, signs, slack):
 def _compute_expert_prior_bounds(x, y, selections, raw_prior, effective_prior,
                                  manual_prior, span, n_std, hac_lags, min_periods, *,
                                  budget=None, signs=None, scope='all', named=(),
-                                 geometry_cache=None):
+                                 geometry_cache=None, fixed_design_cache=None):
     """Resolve each selected OLS cell's floor after scope, manual and hard-sign precedence.
 
     A response with at least one finite declared budget uses the exposure-budget slack; other
@@ -286,7 +304,8 @@ def _compute_expert_prior_bounds(x, y, selections, raw_prior, effective_prior,
                     if not np.isclose(row['reference_beta'], target, rtol=1e-8, atol=1e-10):
                         raise ValueError('Expert OLS prior and bound regression disagree')
                     if geometry is None:
-                        geometry = _competitor_geometry(x, y[asset], factors, span, min_periods)
+                        geometry = _fixed_design_competitor_geometry(
+                            x, y[asset], factors, span, min_periods, fixed_design_cache)
                         if geometry_cache is not None:
                             geometry_cache[asset] = geometry
                     slopes = geometry[0].loc[factor]

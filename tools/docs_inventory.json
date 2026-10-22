@@ -3,6 +3,8 @@
   "project": "factorlasso",
   "description": "Explicit ownership of reader-facing pages, of every name in factorlasso.__all__ and of every LassoModel configuration parameter, plus the paper citation ledger. Read by tools/check_docs.py and by docs/conf.py, which generates the API reference from 'symbols' and 'parameters' in the order given here (the order of the sidebar). 'retained' marks README and legacy RST pages kept in their native format; 'planned' lists pages that are not written yet. An optional 'example' names the canonical script of a page: every Python block of the page must be a verbatim excerpt of it unless marked as a fragment. Move a page from 'planned' to 'pages' when its file is created, and mark it 'adopted' only after the verification in docs/documentation_standard.md. Paper titles are taken from the LaTeX source of each manuscript; a retired title may not appear on any reader-facing page, in CITATION.cff or in a paper README.",
   "pages": {
+    "docs/production_test_inversion.md": {"form": "methodology", "status": "pending", "example": "examples/docs/production_test_inversion.py"},
+    "docs/production_bootstrap.md": {"form": "methodology", "status": "pending", "example": "examples/docs/production_bootstrap.py"},
     "docs/hierarchical_pooling.md": {"form": "methodology", "status": "pending", "example": "examples/docs/hierarchical_pooling.py"},
     "docs/expert_inputs.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/expert_inputs.py"},
     "docs/weighted_inference.md": {"form": "methodology", "status": "adopted", "example": "examples/docs/weighted_inference.py"},
@@ -47,6 +49,8 @@
   },
   "planned": {},
   "symbols": {
+    "docs/production_test_inversion.md": ["FactorTestInversion", "FactorTestInversionResult", "TestInversionCalibration", "calibrate_inversion_tests"],
+    "docs/production_bootstrap.md": ["FactorBootstrapResult", "bootstrap_factor_betas"],
     "docs/hierarchical_pooling.md": ["HierarchicalMeanPosterior", "pool_gaussian_means"],
     "docs/weighted_inference.md": [
       "aggregate_influence_calendar", "compute_hac_covariance", "delta_method_hac_intervals",

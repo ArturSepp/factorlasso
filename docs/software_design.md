@@ -114,7 +114,7 @@ The package estimates one date at a time; the rolling loop belongs to the caller
 consumer computes causal partitions with `compute_rolling_smoothed_clusters`, fits a `LassoModel`
 per date with `external_clusters`, and stores each date's loadings, factor covariance and residual
 variances in a `CurrentFactorCovarData`, collected in a `RollingFactorCovarData`.
-[tradablefactors](https://github.com/ArturSepp/tradablefactors) owns this financial
+[factormodels](https://github.com/ArturSepp/tradablefactors) owns this financial
 orchestration, including the factor covariance estimator. OptimalPortfolios consumes
 supplied alphas and covariance for optimisation.
 Stability statistics and pooled scoring read the partitions; the offline lineage reads the
@@ -134,7 +134,7 @@ cross-validation does not ([scikit-learn interoperability](interoperability.md))
 The runtime dependencies are NumPy, pandas, SciPy, CVXPY and openpyxl. The default solver,
 CLARABEL, is installed with CVXPY; other CVXPY solvers can be named in `solver` and
 `solver_fallbacks`. factorlasso is a leaf of the author's package stack: it imports none of the
-other packages, while tradablefactors depends on its estimation API. The linter bans
+other packages, while factormodels depends on its estimation API. The linter bans
 imports of the other stack packages outright and bans a module-level scikit-learn import.
 
 ## See also

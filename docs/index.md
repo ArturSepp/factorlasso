@@ -19,7 +19,7 @@ tests the residuals for strict factor structure and assembles the factor covaria
 model implies. The estimator follows scikit-learn conventions. Its standalone output is a
 [completed estimator](completed_estimator.md), with loadings, intercepts and fit diagnostics
 that can be inspected before any downstream use. factorlasso is a leaf of the ArturSepp
-open-source stack: [tradablefactors](https://github.com/ArturSepp/tradablefactors) uses it for
+open-source stack: [factormodels](https://github.com/ArturSepp/tradablefactors) uses it for
 the financial factor-model pipeline, and factorlasso depends on no sibling package.
 
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
@@ -157,6 +157,11 @@ structure; and the covariance is assembled from the fitted loadings.
   the sign of its univariate slope or is zero.
 
 ## Selection and diagnostics
+
+- [Production test inversion](production_test_inversion.md): unchanged FCGL points,
+  conditional null refits and independently calibrated coverage.
+- [Production factor-model bootstrap](production_bootstrap.md): full FCGL refits,
+  joint portfolio ranges and explicit coverage validation.
 
 - [Weighted regression and mean inference](weighted_inference.md): reusable WLS statistics,
   classical versus HC/HAC standard errors, EWMA effective sample size, coefficient contrasts
@@ -316,6 +321,8 @@ unilasso
 :caption: Selection and diagnostics
 
 weighted_inference
+production_bootstrap
+production_test_inversion
 hierarchical_pooling
 residual_diagnostics
 penalty_selection

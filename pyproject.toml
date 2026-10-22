@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "factorlasso"
-version = "1.0.5.dev1"
+version = "1.0.5"
 description = "Sparse multi-output factor-model estimation with sign constraints, prior-centered shrinkage, data-driven grouped penalties, and consistent factor covariance assembly"
 readme = "README.md"
 license = "MIT"
@@ -135,7 +135,7 @@ extend-select = ["TID251", "TID253", "ICN"]
 "trendfollowing".msg = "A1: factorlasso is a leaf."
 "privateassets".msg = "A1: factorlasso is a leaf."
 "stochvolmodels".msg = "A1: factorlasso is a leaf."
-"tradablefactors".msg = "A1: factorlasso is a leaf; TradableFactors consumes its fitted results."
+"factormodels".msg = "A1: factorlasso is a leaf; FactorModels consumes its fitted results."
 "bbg_fetch".msg = "A1: factorlasso has no declared dependency on bbg_fetch."
 "goal_based_allocation".msg = "A1: factorlasso has no declared dependency on goal_based_allocation."
 "option_chain_analytics".msg = "A1: factorlasso has no declared dependency on option_chain_analytics."

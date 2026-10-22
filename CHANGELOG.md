@@ -1,8 +1,36 @@
 # Changelog
 
-## 1.0.5.dev1 — Unreleased
+## 1.0.5 — 2026-10-22
 
 ### Added
+
+- `FactorTestInversion`, `FactorTestInversionResult`, `TestInversionCalibration`
+  and `calibrate_inversion_tests`: conditional Monte Carlo null refits and numerical
+  test inversion for signed production FCGL contrasts. Production fits are unchanged.
+- Known-shape Gaussian conditioning eliminates nuisance slopes/intercepts and common
+  variance. Estimated covariance requires independent simulation calibration, matching
+  draw counts and per-design binomial coverage gates; no universal coverage claim.
+- Complete candidate-test exports, disconnected-set hulls, explicit open tails,
+  endpoint resolution and conservative early-acceptance bounds. Offline example,
+  independent projection tests and synthetic coverage benchmark.
+- Estimated working covariance uses common-window residual correlations, adaptive
+  shrinkage and a feasible restricted-likelihood AR(1) profile. Independent GLS
+  reference tests cover the covariance calculation; plug-in shapes still require
+  application-specific held-out coverage validation.
+- Inference-only reuse of fixed-factor competitor geometry, with complete mask/selection
+  keys and defensive copies. Response-dependent decisions remain fully refitted;
+  ordinary production estimation does not enable the cache.
+
+- `bootstrap_factor_betas` and `FactorBootstrapResult`: dependent-wild joint
+  response resampling followed by fresh production-estimator fits, including
+  FCGL clustering, automatic priors, sign gates, bounds and adaptive weights.
+  Original dates, missing masks, EWMA spans and explicit expert inputs remain
+  fixed. Signed portfolio weights are applied to joint draws before quantiles.
+- Pointwise percentile stability ranges and basic bootstrap candidate intervals,
+  with explicit unvalidated-coverage status, draw/support diagnostics, reproducible
+  seeds and failure-on-any-refit-error. No WLS estimate replaces a production beta.
+- An offline synthetic coverage benchmark covering strong, weak/zero and short,
+  ragged, collinear designs. Full refitting is not a universal 95% coverage theorem.
 
 - Expose optional original-grid coefficient influences and weighted-design
   condition numbers from `compute_wls_hac_statistics(return_influence=True)`.
@@ -16,6 +44,10 @@
   retained without introducing a runtime dependency on Statsmodels or QIS.
 - These intervals describe unpenalised fixed-model WLS benchmarks; they do not
   provide post-selection or penalised-estimator coverage.
+
+### Maintenance
+
+- Update locked certifi to 2026.10.19 to address the optional dependency audit.
 
 ## 1.0.4.post1 — 2026-10-18 (UTC)
 
