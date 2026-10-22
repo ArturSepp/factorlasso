@@ -400,7 +400,7 @@ Data Analysis*), and the framework papers in which it was developed:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {1.0.5.dev1},
+  version = {1.0.5},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 

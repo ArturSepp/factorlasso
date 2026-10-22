@@ -248,7 +248,8 @@ def expert_prior_bounds(model, x: pd.DataFrame, y: pd.DataFrame, eff_span: Optio
         model.factors_beta_prior, eff_span, n_std,
         model.expert_prior_hac_lags, max(3, model.warmup_period or 0),
         budget=budget, signs=signs, scope=model.expert_prior_bound_scope, named=named,
-        geometry_cache=geometry_cache)
+        geometry_cache=geometry_cache,
+        fixed_design_cache=getattr(model, '_inference_fixed_design_cache', None))
     model.prior_bound_contributions_ = contribution_diagnostics(
         x=x, y=y, diagnostics=result[2], named=model.named_set_diagnostics_,
         budgets=budget, sources=model.budget_sources_, signs=signs, span=eff_span,

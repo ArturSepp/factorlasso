@@ -1,5 +1,11 @@
 {
  "root_all": [
+  "FactorTestInversion",
+  "FactorTestInversionResult",
+  "TestInversionCalibration",
+  "calibrate_inversion_tests",
+  "FactorBootstrapResult",
+  "bootstrap_factor_betas",
   "aggregate_influence_calendar",
   "compute_hac_covariance",
   "delta_method_hac_intervals",
@@ -103,6 +109,435 @@
   "partition_variance_share"
  ],
  "exports": {
+  "FactorTestInversion": {
+   "kind": "class",
+   "module": "factorlasso.linear_model._test_inversion",
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "model",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "covariance",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "draws",
+     "KEYWORD_ONLY",
+     199
+    ],
+    [
+     "seed",
+     "KEYWORD_ONLY",
+     0
+    ],
+    [
+     "calendar",
+     "KEYWORD_ONLY",
+     null
+    ]
+   ],
+   "members": {
+    "intervals": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "contrasts",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "confidence",
+       "KEYWORD_ONLY",
+       0.95
+      ],
+      [
+       "calibration",
+       "KEYWORD_ONLY",
+       null
+      ],
+      [
+       "grid_size",
+       "KEYWORD_ONLY",
+       13
+      ],
+      [
+       "refinements",
+       "KEYWORD_ONLY",
+       6
+      ],
+      [
+       "max_expansions",
+       "KEYWORD_ONLY",
+       8
+      ],
+      [
+       "progress",
+       "KEYWORD_ONLY",
+       null
+      ]
+     ]
+    },
+    "test": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "contrast",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "candidate",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "accept_above",
+       "KEYWORD_ONLY",
+       null
+      ]
+     ]
+    }
+   }
+  },
+  "FactorTestInversionResult": {
+   "kind": "class",
+   "module": "factorlasso.linear_model._test_inversion",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "intervals",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "tests",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "metadata",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "intervals",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "tests",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "metadata",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "TestInversionCalibration": {
+   "kind": "class",
+   "module": "factorlasso.linear_model._test_inversion",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "confidence",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "rejection_probability",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "coverage",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "passed",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "metadata",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "confidence",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "rejection_probability",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "coverage",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "passed",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "metadata",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "calibrate_inversion_tests": {
+   "kind": "function",
+   "signature": [
+    [
+     "calibration",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "validation",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "confidence",
+     "POSITIONAL_OR_KEYWORD",
+     0.95
+    ],
+    [
+     "minimum_validation",
+     "POSITIONAL_OR_KEYWORD",
+     1000
+    ]
+   ]
+  },
+  "FactorBootstrapResult": {
+   "kind": "class",
+   "module": "factorlasso.linear_model._bootstrap",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "estimate",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "draws",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "fit_diagnostics",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "response_support",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "metadata",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimate",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "draws",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "fit_diagnostics",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "response_support",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "metadata",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {
+    "intervals": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "confidence",
+       "POSITIONAL_OR_KEYWORD",
+       0.95
+      ],
+      [
+       "method",
+       "POSITIONAL_OR_KEYWORD",
+       "percentile"
+      ]
+     ]
+    },
+    "portfolio_intervals": {
+     "method": [
+      [
+       "self",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "weights",
+       "POSITIONAL_OR_KEYWORD",
+       "<no default>"
+      ],
+      [
+       "confidence",
+       "POSITIONAL_OR_KEYWORD",
+       0.95
+      ],
+      [
+       "method",
+       "POSITIONAL_OR_KEYWORD",
+       "percentile"
+      ]
+     ]
+    }
+   }
+  },
+  "bootstrap_factor_betas": {
+   "kind": "function",
+   "signature": [
+    [
+     "model",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "draws",
+     "KEYWORD_ONLY",
+     2000
+    ],
+    [
+     "seed",
+     "KEYWORD_ONLY",
+     0
+    ],
+    [
+     "bandwidth",
+     "KEYWORD_ONLY",
+     3.0
+    ],
+    [
+     "calendar",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "multipliers",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "progress",
+     "KEYWORD_ONLY",
+     null
+    ]
+   ]
+  },
   "aggregate_influence_calendar": {
    "kind": "function",
    "signature": [
@@ -6937,6 +7372,12 @@
    "set_group_loadings"
   ],
   "linear_model": [
+   "FactorTestInversion",
+   "FactorTestInversionResult",
+   "TestInversionCalibration",
+   "calibrate_inversion_tests",
+   "FactorBootstrapResult",
+   "bootstrap_factor_betas",
    "LassoEstimationResult",
    "LassoModel",
    "LassoModelType",
