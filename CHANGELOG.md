@@ -45,6 +45,10 @@
 - These intervals describe unpenalised fixed-model WLS benchmarks; they do not
   provide post-selection or penalised-estimator coverage.
 
+### Maintenance
+
+- Update locked certifi to 2026.10.19 to address the optional dependency audit.
+
 ## 1.0.4.post1 — 2026-10-18 (UTC)
 
 ### Changed
