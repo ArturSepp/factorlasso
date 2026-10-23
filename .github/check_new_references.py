@@ -10,7 +10,7 @@ import time
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import unquote, urldefrag, urlsplit
+from urllib.parse import quote, unquote, urldefrag, urlsplit
 from urllib.request import Request, urlopen
 
 MAX_BODY = 4 * 1024 * 1024
@@ -56,6 +56,63 @@ def added_urls(patch):
     return sorted(urls)
 
 
+def verify_blocked_doi(url):
+    """Verify a blocked bare DOI using matching Crossref metadata, retaining its evidence.
+
+    Crossref cannot validate publisher anchors or query parameters. Its 404 may also
+    mean another registry owns the DOI, so registry failures remain unavailable.
+    """
+    parsed = urlsplit(url)
+    doi = unquote(parsed.path[1:])
+    if (parsed.scheme not in {"http", "https"}
+            or parsed.netloc.lower() not in {"doi.org", "dx.doi.org"}
+            or parsed.query or parsed.fragment
+            or not re.fullmatch(r"10\.\d{4,9}/[^\s]+", doi)):
+        return None
+    api = "https://api.crossref.org/works/" + quote(doi, safe="")
+    request = Request(api, headers={
+        "Accept": "application/json", "User-Agent": "OSS-documentation-check/1.0",
+    })
+    last = "unavailable"
+    for attempt in range(3):
+        try:
+            with urlopen(request, timeout=15) as response:
+                body = response.read(MAX_BODY + 1)
+            if len(body) > MAX_BODY:
+                raise ValueError("metadata exceeds the response limit")
+            payload = json.loads(body)
+            if (not isinstance(payload, dict) or payload.get("status") != "ok"
+                    or payload.get("message-type") != "work"):
+                raise ValueError("expected a successful work record")
+            metadata = payload["message"]
+            registered = metadata["DOI"]
+            titles = metadata["title"]
+            landing = metadata["resource"]["primary"]["URL"]
+            if (not isinstance(registered, str) or registered.casefold() != doi.casefold()
+                    or not isinstance(titles, list) or not titles
+                    or not all(isinstance(title, str) and title.strip() for title in titles)
+                    or not isinstance(landing, str)
+                    or urlsplit(landing).scheme not in {"http", "https"}
+                    or not urlsplit(landing).hostname):
+                raise ValueError("DOI identity, title, or landing URL did not verify")
+            return {"url": url, "status": "ok", "reason": "verified DOI through Crossref",
+                    "verification": {"source": "crossref", "url": api, "doi": registered,
+                                     "title": titles, "landing_url": landing}}
+        except HTTPError as error:
+            last = f"HTTP {error.code}"
+            if error.code not in {429, 500, 502, 503, 504}:
+                break
+        except (URLError, TimeoutError, OSError) as error:
+            last = str(error)
+        except (ValueError, KeyError, TypeError) as error:
+            last = f"invalid metadata ({error})"
+            break
+        if attempt < 2:
+            time.sleep(2 ** attempt)
+    return {"url": url, "status": "deferred",
+            "reason": f"Crossref verification unavailable: {last}"}
+
+
 def inspect_url(url):
     """Classify a confirmed broken reference separately from temporary unavailability."""
     address, fragment = urldefrag(url)
@@ -82,6 +139,10 @@ def inspect_url(url):
                 return {"url": url, "status": "ok"}
             last = f"static anchor #{fragment} not found"
         except HTTPError as error:
+            if error.code in {403, 429}:
+                verified = verify_blocked_doi(url)
+                if verified is not None:
+                    return verified
             if error.code not in {404, 410}:
                 return {"url": url, "status": "deferred", "reason": f"HTTP {error.code}"}
             last = f"HTTP {error.code}"
