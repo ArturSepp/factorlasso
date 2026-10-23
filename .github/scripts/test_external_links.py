@@ -11,6 +11,7 @@ import unittest
 from unittest.mock import patch
 
 import check_external_links as checker
+import check_new_references as references
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -59,6 +60,30 @@ class ExternalLinkTests(unittest.TestCase):
         record = {"uri": self.address + "/outage", "status": "ignored",
                   "info": "service unavailable"}
         self.assertEqual(checker.confirm_results([record])[0]["status"], "deferred")
+
+    def test_github_namespaced_anchors_keep_missing_sections_blocking(self):
+        """Recognize GitHub content IDs without accepting absent or other-site anchors."""
+        body = (b'<html><a id="user-content-persistence"></a>'
+                b'<a id="user-content-fitted-state-and-input-alignment"></a></html>')
+        cases = [
+            ("github.com", "persistence", "ok"),
+            ("github.com", "fitted-state-and-input-alignment", "ok"),
+            ("github.com", "fitted%2Dstate%2Dand%2Dinput%2Dalignment", "ok"),
+            ("github.com", "missing-section", "broken"),
+            ("example.com", "persistence", "broken"),
+            ("github.com.example.com", "persistence", "broken"),
+        ]
+        for host, fragment, expected in cases:
+            address = f"https://{host}/ArturSepp/factorlasso/blob/main/COMPATIBILITY.md"
+            record = {"uri": address + "#" + fragment, "status": "broken"}
+            with self.subTest(host=host, fragment=fragment), patch.object(
+                references, "urlopen"
+            ) as fetch, patch.object(references.time, "sleep"):
+                response = fetch.return_value.__enter__.return_value
+                response.headers = {"Content-Type": "text/html"}
+                response.geturl.return_value = address
+                response.read.return_value = body
+                self.assertEqual(checker.confirm_results([record])[0]["status"], expected)
 
     def run_builder(self, records, returncode=1):
         with tempfile.TemporaryDirectory() as temporary:
