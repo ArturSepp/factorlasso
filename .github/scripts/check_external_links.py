@@ -83,7 +83,9 @@ def main(argv=None):
     for result in results:
         level = "error" if result["status"] == "broken" else "warning"
         if result["status"] == "ok":
-            print(f"Recovered: {result['url']}")
+            crossref = result.get("verification", {}).get("source") == "crossref"
+            label = "Verified through Crossref" if crossref else "Recovered"
+            print(f"{label}: {result['url']}")
         else:
             message = f"{result['url']}: {result.get('reason', '')}"
             message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
