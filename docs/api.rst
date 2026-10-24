@@ -1,6 +1,11 @@
 Public API reference
 ====================
 
+Author: `Artur Sepp <https://github.com/ArturSepp>`_ / First recorded: `2026-08-16 <https://github.com/ArturSepp/factorlasso/commit/01d87fd8542897d6157b8b3ffb250d6240ae5e9a>`_
+
+Implemented in `factorlasso <https://github.com/ArturSepp/factorlasso>`_.
+Software citation: `CITATION.cff <https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff>`_.
+
 .. meta::
    :description: Reference for the supported top-level factorlasso estimators, diagnostics,
       clustering tools, covariance containers and solver helpers, grouped by the methodology

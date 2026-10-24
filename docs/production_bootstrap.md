@@ -8,7 +8,7 @@ myst:
 
 # Production factor-model bootstrap
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-10-22](https://github.com/ArturSepp/factorlasso/commit/8141e2e3577704ae539495d6a304aae0667d98be)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

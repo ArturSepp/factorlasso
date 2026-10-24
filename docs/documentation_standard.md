@@ -11,7 +11,7 @@ myst:
 
 *Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-20](https://github.com/ArturSepp/factorlasso/commit/3a91426d6f1c93c1da08a02e70d592d14758078f)*
 
-This standard applies to [factorlasso](https://github.com/ArturSepp/factorlasso).
+Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 This is the factorlasso supplement to the
@@ -30,6 +30,12 @@ with `PACKAGE` replaced by `factorlasso` and `REPOSITORY` by `factorlasso`. A ne
 carries the author-only byline; the linked first-recorded date is added after a commit exists.
 Articles whose method comes from a co-authored paper cite that paper under References; the byline
 names the author of the article.
+
+Use the linked Artur Sepp byline and the factorlasso repository/software-citation block shown
+at the top of this page on every human-authored page, including the README, compatibility,
+comparison and contribution guides. Each page's First recorded date links to its own verified
+source history, including an earlier RST source when applicable. Keep the API entry's
+attribution in native RST; generated reference bodies do not need duplicate bylines.
 
 Three page forms exist, each recorded in the [page inventory](../tools/docs_inventory.json):
 

@@ -10,7 +10,7 @@ myst:
 
 *Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-16](https://github.com/ArturSepp/factorlasso/commit/c05a3388f53a053282c22cb090e027846f9a498d)*
 
-This page belongs to the documentation of [factorlasso](https://github.com/ArturSepp/factorlasso).
+Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 This page helps choose a workflow; it does not rank packages. Each project is preferable in at

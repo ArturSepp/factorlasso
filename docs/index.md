@@ -11,6 +11,9 @@ myst:
 
 *Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-16](https://github.com/ArturSepp/factorlasso/commit/01d87fd8542897d6157b8b3ffb250d6240ae5e9a)*
 
+Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
+
 [factorlasso](https://github.com/ArturSepp/factorlasso) is a Python library for sparse
 multi-output regression and factor-model estimation. It fits the loadings of many responses on a
 common set of factors in one problem, under cell-level sign constraints, shrinkage towards prior
@@ -22,7 +25,6 @@ that can be inspected before any downstream use. factorlasso is a leaf of the Ar
 open-source stack: [factormodels](https://github.com/ArturSepp/tradablefactors) uses it for
 the financial factor-model pipeline, and factorlasso depends on no sibling package.
 
-Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 ## Versions and compatibility
 

@@ -8,7 +8,7 @@ myst:
 
 # Weighted regression and mean inference
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-10-05](https://github.com/ArturSepp/factorlasso/commit/1a40a24bbe21f3c0663a4cd188169cbbaa9a13aa)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

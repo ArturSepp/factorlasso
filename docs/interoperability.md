@@ -10,7 +10,7 @@ myst:
 
 *Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-16](https://github.com/ArturSepp/factorlasso/commit/c89cf6d380358d4744592feeccb6073d989bc004)*
 
-This page belongs to the documentation of [factorlasso](https://github.com/ArturSepp/factorlasso).
+Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 factorlasso follows the estimator conventions that scikit-learn relies on, while keeping

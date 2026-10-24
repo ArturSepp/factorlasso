@@ -8,7 +8,7 @@ myst:
 
 # A completed estimator
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-10-18](https://github.com/ArturSepp/factorlasso/commit/ec9fe689fc28ba13e9e4624eed2c94671be575f9)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

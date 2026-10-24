@@ -8,7 +8,7 @@ myst:
 
 # Hierarchical pooling of correlated means
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-10-07](https://github.com/ArturSepp/factorlasso/commit/cd9b656254b215735eb2fcd2a2bf02704e252142)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

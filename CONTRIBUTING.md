@@ -7,9 +7,9 @@ myst:
 
 # Contributing to factorlasso
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-07-21](https://github.com/ArturSepp/factorlasso/commit/40dda266fe389ebeeca0b3eb0dd0cf3a25973fac)*
 
-Project: [FactorLasso](https://github.com/ArturSepp/factorlasso).
+Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 Thanks for your interest in `factorlasso`. `factorlasso` accompanies a paper under review at the *Journal of Statistical Software*, so reproducibility of published numbers takes priority over convenience.

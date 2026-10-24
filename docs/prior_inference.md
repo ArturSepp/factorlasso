@@ -8,7 +8,7 @@ myst:
 
 # Prior uncertainty and conditional floor risk
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-30](https://github.com/ArturSepp/factorlasso/commit/d6b52649f3267c637fcc41979e6f98f8c20e98a4)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

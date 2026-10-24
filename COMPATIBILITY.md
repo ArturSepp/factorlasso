@@ -1,9 +1,9 @@
 # factorlasso — API Compatibility Policy
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-05-24](https://github.com/ArturSepp/factorlasso/commit/e8e08150c71046c305ee29e2e88caad6386a9aa3)*
 
-Software: [factorlasso](https://github.com/ArturSepp/factorlasso).
-Software citation: [CITATION.cff](CITATION.cff).
+Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 Version 1.0.0 establishes the capability subpackages as the supported layout
 and retires the pre-1.0 compatibility facades. It preserves all 74 root exports,

@@ -8,7 +8,7 @@ myst:
 
 # Expert inputs
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-10-11](https://github.com/ArturSepp/factorlasso/commit/d1f3ba000efb9b176fc4de747c4b498d3bfc7f77)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).

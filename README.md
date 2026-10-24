@@ -1,5 +1,10 @@
 # factorlasso
 
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-03-22](https://github.com/ArturSepp/factorlasso/commit/3ea3c317f0c6bf663453c594ada381a96839f08a)*
+
+Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
+
 **`factorlasso` estimates sparse multi-output factor models with sign constraints, prior-centered
 shrinkage, data-driven grouped penalties, and consistent factor covariance assembly.**
 

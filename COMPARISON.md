@@ -1,5 +1,10 @@
 # Choosing a sparse-regression workflow
 
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-04-16](https://github.com/ArturSepp/factorlasso/commit/937ba7ca6c204ecfd8208eb50c3e45d2a1964de3)*
+
+Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
+
 The maintained comparison is the
 [choice guide in the documentation](https://factorlasso.readthedocs.io/en/latest/comparison.html).
 Its source is [`docs/comparison.md`](docs/comparison.md).
