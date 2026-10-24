@@ -1,8 +1,8 @@
 # Committing with GitHub Desktop
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-21](https://github.com/ArturSepp/factorlasso/commit/04116ebf1528caa6d20dce5596cff9ec9d393232)*
 
-Project: [factorlasso](https://github.com/ArturSepp/factorlasso).
+Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 Create a working branch, select the intended changes, and commit normally. The installed
