@@ -339,11 +339,14 @@ class LassoModel:
         ``factors_beta_loading_signs`` take precedence over both prior and
         detected signs. Adaptive weights retain the original detected values.
     auto_sign_threshold_t : float, optional, default 0.75
-        Noise-floor gate on the pooled univariate t-statistic: cells whose
-        absolute statistic falls below it are pinned to zero, the others
-        receive the slope's sign. ``None`` disables the gate. It is a
-        screening rule, not a calibrated significance test; 0.75 corresponds
-        to a two-sided p of about 0.45 under a normal reference. Used only
+        Noise-floor gate on the univariate screening statistic. For finite
+        positive thresholds, cells whose absolute statistic falls below it
+        receive an automatic zero constraint; the others receive the slope's
+        sign. ``None`` or zero disables the gate. Positive infinity fails all
+        automatic gates, including noiseless signals with infinite statistics.
+        Raw slopes and statistics are retained, and prior signs, explicit hard
+        signs and excluded factors keep their documented precedence. This is
+        not a calibrated significance test or false-sign guarantee. Used only
         with ``auto_sign_constraints=True``.
     auto_sign_ewma_span : float, optional
         EWMA span of the univariate slopes and scores behind derived signs.
@@ -355,15 +358,16 @@ class LassoModel:
     auto_sign_variance : {"independent", "date"}, default "independent"
         Variance estimator of the gate's t-statistic. ``"independent"`` treats
         the responses of a pool as independent observations (the historical
-        gate). ``"date"`` sums the scores by date, a sandwich variance under
-        which duplicated or correlated responses do not inflate the evidence.
-        Both are screening rules, not calibrated t tests.
+        gate). ``"date"`` sums scores by date and retains within-date response
+        covariance. It assumes independent dates; it is not HAC inference.
+        Both are screening rules without calibrated p-values. The variance
+        choice changes gates, not raw slopes.
     auto_sign_adaptive_weights : bool, default False
         If True, together with ``auto_sign_constraints=True``, each cell's L1
         penalty is weighted by ``1 / max(|b|, floor) ** gamma`` of its pooled
         univariate slope ``b`` (Zou, 2006); with ``l1_weight=0`` the weights
         enter the group norms by root-mean-square row aggregation (Wang and
-        Leng, 2008). Cells pinned to zero by the gate stay at zero.
+        Leng, 2008). Cells whose final resolved sign is zero stay at zero.
     auto_sign_adaptive_gamma : float, default 1.0
         Exponent ``gamma`` of the adaptive weights; 1 is the adaptive-LASSO
         default and larger values strengthen the reweighting.
@@ -620,18 +624,11 @@ class LassoModel:
     #   * LASSO / single-col y → per-y-column independent derivation
     auto_sign_constraints: bool = False
 
-    # Significance gate for auto-derived signs.  When set (>0), only
-    # columns whose univariate ``|t|`` meets the threshold get a hard
-    # sign constraint; columns failing the threshold are pinned to 0
-    # (β forced to zero), excluding them from the regression.  This
-    # enforces parsimony directly and is robust to the choice of
-    # ``reg_lambda``.  Default 0.75 acts as a noise floor — it is
-    # well below conventional significance levels but high enough
-    # to filter columns whose univariate slope sign is dominated by
-    # sampling noise (|t| < 0.75 ⇒ two-sided p > 0.45).  Pass
-    # ``None`` to disable the gate and reproduce v0.3.6 behaviour.
-    #
-    # Typical alternative values: 0.5 (looser) to 1.0 (stricter).
+    # Screening gate for auto-derived signs, not a calibrated significance test.
+    # Finite positive thresholds retain signs whose ``|t|`` meets the threshold;
+    # failed gates give automatic zero constraints. Positive infinity fails all
+    # gates, including noiseless signals. None or zero disables the gate.
+    # Prior/hard-sign overrides and excluded factors retain their precedence.
     # Only effective when ``auto_sign_constraints=True``.
     auto_sign_threshold_t: Optional[float] = 0.75
 

@@ -30,8 +30,8 @@ None is required to complete a factorlasso fit.
 
 **Paper:** Sepp, A. and Kastenholz, M. (2026), *factorlasso: Sparse Multi-Output Regression with
 Cluster-Grouped Sign Constraints in Python*, submitted to the *Journal of Statistical Software*.
-**Methodology:** Sepp, A. and Kastenholz, M. (2026), *Gated Cluster-Pooled Sign Constraints for
-Multi-Output Sparse Regression*, submitted to *Computational Statistics and Data Analysis*. See
+**Methodology:** Sepp, A. and Kastenholz, M. A. (2026), *Gated Cluster-Pooled Sign Constraints for
+Multi-Output Sparse Regression*, a revised working manuscript prepared for *Computational Statistics*. See
 [Statement of need](#statement-of-need) for what each paper contributes, [Citation](#citation)
 for the BibTeX entries and the [paper index](papers/README.md) for public availability.
 
@@ -228,7 +228,7 @@ tactical asset allocation and the MATF-CMA framework for capital market assumpti
 | Paper | Implemented analytics | Where |
 |---|---|---|
 | Sepp, A. and Kastenholz, M. (2026), *factorlasso: Sparse Multi-Output Regression with Cluster-Grouped Sign Constraints in Python*, submitted to the Journal of Statistical Software | The estimator: `LassoModel` with its model types, sign constraints, priors, cross-validation, residual diagnostics and factor covariance assembly; sklearn interoperability | [sparse factor model](docs/sparse_factor_model.md), [software design](docs/software_design.md), [research availability](docs/scientific-replication.md) (manuscript and replication workspace retained locally) |
-| Sepp, A. and Kastenholz, M. (2026), *Gated Cluster-Pooled Sign Constraints for Multi-Output Sparse Regression*, submitted to Computational Statistics and Data Analysis | The cluster-pooled sign derivation and the noise-floor gate (`auto_sign_constraints`, `auto_sign_threshold_t`) and the adaptive penalty weights | [gated cluster-pooled signs](docs/gated_cluster_pooled_signs.md), [`papers/sign_pooling_2026/`](papers/sign_pooling_2026/) (approved manuscript, figures, replication code and tests) |
+| Sepp, A. and Kastenholz, M. A. (2026), *Gated Cluster-Pooled Sign Constraints for Multi-Output Sparse Regression*, revised working manuscript prepared for Computational Statistics | Cluster-pooled sign screening (`auto_sign_constraints`, `auto_sign_threshold_t`), matched fitted-estimator comparisons and limitations; the revised experiments do not validate adaptive weights or prior targets | [gated cluster-pooled signs](docs/gated_cluster_pooled_signs.md), [`papers/sign_pooling_2026/`](papers/sign_pooling_2026/) (approved manuscript, figures, replication code and tests) |
 | Sepp, A., Ossa, I. and Kastenholz, M. (2026), *Robust Optimization of Strategic and Tactical Asset Allocation for Multi-Asset Portfolios*, The Journal of Portfolio Management 52(4), 86–120 | The loadings that feed the ROSAA risk model, consumed through `factormodels` and `optimalportfolios` | [portfolio risk models](docs/app_portfolio_risk_models.md) |
 | Sepp, A., Hansen, E. and Kastenholz, M. (2026), *Capital Market Assumptions and Strategic Asset Allocation Using Multi-Asset Tradable Factors*, [SSRN 6785958](https://ssrn.com/abstract=6785958) | The loadings and factor covariance behind the MATF capital market assumptions, consumed through `factormodels` | [factor covariance assembly](docs/factor_covariance_assembly.md) |
 
@@ -359,7 +359,7 @@ their figures.
 
 | Method | Implementation | Article · script |
 |---|---|---|
-| Gated cluster-pooled sign derivation and noise-floor gate (CSDA paper) | `auto_sign_constraints`, `auto_sign_threshold_t`, `derived_signs_` | [article](docs/gated_cluster_pooled_signs.md) · [`gated_cluster_pooled_signs.py`](examples/docs/gated_cluster_pooled_signs.py) |
+| Gated cluster-pooled sign derivation and screening threshold | `auto_sign_constraints`, `auto_sign_threshold_t`, `derived_signs_` | [article](docs/gated_cluster_pooled_signs.md) · [`gated_cluster_pooled_signs.py`](examples/docs/gated_cluster_pooled_signs.py) |
 | Adaptive L1 and adaptive group weights (Zou 2006; Wang and Leng 2008) | `auto_sign_adaptive_weights`, `auto_sign_adaptive_gamma`, `auto_sign_adaptive_floor` | [article](docs/adaptive_penalty_weights.md) · [`adaptive_penalty_weights.py`](examples/docs/adaptive_penalty_weights.py) |
 | HCGL and FCGL group penalties, sparse-group mixing | `HIERARCHICAL_CLUSTER_GROUP_LASSO`, `FACTOR_CLUSTER_GROUP_LASSO`, `l1_weight` | [article](docs/group_penalties_hcgl_fcgl.md) · [`group_penalties_hcgl_fcgl.py`](examples/docs/group_penalties_hcgl_fcgl.py) |
 | Distance transforms, dependence measures, dominant common-mode removal | `DistanceTransform`, `DependenceMeasure`, `ClusterCorrelationTransform` | [cluster discovery](docs/cluster_discovery.md), [common-mode removal](docs/common_mode_removal.md) · [`common_mode_removal.py`](examples/docs/common_mode_removal.py) |
@@ -396,8 +396,8 @@ A machine-readable citation is available in [`CITATION.cff`](CITATION.cff).
 
 If you use `factorlasso` in academic work, please cite the software, the software paper
 (submitted to the *Journal of Statistical Software*), the methodology paper for the
-cluster-pooled sign derivation and noise-floor gate (submitted to *Computational Statistics and
-Data Analysis*), and the framework papers in which it was developed:
+cluster-pooled sign derivation and screening gate (revised working manuscript prepared for
+*Computational Statistics*), and the framework papers in which it was developed:
 
 ```bibtex
 @software{factorlasso,
@@ -405,7 +405,7 @@ Data Analysis*), and the framework papers in which it was developed:
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {1.0.5},
+  version = {1.0.6},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 
@@ -418,13 +418,12 @@ Data Analysis*), and the framework papers in which it was developed:
   note    = {Submitted.}
 }
 
-@article{SeppKastenholz2026sign,
-  author  = {Sepp, Artur and Kastenholz, Mika},
+@misc{SeppKastenholz2026sign,
+  author  = {Sepp, Artur and Kastenholz, Mika A.},
   title   = {Gated Cluster-Pooled Sign Constraints for Multi-Output
              Sparse Regression},
-  journal = {Computational Statistics and Data Analysis},
   year    = {2026},
-  note    = {Submitted.}
+  note    = {Revised working manuscript; prepared for Computational Statistics.}
 }
 
 @article{SeppOssaKastenholz2026,

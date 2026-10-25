@@ -63,6 +63,7 @@ jobs:
           uv build --sdist --out-dir "$RUNNER_TEMP/release-dist"
           uv build --wheel "$RUNNER_TEMP/release-dist/"*.tar.gz --out-dir "$RUNNER_TEMP/release-dist"
           uvx --from twine twine check "$RUNNER_TEMP/release-dist/"*
+          python .github/scripts/check_paper_policy.py --artifacts "$RUNNER_TEMP/release-dist"
       - name: Import the installed wheel outside the checkout
         run: |
           uv venv --python 3.12 "$RUNNER_TEMP/release-wheel-env"

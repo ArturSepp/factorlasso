@@ -24,10 +24,18 @@ Marker screen
 Markers associated with the expression of at least two MAPK genes at p <= 0.01
 (the screen of Yin & Li 2011), yielding on the order of 200 markers.
 
-Run: python eqtl_pipeline.py
+This preserves the archived descriptive experiment. Its legacy prediction path
+uses outcome-based marker screening before cross-validation and cannot provide
+an uncontaminated full-pipeline generalization estimate. For new prediction
+validation use ``python -m papers.sign_pooling_2026.replication.eqtl_validation``
+with an explicit external ``--out`` directory. Frozen reference results remain
+historical evidence and are not overwritten by either producer.
+
+Run archived descriptive pipeline: python eqtl_pipeline.py
 """
 # packages
 import os
+import warnings
 import numpy as np
 import pandas as pd
 from typing import Tuple
@@ -198,14 +206,23 @@ def marker_hub_counts(model: LassoModel, marker_pos: pd.DataFrame, eps: float = 
 
 def prediction_parity(x_s: pd.DataFrame, y_genes: pd.DataFrame, n_folds: int = 3,
                       reg_lambda: float = 0.3, seed: int = 0) -> pd.DataFrame:
-    """k-fold out-of-sample median R^2 per gene for HCGL, FCGL and per-response LASSO."""
+    """Historical fixed-penalty CV after global screening; use eqtl_validation for new work.
+
+    All three methods impose automatic signs. The singleton comparator is not
+    ordinary LASSO. The fixed incoming marker set can include held-out outcome
+    information, so these legacy scores are not a clean generalization estimate.
+    """
+    warnings.warn(
+        "Legacy eQTL CV uses globally outcome-screened markers and fixed penalties; "
+        "run eqtl_validation for fully nested validation. The singleton comparator "
+        "is gated sign-constrained LASSO.", RuntimeWarning, stacklevel=2)
     rng = np.random.default_rng(seed)
     n = len(x_s)
     folds = np.array_split(rng.permutation(n), n_folds)
     specs = {'HCGL': dict(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO, cutoff_fraction=0.7),
              'FCGL': dict(model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO, cutoff_fraction=0.7,
                           group_penalty='yuan_lin'),
-             'LASSO': dict(model_type=LassoModelType.LASSO)}
+             'gated_singleton_lasso': dict(model_type=LassoModelType.LASSO)}
     rows = []
     for name, spec in specs.items():
         r2_per_gene = []

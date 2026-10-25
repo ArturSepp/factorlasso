@@ -32,8 +32,8 @@ Methods are cited to these papers; the software itself is cited through
 - Sepp, A. and Kastenholz, M. A. (2026). *factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python*. Submitted to the Journal of Statistical Software.
   Manuscript and replication workspace retained locally; not distributed here.
-- Sepp, A. and Kastenholz, M. (2026). *Gated Cluster-Pooled Sign Constraints for Multi-Output
-  Sparse Regression*. Submitted to Computational Statistics & Data Analysis.
+- Sepp, A. and Kastenholz, M. A. (2026). *Gated Cluster-Pooled Sign Constraints for Multi-Output
+  Sparse Regression*. Revised working manuscript; prepared for Computational Statistics.
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf),
   [replication tree](https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026)
   and archived research bundle [10.5281/zenodo.21000294](https://doi.org/10.5281/zenodo.21000294).
@@ -88,16 +88,19 @@ its study design and is not restated as a general performance claim.
 
 ## Public sign-pooling replication
 
-Only the [CSDA workspace](https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026) is tracked. It
+Only the [sign-pooling workspace](https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026) is tracked. It
 includes the current approved manuscript, public yeast eQTL inputs, frozen
 reference results in `replication/data/reference/`, replication code and tests.
 Use its README for current commands and external output-directory settings.
 
-The current working revision requires FactorLasso 1.0.0 for its canonical module imports. The
-archived Zenodo release and `replication/requirements.txt` preserve the historical 0.7.2
-environment. Use the archived bundle for exact historical reproduction; do not
-install that pin over the working development environment and claim equivalence.
-LaTeX compilation additionally requires the Elsevier CAS template.
+The revised results were reproduced with FactorLasso 1.0.5 and the pinned environment in
+`replication/requirements-reproduction.txt`. The archived Zenodo release and
+`replication/requirements.txt` preserve the historical 0.7.2 environment and superseded
+analyses. Use the corresponding bundle for exact historical reproduction; do not install
+either pin over the working development environment and claim equivalence. The current
+manuscript and supplement use the official Springer Nature LaTeX template. The
+[replication README](https://github.com/ArturSepp/factorlasso/blob/main/papers/sign_pooling_2026/README.md) records the current build commands,
+source identities and the separation between archived and revised evidence.
 
 ## Local paper workspaces
 

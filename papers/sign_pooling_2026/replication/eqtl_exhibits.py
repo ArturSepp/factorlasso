@@ -8,8 +8,11 @@ Reuses eqtl_pipeline to load, LD-block, screen and fit, then builds:
   TABLE E1 per-cluster summary + prediction parity note (LaTeX booktabs)
 
 Run: python eqtl_exhibits.py
+Use --cached-figures to redraw only E1--E3 from the frozen numerical references,
+without refitting or generating the table (the cache does not contain raw x/y).
 """
 # packages
+import argparse
 import os
 import numpy as np
 import pandas as pd
@@ -65,6 +68,41 @@ def prepare() -> dict:
                 beta=np.asarray(model.estimated_betas), corr=y_g.corr())
 
 
+def prepare_cached_figures() -> dict:
+    """Read and align frozen figure inputs; no raw-data load, fit or table computation."""
+    with np.load(REFERENCE_DIR / 'fit.npz', allow_pickle=True) as cached:
+        beta = np.asarray(cached['beta'], dtype=float)
+        genes = [str(gene) for gene in cached['genes']]
+        markers = [str(marker) for marker in cached['markers']]
+        corr = np.asarray(cached['corr'], dtype=float)
+    clusters = pd.read_csv(REFERENCE_DIR / 'clusters.csv').set_index('gene')
+    signs = pd.read_csv(REFERENCE_DIR / 'derived_signs.csv', index_col=0)
+    hotspots = pd.read_csv(REFERENCE_DIR / 'hotspots.csv')
+    if len(set(genes)) != len(genes) or len(set(markers)) != len(markers):
+        raise ValueError('Frozen fit contains duplicate gene or marker labels')
+    if clusters.index.tolist() != genes or signs.index.tolist() != genes:
+        raise ValueError('Frozen cluster/sign rows do not match the fit gene order')
+    if signs.columns.tolist() != markers or len(hotspots) != len(markers):
+        raise ValueError('Frozen sign/position columns do not match the fit marker order')
+    if beta.shape != (len(genes), len(markers)) or corr.shape != (len(genes), len(genes)):
+        raise ValueError('Frozen coefficient/correlation dimensions do not match labels')
+    if not np.isfinite(beta).all() or not np.isfinite(corr).all():
+        raise ValueError('Frozen fitted coefficients and correlations must be finite')
+    if not signs.isin([-1.0, 0.0, 1.0]).to_numpy().all():
+        raise ValueError('Frozen signs contain values outside {-1, 0, 1}')
+    if clusters[['cluster', 'module']].isna().to_numpy().any():
+        raise ValueError('Frozen cluster or module labels are missing')
+    if not np.isfinite(hotspots[['chr', 'pos', 'hub_count']].to_numpy()).all():
+        raise ValueError('Frozen positions or association counts are missing')
+    np.testing.assert_allclose(corr, corr.T, atol=1e-12)
+    np.testing.assert_array_equal(
+        hotspots['hub_count'].to_numpy(), (np.abs(beta) > 1e-8).sum(axis=0))
+    return dict(genes=genes, modules=clusters['module'],
+                clusters=clusters['cluster'], signs=signs, beta=beta,
+                corr=pd.DataFrame(corr, index=genes, columns=genes),
+                mpos=hotspots[['chr', 'pos']].copy())
+
+
 def _gene_order(clusters: pd.Series, modules: pd.Series) -> list:
     """order genes by cluster, then by sub-pathway within a cluster."""
     frame = pd.DataFrame({'cluster': clusters, 'module': modules.reindex(clusters.index)})
@@ -88,7 +126,7 @@ def fig_clusters(D: dict) -> None:
         ax.add_patch(plt.Rectangle((-2.2, i - 0.5), 1.6, 1.0, color=_MODULE_COLORS.get(m, '#999999'),
                                    clip_on=False, lw=0))
     ax.set_xlim(-2.4, len(order) - 0.5)
-    ax.set_title('Recovered clusters are coherent co-expression groups\nthat partially track the MAPK sub-pathways')
+    ax.set_title('Archived gene correlations, ordered by learned clusters')
     ax.set_xlabel('gene (ordered by cluster)')
     ax.set_ylabel('gene')
     ax.set_xticks([]); ax.set_yticks([])
@@ -112,8 +150,7 @@ def fig_signs(D: dict) -> None:
         ax.axhline(b + 0.5, color='0.5', lw=0.4)
     for b in np.where(np.diff(chrom))[0]:
         ax.axvline(b + 0.5, color='0.7', lw=0.3)
-    ax.set_title('Cluster-pooled signs are coherent within recovered gene clusters '
-                 '(within-cluster agreement 0.93)')
+    ax.set_title('Archived marginal signs broadcast within clusters')
     ax.set_xlabel('marker (ordered along the genome, chromosome boundaries in grey)')
     ax.set_ylabel('gene (ordered by cluster)')
     ax.set_yticks([])
@@ -150,8 +187,8 @@ def fig_hotspots(D: dict) -> None:
                     ha='center', fontsize=7, color='0.2')
     ax.set_xticks(ticks); ax.set_xticklabels(labels, fontsize=7)
     ax.set_xlabel('chromosome (genomic position)')
-    ax.set_ylabel('genes loaded')
-    ax.set_title('A few loci regulate many genes \u2014 eQTL hotspots')
+    ax.set_ylabel('genes with fitted coefficients')
+    ax.set_title('Archived fitted association counts by locus')
     ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
     fig.savefig(f"{_FIG}/figE3_hotspots.pdf"); fig.savefig(f"{_FIG}/figE3_hotspots.png", dpi=150)
     plt.close(fig)
@@ -202,12 +239,19 @@ def table_clusters(D: dict) -> str:
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--cached-figures', action='store_true',
+                        help='Redraw E1--E3 from frozen references without fitting or a table')
+    args = parser.parse_args()
     os.makedirs(_FIG, exist_ok=True)
     os.makedirs(_TAB, exist_ok=True)
-    D = prepare()
+    D = prepare_cached_figures() if args.cached_figures else prepare()
     fig_clusters(D)
     fig_signs(D)
     fig_hotspots(D)
-    body = table_clusters(D)
-    print('TABLE E1:\n', body)
+    if args.cached_figures:
+        print('Frozen figure alignment and fitted-association counts verified; table skipped.')
+    else:
+        body = table_clusters(D)
+        print('TABLE E1:\n', body)
     print('\nwritten to', _FIG)

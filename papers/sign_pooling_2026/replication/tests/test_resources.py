@@ -39,7 +39,9 @@ class ResourceTests(unittest.TestCase):
 
     def test_current_manuscript_dependencies_are_approved(self):
         """Every local figure/table/bibliography dependency is in the exact allowlist."""
-        text = (PAPER / "paper/article.tex").read_text(encoding="utf-8")
+        sources = [PAPER / "paper/article.tex", PAPER / "paper/supplement.tex"]
+        text = "\n".join(source.read_text(encoding="utf-8") for source in sources
+                         if source.is_file())
         approved = set((PAPER / ".gitignore").read_text().splitlines())
         patterns = ((r"\\input\{([^}]+)\}", ".tex"),
                     (r"\\includegraphics(?:\[[^]]*\])?\{([^}]+)\}", ""),

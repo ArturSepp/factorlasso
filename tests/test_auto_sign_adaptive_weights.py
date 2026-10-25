@@ -14,8 +14,8 @@ The tests verify five properties:
    to source slope magnitudes).
 3. With adaptive weights active, factors with strong univariate evidence
    (large |β̂_uni|) are shrunk less than factors with weak evidence
-   relative to a uniformly-penalised baseline — the Zou (2006) oracle
-   property.
+   relative to a uniformly-penalised baseline. This finite-sample check of
+   magnitude-dependent shrinkage does not establish an oracle property.
 4. The floor stabiliser prevents weight explosion: small |β̂_uni| does
    not cause numerical blow-up.
 5. The ``_adaptive_penalty_weights`` helper is correct in isolation.
@@ -113,8 +113,8 @@ def test_adaptive_preserves_strong_signal_more_than_uniform():
     adaptive penalty than by a uniform L1 penalty at the same nominal
     ``reg_lambda``. Conversely, weak-evidence factors are shrunk MORE.
 
-    This is the Zou (2006) oracle property: the penalty becomes
-    magnitude-aware.
+    This checks magnitude-dependent shrinkage on this panel, not the
+    asymptotic support recovery and distributional claims of an oracle property.
     """
     X, Y = _make_mixed_panel()
     with warnings.catch_warnings():

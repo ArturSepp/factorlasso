@@ -215,9 +215,10 @@ configuration, the paper's exhibits, and what the study does and does not show.
   with Credit and Equity factors 0.84 correlated, shrink-to-zero penalties move bond funds' credit
   exposure into Equity, and prior-centred penalties keep it (JSS paper, Sections 5.5 and 6).
 
-- [Sign pooling beyond finance: yeast eQTL](app_sign_pooling_genomics.md): 64 MAPK genes on 202
-  markers give sign-coherent co-expression clusters and recover eQTL hotspots, with no prediction
-  gain over per-gene LASSO (sign-pooling paper, Section 5).
+- [Sign pooling beyond finance: yeast eQTL](app_sign_pooling_genomics.md): training-only
+  screening, clustering and tuning on 64 MAPK genes show a prediction cost from pooled exclusion
+  and limited support stability. Archived descriptive figures do not validate biological signs
+  or hotspot discoveries (sign-pooling paper, Section 5).
 
 - [From loadings to portfolio risk and capital market assumptions](app_portfolio_risk_models.md):
   one loading matrix drives the risk model and the expected returns of a multi-asset portfolio,
@@ -246,8 +247,8 @@ reproduce each one.
 
 - Sepp, A. and Kastenholz, M. A. (2026). *factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python*. Submitted to the Journal of Statistical Software.
-- Sepp, A. and Kastenholz, M. (2026). *Gated Cluster-Pooled Sign Constraints for Multi-Output
-  Sparse Regression*. Submitted to Computational Statistics & Data Analysis.
+- Sepp, A. and Kastenholz, M. A. (2026). *Gated Cluster-Pooled Sign Constraints for Multi-Output
+  Sparse Regression*. Revised working manuscript; prepared for Computational Statistics.
 - Sepp, A. (2026). *Exposure-budget floors for factor loadings under correlated factors*.
   Working paper of 2 October 2026; link to be added.
 - Sepp, A., Ossa, I. and Kastenholz, M. (2026). *Robust Optimization of Strategic and Tactical

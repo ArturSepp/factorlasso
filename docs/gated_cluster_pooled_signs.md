@@ -17,15 +17,17 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/
 Gated cluster-pooled sign derivation estimates the sign matrix of a factor model from the data.
 For each cluster of similar responses and each factor it computes one pooled univariate slope,
 keeps the slope's sign only when its t-statistic clears a noise floor, and passes the surviving
-signs to the estimator as hard constraints. Pooling raises the sample behind each sign by the
-cluster size; the gate abstains where even the pooled evidence is weak.
+signs to the estimator as hard constraints. Pooling can improve precision when responses share
+an exposure direction, but correlated residuals limit the gain. A failed gate fixes the loading
+at zero; it does not leave the loading unrestricted.
 
 ## Overview
 
 The [sign constraints](sign_constraints_and_priors.md) article describes what a sign matrix does
 once it is given. Often it is not given: an analyst knows that funds of one style share their
 exposures, but not the sign of every loading. The univariate slope of a response on one factor
-carries that sign, and a hard constraint built from it is the device of univariate-guided sparse
+carries a marginal association sign, which need not equal a conditional multivariate loading's
+sign. Hard constraints built from marginal signs are related to univariate-guided sparse
 regression (Chatterjee, Hastie and Tibshirani, 2025; Richland et al., 2025, equation 3.3). With a
 short history, however, a single response's slope is noisy and its sign often wrong or
 uninformative.
@@ -33,9 +35,11 @@ uninformative.
 factorlasso pools. Responses in one cluster, such as the HCGL clusters discovered from the
 response correlations, are assumed to share the direction of their exposures, so their slopes
 are estimated jointly. A closed-form gate then decides, cluster by cluster and factor by factor,
-whether the pooled slope is distinguishable from noise. The method, its consistency argument and
-its simulation study are in Sepp and Kastenholz (2026a); this article describes it as implemented
-and reproduces its central trade-off on a small panel.
+whether to retain its sign. Sepp and Kastenholz (2026a) give sufficient conditions for correct
+gate directions on nonzero coefficients in fixed dimensions, together with fitted-estimator
+experiments. That result does not establish coefficient-support recovery, an oracle
+distribution, or the consistency of jointly tuned clustering and thresholds. This article
+describes the implementation and illustrates its screening trade-off on a small panel.
 
 Two parts of uniLasso are not inherited. Its second stage fits a non-negative LASSO on
 leave-one-out predictions, whereas here the signs constrain the coefficients of the original
@@ -51,7 +55,7 @@ marginal evidence before regularisation (Fan and Lv, 2008).
 | $\mathcal{C}$, $m$ | A cluster of responses and its size | Supplied groups or discovered clusters |
 | $\hat\beta_{j,\mathcal{C}}$ | Pooled univariate slope of cluster $\mathcal{C}$ on factor $j$ | Dimensionless |
 | $t_{j,\mathcal{C}}$ | Its t-statistic | Dimensionless |
-| $\tau$ | Gate threshold, `auto_sign_threshold_t` | Default 0.75; `None` disables the gate |
+| $\tau$ | Gate threshold, `auto_sign_threshold_t` | Default 0.75; `None` disables thresholding but retains slope signs; positive infinity fails every automatic gate |
 | $s_{kj}$ | Derived sign of response $k$ on factor $j$ | $1$, $-1$ or $0$ |
 
 The derivation runs inside `fit` on the demeaned, masked arrays that the solver receives, so
@@ -77,7 +81,8 @@ signs are coherent within the cluster by construction.
 
 ### The noise-floor gate
 
-With equal weights and no missing data, the residual sum of squares of the pooled regression is
+For the default `"independent"` variance with equal weights and no missing data, the residual sum
+of squares of the pooled regression is
 $\mathrm{SSR}_j = \sum_{k \in \mathcal{C}} y_k^{\top} y_k - m \hat\beta_{j,\mathcal{C}}^2 x_j^{\top} x_j$,
 and the t-statistic is
 
@@ -85,7 +90,7 @@ $$
 t_{j,\mathcal{C}} = \hat\beta_{j,\mathcal{C}} \left( \frac{\mathrm{SSR}_j}{(mT - m) m x_j^{\top} x_j} \right)^{-1/2}.
 $$
 
-The derived sign of response $k$ in cluster $\mathcal{C}(k)$ is
+At a finite positive threshold, the derived sign of response $k$ in cluster $\mathcal{C}(k)$ is
 
 $$
 s_{kj} = \mathrm{sign}(\hat\beta_{j,\mathcal{C}(k)}) \quad \text{if } \lvert t_{j,\mathcal{C}(k)} \rvert \ge \tau,
@@ -93,12 +98,21 @@ s_{kj} = \mathrm{sign}(\hat\beta_{j,\mathcal{C}(k)}) \quad \text{if } \lvert t_{
 $$
 
 A zero is a hard constraint too: the loading is fixed at zero, which excludes a factor without
-marginal evidence from the regression. The gate is a screening rule, not a significance test.
-Under the null of no association, a single response's statistic is approximately standard normal,
-so a null cell keeps a sign with probability about $2\Phi(-\tau)$; at the default $\tau = 0.75$
-that is 0.45. The expected number of false constraints in an $N \times M$ matrix is therefore
-about $2\Phi(-\tau) N M$ (Sepp and Kastenholz, 2026a, Section 4.3), which the default leaves large
-and $\tau$ between 2 and 2.5 controls.
+sufficient marginal evidence from the regression. A failed gate can therefore delete a truly
+active coefficient. It is not the release convention, which would leave that cell unrestricted.
+
+`auto_sign_threshold_t=None` retains each slope's sign; it does not disable sign constraints.
+An exactly zero slope still gives a zero sign. Positive infinity explicitly fails every
+automatic gate, including an exactly noiseless nonzero slope whose statistic is itself infinite.
+The slopes and diagnostics remain available, and explicit constraints, prior signs and excluded
+factors retain their usual precedence. This endpoint repair applies to the current development
+source; older releases could retain noiseless signs at an infinite threshold.
+
+The statistic is a screening score, not a calibrated significance test. A larger threshold
+changes the balance between retained signs and exclusions, but no universal threshold controls
+false signs, family-wise error or false discovery rate. In particular, a null conditional
+coefficient can have a nonzero marginal slope when predictors are correlated. Choose and assess
+the threshold within training data and report both prediction and selection stability.
 
 ### Which responses are pooled
 
@@ -132,10 +146,14 @@ $$
 
 a one-way cluster-robust sandwich over dates (Cameron and Miller, 2015) with the effective number
 of dates $n_{\mathrm{eff}}$ in the correction. It allows the responses of a date to be correlated,
-so duplicated or near-identical responses no longer inflate the evidence, and it assumes
-independence across dates (Sepp and Kastenholz, 2026a, Section 2.4). The weights come from
+so duplicating every response leaves the statistic unchanged. It assumes independence across
+dates (Sepp and Kastenholz, 2026a, "Response dependence in the gate"). Prefer explicit
+`auto_sign_variance="date"` when pooled responses can be correlated; the public default remains
+`"independent"` for compatibility. The weights come from
 `auto_sign_ewma_span`, or from the fit's own span with `auto_sign_use_fit_span=True`; the default
-weights dates equally.
+weights dates equally. The effective-date correction is a weighting convention, not an exact
+Student distribution. Neither variance option provides HAC inference for serial dependence.
+With a fixed EWMA span, effective sample size remains bounded as older observations accumulate.
 
 ### Order of precedence
 
@@ -196,10 +214,10 @@ def derive_signs(x: pd.DataFrame, y: pd.DataFrame, clusters: pd.Series, tau: flo
 ```
 
 At the default $\tau = 0.75$, per-response derivation recovers the true sign in 0.72 of the active
-cells and abstains on 0.26; pooling in the known clusters recovers 0.98 and abstains on 0.02. The
-gain comes from abstention, not from fewer wrong signs: neither derivation flips more than a few
+cells and excludes 0.26; pooling in the known clusters recovers 0.98 and excludes 0.02. The
+gain comes from fewer exclusions, not from fewer wrong signs: neither derivation flips more than a few
 per cent of active cells. Pooling pays on the null cells, signing 0.55 of them against 0.47 per
-response, whose rate matches $2\Phi(-0.75) = 0.45$. At $\tau = 2.5$ pooling still recovers 0.74
+response. At $\tau = 2.5$ pooling still recovers 0.74
 of the true signs while signing only 0.04 of the null cells.
 
 ![Sign recovery on active cells and false signs on null cells against the gate threshold, per response and pooled within known clusters](images/pooled_sign_recovery.png)
@@ -208,16 +226,18 @@ of the true signs while signing only 0.04 of the null cells.
 predictors, 60 dates and a population $R^2$ of 0.10. The light vertical line marks the package
 default $\tau = 0.75$. Produced by `tools/docs_analytics/estimation.py` from the example script.*
 
-The paper's base design, with 60 responses in six clusters, 20 predictors and 80 dates, shows the
-same frontier at a larger scale. With known clusters it recovers 0.993 of the true signs at a
-false-sign rate of 0.579 for $\tau = 0.75$, and 0.863 at 0.070 for $\tau = 2.5$; the frontier
-bends between 2.0 and 2.5, which the paper reads as the useful range for a final sign report
-(Sepp and Kastenholz, 2026a, Section 4.3).
+The following archived experiment uses 60 responses in six known clusters, 20 predictors and
+80 dates, with the historical independent-cell variance. Known clusters are an oracle diagnostic.
+The revised manuscript retains this experiment under "Historical experiments and their
+corrections" in Online Resource 1; it does not use it to justify a reporting threshold or a
+general prediction claim. Current fitted-estimator and learned-cluster comparisons are in the
+manuscript's "Simulation study".
 
 ![Sensitivity on true cells against the false-sign rate on null cells as the gate threshold varies, under known-cluster pooling](../papers/sign_pooling_2026/paper/figures/figS2_gate_roc.png)
 
-*Paper exhibit. Sepp and Kastenholz (2026a), Figure fig:gate: base configuration, known-cluster
-pooling, $\tau$ from 0.5 to 3.5, means over 200 replications.*
+*Archived paper exhibit. Historical base configuration, known-cluster pooling, independent-cell
+variance, $\tau$ from 0.5 to 3.5, means over 200 replications. Preserved for reproduction; this is
+not the revised manuscript's date-score gate validation.*
 
 ## Implementation in factorlasso
 
@@ -226,7 +246,7 @@ Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-
 | Name | Role |
 |---|---|
 | `auto_sign_constraints` | Derive signs inside `fit`, pooled as in the table above. Default `False`. |
-| `auto_sign_threshold_t` | The gate $\tau$; `None` keeps every slope's sign. |
+| `auto_sign_threshold_t` | The gate $\tau$; `None` keeps every slope's sign, and positive infinity sets every automatic sign to zero before overrides. |
 | `auto_sign_variance` | `"independent"` (default) or `"date"`, the date-score sandwich. |
 | `auto_sign_ewma_span`, `auto_sign_use_fit_span` | Weights of the sign statistics: a separate span, or the fit's own span. The default weights dates equally. |
 | `auto_sign_excluded_factors` | Factors exempt from derived signs and from the zero gate. |
@@ -246,33 +266,31 @@ python examples/docs/gated_cluster_pooled_signs.py
 
 ## Interpretation and limitations
 
-- **A screening rule, not a test.** The gate controls neither a family-wise error nor a false
-  discovery rate, and at the default threshold roughly half of the null cells keep a sign. Raise
-  $\tau$ towards 2 to 2.5 when the sign matrix itself is reported.
+- **A screening rule, not a test.** The gate supplies no calibrated false-sign or multiplicity
+  guarantee. Higher thresholds remove more cells, including genuinely active ones; the default
+  and the teaching example's threshold sweep are not significance levels.
 - **Pooling assumes coherent clusters.** A cluster that mixes opposite exposures pools them into
-  one slope, and the minority members receive the wrong sign. HCGL clusters are chosen for
-  coherence of the response correlations; the JSS paper describes HCGL as a sign-coherent
-  grouping method, not a cluster-recovery method (Sepp and Kastenholz, 2026b, Section 5.4).
-- **Discovered clusters need signal.** In the paper's base design, estimated-cluster pooling
-  recovered 0.697 of the signs against 0.993 with the true clusters, because at a population
-  $R^2$ of 0.10 the response correlations do not yet reveal the partition.
+  one slope, and minority members can receive the wrong sign. Correlation-based HCGL clustering
+  does not itself establish common conditional coefficient signs.
+- **Discovered clusters need signal.** The revised paper studies learned groups with both
+  coherent and misspecified sign structures. Gains depend on recoverable groups, factor
+  dependence and the cut; known groups cannot substitute for this evaluation.
 - **Correlated predictors break the marginal sign.** A marginal slope absorbs correlated
   factors, so its sign can differ from the conditional loading, and as the predictor correlation
-  rises the derived signs flip more often (figure below). A wrong hard sign holds the coefficient
-  in the wrong half-space, where the penalty drives it to zero, so the fitted model abstains
-  rather than reports the wrong sign. The cooperative LASSO (Chiquet, Grandvalet and Charbonnier,
-  2012), a soft alternative, commits to a sign on more cells and flips 0.10 to 0.22 of them across
-  the same designs (Sepp and Kastenholz, 2026a, Section 4.5).
-- **The `"independent"` variance overstates the evidence of correlated responses.** It divides
-  by the cluster size as if the responses were independent and omits the design effect
-  $1 + (m-1)\bar\rho$ of their residual correlation $\bar\rho$. The `"date"` variance removes that
-  inflation but assumes independent dates; neither is robust to serial correlation.
+  rises the derived signs can flip (archived figure below). A wrong hard sign excludes the true
+  nonzero loading: the fitted value can be zero or nonzero with the wrong sign. The penalty does
+  not guarantee abstention. Compare unrestricted, exclusion and release fits on held-out data.
+- **The `"independent"` variance omits response covariance.** Positive residual dependence can
+  inflate its evidence; changing to `"date"` need not reduce every statistic or improve every
+  estimate. The two choices keep pooled slopes unchanged but can alter gates and fitted
+  coefficients. The familiar design effect $1+(m-1)\bar\rho$ describes a homogeneous special
+  case, not every pool with unequal effects or missing observations.
 
 ![Sign recovery, sign-flip rate and false-sign rate against predictor correlation for per-response, estimated-cluster and known-cluster derivations](../papers/sign_pooling_2026/paper/figures/figS5_correlated.png)
 
-*Paper exhibit. Sepp and Kastenholz (2026a), Figure fig:correlated: base configuration with
-correlated predictors, $\rho_X$ from 0 to 0.8, per-response, estimated-cluster (HCGL) and
-known-cluster derivations.*
+*Archived paper exhibit. Historical base configuration with correlated predictors,
+$\rho_X$ from 0 to 0.8, per-response, estimated-cluster (HCGL) and known-cluster derivations
+using the independent-cell gate. These are gate diagnostics, not fitted-estimator errors.*
 
 ## See also
 
@@ -300,8 +318,8 @@ known-cluster derivations.*
 - Richland, J., Kiiskinen, T., Wang, W., Lu, S., Narasimhan, B., Hastie, T., Rivas, M., and
   Tibshirani, R. (2025). Univariate-guided sparse regression for biobank-scale high-dimensional
   omics data. arXiv:2511.22049.
-- Sepp, A., and Kastenholz, M. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
-  Sparse Regression. Submitted to *Computational Statistics & Data Analysis*.
+- Sepp, A., and Kastenholz, M. A. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
+  Sparse Regression. Revised working manuscript; prepared for *Computational Statistics*.
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical

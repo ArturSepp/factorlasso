@@ -1,4 +1,4 @@
-%% refs.bib -- Paper A (CSDA). Author-year (cas-model2-names.bst).
+%% Computational Statistics manuscript and supplement; author-year references.
 %% All bibliographic details verified against published records.
 
 @article{Chatterjee+Hastie+Tibshirani:2025,
@@ -14,11 +14,12 @@
 @article{Yuan+Lin:2006,
   author  = {Yuan, Ming and Lin, Yi},
   title   = {Model selection and estimation in regression with grouped variables},
-  journal = {Journal of the Royal Statistical Society: Series B},
+  journal = {Journal of the Royal Statistical Society Series B: Statistical Methodology},
   volume  = {68},
   number  = {1},
   pages   = {49--67},
-  year    = {2006}
+  year    = {2006},
+  doi     = {10.1111/j.1467-9868.2005.00532.x}
 }
 
 @article{Zou:2006,
@@ -28,7 +29,8 @@
   volume  = {101},
   number  = {476},
   pages   = {1418--1429},
-  year    = {2006}
+  year    = {2006},
+  doi     = {10.1198/016214506000000735}
 }
 
 @article{Wang+Leng:2008,
@@ -38,17 +40,19 @@
   volume  = {52},
   number  = {12},
   pages   = {5277--5286},
-  year    = {2008}
+  year    = {2008},
+  doi     = {10.1016/j.csda.2008.05.006}
 }
 
 @article{Fan+Lv:2008,
   author  = {Fan, Jianqing and Lv, Jinchi},
   title   = {Sure independence screening for ultrahigh dimensional feature space},
-  journal = {Journal of the Royal Statistical Society: Series B},
+  journal = {Journal of the Royal Statistical Society Series B: Statistical Methodology},
   volume  = {70},
   number  = {5},
   pages   = {849--911},
-  year    = {2008}
+  year    = {2008},
+  doi     = {10.1111/j.1467-9868.2008.00674.x}
 }
 
 @article{Brem+Kruglyak:2005,
@@ -78,13 +82,15 @@
   title   = {On model selection consistency of {Lasso}},
   journal = {Journal of Machine Learning Research},
   volume  = {7},
+  number  = {90},
   pages   = {2541--2563},
-  year    = {2006}
+  year    = {2006},
+  url     = {https://www.jmlr.org/papers/v7/zhao06a.html}
 }
 
 @article{Chiquet+Grandvalet+Charbonnier:2012,
   author  = {Chiquet, Julien and Grandvalet, Yves and Charbonnier, Camille},
-  title   = {Sparsity in sign-coherent groups of variables via the cooperative-{Lasso}},
+  title   = {Sparsity with sign-coherent groups of variables via the cooperative-{Lasso}},
   journal = {The Annals of Applied Statistics},
   volume  = {6},
   number  = {2},
@@ -111,7 +117,8 @@
   volume  = {22},
   number  = {2},
   pages   = {231--245},
-  year    = {2013}
+  year    = {2013},
+  doi     = {10.1080/10618600.2012.681250}
 }
 
 @article{Meinshausen:2007,
@@ -129,16 +136,9 @@
   author = {Sepp, Artur and Kastenholz, Mika},
   title  = {{factorlasso}: hierarchical-clustering group {LASSO} with gated cluster-pooled sign constraints},
   year   = {2026},
-  note   = {Python package, version 0.7.2, \url{https://github.com/ArturSepp/factorlasso}}
+  note   = {Python package. Archived experiments use version 0.7.2; the revised experiments record their source and environment separately. \url{https://github.com/ArturSepp/factorlasso}}
 }
 
-@article{factorlasso-jss,
-  author  = {Sepp, Artur and Kastenholz, Mika},
-  title   = {{factorlasso}: Sparse Multi-Output Regression with Cluster-Grouped Sign Constraints in {Python}},
-  journal = {Journal of Statistical Software},
-  year    = {2026},
-  note    = {Companion software paper, submitted}
-}
 
 @article{sepp2026rosaa,
 	author  = {Sepp, Artur and Ossa, Ivan and Kastenholz, Mika},
@@ -147,11 +147,136 @@
 	volume  = {52},
 	number  = {4},
 	pages   = {86--120},
-	year    = {2026}
+	year    = {2026},
+	doi     = {10.3905/jpm.2025.1.806}
 }
 @article{CameronMiller2015,
   author={Cameron, A. Colin and Miller, Douglas L.},
   title={A Practitioner's Guide to Cluster-Robust Inference},
   journal={Journal of Human Resources}, year={2015}, volume={50}, number={2}, pages={317--372},
   doi={10.3368/jhr.50.2.317}
+}
+
+
+%% Added 25 October 2026 (revision pass). DOIs checked against publisher records
+%% where the pass could reach them; entries marked [TODO: verify] were written from
+%% the authors' knowledge of the record and need a final check before submission.
+
+@article{Tibshirani:1996,
+  author  = {Tibshirani, Robert},
+  title   = {Regression shrinkage and selection via the lasso},
+  journal = {Journal of the Royal Statistical Society Series B: Statistical Methodology},
+  volume  = {58},
+  number  = {1},
+  pages   = {267--288},
+  year    = {1996},
+  doi     = {10.1111/j.2517-6161.1996.tb02080.x}
+}
+
+@article{Meinshausen:2013,
+  author  = {Meinshausen, Nicolai},
+  title   = {Sign-constrained least squares estimation for high-dimensional regression},
+  journal = {Electronic Journal of Statistics},
+  volume  = {7},
+  pages   = {1607--1631},
+  year    = {2013},
+  doi     = {10.1214/13-EJS818}
+}
+
+@article{Slawski+Hein:2013,
+  author  = {Slawski, Martin and Hein, Matthias},
+  title   = {Non-negative least squares for high-dimensional linear models: consistency and sparse recovery without regularization},
+  journal = {Electronic Journal of Statistics},
+  volume  = {7},
+  pages   = {3004--3056},
+  year    = {2013},
+  doi     = {10.1214/13-EJS868}
+}
+
+@article{Obozinski+Taskar+Jordan:2010,
+  author  = {Obozinski, Guillaume and Taskar, Ben and Jordan, Michael I.},
+  title   = {Joint covariate selection and joint subspace selection for multiple classification problems},
+  journal = {Statistics and Computing},
+  volume  = {20},
+  number  = {2},
+  pages   = {231--252},
+  year    = {2010},
+  doi     = {10.1007/s11222-008-9111-x}
+}
+
+@article{Rothman+Levina+Zhu:2010,
+  author  = {Rothman, Adam J. and Levina, Elizaveta and Zhu, Ji},
+  title   = {Sparse multivariate regression with covariance estimation},
+  journal = {Journal of Computational and Graphical Statistics},
+  volume  = {19},
+  number  = {4},
+  pages   = {947--962},
+  year    = {2010},
+  doi     = {10.1198/jcgs.2010.09188}
+}
+
+@article{Peng+etal:2010,
+  author  = {Peng, Jie and Zhu, Ji and Bergamaschi, Anna and Han, Wonshik and Noh, Dong-Young and Pollack, Jonathan R. and Wang, Pei},
+  title   = {Regularized multivariate regression for identifying master predictors with application to integrative genomics study of breast cancer},
+  journal = {The Annals of Applied Statistics},
+  volume  = {4},
+  number  = {1},
+  pages   = {53--77},
+  year    = {2010},
+  doi     = {10.1214/09-AOAS271}
+}
+
+@article{Kim+Xing:2012,
+  author  = {Kim, Seyoung and Xing, Eric P.},
+  title   = {Tree-guided group lasso for multi-response regression with structured sparsity, with an application to {eQTL} mapping},
+  journal = {The Annals of Applied Statistics},
+  volume  = {6},
+  number  = {3},
+  pages   = {1095--1117},
+  year    = {2012},
+  doi     = {10.1214/12-AOAS549}
+}
+
+@article{Ward:1963,
+  author  = {Ward, Joe H.},
+  title   = {Hierarchical grouping to optimize an objective function},
+  journal = {Journal of the American Statistical Association},
+  volume  = {58},
+  number  = {301},
+  pages   = {236--244},
+  year    = {1963},
+  doi     = {10.1080/01621459.1963.10500845}
+}
+
+@article{Murtagh+Legendre:2014,
+  author  = {Murtagh, Fionn and Legendre, Pierre},
+  title   = {Ward's hierarchical agglomerative clustering method: which algorithms implement {Ward's} criterion?},
+  journal = {Journal of Classification},
+  volume  = {31},
+  number  = {3},
+  pages   = {274--295},
+  year    = {2014},
+  doi     = {10.1007/s00357-014-9161-z}
+}
+
+@article{White:1980,
+  author  = {White, Halbert},
+  title   = {A heteroskedasticity-consistent covariance matrix estimator and a direct test for heteroskedasticity},
+  journal = {Econometrica},
+  volume  = {48},
+  number  = {4},
+  pages   = {817--838},
+  year    = {1980},
+  doi     = {10.2307/1912934}
+}
+
+@article{Liang+Zeger:1986,
+  author  = {Liang, Kung-Yee and Zeger, Scott L.},
+  title   = {Longitudinal data analysis using generalized linear models},
+  journal = {Biometrika},
+  volume  = {73},
+  number  = {1},
+  pages   = {13--22},
+  year    = {1986},
+  doi     = {10.1093/biomet/73.1.13}
 }

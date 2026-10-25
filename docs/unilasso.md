@@ -26,7 +26,7 @@ marginal evidence on each predictor twice: its univariate slope fixes the direct
 loading, and its leave-one-out fit is the feature on which a second, non-negative LASSO selects
 and scales. The method is per response, with no grouping, no clustering and no significance
 gate. The [gated sign derivation](gated_cluster_pooled_signs.md) takes the univariate sign from
-the same place, pools it within clusters, tests it against a noise floor and imposes it as a hard
+the same place, pools it within clusters, screens it against a threshold and imposes it as a hard
 constraint on the original factors, as in equation 3.3 of Richland et al. (2025); the sign-pooling
 paper sets the two side by side (Sepp and Kastenholz, 2026a, Section 1).
 
@@ -152,10 +152,11 @@ python examples/docs/unilasso.py
 
 ## Interpretation and limitations
 
-- **The sign is inherited, not tested.** A factor whose marginal and joint effects disagree is
-  dropped under the default, and its omission biases the loadings of correlated factors. The
-  gated sign derivation abstains on weak marginal evidence instead, and the free-sign setting
-  lets stage two reverse the slope.
+- **The sign is inherited, not tested.** When a marginal and conditional effect disagree, a
+  nonzero fitted coefficient retains the wrong conditional direction; the fit may also set it
+  to zero. Omission is not guaranteed. The gated sign derivation forces a coefficient to zero
+  when its marginal evidence fails the threshold. Disabling stage-two non-negativity lets
+  UniLasso reverse the marginal slope.
 - **`reg_lambda` has a different scale.** It penalises $\theta$, which is near one for a kept
   loading, not the loading itself; a value tuned for `LASSO` does not carry over.
 - **Several package options do not apply.** `UNILASSO` rejects `factors_beta_loading_signs`,
@@ -168,7 +169,7 @@ python examples/docs/unilasso.py
 
 ## See also
 
-- [Gated cluster-pooled sign derivation](gated_cluster_pooled_signs.md): pooled, tested and
+- [Gated cluster-pooled sign derivation](gated_cluster_pooled_signs.md): pooled, screened and
   hard-imposed univariate signs.
 - [Adaptive penalty weights](adaptive_penalty_weights.md): univariate magnitudes as penalty
   weights.
@@ -183,8 +184,8 @@ python examples/docs/unilasso.py
 - Richland, J., Kiiskinen, T., Wang, W., Lu, S., Narasimhan, B., Hastie, T., Rivas, M., and
   Tibshirani, R. (2025). Univariate-guided sparse regression for biobank-scale high-dimensional
   -omics data. arXiv:2511.22049.
-- Sepp, A., and Kastenholz, M. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
-  Sparse Regression. Submitted to *Computational Statistics & Data Analysis*.
+- Sepp, A., and Kastenholz, M. A. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
+  Sparse Regression. Revised working manuscript; prepared for *Computational Statistics*.
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical

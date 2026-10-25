@@ -20,6 +20,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from factorlasso import (
     LassoModel,
@@ -356,3 +357,89 @@ def test_cluster_mode_hcgl_path_threshold_gates_uniformly():
                 f"Cluster {c}, factor {col}: members disagree on sign "
                 f"({rows[col].to_dict()})"
             )
+
+
+@pytest.mark.parametrize("variance", ["independent", "date"])
+@pytest.mark.parametrize("clusters", [None, [0, 0, 1, 1]])
+def test_infinite_threshold_public_derivation_rejects_noiseless_signs(variance, clusters):
+    """The infinite endpoint rejects even infinite statistics, keeping raw slopes."""
+    factor = np.tile([-1., 1.], 16)
+    x = np.column_stack([factor, factor, -factor, -factor])
+    y = np.column_stack([2. * factor, 2. * factor])
+    # Independent reference: these exact linear equations have slopes +/-2
+    # and identically zero residuals, regardless of the variance convention.
+    expected_slopes = np.array([2., 2., -2., -2.])
+    for j, slope in enumerate(expected_slopes):
+        np.testing.assert_array_equal(y, np.tile(slope * x[:, j, None], (1, 2)))
+    kwargs = dict(clusters=clusters, variance_estimator=variance, return_slopes=True)
+    for threshold in [None, 0., .75, 10.]:
+        signs, slopes = derive_sign_constraints(x, y, auto_sign_threshold_t=threshold, **kwargs)
+        np.testing.assert_array_equal(signs, np.sign(expected_slopes))
+        np.testing.assert_array_equal(slopes, expected_slopes)
+    signs, slopes = derive_sign_constraints(x, y, auto_sign_threshold_t=np.inf, **kwargs)
+    np.testing.assert_array_equal(slopes, expected_slopes)
+    np.testing.assert_array_equal(signs, np.zeros(4))
+
+
+@pytest.mark.parametrize("variance", ["independent", "date"])
+@pytest.mark.parametrize("model_type", [LassoModelType.LASSO, LassoModelType.GROUP_LASSO])
+def test_infinite_threshold_model_matches_explicit_zero_reference(variance, model_type):
+    """Both estimation paths enforce zero and retain noiseless diagnostics."""
+    x = pd.DataFrame({"factor": np.tile([-1., 1.], 16)})
+    y = pd.DataFrame({"a": 2. * x.factor, "b": 2. * x.factor})
+    kwargs = dict(model_type=model_type, group_data=pd.Series(1, index=y.columns),
+                  span=None, demean=False, reg_lambda=.01)
+    gated = LassoModel(**kwargs, auto_sign_constraints=True,
+                       auto_sign_variance=variance, auto_sign_threshold_t=np.inf).fit(x, y)
+    # This comparison bypasses sign derivation entirely and hands the solver
+    # the endpoint's explicitly prescribed zero constraints.
+    reference = LassoModel(**kwargs, factors_beta_loading_signs=pd.DataFrame(
+        0., index=y.columns, columns=x.columns)).fit(x, y)
+    np.testing.assert_array_equal(gated.sign_slopes_, np.full((2, 1), 2.))
+    assert np.isposinf(gated.sign_t_stats_.to_numpy()).all()
+    np.testing.assert_array_equal(gated.detected_signs_, np.zeros((2, 1)))
+    np.testing.assert_array_equal(gated.derived_signs_, np.zeros((2, 1)))
+    np.testing.assert_allclose(gated.coef_, reference.coef_, atol=1e-10, rtol=0)
+    np.testing.assert_allclose(gated.coef_, 0., atol=1e-8, rtol=0)
+
+
+@pytest.mark.parametrize("variance", ["independent", "date"])
+def test_infinite_threshold_keeps_master_constraint_precedence(variance):
+    """Master direction and release override the infinite automatic endpoint."""
+    factor = np.tile([-1., 1.], 16)
+    x = pd.DataFrame({"directed": factor, "released": factor, "automatic": factor})
+    y = pd.DataFrame({"a": 2. * factor, "b": 2. * factor})
+    signs, slopes = derive_sign_constraints(
+        x, y, auto_sign_threshold_t=np.inf, variance_estimator=variance,
+        master_constraints={"directed": -1, "released": None}, return_slopes=True)
+    expected = pd.DataFrame({"directed": [-1., -1.], "released": [np.nan, np.nan],
+                             "automatic": [0., 0.]}, index=y.columns)
+    pd.testing.assert_frame_equal(signs, expected)
+    np.testing.assert_array_equal(slopes, np.full((2, 3), 2.))
+
+
+@pytest.mark.parametrize("variance", ["independent", "date"])
+@pytest.mark.parametrize("model_type", [LassoModelType.LASSO, LassoModelType.GROUP_LASSO])
+def test_infinite_threshold_keeps_prior_hard_sign_and_exclusion_precedence(variance, model_type):
+    """Only detected gates change; the same resolved inputs give the same fit."""
+    rows = np.arange(32)
+    x = pd.DataFrame({name: 1. - 2. * ((rows >> j) & 1)
+                      for j, name in enumerate(["prior", "hard_sign", "hard_zero", "free"])})
+    y = pd.DataFrame({"a": 2. * x.prior, "b": 2. * x.prior})
+    prior = pd.DataFrame([[.5, .25, -.25, .1]] * 2, index=y.columns, columns=x.columns)
+    hard = pd.DataFrame([[np.nan, -1., 0., np.nan]] * 2,
+                        index=y.columns, columns=x.columns)
+    expected = pd.DataFrame([[1., -1., 0., np.nan]] * 2,
+                            index=y.columns, columns=x.columns)
+    kwargs = dict(model_type=model_type, group_data=pd.Series(1, index=y.columns),
+                  span=None, demean=False, reg_lambda=.01, factors_beta_prior=prior)
+    gated = LassoModel(**kwargs, auto_sign_constraints=True,
+                       auto_sign_variance=variance, auto_sign_threshold_t=np.inf,
+                       auto_sign_excluded_factors=["free"],
+                       factors_beta_loading_signs=hard).fit(x, y)
+    reference = LassoModel(**kwargs, factors_beta_loading_signs=expected).fit(x, y)
+    np.testing.assert_array_equal(gated.detected_signs_, np.zeros((2, 4)))
+    np.testing.assert_array_equal(gated.sign_slopes_, [[2., 0., 0., 0.]] * 2)
+    assert np.isposinf(gated.sign_t_stats_["prior"]).all()
+    pd.testing.assert_frame_equal(gated.derived_signs_, expected)
+    np.testing.assert_allclose(gated.coef_, reference.coef_, atol=1e-9, rtol=0)

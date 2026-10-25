@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+## 1.0.6 — 2026-10-25
+
+### Fixed
+
+- Positive-infinite automatic sign thresholds now fail every data-derived gate,
+  including exactly noiseless signals with infinite screening statistics, in both
+  pooled and per-response estimation. Raw slopes and statistics, explicit master
+  and per-cell constraints, prior-sign precedence and excluded factors are preserved.
+  Defaults and finite-threshold behaviour are unchanged.
+- Clarify that automatic sign gates are screening rules without calibrated false-sign
+  control, and that finite-sample adaptive-shrinkage checks do not establish an oracle
+  property.
+
+### Documentation and research
+
+- Refresh the sign-pooling methodology and genomics case study, approved manuscript
+  and supplement, reproducible validation scripts, and computational benchmarks.
+
+### Maintenance
+
+- Run offline paper tests with the locked test dependencies in CI, and verify that
+  the exact release wheel and source archive exclude paper and agent workspaces.
+
 ## 1.0.5 — 2026-10-22
 
 ### Added

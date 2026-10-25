@@ -178,8 +178,11 @@ python examples/docs/adaptive_penalty_weights.py
 - **Oracle properties are not inherited.** The adaptive LASSO's selection consistency relies on
   a consistent first-stage estimate and conditions on the penalty sequence; the pooled marginal
   slopes and a fixed penalty do not meet them, so the weights are a heuristic reweighting here.
+- **The revised sign-pooling experiments use nonadaptive weights and zero prior targets.** They
+  do not validate prediction or support recovery for this adaptive extension. The worked example
+  checks the implementation and one synthetic mechanism, not an oracle property.
 - **Weights and signs are coupled.** Both come from the same slopes, so a cluster that pools
-  opposite exposures produces a weak slope, a zero sign or a heavy weight for all its members.
+  opposite exposures can produce a weak pooled slope, a zero sign or a heavy weight for its members.
 
 ## See also
 
@@ -193,8 +196,8 @@ python examples/docs/adaptive_penalty_weights.py
 
 ## References
 
-- Sepp, A., and Kastenholz, M. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
-  Sparse Regression. Submitted to *Computational Statistics & Data Analysis*.
+- Sepp, A., and Kastenholz, M. A. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
+  Sparse Regression. Revised working manuscript; prepared for *Computational Statistics*.
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical

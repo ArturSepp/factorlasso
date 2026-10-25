@@ -4,6 +4,8 @@
 !/replication/data/reference/
 !/paper/article.pdf
 !/paper/article.tex
+!/paper/supplement.pdf
+!/paper/supplement.tex
 !/paper/figures/figE1_clusters.pdf
 !/paper/figures/figE1_clusters.png
 !/paper/figures/figE2_signs.pdf
@@ -18,6 +20,12 @@
 !/paper/figures/figS5_correlated.pdf
 !/paper/figures/figS5_correlated.png
 !/paper/figures/revised_gate_roc.pdf
+!/paper/figures/Fig1_pooling_precision.pdf
+!/paper/figures/Fig1_pooling_precision.png
+!/paper/figures/Fig2_gate_tradeoff.pdf
+!/paper/figures/Fig2_gate_tradeoff.png
+!/paper/figures/Fig3_eqtl_gene_r2.pdf
+!/paper/figures/Fig3_eqtl_gene_r2.png
 !/paper/refs.bib
 !/paper/tableE1_clusters.tex
 !/paper/tableS1_base.tex

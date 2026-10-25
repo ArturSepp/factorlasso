@@ -191,8 +191,8 @@
     },
     "sign_pooling": {
       "title": "Gated Cluster-Pooled Sign Constraints for Multi-Output Sparse Regression",
-      "authors": "Sepp, A. and Kastenholz, M.",
-      "status": "Submitted to Computational Statistics & Data Analysis",
+      "authors": "Sepp, A. and Kastenholz, M. A.",
+      "status": "Revised working manuscript; prepared for Computational Statistics",
       "source": "papers/sign_pooling_2026/paper/article.tex",
       "doi": "10.5281/zenodo.21000294",
       "retired_titles": [

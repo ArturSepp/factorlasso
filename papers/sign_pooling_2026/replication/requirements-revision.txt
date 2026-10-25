@@ -1,0 +1,14 @@
+# Observed Python 3.12 environment for the 24 October 2026 revised experiments.
+# Install factorlasso from the exact source snapshot accompanying the result bundle,
+# not from the stale installed distribution metadata or the historical 0.7.2 pin.
+# MOSEK requires a working license. No environments should be created in OneDrive.
+numpy==2.5.2
+pandas==3.0.5
+scipy==1.18.1
+scikit-learn==1.9.0
+matplotlib==3.11.1
+cvxpy==1.9.2
+rdata==1.1.0
+Mosek==11.2.3
+clarabel==0.11.1
+pillow==12.3.0

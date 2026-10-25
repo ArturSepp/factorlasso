@@ -65,8 +65,9 @@ and the prior lowers it further to 0.077, although the prior itself has an error
 
 Both matrices must contain every response of `y` as a row label and every factor of `x` as a
 column label. Extra rows and columns are ignored, and a missing label raises `KeyError`. The
-constraints are exact statements, not beliefs with a confidence: a wrong sign entry forces a
-wrong loading. The prior is a belief, and its weight is the penalty.
+constraints are exact statements, not beliefs with a confidence: a wrong sign entry excludes the
+true nonzero loading and can produce a zero or a wrong-signed estimate. The prior is a belief,
+and its weight is the penalty.
 
 ## Methodology
 
@@ -151,8 +152,9 @@ D_j = \sum_{t,k} w_t v_{tkj} x_{tj}^{2}, \qquad
 \hat b_j = D_j^{-1}\sum_{t,k} w_t v_{tkj}x_{tj}y_{tk}.
 $$
 
-The public default remains `variance_estimator="independent"` for compatibility.
-Explicit `variance_estimator="date"` (model: `auto_sign_variance="date"`) sums
+The public default remains `variance_estimator="independent"` for compatibility. Prefer
+explicit `variance_estimator="date"` (model: `auto_sign_variance="date"`) when pooling
+responses with potentially dependent residuals. This option sums
 response scores within each date before squaring:
 
 $$
@@ -177,6 +179,15 @@ With a finite span it uses independent-cell score variance; it still omits respo
 covariance. The sign gate is a screening rule that changes the feasible set, not a
 multiple-testing-adjusted significance test. Weighting does not make a marginal slope
 equal to a conditional multivariate loading.
+
+`auto_sign_threshold_t=None` disables thresholding, while retaining each marginal slope's
+sign; it does not turn automatic sign constraints off. A zero slope still produces zero.
+Positive infinity fails every automatic gate, even for a noiseless signal with an infinite
+statistic, so the detection layer is all zero. This endpoint repair is in the current
+development source; earlier releases could retain noiseless signs at infinity. Explicit
+hard signs, prior signs and factors excluded from automatic detection keep their normal
+precedence. Slopes and statistical diagnostics are retained for inspection. A zero gate
+fixes a loading at zero; leaving a cell unrestricted requires NaN in the final sign matrix.
 
 Explicit hard signs take precedence. On otherwise unrestricted cells, a finite nonzero
 prior supplies its sign; automatic detection supplies the remaining signs and zero gates.
@@ -348,8 +359,9 @@ and the hash of the image.
 
 ## Interpretation and limitations
 
-- **A sign entry is a hard statement.** A wrong entry forces a wrong loading and no penalty
-  repairs it. Leave a cell NaN when the sign is a belief and not knowledge.
+- **A sign entry is a hard statement.** An opposite sign excludes the true nonzero loading;
+  the optimizer can return zero or a nonzero coefficient of the wrong sign. No penalty restores
+  feasibility of the true loading. Leave a cell NaN when its direction should remain unrestricted.
 - **Three modes take no sign constraint.** The `UNILASSO` solver is a two-stage univariate-guided
   fit and the cooperative solver handles signs softly through the positive and negative parts of
   $\beta$. With these modes a sign matrix or `nonneg=True` raises `ValueError`, and
@@ -392,8 +404,8 @@ and the hash of the image.
   Journal* 48(5), 28-43. DOI 10.2469/faj.v48.n5.28.
 - Meinshausen, N. (2013). Sign-constrained least squares estimation for high-dimensional
   regression. *Electronic Journal of Statistics* 7. DOI 10.1214/13-EJS818.
-- Sepp, A., and Kastenholz, M. (2026). Gated Cluster-Pooled Sign Constraints for Multi-Output
-  Sparse Regression. Submitted to *Computational Statistics & Data Analysis*.
+- Sepp, A., and Kastenholz, M. A. (2026). Gated Cluster-Pooled Sign Constraints for Multi-Output
+  Sparse Regression. Revised working manuscript; prepared for *Computational Statistics*.
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
 - Sepp, A., Ossa, I., and Kastenholz, M. (2026). Robust Optimization of Strategic and Tactical
   Asset Allocation for Multi-Asset Portfolios. *The Journal of Portfolio Management* 52(4),

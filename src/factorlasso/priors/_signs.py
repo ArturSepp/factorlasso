@@ -196,7 +196,11 @@ def _compute_sign_vector(
     slopes = diag["slopes"]
     signs = np.sign(slopes).astype(float)
     if auto_sign_threshold_t is not None and auto_sign_threshold_t > 0:
-        signs[np.abs(diag["t_stats"]) < auto_sign_threshold_t] = 0.
+        if np.isposinf(auto_sign_threshold_t):
+            # The endpoint fails all automatic gates, including noiseless signals.
+            signs.fill(0.)
+        else:
+            signs[np.abs(diag["t_stats"]) < auto_sign_threshold_t] = 0.
     if master_constraints:
         for key, s in master_constraints.items():
             if s is None or (isinstance(s, float) and np.isnan(s)):
@@ -272,7 +276,11 @@ def _compute_sign_matrix_per_response(
     t_stats[perfect] = np.sign(slopes[perfect])*np.inf
     signs = np.sign(slopes)
     if auto_sign_threshold_t is not None and auto_sign_threshold_t > 0:
-        signs[np.abs(t_stats) < auto_sign_threshold_t] = 0.
+        if np.isposinf(auto_sign_threshold_t):
+            # Keep the raw infinite statistic, but fail every automatic gate.
+            signs.fill(0.)
+        else:
+            signs[np.abs(t_stats) < auto_sign_threshold_t] = 0.
     if return_diagnostics:
         return signs, slopes, dict(slopes=slopes, t_stats=t_stats,
             standard_errors=se, effective_n=ess, n_obs=n_obs, weight_mass=sw)
@@ -324,23 +332,29 @@ def derive_sign_constraints(
         or ``NaN`` / ``None`` to release a column from any constraint.
         Applied as a strict per-column override after data-derived signs.
     auto_sign_threshold_t : float, optional
-        When set (>0), data-derived signs are enforced only for columns whose
-        univariate t-statistic satisfies ``|t_j| >= auto_sign_threshold_t``.
+        For a finite positive threshold, data-derived signs are enforced only
+        for columns whose screening statistic satisfies
+        ``|t_j| >= auto_sign_threshold_t``.
         Columns failing the threshold are pinned to ``0`` (β forced to zero
         by the solver), excluding them from the regression entirely.
 
-        Default 0.75 acts as a noise floor — well below conventional
-        significance levels (|t| = 0.75 corresponds to two-sided p ≈ 0.45)
-        but high enough to filter columns whose univariate slope sign is
-        dominated by sampling noise. Pass ``None`` to disable the gate
-        entirely and reproduce v0.3.6 behaviour (always enforce the
-        slope-sign for every column).
-
-        Typical alternative values for financial panels: 0.5 (looser —
-        only the most negligible signals removed) to 1.0 (stricter).
+        Default 0.75 is a screening noise floor, not a calibrated significance
+        level or false-sign guarantee. ``None`` or zero disables the gate and
+        uses the raw slope signs. Positive infinity fails every data-derived
+        gate, including noiseless nonzero slopes with infinite statistics.
+        Raw slopes and statistics remain unchanged; master constraints still
+        override the automatic signs.
     return_slopes : bool, default False
         If True, also return raw pooled slopes (useful for diagnostics or
         adaptive-weighting downstream).
+    ewma_span : float, optional
+        EWMA span for slopes and scores, applied on the original row grid.
+        ``None`` weights dates equally; a finite span must be at least one.
+    variance_estimator : {"independent", "date"}, default "independent"
+        ``"independent"`` keeps the historical response-independence variance.
+        ``"date"`` retains within-date response covariance in the score variance.
+        It assumes independent dates and does not provide HAC inference or
+        calibrated p-values. Neither option changes the raw pooled slopes.
 
     Returns
     -------

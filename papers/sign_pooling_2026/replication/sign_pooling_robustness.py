@@ -266,7 +266,7 @@ def _fit_hard(X: np.ndarray, Y: np.ndarray, sign_mat: np.ndarray,
             act = np.where(s != 0)[0]
             if len(act) == 0:
                 continue
-            m = Lasso(alpha=a, positive=True, fit_intercept=False, max_iter=1200, tol=1e-3)
+            m = Lasso(alpha=a, positive=True, fit_intercept=False, max_iter=20000, tol=1e-9)
             m.fit(X[:, act] * s[act], Y[:, k])
             Bh[k, act] = s[act] * m.coef_
         e = float(np.mean((Bh - Bt) ** 2))
@@ -295,7 +295,7 @@ def _fit_coop(X: np.ndarray, Y: np.ndarray, labels: np.ndarray,
             B = P - Nn
             pen = cp.sum(cp.norm(P, 2, axis=1)) + cp.sum(cp.norm(Nn, 2, axis=1))
             prob = cp.Problem(cp.Minimize(cp.sum_squares(Yc - X @ B) + lam * pen))
-            prob.solve(solver=cp.MOSEK)
+            prob.solve(solver=cp.MOSEK, mosek_params={"MSK_IPAR_NUM_THREADS": 1})
             if prob.status != cp.OPTIMAL or B.value is None:
                 raise RuntimeError(f"MOSEK cooperative fit failed: {prob.status}")
             Bh[mem, :] = B.value.T
@@ -306,12 +306,23 @@ def _fit_coop(X: np.ndarray, Y: np.ndarray, labels: np.ndarray,
 
 
 def _fitted_sign_metrics(Bh: np.ndarray, Bt: np.ndarray,
-                         true_sign: np.ndarray) -> Tuple[float, float, float, float]:
-    """recovery, flip, abstention on active cells, and beta-MSE, from fitted-coefficient signs."""
+                         true_sign: np.ndarray,
+                         zero_tolerance: float = 1e-6) -> Tuple[float, float, float, float]:
+    """Active recovery/flip/abstention and MSE, using one common zero tolerance.
+
+    Coefficients here are in the simulation's standardized X/Y units. Cone
+    solvers return small nonzero values at mathematical zeros; exact equality
+    otherwise gives the cooperative comparator an artificial sign advantage.
+    MSE uses the unthresholded estimate. The tolerance changes reporting only.
+    """
+    if zero_tolerance < 0 or not np.isfinite(Bh).all():
+        raise ValueError("Require nonnegative zero tolerance and finite coefficients")
     nz = true_sign != 0
-    recovery = float(np.mean(np.sign(Bh[nz]) == true_sign[nz]))
-    flip = float(np.mean((Bh[nz] != 0) & (np.sign(Bh[nz]) != true_sign[nz])))
-    abstain = float(np.mean(Bh[nz] == 0))
+    selected = np.abs(Bh[nz]) > zero_tolerance
+    fitted_signs = np.where(selected, np.sign(Bh[nz]), 0.)
+    recovery = float(np.mean(fitted_signs == true_sign[nz]))
+    flip = float(np.mean(selected & (fitted_signs != true_sign[nz])))
+    abstain = float(np.mean(~selected))
     beta_mse = float(np.mean((Bh - Bt) ** 2))
     return recovery, flip, abstain, beta_mse
 
@@ -319,32 +330,45 @@ def _fitted_sign_metrics(Bh: np.ndarray, Bt: np.ndarray,
 def study_cooperative(reps: int = 40,
                       grid: Tuple[float, ...] = (0.0, 0.2, 0.4, 0.6, 0.8),
                       alphas: np.ndarray = np.logspace(-3, -0.5, 4),
-                      lams: np.ndarray = np.logspace(-0.5, 1.5, 4)) -> pd.DataFrame:
+                      lams: np.ndarray = np.logspace(-0.5, 1.5, 4),
+                      zero_tolerances: Tuple[float, ...] = (1e-8, 1e-6, 1e-4)) -> pd.DataFrame:
     """hard sign-constrained fit vs cooperative LASSO (fitted signs) vs predictor correlation.
 
-    Writes coop_benchmark.csv (Table S4). Both fit on known clusters; each penalty
-    is selected by oracle beta-MSE; the sign is read from the fitted coefficient.
-    Uses cvxpy, so the default replication count is below the other studies.
+    Writes NEW external coop_benchmark_tolerance.csv; frozen Table S4 inputs
+    remain immutable. Both fit on known clusters, with oracle beta-MSE tuning.
+    The hard comparator is gated per-response Lasso, NOT HCGL. Its archived
+    independent gate has tau=.75. This diagnostic is not the feasible benchmark;
+    see estimator_benchmark.py for nested prediction tuning and the date gate.
     """
     base = DgpConfig()
     rows = []
     for fc in grid:
         cfg = replace(base, factor_corr=fc)
-        H, C = [], []
+        scores = {(method, tol): [] for method in ("gated_per_response_lasso", "cooperative")
+                  for tol in zero_tolerances}
         for seed in range(reps):
             x, y, ts, lab, signal, y_raw = _simulate_full(cfg, seed)
             Bt = _beta_target(x, signal, y_raw)
             X, Y = x.values, y.values
             smat = gate_sign_matrix(x, y, lab, tau=0.75, deff=False, estimate_clusters=False)
-            H.append(_fitted_sign_metrics(_fit_hard(X, Y, smat, alphas, Bt), Bt, ts))
-            C.append(_fitted_sign_metrics(_fit_coop(X, Y, lab, lams, Bt), Bt, ts))
-        Hm, Cm = np.mean(H, axis=0), np.mean(C, axis=0)
-        rows.append(dict(factor_corr=fc, method='hard-constrained',
-                         recovery=Hm[0], flip=Hm[1], abstain=Hm[2], beta_mse=Hm[3], reps=reps))
-        rows.append(dict(factor_corr=fc, method='cooperative',
-                         recovery=Cm[0], flip=Cm[1], abstain=Cm[2], beta_mse=Cm[3], reps=reps))
+            for method, fitted in (("gated_per_response_lasso", _fit_hard(X, Y, smat, alphas, Bt)),
+                                   ("cooperative", _fit_coop(X, Y, lab, lams, Bt))):
+                for tol in zero_tolerances:
+                    scores[method, tol].append(_fitted_sign_metrics(fitted, Bt, ts, tol))
+        for (method, tol), values in scores.items():
+            means = np.mean(values, axis=0)
+            standard_errors = (np.std(values, axis=0, ddof=1)/np.sqrt(reps)
+                               if reps > 1 else np.full(4, np.nan))
+            rows.append(dict(factor_corr=fc, method=method, tuning="oracle_beta_mse",
+                             partition="known", gate="independent" if method != "cooperative" else "none",
+                             tau=.75 if method != "cooperative" else np.nan, zero_tolerance=tol,
+                             recovery=means[0], flip=means[1], abstain=means[2], beta_mse=means[3],
+                             recovery_se=standard_errors[0], flip_se=standard_errors[1],
+                             abstain_se=standard_errors[2], beta_mse_se=standard_errors[3], reps=reps))
+        print(f"oracle cooperative diagnostic: rho_X={fc}, {reps} paired replications", flush=True)
     df = pd.DataFrame(rows)
-    df.to_csv(os.path.join(_RES, 'coop_benchmark.csv'), index=False)
+    os.makedirs(_RES, exist_ok=True)
+    df.to_csv(os.path.join(_RES, 'coop_benchmark_tolerance.csv'), index=False)
     return df
 
 

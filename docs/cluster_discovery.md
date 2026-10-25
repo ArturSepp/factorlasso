@@ -26,8 +26,11 @@ which choices travel from one panel to another and which do not.
 `COOPERATIVE_CLUSTER_GROUP_LASSO` discover their clusters inside `fit`, with the same function
 that is public as `compute_clusters_from_corr_matrix`. The default is the method of the software
 paper: the Pearson correlation of the responses, the dissimilarity $1 - \rho$, Ward linkage and a
-cut at half the largest pairwise distance (Sepp and Kastenholz, 2026b, Section 2.3; Sepp and
-Kastenholz, 2026a, Section 2.5). One partition then serves three purposes: it groups the penalty,
+cut at half the largest pairwise distance (Sepp and Kastenholz, 2026b, Section 2.3).
+The revised sign-pooling study instead uses Euclidean correlation distance and a fraction of
+the final Ward merge height (Sepp and Kastenholz, 2026a, Section 2); its replication code
+constructs that partition explicitly. These conventions do not change the package defaults.
+One partition then serves three purposes: it groups the penalty,
 pools the univariate slopes for the [sign derivation](gated_cluster_pooled_signs.md), and pools
 the [adaptive weights](adaptive_penalty_weights.md).
 
@@ -240,8 +243,8 @@ python examples/docs/cluster_discovery.py
   *The Journal of Portfolio Management* 42(4), 59-69. DOI 10.3905/jpm.2016.42.4.059.
 - Mantegna, R. N. (1999). Hierarchical structure in financial markets. *The European Physical
   Journal B* 11, 193-197. DOI 10.1007/s100510050929.
-- Sepp, A., and Kastenholz, M. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
-  Sparse Regression. Submitted to *Computational Statistics & Data Analysis*.
+- Sepp, A., and Kastenholz, M. A. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
+  Sparse Regression. Revised working manuscript; prepared for *Computational Statistics*.
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical

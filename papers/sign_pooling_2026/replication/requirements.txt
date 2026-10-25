@@ -1,4 +1,5 @@
-# Exact versions used to produce the results in the paper.
+# Historical 0.7.2 archive only; these pins do not describe the revised experiments.
+# See requirements-revision.txt and the run receipts for the current revision.
 numpy==2.4.4
 pandas==3.0.2
 scipy==1.17.1

@@ -23,8 +23,9 @@ is strong enough.
 ## Overview
 
 The [gated sign derivation](gated_cluster_pooled_signs.md) turns cluster-level evidence into hard
-signs: a member whose true exposure opposes its cluster is pinned at zero. The FCGL block penalty
-of the [group penalties](group_penalties_hcgl_fcgl.md) article ignores signs altogether. The
+signs and excludes cells whose gate fails. A retained sign that opposes a member's true exposure
+excludes that true value; the fitted coefficient may be zero or have the imposed sign. The FCGL
+block penalty of the [group penalties](group_penalties_hcgl_fcgl.md) article ignores signs altogether. The
 cooperative LASSO of Chiquet, Grandvalet and Charbonnier (2012) sits between the two. It keeps
 the cluster-by-factor blocks of FCGL, splits each block into its positive and negative parts,
 and applies the group norm to each part, so sign coherence is a preference of the penalty and not
@@ -32,7 +33,7 @@ a constraint.
 
 factorlasso offers it on supplied groups, `COOPERATIVE_GROUP_LASSO`, and on clusters discovered
 from the responses, `COOPERATIVE_CLUSTER_GROUP_LASSO`. The sign-pooling paper compares it with the
-hard pooled sign when predictors are correlated (Sepp and Kastenholz, 2026a, Section 4.5); the
+hard pooled sign in complete-estimator simulations (Sepp and Kastenholz, 2026a, Section 4); the
 software paper lists it among the modes of one estimator (Sepp and Kastenholz, 2026b,
 Section 3.1).
 
@@ -154,12 +155,11 @@ python examples/docs/cooperative_lasso.py
 - **Soft coherence can be overruled, in both directions.** A strongly supported opposite
   exposure survives, which is the purpose; a weakly supported correct one inside a mixed block is
   shrunk as hard as noise.
-- **It asserts signs where the hard constraint abstains.** In the sign-pooling paper's designs
-  with correlated predictors, the cooperative LASSO assigned a wrong sign to 0.101 to 0.220 of the
-  active cells while the hard pooled constraint kept its flip rate at 0.006 or below and abstained
-  instead. The cooperative LASSO recovered more signs and reached a lower coefficient error
-  throughout (Sepp and Kastenholz, 2026a, Section 4.5). Which kind of error is worse depends on
-  the use of the loadings.
+- **Prediction, sign errors and exclusions are different outcomes.** A hard gate can remove
+  active coefficients before fitting. A low fitted sign-error rate must therefore be read
+  alongside support recovery and prediction error. A wrong imposed sign can also survive in a
+  multivariate fit; exclusion is not guaranteed. The revised sign-pooling study reports these
+  outcomes separately with training-only tuning (Sepp and Kastenholz, 2026a, Section 4).
 - **The clusters matter as much as the penalty.** Coherence is encouraged within the blocks the
   clusters define; a cluster that mixes different exposures is penalised for being mixed.
 - **The penalty is not scale-free.** Like every group penalty, it depends on the units of the
@@ -179,8 +179,8 @@ python examples/docs/cooperative_lasso.py
 - Chiquet, J., Grandvalet, Y., and Charbonnier, C. (2012). Sparsity with sign-coherent groups of
   variables via the cooperative-Lasso. *The Annals of Applied Statistics* 6(2), 795-830.
   DOI 10.1214/11-AOAS520.
-- Sepp, A., and Kastenholz, M. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
-  Sparse Regression. Submitted to *Computational Statistics & Data Analysis*.
+- Sepp, A., and Kastenholz, M. A. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
+  Sparse Regression. Revised working manuscript; prepared for *Computational Statistics*.
   [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
