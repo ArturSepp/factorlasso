@@ -22,6 +22,7 @@
 
 ### Maintenance
 
+- Update locked setuptools to a patched version for GHSA-xmj3-9gf7-h52w.
 - Run offline paper tests with the locked test dependencies in CI, and verify that
   the exact release wheel and source archive exclude paper and agent workspaces.
 
