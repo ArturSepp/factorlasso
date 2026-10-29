@@ -57,6 +57,30 @@ def validate_loss_mode(model) -> None:
                          'loss_normalization must be sample')
 
 
+def validate_ridge_mode(model) -> None:
+    """Keep ridge an explicit zero-centred, unconstrained quadratic baseline."""
+    if model.model_type != LassoModelType.RIDGE:
+        return
+    value = model.reg_lambda
+    if (isinstance(value, (bool, np.bool_))
+            or not isinstance(value, (int, float, np.integer, np.floating))
+            or np.isnan(value) or value < 0):
+        raise ValueError('RIDGE reg_lambda must be nonnegative (positive infinity is allowed)')
+    for name in ('auto_sign_constraints', 'auto_sign_adaptive_weights', 'apply_ols_prior',
+                 'nonneg'):
+        if getattr(model, name):
+            raise ValueError(f'{name} is not supported by the RIDGE baseline')
+    for name in ('factors_beta_loading_signs', 'factors_beta_prior', 'factor_for_prior',
+                 'group_data', 'n_clusters', 'excluded_factors', 'auto_sign_excluded_factors',
+                 'expert_prior_bound_n_std', 'expert_prior_exposure_budget'):
+        if getattr(model, name) is not None:
+            raise ValueError(f'{name} is not supported by the RIDGE baseline')
+    if model.l1_weight != 0.0 or model.group_penalty != 'normalized':
+        raise ValueError('RIDGE takes no group or L1 penalty; keep their default settings')
+    if model.expert_prior_budget_rule != 'n_std':
+        raise ValueError('expert_prior_budget_rule is not supported by the RIDGE baseline')
+
+
 def validate_sign_inputs_mode(model) -> None:
     """Reject hard sign inputs for the solvers that cannot enforce them."""
     validate_exclusion_settings(model)
@@ -137,6 +161,7 @@ def validate_ols_prior_mode(model) -> None:
 def validate_configuration(model) -> None:
     """Construction-time checks of every configuration parameter."""
     validate_loss_mode(model)
+    validate_ridge_mode(model)
     validate_ols_prior_mode(model)
     validate_sign_inputs_mode(model)
     if _mode_spec(model.model_type).grouping == "user" and model.group_data is None:
@@ -236,6 +261,7 @@ def validate_configuration(model) -> None:
 def validate_fit_modes(model) -> None:
     """Fit-time repeat of the mode checks; parameters may have changed since construction."""
     validate_loss_mode(model)
+    validate_ridge_mode(model)
     validate_ols_prior_mode(model)
     validate_sign_inputs_mode(model)
 

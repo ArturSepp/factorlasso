@@ -1,6 +1,6 @@
 """Main-text figures from saved results: gate tradeoff curves and eQTL per-gene R-squared.
 
-Fig2_gate_tradeoff. For each of the five learned-group designs, the saved per-seed
+Fig1_gate_tradeoff. For each of the five learned-group designs, the saved per-seed
 gate curves (``learned_gate_curves/<design>_<seed>_gates.csv``, singleton and pooled
 date-score gates at cut 0.5 over thresholds 0 to 8 in steps of 0.5) give, per seed and
 threshold, the proportion of correct active signs and the null-cell retention. Panels
@@ -94,11 +94,9 @@ def plot_gate_tradeoff(gates: pd.DataFrame,
                        mark_tau: float = 2.0
                        ) -> pd.DataFrame:
     """Five tradeoff panels plus the equal-null difference panel."""
-    fig, axes = plt.subplots(2, 3, figsize=(5.17, 4.2), layout="constrained")
+    fig, axes = plt.subplots(2, 3, figsize=(5.5, 3.9), layout="constrained")
     summary_rows = []
-    short = {"Predictor correlation": "Predictor corr.", "Residual correlation": "Residual corr."}
     for panel, (ax, (design, title)) in enumerate(zip(axes.flat[:5], DESIGNS.items())):
-        title = short.get(title, title)
         d = gates[gates["scenario"] == design]
         for gate, style in GATE_STYLE.items():
             g = d[d["gate"] == gate]
@@ -114,15 +112,15 @@ def plot_gate_tradeoff(gates: pd.DataFrame,
                         marker=style["marker"], color=style["color"], ms=5, ls="none",
                         markeredgecolor="white", markeredgewidth=0.6)
         ax.axvline(target_null, color="0.5", lw=0.7, ls=":")
-        ax.set_title(f"({chr(97 + panel)}) {title}", fontsize=8.5)
+        ax.set_title(f"({chr(97 + panel)}) {title}", fontsize=8)
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1.02)
-        ax.tick_params(labelsize=8)
+        ax.tick_params(labelsize=7)
     for ax in axes.flat[3:5]:
-        ax.set_xlabel("null-cell retention", fontsize=8.5)
-    axes[0, 0].set_ylabel("correct active signs", fontsize=8.5)
-    axes[1, 0].set_ylabel("correct active signs", fontsize=8.5)
-    axes[0, 0].legend(fontsize=8, frameon=False, loc="lower right")
+        ax.set_xlabel("null-cell retention", fontsize=8)
+    axes[0, 0].set_ylabel("correct active signs", fontsize=8)
+    axes[1, 0].set_ylabel("correct active signs", fontsize=8)
+    axes[0, 0].legend(fontsize=7, frameon=False, loc="lower right")
     # Panel (f): paired difference at the target null retention.
     ax = axes[1, 2]
     rows = []
@@ -135,11 +133,11 @@ def plot_gate_tradeoff(gates: pd.DataFrame,
                     ms=4, capsize=2, lw=0.9)
     ax.axvline(0.0, color="0.5", lw=0.7)
     ax.set_yticks(range(len(DESIGNS)))
-    ax.set_yticklabels([t for t in DESIGNS.values()], fontsize=8.5)
+    ax.set_yticklabels([t for t in DESIGNS.values()], fontsize=7)
     ax.invert_yaxis()
-    ax.set_xlabel("pooled minus singleton", fontsize=8.5)
-    ax.set_title(f"(f) null retention {target_null:.2f}", fontsize=8.5)
-    ax.tick_params(labelsize=8)
+    ax.set_xlabel("difference in correct active signs", fontsize=8)
+    ax.set_title(f"(f) pooled minus singleton at null {target_null:g}", fontsize=8)
+    ax.tick_params(labelsize=7)
     fig.savefig(figure_path)
     fig.savefig(figure_path.with_suffix(".png"), dpi=200)
     plt.close(fig)
@@ -163,7 +161,7 @@ def load_eqtl_genes(eqtl_dir: Path, additions_dir: Path) -> pd.DataFrame:
 
 def plot_eqtl_genes(genes: pd.DataFrame, figure_path: Path) -> pd.DataFrame:
     """Distribution of per-gene R-squared by method and paired per-gene differences."""
-    fig, axes = plt.subplots(1, 2, figsize=(5.17, 3.3), layout="constrained",
+    fig, axes = plt.subplots(1, 2, figsize=(5.5, 3.0), layout="constrained",
                              gridspec_kw={"width_ratios": [1.25, 1.0]})
     ax = axes[0]
     data, labels, medians = [], [], []
@@ -180,14 +178,16 @@ def plot_eqtl_genes(genes: pd.DataFrame, figure_path: Path) -> pd.DataFrame:
     for pos, values in zip(positions, data):
         jitter = (np.random.default_rng(pos).uniform(-0.18, 0.18, len(values)))
         ax.plot(values, pos + jitter, ".", color="#245875", ms=2.2, alpha=0.35)
-    ax.plot(medians, positions, marker="D", color="#aa634d", ms=4.5, ls="none")
+    ax.plot(medians, positions, marker="D", color="#aa634d", ms=4.5, ls="none",
+            label="median-gene $R^2$ (article)")
     ax.set_yticks(positions)
-    ax.set_yticklabels(labels, fontsize=8.5)
+    ax.set_yticklabels(labels, fontsize=7)
     ax.invert_yaxis()
     ax.set_xlim(-0.05, 1.0)
-    ax.set_xlabel("per-gene held-out $R^2$ (64 genes x 3 repeats)", fontsize=8.5)
-    ax.set_title("(a) prediction by method", fontsize=8.5)
-    ax.tick_params(labelsize=8)
+    ax.set_xlabel("per-gene held-out $R^2$ (64 genes x 3 repeats)", fontsize=8)
+    ax.set_title("(a) prediction by method", fontsize=8)
+    ax.legend(fontsize=7, frameon=False, loc="upper right")
+    ax.tick_params(labelsize=7)
     # Panel (b): paired per-gene differences against unconstrained HCGL.
     ax = axes[1]
     wide = genes.pivot_table(index=["gene", "repeat"], columns="method", values="r2")
@@ -198,11 +198,11 @@ def plot_eqtl_genes(genes: pd.DataFrame, figure_path: Path) -> pd.DataFrame:
     ax.plot(rank, d_excl.to_numpy(), "o", color="#aa634d", ms=3, label="pooled/exclude")
     ax.plot(rank, d_rel.to_numpy(), "s", color="#245875", ms=3, label="pooled/release")
     ax.axhline(0.0, color="0.5", lw=0.7)
-    ax.set_xlabel("gene rank", fontsize=8.5)
-    ax.set_ylabel("$R^2$ minus unconstrained HCGL", fontsize=8.5)
-    ax.set_title("(b) difference per gene", fontsize=8.5)
-    ax.legend(fontsize=8, frameon=False, loc="lower right")
-    ax.tick_params(labelsize=8)
+    ax.set_xlabel("gene rank by exclusion difference", fontsize=8)
+    ax.set_ylabel("$R^2$ minus unconstrained HCGL", fontsize=8)
+    ax.set_title("(b) difference per gene", fontsize=8)
+    ax.legend(fontsize=7, frameon=False, loc="lower right")
+    ax.tick_params(labelsize=7)
     fig.savefig(figure_path)
     fig.savefig(figure_path.with_suffix(".png"), dpi=200)
     plt.close(fig)
@@ -216,6 +216,67 @@ def plot_eqtl_genes(genes: pd.DataFrame, figure_path: Path) -> pd.DataFrame:
         "release_median_diff": [float(d_rel.median())],
     })
     return summary
+
+
+def plot_eqtl_genes_two_arms(genes_fixed: pd.DataFrame,
+                             genes_joint: pd.DataFrame,
+                             figure_path: Path
+                             ) -> pd.DataFrame:
+    """Two rows of the per-gene panels: fixed reference settings above, joint tuning below."""
+    fig, axes = plt.subplots(2, 2, figsize=(5.17, 6.0), layout="constrained",
+                             gridspec_kw={"width_ratios": [1.25, 1.0]})
+    summaries = []
+    for row, (genes, label) in enumerate(((genes_fixed, "fixed settings"),
+                                          (genes_joint, "joint tuning"))):
+        ax = axes[row, 0]
+        data, labels, medians = [], [], []
+        for key, name in EQTL_METHODS:
+            g = genes[genes["method"] == key]
+            data.append(g["r2"].to_numpy())
+            labels.append(name)
+            medians.append(g.groupby("repeat")["r2"].median().mean())
+        positions = np.arange(len(EQTL_METHODS))
+        ax.boxplot(data, positions=positions, vert=False, widths=0.6, showfliers=False,
+                   medianprops=dict(color="0.3", lw=0.8), boxprops=dict(color="0.3", lw=0.8),
+                   whiskerprops=dict(color="0.3", lw=0.8), capprops=dict(color="0.3", lw=0.8))
+        for pos, values in zip(positions, data):
+            jitter = np.random.default_rng(pos).uniform(-0.18, 0.18, len(values))
+            ax.plot(values, pos + jitter, ".", color="#245875", ms=2.2, alpha=0.35)
+        ax.plot(medians, positions, marker="D", color="#aa634d", ms=4.5, ls="none")
+        ax.set_yticks(positions)
+        ax.set_yticklabels(labels, fontsize=8)
+        ax.invert_yaxis()
+        ax.set_xlim(-0.05, 1.0)
+        ax.set_title(f"({chr(97 + 2 * row)}) {label}", fontsize=8.5)
+        ax.tick_params(labelsize=8)
+        ax = axes[row, 1]
+        wide = genes.pivot_table(index=["gene", "repeat"], columns="method", values="r2")
+        per_gene = wide.groupby(level="gene").mean()
+        d_excl = (per_gene["hcgl_exclude"] - per_gene["hcgl_unconstrained"]).sort_values()
+        d_rel = (per_gene["hcgl_unrestricted"] - per_gene["hcgl_unconstrained"]).loc[d_excl.index]
+        rank = np.arange(1, len(d_excl) + 1)
+        ax.plot(rank, d_excl.to_numpy(), "o", color="#aa634d", ms=3, label="pooled/exclude")
+        ax.plot(rank, d_rel.to_numpy(), "s", color="#245875", ms=3, label="pooled/release")
+        ax.axhline(0.0, color="0.5", lw=0.7)
+        ax.set_ylim(-0.45, 0.12)
+        ax.set_ylabel("$R^2$ minus unconstrained HCGL", fontsize=8.5)
+        ax.set_title(f"({chr(98 + 2 * row)}) difference", fontsize=8.5)
+        ax.tick_params(labelsize=8)
+        if row == 0:
+            ax.legend(fontsize=8, frameon=False, loc="lower right")
+        else:
+            ax.set_xlabel("gene rank", fontsize=8.5)
+        summaries.append(pd.DataFrame({
+            "arm": [label], "genes": [len(d_excl)],
+            "exclude_negative": [int((d_excl < 0).sum())],
+            "release_negative": [int((d_rel < 0).sum())],
+            "exclude_mean_diff": [float(d_excl.mean())],
+            "release_mean_diff": [float(d_rel.mean())]}))
+    axes[1, 0].set_xlabel("per-gene held-out $R^2$ (64 genes x 3 repeats)", fontsize=8.5)
+    fig.savefig(figure_path)
+    fig.savefig(figure_path.with_suffix(".png"), dpi=200)
+    plt.close(fig)
+    return pd.concat(summaries, ignore_index=True)
 
 
 class LocalTest(Enum):
@@ -236,7 +297,7 @@ def run_local_test(local_test: LocalTest,
     if local_test in (LocalTest.GATE_TRADEOFF, LocalTest.ALL):
         gates, equal = load_gate_curves(curves_dir)
         summary = plot_gate_tradeoff(gates=gates, equal=equal,
-                                     figure_path=figure_dir / "Fig2_gate_tradeoff.pdf")
+                                     figure_path=figure_dir / "Fig1_gate_tradeoff.pdf")
         summary.to_csv(results_dir / "fig1_equal_null_summary.csv", index=False)
         print(summary.round(4).to_string(index=False))
     if local_test in (LocalTest.EQTL_GENES, LocalTest.ALL):

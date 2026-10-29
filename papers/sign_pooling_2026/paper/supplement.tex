@@ -28,8 +28,9 @@ pdfauthor={Artur Sepp and Mika A. Kastenholz}}
 This supplement supplies mathematical details, complete study protocols,
 extended results and computational checks for the main article. The previously
 verified results are retained, with a further variance-convention sensitivity
-comparison in Section~\ref{app:variance-sensitivity} and a Monte Carlo check of
-the pooling precision formula in Section~\ref{app:precision-check}. The record of
+comparison in Section~\ref{app:variance-sensitivity}, a Monte Carlo check of
+the pooling precision formula in Section~\ref{app:precision-check} and the jointly
+tuned eQTL protocol in Section~\ref{app:eqtl-joint}. The record of
 historical conventions and corrections is kept with Online Resource~2.
 Figures were produced with Python and Matplotlib.
 \tableofcontents
@@ -1184,6 +1185,78 @@ $\alpha=0.8$ & 1.000 & 1.000 & 1.000 & 0.390 & 0.529 & 0.387 \\
 The two cut neighbors produce $6$--$11$ and $2$--$3$ clusters, compared with $3$--$4$ at baseline. Marker selection and fitted support change materially with LD pruning, screening, the cut, and the gate. For pooled exclusion, same-fold selection Jaccard is $0.388$ and $0.423$ under the LD neighbors; restricting its denominator to markers retained under both settings increases these values to $0.791$ and $0.781$. All jointly selected cells keep their direction in same-fold comparisons, but this conditional agreement does not establish stable overall support or correct partial-effect signs.
 A post hoc audit of saved coefficients changes the selection threshold from $10^{-6}$ to $10^{-4}$ without refitting. Across all methods and settings, mean between-split selection Jaccard changes by at most $0.0034$, common-marker Jaccard by at most $0.0102$, and conditional direction agreement by at most $0.0073$. At $10^{-8}$ the corresponding maximal changes are $0.0550$, $0.2773$, and $0.1053$, demonstrating sensitivity to small numerical coefficients. The primary threshold remains the prespecified $10^{-6}$. Mean between-split conditional direction agreement across the sensitivity settings ranges from $0.963$ to $1.000$; the higher baseline values should not be generalized to every setting.
 
+
+\FloatBarrier
+
+\section{Joint tuning of the eQTL protocol}\label{app:eqtl-joint}
+
+The jointly tuned protocol of the main text uses the repeats, outer folds and
+inner folds of the fixed-setting protocol (seed 20261024, three by three by
+three), the same training-only preprocessing chain and the same eight
+estimators. Within each inner fold the preprocessing is fitted once, and the
+clusters and gate signs are recomputed for every cut and threshold on the
+grid. For each method the candidate with the smallest pooled inner
+standardized squared error over its own grid is refitted on the outer
+training set. Lasso tunes the fraction only. Singleton gating tunes the
+threshold and the fraction. The unconstrained HCGL and FCGL fits tune the cut
+and the fraction, because the cut enters the HCGL group multiplier and the
+FCGL block structure. The pooled and singleton-gated HCGL and FCGL fits tune
+all three. Ties choose the earliest candidate in grid order with the larger
+fraction. The producer is \nolinkurl{eqtl_joint_tuning.py}, which also runs the
+fixed-setting arm, and \nolinkurl{eqtl_joint_report.py} writes the tables.
+
+The search ran in a Linux container with the \texttt{factorlasso} 1.0.5 wheel
+from PyPI and the CLARABEL solver, in two processes with per-fold and
+per-inner-fold checkpoints, with about 16 processor hours of solver time in
+the inner loops of the joint arm (11,340 candidate fits). The fixed-setting
+arm under CLARABEL reproduces all 24 summary values of the archived MOSEK run
+(median, mean and pooled $R^2$ for eight methods) with a largest absolute
+difference of $7\times10^{-6}$, and selects fraction $0.3$ in all 72 outer
+fits as before. CLARABEL reported a possibly inaccurate solution for 70 of
+the roughly 12,000 solves of both arms. Those solves were not mapped to candidates. Every
+selected candidate uses fraction $0.17$ or $0.3$.
+
+Table~\ref{tab:eqtl-joint-selections} lists the selected settings over the
+nine outer fits, and Table~\ref{tab:eqtl-joint-contrasts} the paired
+median-gene contrasts for both arms.
+
+\begin{table}[htbp]\centering\small
+\caption{Selected cut, threshold and penalty fraction over the nine outer fits
+of the jointly tuned eQTL protocol. Entries are value: count.}
+\label{tab:eqtl-joint-selections}
+\begin{tabular}{llll}\toprule
+Method & Cut $\kappa$ & Threshold $\tau$ & Fraction of $\lambda_{\max}$\\\midrule
+Lasso & -- & -- & 0.3: 9 \\
+Singleton-gated Lasso & -- & 1: 3, 2: 6 & 0.3: 9 \\
+HCGL, unconstrained & 0.35: 1, 0.5: 3, 0.7: 5 & -- & 0.3: 9 \\
+HCGL, singleton/exclude & 0.35: 2, 0.5: 2, 0.7: 5 & 1: 8, 2: 1 & 0.3: 9 \\
+HCGL, pooled/exclude & 0.35: 9 & 1: 9 & 0.3: 9 \\
+HCGL, pooled/release & 0.35: 1, 0.5: 3, 0.7: 5 & 1: 3, 2: 2, 3: 4 & 0.3: 9 \\
+FCGL, unconstrained & 0.5: 3, 0.7: 1, 0.9: 5 & -- & 0.17: 4, 0.3: 5 \\
+FCGL, pooled/exclude & 0.35: 7, 0.5: 2 & 1: 9 & 0.17: 4, 0.3: 5 \\
+\bottomrule\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering\small
+\caption{Paired differences in median-gene $R^2$ over the same three repeats,
+fixed-setting arm and jointly tuned arm. Entries are mean (split SD) and the
+number of repeats with a negative difference.}
+\label{tab:eqtl-joint-contrasts}
+\begin{tabular}{lcc}\toprule
+Contrast & Fixed settings & Joint tuning\\\midrule
+Pooled exclusion minus unconstrained HCGL & $-0.0384$ ($0.0052$), 3/3 & $-0.0073$ ($0.0119$), 2/3 \\
+Pooled exclusion minus singleton exclusion HCGL & $-0.0307$ ($0.0045$), 3/3 & $-0.0065$ ($0.0111$), 2/3 \\
+Pooled release minus unconstrained HCGL & $-0.0001$ ($0.0014$), 1/3 & $-0.0010$ ($0.0017$), 1/3 \\
+FCGL exclusion minus unconstrained FCGL & $-0.0195$ ($0.0068$), 3/3 & $-0.0173$ ($0.0098$), 3/3 \\
+\bottomrule\end{tabular}
+\end{table}
+
+Pooled exclusion selects the finest cut and the lowest threshold on the grid
+in every fit, so its tuned form is close to singleton gating with a weak gate.
+The selected settings of the other methods vary across splits, which is the
+selection variability of a $4\times3\times7$ grid on inner folds of about 25
+segregants. The joint search does not change the stability and sensitivity
+analyses of the preceding sections, which concern the fixed-setting protocol.
 
 \FloatBarrier
 

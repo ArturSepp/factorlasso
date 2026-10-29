@@ -11,7 +11,7 @@ import pandas as pd
 
 
 class LassoModelType(Enum):
-    """Supported LASSO estimation methods."""
+    """Supported sparse and ridge factor-model estimation methods."""
     # univariate estimators (no grouping, no clustering)
     LASSO = 1                   #: Standard L1 LASSO
     UNILASSO = 2                #: UniLasso — per-response univariate-guided
@@ -23,6 +23,7 @@ class LassoModelType(Enum):
     # cooperative (soft within-block sign coherence)
     COOPERATIVE_GROUP_LASSO = 6  #: coop-LASSO on user groups
     COOPERATIVE_CLUSTER_GROUP_LASSO = 7  #: coop-LASSO on discovered clusters
+    RIDGE = 8                  #: Zero-centred squared-L2 regression, no restrictions
 
 
 @dataclass(frozen=True)
@@ -39,7 +40,7 @@ class _ModeSpec:
         ``"none"``, ``"user"`` (``group_data``) or ``"discovered"`` (clusters of the response
         dependence, or an external partition where accepted).
     solver : str or None
-        ``"lasso"``, ``"group"``, ``"cooperative"`` or ``"unilasso"``.
+        ``"lasso"``, ``"group"``, ``"cooperative"``, ``"unilasso"`` or ``"ridge"``.
     block_mode : str or None
         Geometry of the group penalty: ``"row"`` (each response's loadings) or
         ``"cluster_factor"`` (a cluster's loadings on one factor).
@@ -47,7 +48,8 @@ class _ModeSpec:
         Whether the solver enforces hard sign constraints, ``nonneg`` and loading bounds.
         UniLasso is a two-stage univariate-guided fit and the cooperative penalty handles
         signs softly through the positive and negative parts of beta, so sign inputs are
-        rejected for those modes instead of being dropped silently.
+        rejected for those modes instead of being dropped silently. Ridge is an
+        unconstrained, zero-centred baseline and rejects restrictions and priors.
     external_clusters : bool
         Whether ``fit`` accepts an externally supplied partition.
     lambda_path : bool
@@ -86,6 +88,9 @@ _MODE_SPECS: Dict[LassoModelType, _ModeSpec] = {
         external_clusters=False, lambda_path=False, single_response_lasso=False),
     LassoModelType.COOPERATIVE_CLUSTER_GROUP_LASSO: _ModeSpec(
         grouping="discovered", solver="cooperative", block_mode=None, hard_constraints=False,
+        external_clusters=False, lambda_path=False, single_response_lasso=False),
+    LassoModelType.RIDGE: _ModeSpec(
+        grouping="none", solver="ridge", block_mode=None, hard_constraints=False,
         external_clusters=False, lambda_path=False, single_response_lasso=False),
 }
 

@@ -79,7 +79,9 @@ numpy/pandas/scipy/cvxpy — no numba, no custom coordinate descent. The solver 
   asset's loadings, FCGL over a cluster's assets on each factor);
 - you want **group-level selection with within-group elementwise sparsity** (sparse group LASSO);
 - you want the **sign coherence within a group to be soft** (cooperative LASSO) or a
-  **per-response univariate-guided** estimator with no grouping (UniLasso).
+  **per-response univariate-guided** estimator with no grouping (UniLasso);
+- you need a **dense ridge baseline** with the same time weighting, missing-data handling and
+  fitted-result interface (added in the 1.1.0 development source; publication is separate).
 
 ### Key differentiators
 
@@ -250,6 +252,7 @@ The [software design](docs/software_design.md) page draws the imports and the
 | `LassoModelType` | Penalty | Selected by | Article | Example |
 |---|---|---|---|---|
 | `LASSO` | `λ ‖β − β₀‖₁` with per-element sign constraints | default | [sign constraints and priors](docs/sign_constraints_and_priors.md) | [`sign_constraints_and_priors.py`](examples/docs/sign_constraints_and_priors.py) |
+| `RIDGE` | `λ ‖β‖²_F`, zero-centred and unconstrained | `model_type=RIDGE`; tune `reg_lambda` separately | [ridge baseline](docs/sparse_factor_model.md#ridge-baseline) | [`sparse_factor_model.py`](examples/docs/sparse_factor_model.py) |
 | `GROUP_LASSO` | group L2 over supplied `group_data` | `group_data` | [group penalties](docs/group_penalties_hcgl_fcgl.md) | [`group_penalties_hcgl_fcgl.py`](examples/docs/group_penalties_hcgl_fcgl.py) |
 | `HIERARCHICAL_CLUSTER_GROUP_LASSO` | `(1−α) λ Σ_g w_g ‖β_g − β₀‖_{2,1} + α λ ‖β − β₀‖₁` over each asset's loading row, clusters discovered from the response correlation | `cutoff_fraction` or `n_clusters`, `span`, `l1_weight` | [group penalties](docs/group_penalties_hcgl_fcgl.md), [cluster discovery](docs/cluster_discovery.md) | [`cluster_discovery.py`](examples/docs/cluster_discovery.py) |
 | `FACTOR_CLUSTER_GROUP_LASSO` | `(1−α) λ Σ_g w_g Σ_j ‖β_{g,j} − β⁰_{g,j}‖₂ + α λ ‖β − β⁰‖₁` over a cluster's assets on each factor | as HCGL | [group penalties](docs/group_penalties_hcgl_fcgl.md) | [`group_penalties_hcgl_fcgl.py`](examples/docs/group_penalties_hcgl_fcgl.py) |
@@ -405,7 +408,7 @@ cluster-pooled sign derivation and screening gate (revised working manuscript pr
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {1.0.6},
+  version = {1.1.0},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 

@@ -36,17 +36,17 @@ sufficient conditions under which the gate recovers the direction of every
 nonzero coefficient, a checkable condition that implies the required
 marginal-sign agreement, and the precision ratio $\sqrt{m/\{1+(m-1)\rho_e\}}$ of a slope pooled over $m$
 responses with marginal-residual correlation $\rho_e$, which a Monte Carlo
-check confirms to within one percent. In simulations with learned clusters
-and training-only tuning, pooling raises the proportion of correct active
-signs at a null-cell retention of $0.10$ by $0.030$ when cluster members share
-supports and directions, and lowers it by $0.066$ and $0.134$ under mixed
-directions and partial supports. With exclusion it raises test $R^2$ in the
+check confirms to within one percent. In simulations with learned clusters,
+pooling raises correct active signs at null-cell retention $0.10$ by $0.030$
+when cluster members share supports and directions, and lowers them by
+$0.066$ and $0.134$ under mixed directions and partial supports. With exclusion it raises test $R^2$ in the
 coherent design from $0.614$ to $0.626$, level with cooperative Lasso and
 UniLasso. In repeated nested validation on yeast expression quantitative trait
-locus data, excluding failed gates lowers median-gene $R^2$ from $0.073$ to
-$0.035$, releasing them leaves it at $0.073$, and replacing an independent-cell
-variance by the date-level variance newly excludes $32.7$ percent of
-coefficient cells without improving prediction. The gate should restrict
+locus data, excluding failed gates at fixed settings lowers median-gene $R^2$
+from $0.073$ to $0.035$ while releasing them leaves it at $0.073$. With cut
+and threshold tuned jointly with the penalty, exclusion moves to near-singleton
+partitions and the loss falls to $0.007$ without a gain over unconstrained
+fitting. The gate should restrict
 directions. Exclusion pays only when the grouping is coherent.}
 % [CLAUDE-DRAFT end]
 \keywords{Marginal screening, Response dependence, Variable selection, Regularization, Nested validation, Gene expression}
@@ -113,8 +113,9 @@ structures the gate helps and in which it harms. At a null-cell retention of
 $0.10$, pooling changes the proportion of correct active signs by $+0.030$ in
 a coherent-group design and by $-0.066$ and $-0.134$ under mixed directions
 and partial supports (Fig.~\ref{fig:gate-tradeoff}). In repeated nested
-validation on yeast eQTL data, excluding failed gates lowers median-gene
-$R^2$ from $0.073$ to $0.035$ while releasing them leaves it at $0.073$
+validation on yeast eQTL data, excluding failed gates at fixed settings lowers
+median-gene $R^2$ from $0.073$ to $0.035$, and tuning the cut and threshold
+with the penalty removes the loss without producing a gain
 (Fig.~\ref{fig:eqtl-genes}). The theory concerns gate directions on nonzero
 coefficients and not the support of the fitted coefficient matrix. The
 experiments establish no general predictive advantage over cooperative Lasso,
@@ -234,9 +235,9 @@ direction.
 
 A fixed threshold supplies neither multiplicity control nor a guarantee of
 correct partial signs. Predictive tuning selects the threshold inside the
-training loop. The eQTL analysis instead fixes $\tau=2$ and tunes only the
-penalty level. Null-cell retention is distinct from the fraction of reported
-signs that are false.
+training loop. The eQTL analysis reports a fixed-threshold protocol and a
+jointly tuned one. Null-cell retention is distinct from the fraction of
+reported signs that are false.
 
 \subsection{Response dependence in the gate}\label{sec:weighted-gate}
 
@@ -835,8 +836,9 @@ Table~\ref{tab:eqtl-nested} reports the three predictive summaries and
 Fig.~\ref{fig:eqtl-genes} the per-gene distributions behind them.
 
 \begin{table}[htbp]\centering\small
-\caption{Pooled exclusion lowers median-gene $R^2$ from $0.073$ to $0.035$ and
-release leaves it at $0.073$. Nested eQTL prediction. Entries are means across three
+\caption{At fixed settings pooled exclusion lowers median-gene $R^2$ from $0.073$ to $0.035$ and
+release leaves it at $0.073$. Nested eQTL prediction with $\kappa=0.7$, $\tau=2$ and four
+penalty fractions. Entries are means across three
 repeats, and parentheses are the standard deviations across those splits of
 the same 112 segregants. They are descriptive split variability, not
 sampling standard errors or confidence intervals.}
@@ -858,15 +860,17 @@ FCGL, pooled/exclude & 0.036 (0.002) & 0.114 (0.007) & 0.419 (0.043) \\
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/Fig3_eqtl_gene_r2.pdf}
-\caption{The loss from pooled exclusion is spread across genes, and release
-tracks the unconstrained fit gene by gene. (a) Held-out $R^2$ for each of the
-64 genes in each of the three repeats (points and boxes, whiskers at $1.5$
+\caption{At fixed settings the loss from pooled exclusion is spread across
+genes, and joint tuning removes it. (a), (c) Held-out $R^2$ for each of the 64
+genes in each of the three repeats (points and boxes, whiskers at $1.5$
 interquartile ranges, outliers shown as points) for the eight nested
-procedures, with the median-gene statistic of Table~\ref{tab:eqtl-nested}
-(diamonds). (b) Per-gene difference in $R^2$, averaged over repeats, of
-pooled exclusion (circles) and pooled release (squares) against unconstrained
-HCGL, sorted by the exclusion difference. Produced by
-\texttt{main\_text\_figures.py} from the saved nested predictions.}
+procedures, with the median-gene statistics of Tables~\ref{tab:eqtl-nested}
+and~\ref{tab:eqtl-joint} (diamonds). (b), (d) Per-gene difference in $R^2$,
+averaged over repeats, of pooled exclusion (circles) and pooled release
+(squares) against unconstrained HCGL, sorted by the exclusion difference. The
+upper row is the fixed-setting protocol and the lower row the jointly tuned
+protocol of Section~\ref{sec:eqtl-joint}. Produced by
+\texttt{eqtl\_joint\_report.py} from the saved nested predictions.}
 \label{fig:eqtl-genes}
 \end{figure}
 % [CLAUDE-DRAFT end]
@@ -882,24 +886,96 @@ $-0.0195$ (split SD $0.0068$), also negative in every repeat. These contrasts
 separate the effects of learned pooling and hard restrictions from the choice
 of row or coupled penalty.
 % [CLAUDE-DRAFT begin: per-gene reading of Fig. 3]
-Fig.~\ref{fig:eqtl-genes}(b) shows that the exclusion loss is broad rather
-than concentrated. Averaged over repeats, exclusion lowers $R^2$ for 50 of
-the 64 genes, with a mean per-gene difference of $-0.0355$, whereas release
-lowers it for 34 genes with a mean difference of $-0.0017$. Singleton-gated
+Fig.~\ref{fig:eqtl-genes}(b) shows that the exclusion loss at these settings
+is broad rather than concentrated. Averaged over repeats, exclusion lowers
+$R^2$ for 50 of the 64 genes, with a mean per-gene difference of $-0.0355$,
+whereas release lowers it for 34 genes with a mean difference of $-0.0017$.
+Singleton-gated
 Lasso matches unconstrained Lasso to three decimals in every summary, so at the
 singleton level the gate at $\tau=2$ is inert on these data and only pooling
 changes the fit.
 % [CLAUDE-DRAFT end]
 Lasso has lower median-gene $R^2$ ($0.051$) than unconstrained HCGL but higher
 pooled $R^2$ ($0.534$ versus $0.488$), and its mean-gene score is marginally
-higher. There is no uniform ranking across these summaries. The comparison
-uses one data set, a four-point penalty grid and fixed gate and clustering
-settings, whereas the simulations tune cut and threshold jointly. A joint
-search on these data is the natural next step and is not reported here.
+higher. There is no uniform ranking across these summaries. These results
+fix the cut and threshold and use a four-point penalty grid, whereas the
+simulations tune cut and threshold jointly. The next subsection applies the
+same joint search to these data.
+
+% [CLAUDE-DRAFT begin: jointly tuned eQTL protocol]
+\subsection{Joint tuning of cut, threshold and penalty}\label{sec:eqtl-joint}
+
+We repeat the nested validation with the same splits, preprocessing chain and
+eight estimators, but let each method select its own cut, threshold and
+penalty by pooled inner validation error. The grid is
+$\kappa\in\{0.35,0.5,0.7,0.9\}$, $\tau\in\{1,2,3\}$ and seven fractions
+$\{1,0.5,0.3,0.17,0.1,0.05,0.03\}$ of each candidate's training-only
+$\lambda_{\max}$. Lasso tunes the fraction only, singleton gating the threshold
+and fraction, the unconstrained HCGL and FCGL fits the cut and fraction, and
+the pooled and singleton-gated HCGL and FCGL fits all three. Ties choose the
+earliest grid candidate with the larger fraction. This search was run with
+the CLARABEL solver. A fixed-setting arm with the archived protocol, run
+under the same solver on the same splits, reproduces every summary of
+Table~\ref{tab:eqtl-nested} to within $7\times10^{-6}$, so the solver change
+does not enter the comparison. Online Resource~1,
+Section~\ref{app:eqtl-joint}, gives the selected settings and the paired
+contrasts.
+
+Table~\ref{tab:eqtl-joint} reports the jointly tuned prediction summaries.
+
+\begin{table}[htbp]\centering\small
+\caption{With its own cut and threshold, pooled exclusion is level with
+unconstrained HCGL, and unconstrained FCGL with a tuned cut is the best
+method. Nested eQTL prediction with cut, threshold and penalty selected per
+method by inner validation. Entries are means across three repeats and
+parentheses are split standard deviations, as in Table~\ref{tab:eqtl-nested}.}
+\label{tab:eqtl-joint}
+\begin{tabular}{lccc}\toprule
+Method & Median gene $R^2$ & Mean gene $R^2$ & Pooled $R^2$\\\midrule
+Lasso & 0.051 (0.004) & 0.137 (0.005) & 0.534 (0.007) \\
+Singleton-gated Lasso & 0.051 (0.004) & 0.137 (0.005) & 0.534 (0.007) \\
+HCGL, unconstrained & 0.067 (0.009) & 0.133 (0.008) & 0.503 (0.011) \\
+HCGL, singleton/exclude & 0.066 (0.009) & 0.132 (0.007) & 0.503 (0.011) \\
+HCGL, pooled/exclude & 0.059 (0.003) & 0.135 (0.007) & 0.530 (0.007) \\
+HCGL, pooled/release & 0.066 (0.009) & 0.132 (0.008) & 0.503 (0.011) \\
+FCGL, unconstrained & 0.080 (0.005) & 0.154 (0.009) & 0.543 (0.020) \\
+FCGL, pooled/exclude & 0.063 (0.005) & 0.142 (0.004) & 0.556 (0.005) \\
+\bottomrule\end{tabular}
+\end{table}
+
+Joint tuning changes the pooled gate itself. Pooled exclusion selects
+$\kappa=0.35$, $\tau=1$ and fraction $0.3$ in all nine outer fits, which gives
+19 to 31 clusters among the 64 genes and the weakest gate on the grid. Its
+median-gene $R^2$ rises from $0.035$ to $0.059$ and its pooled $R^2$ from
+$0.398$ to $0.530$. The paired median-gene difference against unconstrained
+HCGL falls from $-0.0384$ (split SD $0.0052$, negative in all three repeats)
+to $-0.0073$ (split SD $0.0119$, negative in two repeats), and the difference
+against singleton exclusion from $-0.0307$ to $-0.0065$. Release selects
+$\tau=3$ in four fits and coincides with unconstrained HCGL within $0.001$.
+Unconstrained HCGL itself loses median-gene $R^2$, from $0.073$ to $0.067$,
+because inner validation selects $\kappa=0.5$ or $0.35$ in four of nine fits.
+The largest change is unconstrained FCGL, whose median-gene $R^2$ rises from
+$0.056$ to $0.080$ with $\kappa=0.9$ in five fits and $0.5$ in three, and
+whose pooled $R^2$ of $0.543$ exceeds Lasso. FCGL exclusion still trails
+unconstrained FCGL by $0.0173$ (split SD $0.0098$, negative in all three
+repeats) on the median, although it has the highest pooled $R^2$ of all
+methods ($0.556$). Fig.~\ref{fig:eqtl-genes}(d) shows that the per-gene
+exclusion differences against unconstrained HCGL now straddle zero, with 28
+of 64 genes below and a mean of $+0.0022$.
+
+The joint search therefore removes the exclusion loss by moving the gate
+toward singletons and a low threshold, which is the same escape the
+learned-group simulations found, and it does not produce a gain over
+unconstrained fitting. The grid is coarse, the inner folds are small, and the
+selected settings vary across splits for every method except pooled
+exclusion, so the differences between HCGL variants in
+Table~\ref{tab:eqtl-joint} are within split variability.
+% [CLAUDE-DRAFT end]
 
 \subsection{Partition and fitted-coefficient stability}\label{sec:eqtl-stability}
 
-We compare all 36 pairs of the nine outer-training fits. Cluster adjusted Rand
+We compare all 36 pairs of the nine outer-training fits of the fixed-setting
+protocol. Cluster adjusted Rand
 index averages $0.420$ (range $0.172$--$0.647$), and selected-marker Jaccard overlap
 averages $0.253$ (range $0.188$--$0.306$). Across these fits, 579 of the 3,244
 markers are selected at least once. LD-representative overlap averages $0.612$.
@@ -957,8 +1033,9 @@ therefore remains relevant to marginal-versus-conditional sign disagreement.
 
 \subsection{Application sensitivity}\label{sec:eqtl-sensitivity}
 
-Ten predeclared one-factor neighbors vary LD pruning, outcome screening,
-Ward cut, gate threshold or mixing while retaining the same inner/outer splits.
+Ten predeclared one-factor neighbors of the fixed-setting protocol vary LD
+pruning, outcome screening, Ward cut, gate threshold or mixing while retaining
+the same inner/outer splits.
 Only the penalty is tuned, and outer outcomes do not select a setting. Pooled
 exclusion has lower median-gene $R^2$ than unconstrained and released-gate HCGL
 in every repeat at every setting, with mean paired losses of $0.020$--$0.069$
@@ -997,13 +1074,20 @@ nested-validation cost. A fresh Windows CPython 3.12.7 environment with an
 installed \texttt{factorlasso} 1.0.5 wheel reproduced all 2,680 primary
 synthetic fits, 16,800 sensitivity refits and the nested eQTL coefficients and
 performance metrics. This is clean-environment reproduction on the same host,
-not independent-laboratory or cross-platform replication. Online Resource~2
+not independent-laboratory or cross-platform replication. The jointly tuned
+eQTL search of Section~\ref{sec:eqtl-joint} ran in a Linux container with the
+\texttt{factorlasso} 1.0.5 wheel from PyPI and CLARABEL, with per-fold
+checkpoints and about 16 processor hours of solver time in its inner loops.
+CLARABEL reported a possibly inaccurate solution for 70 of the roughly 12,000
+solves of both arms. The flagged solves were
+not mapped to candidates, and every selected candidate uses fraction $0.17$ or
+$0.3$ of its penalty scale. Online Resource~2
 supplies the exact source, frozen inputs, fitted outputs, environment pins and
 verification receipts, and identifies the later variance comparison and the
 all-failed infinite-threshold endpoint correction as a separately hashed
 overlay. The three main-text figures are produced by
-\texttt{pooling\_precision\_check.py} and \texttt{main\_text\_figures.py} from
-the saved results.
+\texttt{pooling\_precision\_check.py}, \texttt{main\_text\_figures.py} and
+\texttt{eqtl\_joint\_report.py} from the saved results.
 
 \subsection{Use of AI-assisted tools}
 During preparation the authors used Anthropic Claude and OpenAI Codex for
@@ -1029,10 +1113,14 @@ more correct active signs than the singleton gate when cluster members share
 supports and directions, and $0.066$ and $0.134$ fewer under mixed directions
 and partial supports. The fitted comparisons repeat this pattern. Pooled
 exclusion raises coherent-design test $R^2$ from $0.614$ to $0.626$ and is
-level with cooperative Lasso, unconstrained FCGL and UniLasso, and on the yeast
-data it lowers median-gene $R^2$ from $0.073$ to $0.035$ while release leaves
-it at $0.073$. Releasing a failed gate is therefore the safe default, and
-exclusion pays only when the grouping is coherent.
+level with cooperative Lasso, unconstrained FCGL and UniLasso. On the yeast
+data exclusion at fixed settings lowers median-gene $R^2$ from $0.073$ to
+$0.035$ while release leaves it at $0.073$. With the cut and threshold tuned
+jointly with the penalty, exclusion selects the finest partition and the
+lowest threshold on the grid in every fit, the loss falls to $0.007$, and
+unconstrained FCGL with a tuned cut reaches $0.080$. Releasing a failed gate
+is therefore the safe default, and exclusion pays only when the grouping is
+coherent.
 % [CLAUDE-DRAFT end]
 
 Gate failure can either exclude a coefficient or leave it unrestricted. Those
@@ -1046,10 +1134,13 @@ nontrivial groups and finds a coherent-group prediction gain over the
 corresponding jointly tuned unconstrained HCGL procedure. Joint tuning can
 change the grouping and does not isolate a pure gate effect. Pure-L1 mixing is
 selected in 32--40 of 40 pooled-exclusion replications, so those comparisons do
-not establish an advantage for the group-penalty term. The nested eQTL analysis
-favours singleton gating or releasing failed gates over pooled exclusion within
-the same HCGL penalty, and its high direction agreement is conditional on a
-small overlap of selected cells.
+not establish an advantage for the group-penalty term. At fixed settings the
+nested eQTL analysis favours singleton gating or releasing failed gates over
+pooled exclusion within the same HCGL penalty, and its high direction
+agreement is conditional on a small overlap of selected cells. Joint tuning
+closes the exclusion gap by moving the pooled gate toward singletons and a low
+threshold, which is the escape the simulations also take, and it does not
+turn the gate into a gain.
 
 For prediction, the cut and gate threshold belong inside the same training-only
 selection procedure as the penalty. The comparison set should include the
@@ -1071,8 +1162,9 @@ partial signs, and no gate statistic corrects that. The simulation families
 are small, the grids are finite, and the gains are confined to coherent
 structures. Repeated splits of one yeast cross measure sensitivity to
 splitting, not replication across independent biological samples, and
-marginal-sign agreement there is descriptive. The eQTL analysis fixes the cut
-and threshold that the simulations tune. The finite-span, missing-history and
+marginal-sign agreement there is descriptive. The joint eQTL search uses a
+$4\times3\times7$ grid, one solver and inner folds of about 25 segregants. The
+finite-span, missing-history and
 serially dependent extensions require additional theory. Reliable external
 groups or independently validated marginal directions remain the most direct
 settings in which to investigate a practical benefit from pooling.
@@ -1105,7 +1197,8 @@ and consent to publish personal information are not applicable.
 \textbf{Online Resource 1 (ESM\_1.pdf):} Mathematical conditions and proofs,
 the Monte Carlo check of the pooling precision formula, complete simulation
 protocols, extended fitted and tuning results, eQTL sensitivity and stability,
-paired variance-convention comparisons and numerical checks.
+the jointly tuned eQTL protocol with its selected settings and paired
+contrasts, paired variance-convention comparisons and numerical checks.
 
 \noindent\textbf{Online Resource 2 (ESM\_2.zip):} Replication source and research
 inputs, saved fitted results, environment specifications, reproduction commands

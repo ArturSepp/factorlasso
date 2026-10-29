@@ -54,8 +54,12 @@ def test_single_asset_corr_returns_lone_cluster():
 @pytest.mark.parametrize('production', [False, True])
 def test_single_asset_fit_all_estimators(model_type, production):
     # every estimator must fit a single asset without raising, vanilla and
-    # production (auto-sign + adaptive weights + prior).
+    # production (auto-sign + adaptive weights + prior) where supported.
     x, y = _single_asset_panel()
+    if model_type == LassoModelType.RIDGE and production:
+        with pytest.raises(ValueError, match="RIDGE"):
+            LassoModel(**_kwargs(model_type, x, y, production)).fit(x=x, y=y)
+        return
     model = LassoModel(**_kwargs(model_type, x, y, production)).fit(x=x, y=y)
     assert model.coef_.shape == (1, x.shape[1])
 
@@ -66,7 +70,9 @@ def test_single_asset_lambda_path_all_estimators(model_type):
     # handle a single asset for every estimator.
     x, y = _single_asset_panel()
     lambdas = [0.001, 0.01, 0.1]
-    models = LassoModel(**_kwargs(model_type, x, y, True)).fit_reg_lambda_path(
+    # Ridge is the ungated zero-centred baseline and rejects the production overlay.
+    production = model_type != LassoModelType.RIDGE
+    models = LassoModel(**_kwargs(model_type, x, y, production)).fit_reg_lambda_path(
         x=x, y=y, reg_lambdas=lambdas,
     )
     assert len(models) == len(lambdas)

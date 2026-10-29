@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## 1.1.0 — 2026-10-29 (development)
+
+### Added
+
+- `LassoModelType.RIDGE`: zero-centred, unconstrained squared-L2 regression through the
+  existing multi-response estimator, preserving EW weighting, missing-response masks,
+  loss normalisation, fitted-result and covariance interfaces. Zero penalty returns
+  weighted minimum-norm least squares; positive infinity gives the zero-loading limit.
+- Explicit rejection of sign restrictions, prior centres, adaptive penalties and group
+  settings in ridge mode. The default LASSO model and existing mode values are unchanged;
+  no new runtime dependency is added.
+- Independent ridge reference tests and an executable baseline example. The FF study's
+  ridge arm now calls the package estimator, retaining its original objective, grid and
+  independent validation rather than maintaining a separate estimation implementation.
+
+### Fixed
+
+- The documented `span=1` EW-weight endpoint now assigns weight one to the last row
+  and zero to earlier rows, instead of failing while forming zero-decay weights.
+  Existing defaults and weights at ordinary spans are unchanged.
+
 ## 1.0.6 — 2026-10-25
 
 ### Fixed

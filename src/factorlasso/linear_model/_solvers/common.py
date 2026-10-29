@@ -67,7 +67,13 @@ def _compute_solver_weights(
     forms; any linear-EWMA statistic must use ``weights**2`` (see
     :func:`_compute_solver_diagnostics`).
     """
-    if span is not None:
+    if span == 1:
+        # Zero decay puts all mass on the last date. The geometric helper uses
+        # logarithms and deliberately rejects zero, so handle this endpoint here.
+        w = np.zeros(t)
+        if t:
+            w[-1] = 1.0
+    elif span is not None:
         w = compute_expanding_power(
             n=t,
             power_lambda=np.sqrt(1.0 - 2.0 / (span + 1.0)),

@@ -4,7 +4,8 @@ myst:
     description: >-
       The sparse multi-output factor model in factorlasso: the weighted squared loss with an L1
       penalty on an N by M loading matrix, its optimality conditions, the two intercepts, the units
-      of the penalty, and a worked example verified against coordinate descent and least squares.
+      of the penalty, a ridge baseline, and examples verified against independent least-squares
+      and coordinate-descent calculations.
 ---
 
 # Sparse multi-output factor model
@@ -18,6 +19,7 @@ The sparse factor model regresses $N$ response series on $M$ candidate factors a
 penalises the absolute size of every loading, so that loadings the data do not support are
 estimated as zero. It is the base estimator of the package: sign constraints, priors, group
 penalties and the covariance decomposition all act on the loading matrix defined here.
+The same estimator interface also provides a dense ridge baseline with a squared-L2 penalty.
 
 ## Overview
 
@@ -138,9 +140,56 @@ With unequal masses, the relative response weights change and a single lambda
 conversion cannot preserve every old fit. Calibration must therefore accompany
 activation. `loss_weight_mass_`, `loss_denominator_` and `n_loss_rows_` record the
 fitted convention's inputs. Diagnostic residual sums retain their original EWMA
-units. LASSO, group/cluster and cooperative models support this option, including
-regularization paths and cross-validation. UniLasso retains its separate unweighted
-two-stage objective and rejects the option.
+units. LASSO, ridge, group/cluster and cooperative models support this option and
+cross-validation; group/cluster models also provide compiled regularization paths. UniLasso
+retains its separate unweighted two-stage objective and rejects the option.
+
+### Ridge baseline
+
+`LassoModelType.RIDGE`, added in the 1.1.0 development source, replaces the L1 penalty by the
+squared Frobenius norm (Hoerl and Kennard 1970):
+
+$$
+\widehat\beta = \arg\min_{\beta}
+\sum_{i:S_i>0}\frac{\sum_t W_{ti}^2 V_{ti}
+(\widetilde X_t\beta_i-\widetilde Y_{ti})^2}{d_i} +
+\lambda\lVert\beta\rVert_F^2.
+$$
+
+Here $d_i=T$ for `loss_normalization="sample"` and $d_i=S_i$ for `"weight_sum"`.
+The masks, observation weights and centring conventions are the same as for LASSO. This is
+ordinary zero-centred, unconstrained ridge: signs, forced zeros, prior targets, adaptive
+penalties and grouping options are rejected when enabled. These restrictions keep the baseline
+distinct from the package's directional and structured penalties. The default model remains
+LASSO. A group L2 norm is not a squared-L2 ridge penalty, and setting `l1_weight=0` in a group
+model does not select ridge.
+
+For positive finite `reg_lambda`, ridge continuously shrinks coefficients and generally retains
+all factors. Zero penalty gives weighted minimum-norm least squares; positive infinity gives
+exactly zero coefficients. No sparsity threshold or LASSO `lambda_max` is applied to ridge.
+The intercept is reconstructed after fitting and is not penalised. With a positive EW span,
+the package's running-mean transformation is preserved; it is not replaced by joint estimation
+of a single weighted intercept. No automatic factor standardisation is added: any training-only
+scaling belongs to the caller's study protocol.
+
+On identical transformed inputs, scikit-learn's unnormalised ridge objective matches when its
+penalty is `alpha = d_i * reg_lambda` and its sample weights are $W_{ti}^2 V_{ti}$.
+For ragged responses under weight-mass normalisation, $d_i$ can differ by response. Scikit-learn
+is only an optional external reference; it is not a factorlasso runtime dependency.
+
+The equal-weight formula below is a mathematical characterization, not a prescription to form
+an explicit matrix inverse:
+
+$$
+\widehat\beta^\top =
+(\widetilde X^\top\widetilde X/T+\lambda I)^{-1}
+\widetilde X^\top\widetilde Y/T,\qquad \lambda>0.
+$$
+
+Ridge provides a comparison for generic coefficient shrinkage under correlated factors. It does
+not impose shared directions or establish that its attribution is more accurate. Its penalty
+must be selected independently on training data; copying a LASSO penalty is not a fair tuning
+procedure merely because the configuration parameter has the same name.
 
 ### Separability
 
@@ -326,9 +375,30 @@ all 38 irrelevant cells non-zero.
 
 In-sample $R^2$ rises monotonically as the penalty falls and cannot be used to choose it.
 
+### Independent ridge reference
+
+The canonical example also fits ridge to the same training panel and compares its coefficients
+with an augmented least-squares problem. The reference appends $\sqrt{T\lambda}I$ to the centred
+factor matrix and zero rows to the responses, then calls `numpy.linalg.lstsq`. It also checks
+the ordinary least-squares and infinite-penalty endpoints, without changing the LASSO figure
+or its reported numerical results.
+
+```python
+def fit_ridge(x: pd.DataFrame, y: pd.DataFrame, reg_lambda: float = REG_LAMBDA) -> fl.LassoModel:
+    """Fit the zero-centred ridge baseline on the same uniformly weighted training panel."""
+    return fl.LassoModel(
+        model_type=fl.LassoModelType.RIDGE,
+        reg_lambda=reg_lambda,
+        span=None,
+        demean=True,
+        loss_normalization="sample",
+    ).fit(x=x, y=y)
+```
+
 ## Implementation in factorlasso
 
 Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
+The ridge addition requires the 1.1.0 source revision; publication to PyPI is a separate step.
 
 All names below are exported from the top-level package and documented in the
 [API reference](api.rst).
@@ -336,7 +406,7 @@ All names below are exported from the top-level package and documented in the
 | Public name | Role |
 |---|---|
 | `LassoModel` | The estimator. `fit(x, y)` returns `self`; `predict(x)` returns $\hat\alpha + X\hat\beta^{\top}$; `score(x, y)` returns the mean $R^2$ over responses; `get_params` and `set_params` follow scikit-learn; `summary()` prints a one-screen description of a fitted model. |
-| `LassoModelType` | Selects the penalty. `LASSO` is the cell-wise L1 penalty of this article; the other members are the group, cluster, cooperative and univariate-guided variants. |
+| `LassoModelType` | Selects the penalty. `LASSO` is the cell-wise L1 penalty; `RIDGE` is the zero-centred squared-L2 baseline; the other members are the group, cluster, cooperative and univariate-guided variants. |
 | `LassoEstimationResult` | Solver output stored as `estimation_result_`: `estimated_beta`, `alpha` (the residual mean that becomes `intercept_`), and the weighted `ss_total`, `ss_res` and `r2` per response. |
 | `solve_lasso_cvx_problem` | The CVXPY programme for NumPy inputs. `LassoModel` calls it after centring; it accepts `valid_mask`, `span`, `factors_beta_loading_signs`, `factors_beta_prior` and `penalty_weights`. |
 | `get_x_y_np` | Converts identically indexed pandas panels to the arrays the solver receives: centred, zero-filled where missing, with the validity mask. With EWMA demeaning the first row is dropped. |
@@ -389,6 +459,9 @@ and the hash of the image.
   square of the factor for an orthogonal design. When the support matters more than the
   magnitudes, refit the kept cells without a penalty; the
   [group penalties](group_penalties_hcgl_fcgl.md) article shows how with a sign matrix.
+- **Ridge is dense.** Ridge shrinks magnitudes without selecting factor support or enforcing
+  economic signs. A smaller coefficient change need not imply better premium attribution or
+  portfolio decisions; compare those outcomes separately from fitted-return error.
 - **Selection is not guaranteed.** The LASSO recovers the true support only under conditions on
   the factor correlations (Zhao and Yu 2006). With correlated factors it can keep the wrong one
   of a pair. The worked example uses uncorrelated factors;
@@ -425,6 +498,9 @@ and the hash of the image.
 
 ## References
 
+- Hoerl, A. E., and Kennard, R. W. (1970). Ridge Regression: Biased Estimation for Nonorthogonal
+  Problems. *Technometrics*, 12(1), 55–67.
+  [doi:10.1080/00401706.1970.10488634](https://doi.org/10.1080/00401706.1970.10488634).
 - Diamond, S., and Boyd, S. (2016). CVXPY: a Python-embedded modeling language for convex
   optimization. *Journal of Machine Learning Research* 17(83), 1-5.
 - Goulart, P. J., and Chen, Y. (2024). Clarabel: an interior-point solver for convex conic

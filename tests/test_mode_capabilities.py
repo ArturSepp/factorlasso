@@ -31,6 +31,8 @@ def test_documented_families():
         T.COOPERATIVE_CLUSTER_GROUP_LASSO]
     assert _family(lambda s: s.solver == "group") == [
         T.GROUP_LASSO, T.HIERARCHICAL_CLUSTER_GROUP_LASSO, T.FACTOR_CLUSTER_GROUP_LASSO]
+    assert _family(lambda s: s.solver == "ridge") == [T.RIDGE]
+    assert _mode_spec(T.RIDGE).grouping == "none"
     assert _family(lambda s: s.block_mode == "cluster_factor") == [
         T.FACTOR_CLUSTER_GROUP_LASSO]
     assert _family(lambda s: s.external_clusters) == [
@@ -39,4 +41,4 @@ def test_documented_families():
         T.GROUP_LASSO, T.HIERARCHICAL_CLUSTER_GROUP_LASSO, T.FACTOR_CLUSTER_GROUP_LASSO]
     assert _family(lambda s: s.single_response_lasso) == _family(lambda s: s.lambda_path)
     assert list(_MODES_WITHOUT_SIGN_CONSTRAINTS) == [
-        T.UNILASSO, T.COOPERATIVE_GROUP_LASSO, T.COOPERATIVE_CLUSTER_GROUP_LASSO]
+        T.UNILASSO, T.COOPERATIVE_GROUP_LASSO, T.COOPERATIVE_CLUSTER_GROUP_LASSO, T.RIDGE]

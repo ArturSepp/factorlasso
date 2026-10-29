@@ -3218,6 +3218,10 @@
     [
      "COOPERATIVE_CLUSTER_GROUP_LASSO",
      7
+    ],
+    [
+     "RIDGE",
+     8
     ]
    ],
    "members": {}

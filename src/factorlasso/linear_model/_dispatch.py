@@ -18,6 +18,7 @@ from factorlasso.linear_model._solvers.group_lasso import (
     solve_group_lasso_cvx_problem, solve_group_lasso_path,
 )
 from factorlasso.linear_model._solvers.lasso import solve_lasso_cvx_problem
+from factorlasso.linear_model._solvers.ridge import solve_ridge_cvx_problem
 from factorlasso.linear_model._solvers.unilasso import solve_unilasso_cvx_problem
 from factorlasso.linear_model._types import LassoEstimationResult, LassoModelType, _mode_spec
 from factorlasso.utils._ewm import set_group_loadings
@@ -39,6 +40,14 @@ def solve_prepared(model, prep: _PreparedFit, x_np: np.ndarray, y_np: np.ndarray
                    verbose: bool) -> LassoEstimationResult:
     """Solve one prepared fit at ``model.reg_lambda``."""
     solver = _mode_spec(model.model_type).solver
+    if solver == "ridge":
+        return solve_ridge_cvx_problem(
+            x=x_np, y=y_np, valid_mask=valid_mask,
+            reg_lambda=model.reg_lambda, span=eff_span,
+            verbose=verbose, solver=model.solver,
+            solver_fallbacks=model.solver_fallbacks,
+            loss_normalization=model.loss_normalization,
+        )
     if prep.is_lasso_mode:
         return solve_lasso_cvx_problem(
             x=x_np, y=y_np, valid_mask=valid_mask,

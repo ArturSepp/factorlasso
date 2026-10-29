@@ -94,6 +94,13 @@ it with the derivation of clusters, signs and weights done once, and both select
 `use_lambda_path=True` for `GROUP_LASSO`, `HIERARCHICAL_CLUSTER_GROUP_LASSO` and
 `FACTOR_CLUSTER_GROUP_LASSO`. The other modes fit once per grid point.
 
+The `RIDGE` mode introduced in the 1.1.0 development source uses the same chronological
+selection interface, fitting each requested penalty separately. Choose a ridge-specific grid:
+its squared-L2 penalty is not interchangeable with a LASSO penalty, and it has no finite
+all-zero `lambda_max`. The score remains held-out $R^2$; known loading or attribution truth
+must not be used to tune a deployable estimator. See the [ridge baseline](sparse_factor_model.md#ridge-baseline)
+for its objective and loss-normalisation conventions.
+
 ## Worked example
 
 The canonical script [`examples/docs/penalty_selection.py`](../examples/docs/penalty_selection.py)

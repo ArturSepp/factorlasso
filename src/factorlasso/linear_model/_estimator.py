@@ -1,9 +1,10 @@
 """
-LASSO and Group LASSO factor model estimation using CVXPY.
+Sparse and ridge factor model estimation using CVXPY.
 
 Implements sparse multi-output regression with support for:
 
 - **Standard L1 LASSO** — element-wise sparsity
+- **Ridge** — zero-centred squared-L2 shrinkage without loading restrictions
 - **Group LASSO** with predefined groups — structured sparsity
 - **Hierarchical Clustering Group LASSO (HCGL)** — data-driven group
   discovery via Ward's method, then Group LASSO with adaptive penalties
@@ -80,10 +81,10 @@ from factorlasso.utils._panel import get_x_y_np
 @dataclass
 class LassoModel:
     """
-    Configurable LASSO / Group LASSO / HCGL factor model estimator.
+    Configurable sparse or ridge factor model estimator.
 
-    Estimates the model ``Y_t = α + β X_t + ε_t`` with sparse β using
-    L1 (LASSO) or Group L2/L1 (Group LASSO) regularisation via CVXPY.
+    Estimates the model ``Y_t = α + β X_t + ε_t`` using L1 (LASSO),
+    group norms or squared-L2 (ridge) regularisation via CVXPY.
 
     The API follows scikit-learn conventions:
 
@@ -110,12 +111,14 @@ class LassoModel:
 
     Enforced by ``LASSO``, ``GROUP_LASSO``, ``HIERARCHICAL_CLUSTER_GROUP_LASSO``
     and ``FACTOR_CLUSTER_GROUP_LASSO``; rejected with ``ValueError`` by
-    ``UNILASSO`` and the cooperative modes, whose solvers take none.
+    ``UNILASSO``, ``RIDGE`` and the cooperative modes, whose solvers take none.
 
     Prior-centered regularisation
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ``factors_beta_prior`` is ``(N × M)``.  The penalty becomes
-    ``‖β − β₀‖`` instead of ``‖β‖``.
+    ``‖β − β₀‖`` instead of ``‖β‖``. ``RIDGE`` is a zero-centred
+    baseline and rejects prior targets, automatic signs, adaptive weights,
+    hard exclusions and nondefault group penalties rather than ignoring them.
 
     Parameters
     ----------
@@ -129,12 +132,14 @@ class LassoModel:
         ``COOPERATIVE_GROUP_LASSO`` (cooperative-LASSO on an external
         partition, soft within-block sign coherence), or
         ``COOPERATIVE_CLUSTER_GROUP_LASSO`` (cooperative-LASSO on the
-        discovered partition).  HCGL and FCGL impose a hard pooled sign only
+        discovered partition), or ``RIDGE`` (zero-centred squared-L2, no
+        grouping, signs or priors). HCGL and FCGL impose a hard pooled sign only
         when ``auto_sign_constraints=True``.  ``UNILASSO`` and the two
         cooperative modes take no sign constraint: ``factors_beta_loading_signs``
         and ``nonneg=True`` raise ``ValueError`` with them, derived signs are
         not enforced and ``derived_signs_`` stays ``None``; the cooperative
-        penalty encourages sign coherence softly.
+        penalty encourages sign coherence softly. Ridge also rejects automatic
+        sign derivation rather than calculating unused signs.
     loss_normalization : {"sample", "weight_sum"}, default "sample"
         ``sample`` preserves the historical loss divided by panel row count.
         ``weight_sum`` divides each response's weighted squared error by its
@@ -145,9 +150,13 @@ class LassoModel:
         old fit. This option does not change signs, targets or diagnostic SSE units.
         UniLasso retains its separate unweighted loss and rejects ``weight_sum``.
     reg_lambda : float, default 1e-5
-        Penalty strength multiplying the L1 and group terms. Its scale depends
+        Penalty strength multiplying the L1, group or squared-L2 terms. Its scale depends
         on ``loss_normalization``, the observation frequency and the return
         units; ``LassoModelCV`` selects it on expanding time-series splits.
+        Ridge requires a nonnegative value: zero is minimum-norm weighted least
+        squares and positive infinity gives exactly zero loadings. Its objective
+        is the stated squared loss plus ``reg_lambda * sum(beta**2)``, without
+        a one-half factor. Factors are not automatically standardized.
     span : float, optional
         EWMA span for observation weighting.  Must be ≥ 1 when provided.
         Float accepted — integer is the common case, but the recursion
@@ -1023,7 +1032,7 @@ class LassoModel:
         ``reg_lambda``-independent derivation (clustering, signs, adaptive
         weights) is computed once via :meth:`_prepare_fit` and the penalty
         path is solved with :func:`solve_group_lasso_path`, which reuses one
-        canonical form across the grid. LASSO, the cooperative estimators,
+        canonical form across the grid. LASSO, ridge, the cooperative estimators,
         and UniLasso have no path solver, so each grid point is a full
         :meth:`fit`. Cluster-mean budgets also use full fits because the budgets
         depend on the first-pass coefficients at the current penalty.

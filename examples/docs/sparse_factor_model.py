@@ -12,6 +12,8 @@ the solution against a NumPy coordinate-descent solver and the Karush-Kuhn-Tucke
 objective, the zero-penalty limit against ``numpy.linalg.lstsq``, the intercept against sample
 means, the multi-output fit against one fit per response, and the scaling rule of the penalty
 against a refit in percent units.
+The dense ridge baseline is independently checked against augmented least squares on the same
+centred training panel, including its zero- and infinite-penalty endpoints.
 
 Synthetic data, fixed seed, no network, no files written. Solver: CVXPY with CLARABEL.
 """
@@ -75,6 +77,38 @@ def fit_lasso(x: pd.DataFrame, y: pd.DataFrame, reg_lambda: float = REG_LAMBDA) 
     return model.fit(x=x, y=y)
 
 
+def fit_ridge(x: pd.DataFrame, y: pd.DataFrame, reg_lambda: float = REG_LAMBDA) -> fl.LassoModel:
+    """Fit the zero-centred ridge baseline on the same uniformly weighted training panel."""
+    return fl.LassoModel(
+        model_type=fl.LassoModelType.RIDGE,
+        reg_lambda=reg_lambda,
+        span=None,
+        demean=True,
+        loss_normalization="sample",
+    ).fit(x=x, y=y)
+
+
+def check_ridge_reference(x: pd.DataFrame, y: pd.DataFrame) -> None:
+    """Compare ridge with augmented least squares without using package solver internals."""
+    centred_x = x.to_numpy() - x.to_numpy().mean(axis=0)
+    centred_y = y.to_numpy() - y.to_numpy().mean(axis=0)
+    n_rows, n_factors = centred_x.shape
+    augmented_x = np.vstack([
+        centred_x, np.sqrt(n_rows * REG_LAMBDA) * np.eye(n_factors),
+    ])
+    augmented_y = np.vstack([centred_y, np.zeros((n_factors, y.shape[1]))])
+    reference = np.linalg.lstsq(augmented_x, augmented_y, rcond=None)[0].T
+    ridge = fit_ridge(x, y)
+    assert np.allclose(ridge.coef_.to_numpy(), reference, rtol=1e-6, atol=1e-7)
+    expected_intercept = y.mean().to_numpy() - x.mean().to_numpy() @ reference.T
+    assert np.allclose(ridge.alpha_const_.to_numpy(), expected_intercept, atol=1e-7)
+    expected_prediction = expected_intercept + x.to_numpy() @ reference.T
+    assert np.allclose(ridge.predict(x).to_numpy(), expected_prediction, atol=1e-7)
+    ols = np.linalg.lstsq(centred_x, centred_y, rcond=None)[0].T
+    assert np.allclose(fit_ridge(x, y, 0.0).coef_.to_numpy(), ols, atol=1e-7)
+    assert np.all(fit_ridge(x, y, np.inf).coef_.to_numpy() == 0.0)
+
+
 def lasso_coordinate_descent(
     x: np.ndarray,
     y: np.ndarray,
@@ -132,6 +166,7 @@ def main() -> None:
     """Run the example, verify each quoted number independently, and print the summary."""
     x, y = make_panel()
     x_train, y_train = x.iloc[:N_TRAIN], y.iloc[:N_TRAIN]
+    check_ridge_reference(x_train, y_train)
     model = fit_lasso(x_train, y_train)
     beta = model.coef_.to_numpy()
 
