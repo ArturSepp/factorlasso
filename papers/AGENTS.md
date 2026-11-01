@@ -10,11 +10,11 @@ sections as needed; do not commit placeholders for ignored local directories.
 
 | Section | Purpose | Git policy |
 |---|---|---|
-| `paper/` | One current manuscript, reading PDF, bibliography, table fragments and `figures/` | Exact approved files only |
+| `paper/` | One current manuscript, reading PDF, bibliography, table fragments and `figures/` | Local and ignored |
 | `drafts/<date_or_version>/` | Previous versions with their own figures and build dependencies | Always ignored |
 | `presentations/<date_event>/` | Slides with their own figures | Ignored by default; exact approved exceptions |
 | `private/` | Editor correspondence, referee reports, replies and permissions | Always ignored |
-| `replication/` | Code, static `data/`, and automated `tests/` | Approved code and redistributable inputs tracked |
+| `replication/` | Active code, static `data/`, and automated `tests/` | Local and ignored |
 | `agents/` | Paper-specific roadmaps, execution reports and working notes | Always ignored |
 
 Per-paper `agents/` is FL's explicit override of the generated shared core's
@@ -28,26 +28,28 @@ tests live in `replication/tests/test_*.py`; core tests remain in root `tests/`.
 
 ## Publication and preservation
 
-- Only `sign_pooling_2026` (CSDA) is approved for tracking. JSS, prior-targets and
-  any future paper workspaces remain entirely local. Top-level `papers/AGENTS.md`
-  and `papers/README.md` are the tracked policy and availability index.
+- All paper workspaces, including `sign_pooling_2026`, remain local and ignored.
+  Top-level `papers/AGENTS.md` and `papers/README.md` are the only tracked paper
+  files. The maintainer withdrew the former sign-pooling publication exception on
+  1 November 2026. Defer a new package release until the forecasting draft is finished.
 - A new public paper needs an explicit maintainer decision, an index update,
   root ignore exception and corresponding checker update. Do not infer GitHub
   redistribution rights from submission, acceptance, SSRN posting or a DOI.
-- Deny `paper/`, `presentations/` and `replication/data/` by default. The
-  per-paper `.gitignore` lists each approved file exactly, including necessary
-  bibliography/table/figure dependencies. Never approve future files through
-  wildcard exceptions. Elsevier CAS templates remain local or installed through
-  the LaTeX distribution; do not vendor them as part of this migration.
+- Deny entire paper workspaces by default. Historical per-paper allowlists do not
+  authorize publication and cannot reopen a root-ignored workspace. A future
+  release needs an explicit file inventory and matching policy/checker changes.
+  Journal templates remain local or installed through the LaTeX distribution.
 - Public docs may display only tracked exhibits and must not link files in
   local-only workspaces. Keep citation metadata without promising public source.
 - Restricted inputs belong in `replication/data/local/`, always ignored. Record
   provenance and hashes for tracked static inputs and frozen reference caches.
   Missing licensed inputs must be reported; never substitute different data
   silently. Preserve shared input modules rather than duplicating them.
-- Current CSDA reference caches live in `replication/data/reference/`. Producers
-  write new results externally. `exhibits.py` reads frozen inputs by default;
-  `--from-run` reads only the selected external run, without cached fallbacks.
+- Frozen reference caches remain read-only in `replication/data/reference/`.
+  Producers write new results externally. Retired producers are preserved in the
+  verified private cleanup backup, outside the active replication tree.
+- Resume Stage 3 only from its authenticated frozen desktop handoff. Cleanup of
+  the live source inventory does not authorize changing a frozen study identity.
 - Configure the root-prescribed runtime before running code. New runs, caches,
   logs, figures and LaTeX builds go outside the checkout and OneDrive, using
   `FACTORLASSO_PAPER_OUTPUT_DIR` or the configured C-local runtime. Promote

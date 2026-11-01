@@ -62,11 +62,10 @@ Desktop.ini
 # Local agent roadmaps and operational reports
 /agents/
 
-# Paper publication boundary: CSDA is the only approved workspace.
+# Paper workspaces stay private while the forecasting draft is completed.
 /papers/*
 !/papers/AGENTS.md
 !/papers/README.md
-!/papers/sign_pooling_2026/
 
 # Private sections cannot be published through nested exceptions.
 /papers/**/drafts/

@@ -406,7 +406,7 @@ and the hash of the image.
   regression. *Electronic Journal of Statistics* 7. DOI 10.1214/13-EJS818.
 - Sepp, A., and Kastenholz, M. A. (2026). Gated Cluster-Pooled Sign Constraints for Multi-Output
   Sparse Regression. Revised working manuscript; prepared for *Computational Statistics*.
-  [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
+  Current manuscript and replication maintained privately.
 - Sepp, A., Ossa, I., and Kastenholz, M. (2026). Robust Optimization of Strategic and Tactical
   Asset Allocation for Multi-Asset Portfolios. *The Journal of Portfolio Management* 52(4),
   86-120.

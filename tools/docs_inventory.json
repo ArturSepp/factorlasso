@@ -193,7 +193,7 @@
       "title": "Gated Cluster-Pooled Sign Constraints for Multi-Output Sparse Regression",
       "authors": "Sepp, A. and Kastenholz, M. A.",
       "status": "Revised working manuscript; prepared for Computational Statistics",
-      "source": "papers/sign_pooling_2026/paper/article.tex",
+      "availability": "historical-public-source; current revision local-only",
       "doi": "10.5281/zenodo.21000294",
       "retired_titles": [
         "Sign-Constrained Clustered Group-Lasso Estimation of Multi-Asset Factor Loadings"

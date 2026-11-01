@@ -10,10 +10,13 @@ import tempfile
 import zipfile
 
 
-PUBLIC_PAPERS = {"sign_pooling_2026"}
+PUBLIC_PAPERS: set[str] = set()
 
 PROBES = (
     "papers/unapproved_paper/replication/reproduce.py",
+    "papers/sign_pooling_2026/paper/article.tex",
+    "papers/sign_pooling_2026/replication/reproduce.py",
+    "papers/sign_pooling_2026/README.md",
     "papers/sign_pooling_2026/drafts/v1/paper.tex",
     "papers/sign_pooling_2026/private/referee.txt",
     "papers/sign_pooling_2026/agents/ROADMAP.md",

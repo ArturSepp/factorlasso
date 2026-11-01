@@ -16,9 +16,10 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/
 
 In an expression quantitative trait locus (eQTL) study, gene-expression responses share a panel
 of genetic-marker predictors. Correlated responses offer a possible pooling opportunity, but
-their conditional coefficient signs are unknown. This page reports the revised sign-pooling
-manuscript's "Application to yeast eQTL data" (Sepp and Kastenholz, 2026a). It distinguishes the
-current nested evaluation from the archived full-sample descriptions.
+their conditional coefficient signs are unknown. This page preserves the earlier
+sign-pooling manuscript's "Application to yeast eQTL data" (Sepp and Kastenholz, 2026a).
+That study is outside the current forecasting revision. Its replication code and inputs
+are retained in a private historical backup. The public example below is synthetic.
 
 ## Overview
 
@@ -32,7 +33,7 @@ selected twice accompanies low selection overlap; it is not validation of biolog
 ## Study design and data
 
 - **Data.** Expression and genotypes of $T=112$ segregants from the yeast cross of Brem and
-  Kruglyak (2005), with 3244 candidate markers in the committed replication inputs.
+  Kruglyak (2005), with 3244 candidate markers in the historical replication inputs.
 - **Responses.** $N=64$ genes selected using the prespecified KEGG MAPK pathway annotation,
   rather than the canonical 54-gene subset in Yin and Li (2011).
 - **Nested evaluation.** Three repeats of three outer folds, each with three inner folds
@@ -81,7 +82,7 @@ unchanged, including `auto_sign_variance="independent"` and automatic signs bein
 
 ## Results
 
-### Current nested prediction
+### Historical nested prediction
 
 The following values are quoted from the manuscript's "Repeated nested validation" table.
 They are means over three repeats; parentheses give standard deviations across splits of the
@@ -108,7 +109,7 @@ and unconstrained HCGL, so there is no uniform winning method. Across the ten se
 settings, pooled exclusion remains worse than unconstrained and released-gate HCGL in every
 repeat. This is a finite study on one cross, not an exhaustive tuning comparison.
 
-### Current partition and selection stability
+### Historical partition and selection stability
 
 Across the 36 pairs of nine overlapping outer-training fits, mean cluster adjusted Rand index
 is 0.420 and retained-marker Jaccard overlap is 0.253. Overall fitted-cell Jaccard overlap is
@@ -123,34 +124,6 @@ after preprocessing is distinguished from a retained marker fitted to zero. Over
 splits, marker substitution under residual linkage disequilibrium and differing selection
 sizes limit interpretation. These numbers measure resampling stability, not recovery of
 unknown biological support (manuscript, "Partition and fitted-coefficient stability").
-
-### Historical descriptive exhibits
-
-The following figures preserve the original full-sample fit with 202 screened markers, nine
-groups, the independent-cell gate and the legacy cut. They are not figures from the current
-nested evaluation. The revised supplement's "Superseded eQTL analysis" explains the correction.
-
-![Archived correlation matrix of 64 yeast MAPK genes ordered by full-sample cluster](../papers/sign_pooling_2026/paper/figures/figE1_clusters.png)
-
-*Archived descriptive exhibit. Correlations and annotation labels for the same 112 segregants
-used to discover the nine groups. This visual comparison does not validate pathway recovery.*
-
-![Archived independent-cell gated sign matrix of 64 genes against 202 globally screened markers](../papers/sign_pooling_2026/paper/figures/figE2_signs.png)
-
-*Archived descriptive exhibit. Negative, zero and positive broadcast signs on the full sample.
-Block coherence is partly imposed by pooling; zero entries exclude coefficients rather than
-leave their signs unrestricted. Same-sample marginal agreement is not biological validation.*
-
-![Archived counts of fitted genes per globally screened genetic marker](../papers/sign_pooling_2026/paper/figures/figE3_hotspots.png)
-
-*Archived descriptive exhibit. Fitted association counts along the genome. Peaks are candidate
-hubs without independent biological validation; this plot does not establish recovered eQTL
-hotspots.*
-
-The old prediction comparison screened outcomes before splitting, called a gated per-response
-fit ordinary Lasso, and used a common numerical penalty across differently scaled objectives.
-Its prediction rankings are superseded and are not performance evidence. Retaining these
-descriptive figures does not repair or endorse that old validation protocol.
 
 ## What the study does and does not show
 
@@ -189,22 +162,17 @@ Run [the canonical script](../examples/docs/app_sign_pooling_genomics.py) from a
 python examples/docs/app_sign_pooling_genomics.py
 ```
 
-For the complete corrected empirical analysis, follow the
-[paper replication README](https://github.com/ArturSepp/factorlasso/blob/main/papers/sign_pooling_2026/README.md), using
-[`eqtl_validation.py`](../papers/sign_pooling_2026/replication/eqtl_validation.py),
-[`eqtl_sensitivity.py`](../papers/sign_pooling_2026/replication/eqtl_sensitivity.py) and
-[`eqtl_stability.py`](../papers/sign_pooling_2026/replication/eqtl_stability.py). The baseline
-command defaults to six methods; the documented expanded comparison adds the matched
-singleton-HCGL and unconstrained-FCGL controls. Outputs belong in a fresh external directory.
-Full archived fits require a MOSEK license. The older `eqtl_pipeline.py` retains only the
-superseded descriptive reproduction and must not be used for the corrected prediction table.
+The complete historical empirical analysis is retained in a private backup. Its
+eQTL runners and input files are no longer included in the current public checkout.
+The synthetic example above demonstrates training-only preprocessing and does not
+reproduce the historical empirical table.
 
 ## See also
 
 - [Gated cluster-pooled sign derivation](gated_cluster_pooled_signs.md): screening and variance
   conventions.
 - [Cluster discovery](cluster_discovery.md): clustering inputs and package conventions.
-- [Research papers and replication](scientific-replication.md): the paper and replication tree.
+- [Research papers and replication](scientific-replication.md): paper availability and historical provenance.
 
 ## References
 
@@ -215,8 +183,7 @@ superseded descriptive reproduction and must not be used for the corrected predi
   193-218. DOI 10.1007/BF01908075.
 - Sepp, A., and Kastenholz, M. A. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
   Sparse Regression. Revised working manuscript; prepared for *Computational Statistics*.
-  [Manuscript](../papers/sign_pooling_2026/paper/article.pdf) and
-  [supplement](../papers/sign_pooling_2026/paper/supplement.pdf).
+  Historical manuscript and replication retained privately.
 - Yin, J., and Li, H. (2011). A sparse conditional Gaussian graphical model for analysis of
   genetical genomics data. *The Annals of Applied Statistics* 5(4), 2630-2650.
   DOI 10.1214/11-AOAS494.

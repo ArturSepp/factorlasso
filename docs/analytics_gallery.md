@@ -17,9 +17,8 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/
 Every figure in the documentation is listed here with the question it answers, the sample behind
 it, and the code that produces it. All of them are synthetic teaching exhibits: the generating
 loadings are known, so each figure can show an estimate against the truth. None is market
-evidence or a replication of a paper. Empirical exhibits belong to the manuscripts under
-`papers/`; they are displayed, with their study design, in the articles and case studies that
-cite them, and the papers are described in
+evidence or a replication of a paper. Empirical exhibits remain in the private paper
+workspaces and are not displayed here. Paper availability is described in
 [research papers and replication](scientific-replication.md).
 
 ## Conventions

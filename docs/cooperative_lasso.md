@@ -181,7 +181,7 @@ python examples/docs/cooperative_lasso.py
   DOI 10.1214/11-AOAS520.
 - Sepp, A., and Kastenholz, M. A. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
   Sparse Regression. Revised working manuscript; prepared for *Computational Statistics*.
-  [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
+  Current manuscript and replication maintained privately.
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
   Software*. Manuscript retained locally; not distributed in this checkout.

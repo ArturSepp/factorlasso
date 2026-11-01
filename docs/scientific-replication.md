@@ -3,8 +3,8 @@ myst:
   html_meta:
     description: >-
       The research papers behind factorlasso: citation titles taken from the LaTeX sources,
-      publication status, the documentation articles each paper supports, and how to reproduce
-      the public sign-pooling study; other paper workspaces remain local.
+      publication status, the documentation articles each paper supports, and the distinction
+      between public teaching examples and privately maintained replication workspaces.
 ---
 
 # Research papers and replication
@@ -34,9 +34,10 @@ Methods are cited to these papers; the software itself is cited through
   Manuscript and replication workspace retained locally; not distributed here.
 - Sepp, A. and Kastenholz, M. A. (2026). *Gated Cluster-Pooled Sign Constraints for Multi-Output
   Sparse Regression*. Revised working manuscript; prepared for Computational Statistics.
-  [Manuscript](../papers/sign_pooling_2026/paper/article.pdf),
-  [replication tree](https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026)
-  and archived research bundle [10.5281/zenodo.21000294](https://doi.org/10.5281/zenodo.21000294).
+  Earlier public manuscript. The current forecasting revision and its replication
+  workspace are maintained privately. The historical research bundle
+  [10.5281/zenodo.21000294](https://doi.org/10.5281/zenodo.21000294) contains earlier experiments,
+  not the current forecasting revision.
 - Sepp, A. (2026). *Exposure-budget floors for factor loadings under correlated factors*.
   Working paper of 2 October 2026; link to be added.
   Manuscript and replication workspace retained locally; not distributed here.
@@ -86,28 +87,17 @@ its study design and is not restated as a general performance claim.
 | Sparse equity factors | Planned: empirical residual correlation |
 | Model-layer attribution | Context for the factor-covariance workflow only |
 
-## Public sign-pooling replication
+## Private paper development
 
-Only the [sign-pooling workspace](https://github.com/ArturSepp/factorlasso/tree/main/papers/sign_pooling_2026) is tracked. It
-includes the current approved manuscript, public yeast eQTL inputs, frozen
-reference results in `replication/data/reference/`, replication code and tests.
-Use its README for current commands and external output-directory settings.
+The sign-pooling forecasting revision, JSS and exposure-budget workspaces are retained
+privately and excluded from the current Git tree. Their manuscripts, empirical figures,
+inputs and replication commands are not distributed with this checkout. Public teaching
+examples and the reusable FactorLasso API remain available.
 
-The revised results were reproduced with FactorLasso 1.0.5 and the pinned environment in
-`replication/requirements-reproduction.txt`. The archived Zenodo release and
-`replication/requirements.txt` preserve the historical 0.7.2 environment and superseded
-analyses. Use the corresponding bundle for exact historical reproduction; do not install
-either pin over the working development environment and claim equivalence. The current
-manuscript and supplement use the official Springer Nature LaTeX template. The
-[replication README](https://github.com/ArturSepp/factorlasso/blob/main/papers/sign_pooling_2026/README.md) records the current build commands,
-source identities and the separation between archived and revised evidence.
-
-## Local paper workspaces
-
-The JSS and current exposure-budget workspaces are retained locally and excluded from
-Git. Their manuscript files, empirical figures and replication commands are not
-part of the public checkout. This availability decision does not change the
-package API or the published citation metadata.
+The next package release is deferred until the forecasting draft is finished. The
+replication package for that revision has not been released. Earlier public Git commits
+and historical archives retain their original contents and environments. They do not
+establish reproduction of the current draft.
 
 The exposure-budget paper is cited here without publishing its workspace or inputs. Its
 production-CMA illustration uses static exports prepared in OptimalPortfolios; the

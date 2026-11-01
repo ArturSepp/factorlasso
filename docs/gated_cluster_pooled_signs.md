@@ -226,19 +226,6 @@ of the true signs while signing only 0.04 of the null cells.
 predictors, 60 dates and a population $R^2$ of 0.10. The light vertical line marks the package
 default $\tau = 0.75$. Produced by `tools/docs_analytics/estimation.py` from the example script.*
 
-The following archived experiment uses 60 responses in six known clusters, 20 predictors and
-80 dates, with the historical independent-cell variance. Known clusters are an oracle diagnostic.
-The revised manuscript retains this experiment under "Historical experiments and their
-corrections" in Online Resource 1; it does not use it to justify a reporting threshold or a
-general prediction claim. Current fitted-estimator and learned-cluster comparisons are in the
-manuscript's "Simulation study".
-
-![Sensitivity on true cells against the false-sign rate on null cells as the gate threshold varies, under known-cluster pooling](../papers/sign_pooling_2026/paper/figures/figS2_gate_roc.png)
-
-*Archived paper exhibit. Historical base configuration, known-cluster pooling, independent-cell
-variance, $\tau$ from 0.5 to 3.5, means over 200 replications. Preserved for reproduction; this is
-not the revised manuscript's date-score gate validation.*
-
 ## Implementation in factorlasso
 
 Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
@@ -277,7 +264,7 @@ python examples/docs/gated_cluster_pooled_signs.py
   dependence and the cut; known groups cannot substitute for this evaluation.
 - **Correlated predictors break the marginal sign.** A marginal slope absorbs correlated
   factors, so its sign can differ from the conditional loading, and as the predictor correlation
-  rises the derived signs can flip (archived figure below). A wrong hard sign excludes the true
+  rises the derived signs can flip. A wrong hard sign excludes the true
   nonzero loading: the fitted value can be zero or nonzero with the wrong sign. The penalty does
   not guarantee abstention. Compare unrestricted, exclusion and release fits on held-out data.
 - **The `"independent"` variance omits response covariance.** Positive residual dependence can
@@ -285,12 +272,6 @@ python examples/docs/gated_cluster_pooled_signs.py
   estimate. The two choices keep pooled slopes unchanged but can alter gates and fitted
   coefficients. The familiar design effect $1+(m-1)\bar\rho$ describes a homogeneous special
   case, not every pool with unequal effects or missing observations.
-
-![Sign recovery, sign-flip rate and false-sign rate against predictor correlation for per-response, estimated-cluster and known-cluster derivations](../papers/sign_pooling_2026/paper/figures/figS5_correlated.png)
-
-*Archived paper exhibit. Historical base configuration with correlated predictors,
-$\rho_X$ from 0 to 0.8, per-response, estimated-cluster (HCGL) and known-cluster derivations
-using the independent-cell gate. These are gate diagnostics, not fitted-estimator errors.*
 
 ## See also
 
@@ -320,7 +301,7 @@ using the independent-cell gate. These are gate diagnostics, not fitted-estimato
   omics data. arXiv:2511.22049.
 - Sepp, A., and Kastenholz, M. A. (2026a). Gated Cluster-Pooled Sign Constraints for Multi-Output
   Sparse Regression. Revised working manuscript; prepared for *Computational Statistics*.
-  [Manuscript](../papers/sign_pooling_2026/paper/article.pdf).
+  Current manuscript and replication maintained privately.
 - Sepp, A., and Kastenholz, M. A. (2026b). factorlasso: Sparse Multi-Output Regression with
   Cluster-Grouped Sign Constraints in Python. Submitted to the *Journal of Statistical
   Software*. Manuscript retained locally; not distributed in this checkout.

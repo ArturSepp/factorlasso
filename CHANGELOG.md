@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Removed
+
+- Untrack the sign-pooling manuscript and paper replication workspace. Preserve
+  the current forecasting draft and required replication privately, and archive
+  obsolete eQTL, legacy simulation and deferred weekly runners before removing
+  them from the active tree. Public CI and documentation no longer depend on this
+  workspace. Package APIs and defaults are unchanged.
+- Defer the next package release until the forecasting draft is finished. Older
+  Git history and published archives remain unchanged.
+
 ## 1.1.0 — 2026-10-29 (development)
 
 ### Added
