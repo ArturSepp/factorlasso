@@ -243,9 +243,12 @@ def test_fixed_design_cache_matches_full_refits_and_invalidates_all_geometry_inp
         cached = model.copy()
         cached._inference_fixed_design_cache = cache
         cached.fit(x, response)
-        pd.testing.assert_frame_equal(cached.coef_, uncached.coef_, check_exact=True)
+        # Cached and full linear solves can differ by a few BLAS rounding ULPs.
+        pd.testing.assert_frame_equal(cached.coef_, uncached.coef_,
+                                      check_exact=False, rtol=1e-14, atol=1e-15)
         pd.testing.assert_frame_equal(cached.prior_bound_contributions_,
-                                       uncached.prior_bound_contributions_, check_exact=True)
+                                       uncached.prior_bound_contributions_,
+                                       check_exact=False, rtol=1e-14, atol=1e-15)
     assert cache
     original = _fixed_design_competitor_geometry(x, y.a, ['equity'], 36, 8, cache)
     original[0].iloc[:] = 999.  # A caller mutation must not poison the cache.
@@ -260,4 +263,4 @@ def test_fixed_design_cache_matches_full_refits_and_invalidates_all_geometry_inp
         actual = _fixed_design_competitor_geometry(xx, yy, factors, span, minimum, cache)
         reference = _competitor_geometry(xx, yy, factors, span, minimum)
         for a, b in zip(actual, reference):
-            pd.testing.assert_frame_equal(a, b, check_exact=True)
+            pd.testing.assert_frame_equal(a, b, check_exact=False, rtol=1e-14, atol=1e-15)

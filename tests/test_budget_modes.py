@@ -46,6 +46,8 @@ def test_table_data_rule_rows(selection: dict | None) -> None:
 
 def test_partial_declarations_and_explicit_zero_have_distinct_sources() -> None:
     x, y = panel()
+    # An undeclared competitor must have a real positive loading, not QR roundoff.
+    x['c'] += .2 * x.a
     budget = pd.DataFrame({'b': [.2, 0.]}, index=['y0', 'y1'])
     with pytest.warns(UserWarning, match='undeclared_zero'):
         fitted = model_for(y=y, expert_prior_exposure_budget=budget).fit(x=x, y=y)
@@ -53,6 +55,7 @@ def test_partial_declarations_and_explicit_zero_have_distinct_sources() -> None:
     assert d.at[('y0', 'b'), 'budget_source'] == 'declared'
     assert d.at[('y1', 'b'), 'budget_source'] == 'declared_zero'
     assert d.at[('y0', 'c'), 'budget_source'] == 'undeclared_zero'
+    assert d.at[('y0', 'c'), 'gamma'] == pytest.approx(.2, abs=1e-12)
     assert d.at[('y2', 'b'), 'budget_source'] == 'n_std'
     assert d.at[('y0', 'b'), 'slack'] == pytest.approx(.35 * .2, abs=1e-12)
     for response in ['y0', 'y1']:

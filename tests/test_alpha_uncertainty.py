@@ -67,7 +67,8 @@ def test_initialization_and_calendar_gaps_are_distinct():
     n = data.a.notna().sum()
     assert result.diagnostics.loc['a', 'weight_mass'] == pytest.approx(1-(1-2/61)**n)
     stretched = estimate_alpha_uncertainty(data, 60, calendar=2*np.arange(90), bandwidth=6.)
-    np.testing.assert_array_equal(result.estimates, stretched.estimates)
+    # Calendar spacing changes HAC only; permit floating reduction roundoff.
+    np.testing.assert_allclose(result.estimates, stretched.estimates, rtol=1e-14, atol=1e-15)
     assert not np.allclose(result.covariance, stretched.covariance)
 
 

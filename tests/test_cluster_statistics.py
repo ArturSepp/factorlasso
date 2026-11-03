@@ -129,7 +129,9 @@ def test_ewma_statistics_are_causal() -> None:
         changed[date] = pd.Series(["future"] * 4, index=list("abcd"))
     full = compute_cluster_stability_statistics(changed, {"ME": 36, "QE": 18})
 
-    pd.testing.assert_frame_equal(short.w_i, full.w_i.loc[:cutoff], check_exact=True)
+    # Prefix reductions may differ by a few ULPs across BLAS implementations.
+    pd.testing.assert_frame_equal(short.w_i, full.w_i.loc[:cutoff],
+                                  check_exact=False, rtol=1e-14, atol=1e-15)
 
 
 def test_short_history_uses_exact_unit_weights() -> None:
