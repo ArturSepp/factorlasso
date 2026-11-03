@@ -117,7 +117,9 @@ def test_separate_convex_program_with_free_intercept():
     beta = cvx.Variable((y.shape[1], x.shape[1]))
     alpha = cvx.Variable(y.shape[1])
     w = np.asarray(weights) / weights.mean()
-    residual = np.asarray(y) - np.asarray(x) @ beta.T - alpha
+    # Expand the intercept explicitly for CVXPY 1.5.x, which cannot broadcast this vector.
+    intercept_rows = cvx.vstack([alpha] * len(x))
+    residual = np.asarray(y) - np.asarray(x) @ beta.T - intercept_rows
     problem = cvx.Problem(cvx.Minimize(
         cvx.sum_squares(cvx.multiply(np.sqrt(w[:, None]), residual)) / len(x)
         + penalty * cvx.sum_squares(beta - target)))

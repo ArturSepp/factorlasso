@@ -162,8 +162,16 @@ def test_copies_and_groups_do_not_alias_callers_or_other_fields():
     result.slopes.iloc[0, 0] = 999.
     result.groups.iloc[0] = 'edited'
     result.date_weights.iloc[0] = 0
-    result.slopes.index.values[0] = 'edited-axis'
-    result.slopes.columns.values[0] = 'edited-factor'
+    # Pandas 3 can expose read-only index storage; check ownership without requiring writes.
+    for axis, caller_axis, peer_axis in (
+        (result.slopes.index, y.columns, result.signs.index),
+        (result.slopes.columns, x.columns, result.signs.columns),
+    ):
+        assert axis is not caller_axis and axis is not peer_axis
+        assert not np.shares_memory(axis.to_numpy(), caller_axis.to_numpy())
+        assert not np.shares_memory(axis.to_numpy(), peer_axis.to_numpy())
+    result.slopes.index = pd.Index(['edited-axis', *result.slopes.index[1:]])
+    result.slopes.columns = pd.Index(['edited-factor', *result.slopes.columns[1:]])
     for original, snapshot in zip((x, y, groups, weights), snapshots):
         assert original.equals(snapshot)
     assert result.signs.index[0] == y.columns[0]
