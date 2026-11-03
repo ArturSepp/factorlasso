@@ -15,14 +15,16 @@ Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 Gated cluster-pooled sign derivation estimates the sign matrix of a factor model from the data.
-The automatic estimator pathway computes one pooled univariate slope for each response cluster
+The default automatic estimator pathway computes one pooled univariate slope for each response cluster
 and factor,
 keeps the slope's sign only when its t-statistic clears a noise floor, and passes the surviving
 signs to the estimator as hard constraints. Pooling can improve precision when responses share
 an exposure direction, but correlated residuals limit the gain. A failed gate fixes the loading
 at zero; it does not leave the loading unrestricted. The separate
 `compute_pooled_sign_gate` function estimates joint conditional slopes and provides explicit
-exclusion, release and zero-only actions. It leaves the automatic pathway unchanged.
+exclusion, release and zero-only actions. The opt-in native
+`auto_sign_method='conditional'` option uses joint observed-cell evidence for automatic
+screening while preserving the marginal evidence used for adaptive penalties.
 
 ## Overview
 
@@ -343,8 +345,8 @@ default $\tau = 0.75$. Produced by `tools/docs_analytics/estimation.py` from the
 ## Implementation in factorlasso
 
 Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
-The conditional function and result type are opt-in additions; the automatic marginal
-pathway remains unchanged.
+The standalone conditional functions and result types are opt-in additions. Native
+conditional integration is opt-in; the generic estimator default remains marginal.
 
 | Name | Role |
 |---|---|
@@ -353,10 +355,14 @@ pathway remains unchanged.
 | `compute_ragged_pooled_sign_gate` | Observed-cell conditional WLS/HC1 on asynchronous panels, with original-grid date weights and explicit unidentified-group handling. |
 | `RaggedPooledSignGateResult` | Labeled evidence and restrictions, actual observation mask, copied groups/date weights, and per-group observations, degrees of freedom, effective size, gaps and status diagnostics. |
 | `auto_sign_constraints` | Derive signs inside `fit`, pooled as in the table above. Default `False`. |
+| `auto_sign_method` | Explicit choice of `marginal` (generic default) or joint observed-cell `conditional` screening. Adaptive penalties always retain marginal signs and slopes. |
+| `auto_sign_on_unidentified` | Conditional policy: `raise` by default, or explicit warned `release` with missing automatic restrictions. No marginal fallback. |
 | `auto_sign_threshold_t` | The gate $\tau$; `None` keeps every slope's sign, and positive infinity sets every automatic sign to zero before overrides. |
 | `auto_sign_variance` | `"independent"` (default) or `"date"`, the date-score sandwich. |
 | `auto_sign_ewma_span`, `auto_sign_use_fit_span` | Weights of the sign statistics: a separate span, or the fit's own span. The default weights dates equally. |
 | `auto_sign_excluded_factors` | Factors exempt from derived signs and from the zero gate. |
+| `sign_group_diagnostics_` | Native conditional support, rank and identification status for each supplied or discovered response group. |
+| `adaptive_detected_signs_`, `adaptive_sign_slopes_`, `adaptive_sign_method_` | Marginal evidence retained for adaptive penalties, separate from conditional hard-sign evidence. |
 | `derived_signs_` | The final sign matrix the solver used, after explicit signs and prior centres. |
 | `detected_signs_`, `sign_slopes_`, `sign_t_stats_`, `sign_effective_n_`, `sign_valid_counts_` | The detection layer before overrides: signs, pooled slopes, statistics, effective dates and observation counts. |
 | `derive_sign_constraints` | The standalone derivation for one pool of responses: the columns of `y` passed are pooled. Its `clusters` argument groups factors, not responses, and `master_constraints` overrides single factors. |
@@ -379,7 +385,7 @@ python examples/docs/gated_cluster_pooled_signs.py
 - **Conditional evidence targets a group mean.** A passing joint slope need not describe every
   member's sign or support. Fixed-group, known-scale Gaussian risk formulas do not automatically
   transfer to learned groups, HC1/EW evidence or penalized refits. The explicit conditional helper
-  does not change the marginal automatic gate or establish expected-return-risk dominance.
+  does not change the marginal automatic default or establish expected-return-risk dominance.
 - **Pooling assumes coherent clusters.** A cluster that mixes opposite exposures pools them into
   one slope, and minority members can receive the wrong sign. Correlation-based HCGL clustering
   does not itself establish common conditional coefficient signs.

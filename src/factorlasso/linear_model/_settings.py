@@ -164,6 +164,7 @@ def validate_configuration(model) -> None:
     validate_ridge_mode(model)
     validate_ols_prior_mode(model)
     validate_sign_inputs_mode(model)
+    validate_sign_method(model)
     if _mode_spec(model.model_type).grouping == "user" and model.group_data is None:
         raise ValueError(
             "group_data must be provided for model_type="
@@ -268,11 +269,20 @@ def validate_fit_modes(model) -> None:
 
 def validate_sign_settings(model) -> None:
     """Fit-time checks of the automatic-sign span and variance settings."""
+    validate_sign_method(model)
     _validate_span(model.auto_sign_ewma_span, name="auto_sign_ewma_span")
     if model.auto_sign_variance not in ('date', 'independent'):
         raise ValueError("auto_sign_variance must be 'date' or 'independent'")
     if model.auto_sign_use_fit_span and model.auto_sign_ewma_span is not None:
         raise ValueError("select either auto_sign_use_fit_span or auto_sign_ewma_span")
+
+
+def validate_sign_method(model) -> None:
+    """Validate opt-in evidence and failure policy without changing legacy settings."""
+    if model.auto_sign_method not in ('marginal','conditional'):
+        raise ValueError("auto_sign_method must be 'marginal' or 'conditional'")
+    if model.auto_sign_on_unidentified not in ('raise','release'):
+        raise ValueError("auto_sign_on_unidentified must be 'raise' or 'release'")
 
 
 def validate_excluded_factors(model, x: pd.DataFrame) -> None:

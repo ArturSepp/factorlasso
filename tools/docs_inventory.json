@@ -153,7 +153,8 @@
     ],
     "docs/gated_cluster_pooled_signs.md": [
       "auto_sign_constraints", "auto_sign_threshold_t", "auto_sign_excluded_factors",
-      "auto_sign_ewma_span", "auto_sign_use_fit_span", "auto_sign_variance"
+      "auto_sign_ewma_span", "auto_sign_use_fit_span", "auto_sign_variance",
+      "auto_sign_method", "auto_sign_on_unidentified"
     ],
     "docs/prior_targets.md": [
       "apply_ols_prior", "prior_selection_type", "factor_for_prior",

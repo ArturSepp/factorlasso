@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from factorlasso.priors._ols import _zero_incompatible_priors
+from factorlasso.priors._conditional_signs import conditional_automatic_signs
 from factorlasso.priors._budget_modes import leave_one_out_budgets, resolve_budgets
 from factorlasso.cluster._hierarchical import (
     apply_cluster_correlation_transform, compute_clusters_from_corr_matrix,
@@ -53,6 +54,8 @@ PRIOR_DIAGNOSTICS = (
 SIGN_DIAGNOSTICS = (
     'detected_signs_', 'sign_slopes_', 'sign_t_stats_', 'sign_effective_n_',
     'sign_valid_counts_', 'sign_penalty_weights_', 'sign_block_weights_', 'derived_signs_',
+    'auto_sign_method_', 'sign_group_diagnostics_', 'adaptive_sign_method_',
+    'adaptive_detected_signs_', 'adaptive_sign_slopes_',
 )
 
 #: Every fitted attribute derived in preparation, including penalty-dependent cluster budgets.
@@ -242,6 +245,7 @@ def prepare_fit(
     # ── Signs: automatic layer (with diagnostics) and explicit overlay ──
     auto_signs_np = None
     auto_slopes_np = None
+    adaptive_signs_np = adaptive_slopes_np = None
     explicit_signs_np = None
     if model.auto_sign_constraints:
         sign_span = eff_span if model.auto_sign_use_fit_span else model.auto_sign_ewma_span
@@ -250,6 +254,21 @@ def prepare_fit(
             x, x_np, y_np, valid_mask, asset_clusters, sign_span,
             model.auto_sign_threshold_t, model.auto_sign_variance,
         )
+        # Keep BOTH marginal zero gates and marginal slopes for the unchanged
+        # adaptive penalty. Conditional evidence changes the constraint layer only.
+        adaptive_signs_np,adaptive_slopes_np=auto_signs_np,auto_slopes_np
+        if model.auto_sign_method=='conditional':
+            (auto_signs_np,auto_slopes_np,diagnostics,
+             model.sign_group_diagnostics_)=conditional_automatic_signs(
+                x,x_np,y_np,valid_mask,y.columns,asset_clusters,sign_span,
+                model.auto_sign_threshold_t,model.auto_sign_on_unidentified)
+        model.auto_sign_method_=model.auto_sign_method
+        if model.auto_sign_adaptive_weights:
+            model.adaptive_sign_method_='marginal'
+            model.adaptive_detected_signs_=pd.DataFrame(
+                adaptive_signs_np,index=y.columns,columns=x.columns)
+            model.adaptive_sign_slopes_=pd.DataFrame(
+                adaptive_slopes_np,index=y.columns,columns=x.columns)
         model.detected_signs_ = pd.DataFrame(auto_signs_np, index=y.columns, columns=x.columns)
         model.sign_slopes_ = pd.DataFrame(auto_slopes_np, index=y.columns, columns=x.columns)
         for attr, key in SIGN_DIAGNOSTIC_ATTRIBUTES:
@@ -316,7 +335,7 @@ def prepare_fit(
     want_adaptive = model.auto_sign_constraints and model.auto_sign_adaptive_weights
     if want_adaptive and auto_slopes_np is not None:
         penalty_weights_np, row_weights_np, col_weights_np = adaptive_penalty_weights(
-            model, auto_signs_np, auto_slopes_np, asset_clusters, is_lasso_mode,
+            model, adaptive_signs_np, adaptive_slopes_np, asset_clusters, is_lasso_mode,
         )
     if penalty_weights_np is not None:
         model.sign_penalty_weights_ = pd.DataFrame(

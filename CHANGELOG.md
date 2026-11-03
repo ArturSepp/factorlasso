@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 1.0.8 — 2026-11-03
+
+### Added
+
+- Native `LassoModel(auto_sign_method='conditional')`
+  integration of the observed-cell gate. The generic default remains `marginal`.
+  Adaptive penalties retain both original marginal zero gates and marginal slope
+  magnitudes. Explicit signs, exclusions, prior precedence, loss scaling and solver
+  defaults are unchanged. `auto_sign_on_unidentified` explicitly selects raise
+  (default) or warned release, never marginal fallback. Support and penalty-evidence
+  diagnostics survive paths and reset on refit.
+
 ## 1.0.7 — 2026-11-03
 
 ### Added

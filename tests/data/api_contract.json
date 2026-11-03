@@ -3575,6 +3575,48 @@
       "init": false,
       "default": null,
       "factory": null
+     },
+     {
+      "name": "auto_sign_method",
+      "init": true,
+      "default": "marginal",
+      "factory": null
+     },
+     {
+      "name": "auto_sign_on_unidentified",
+      "init": true,
+      "default": "raise",
+      "factory": null
+     },
+     {
+      "name": "auto_sign_method_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "sign_group_diagnostics_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "adaptive_sign_method_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "adaptive_detected_signs_",
+      "init": false,
+      "default": null,
+      "factory": null
+     },
+     {
+      "name": "adaptive_sign_slopes_",
+      "init": false,
+      "default": null,
+      "factory": null
      }
     ]
    },
@@ -3916,6 +3958,16 @@
      "excluded_factors",
      "POSITIONAL_OR_KEYWORD",
      null
+    ],
+    [
+     "auto_sign_method",
+     "POSITIONAL_OR_KEYWORD",
+     "marginal"
+    ],
+    [
+     "auto_sign_on_unidentified",
+     "POSITIONAL_OR_KEYWORD",
+     "raise"
     ]
    ],
    "members": {

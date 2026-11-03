@@ -152,11 +152,26 @@ def check_ragged_gate() -> None:
                            np.sqrt(np.diag(covariance))[1:], atol=1e-11)
 
 
+def check_native_conditional_gate(x, y, clusters):
+    """Conditional screening leaves the calibrated marginal penalty evidence intact."""
+    options = dict(model_type=fl.LassoModelType.GROUP_LASSO, group_data=clusters,
+                   reg_lambda=1e-3, auto_sign_constraints=True,
+                   auto_sign_adaptive_weights=True, auto_sign_variance='date')
+    marginal = fl.LassoModel(**options).fit(x, y)
+    conditional = fl.LassoModel(**options, auto_sign_method='conditional').fit(x, y)
+    assert conditional.auto_sign_method_ == 'conditional'
+    assert conditional.adaptive_sign_method_ == 'marginal'
+    pd.testing.assert_frame_equal(conditional.sign_penalty_weights_, marginal.sign_penalty_weights_)
+    pd.testing.assert_frame_equal(conditional.adaptive_sign_slopes_, marginal.sign_slopes_)
+    assert conditional.sign_group_diagnostics_.status.eq('ok').all()
+
+
 def main() -> None:
     rng = np.random.default_rng(SEED)
     x, y, beta, clusters = make_panel(rng)
     check_conditional_gate(x, y, clusters)
     check_ragged_gate()
+    check_native_conditional_gate(x, y, clusters)
 
     # --- the pooled slope and t-statistic of one cluster, by hand ------------------------------
     members = list(clusters.index[clusters == 0])

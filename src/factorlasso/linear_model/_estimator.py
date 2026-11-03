@@ -347,6 +347,23 @@ class LassoModel:
         Excluded factor columns remain exempt. Non-NaN entries of
         ``factors_beta_loading_signs`` take precedence over both prior and
         detected signs. Adaptive weights retain the original detected values.
+    auto_sign_method : {"marginal", "conditional"}, default "marginal"
+        Automatic sign-screening evidence only. Marginal retains the historical
+        pooled univariate rule. Conditional uses joint observed-cell WLS with
+        date-clustered HC1 and a shared intercept within each response group.
+        Missing cells are not imputed and original-grid EWMA ages are preserved.
+        Explicit signs, exclusions, priors and expert bounds retain precedence.
+        Adaptive penalties always retain marginal signs and slope magnitudes;
+        selecting conditional does not change their construction.
+    auto_sign_on_unidentified : {"raise", "release"}, default "raise"
+        Conditional groups with insufficient dates or deficient design rank
+        raise by default. Explicit release warns and records missing automatic
+        restrictions/evidence, never marginal fallback or weak-zero gates.
+        Inert for marginal screening. Fitted ``sign_group_diagnostics_`` records
+        group support and status; ``auto_sign_method_`` records the method.
+        ``adaptive_detected_signs_`` and ``adaptive_sign_slopes_`` hold marginal
+        penalty evidence when adaptive weights are enabled; the corresponding
+        ``adaptive_sign_method_`` is then ``'marginal'``.
     auto_sign_threshold_t : float, optional, default 0.75
         Noise-floor gate on the univariate screening statistic. For finite
         positive thresholds, cells whose absolute statistic falls below it
@@ -370,7 +387,9 @@ class LassoModel:
         gate). ``"date"`` sums scores by date and retains within-date response
         covariance. It assumes independent dates; it is not HAC inference.
         Both are screening rules without calibrated p-values. The variance
-        choice changes gates, not raw slopes.
+        choice changes gates, not raw slopes. Conditional screening always uses
+        date-clustered HC1; this option still controls the marginal evidence
+        retained for its adaptive penalties.
     auto_sign_adaptive_weights : bool, default False
         If True, together with ``auto_sign_constraints=True``, each cell's L1
         penalty is weighted by ``1 / max(|b|, floor) ** gamma`` of its pooled
@@ -745,6 +764,15 @@ class LassoModel:
     # Appended to preserve historical constructor positions.
     excluded_factors: Optional[Union[Mapping, pd.Series]] = None
     excluded_factor_mask_: Optional[pd.DataFrame] = field(default=None, init=False)
+
+    # Opt-in: preserve all historical constructor positions and marginal defaults.
+    auto_sign_method: str = 'marginal'
+    auto_sign_on_unidentified: str = 'raise'
+    auto_sign_method_: Optional[str] = field(default=None, init=False)
+    sign_group_diagnostics_: Optional[pd.DataFrame] = field(default=None, init=False)
+    adaptive_sign_method_: Optional[str] = field(default=None, init=False)
+    adaptive_detected_signs_: Optional[pd.DataFrame] = field(default=None, init=False)
+    adaptive_sign_slopes_: Optional[pd.DataFrame] = field(default=None, init=False)
 
     def __post_init__(self):
         """Validate the configuration; see :mod:`factorlasso.linear_model._settings`."""
