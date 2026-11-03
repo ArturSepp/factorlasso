@@ -8,7 +8,7 @@ myst:
 
 # Conditional pooled signs: fixed-group Gaussian theory
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-11-03](https://github.com/ArturSepp/factorlasso/commit/6626b08e8521980db47a6f3f3ff2e8f1f8cdf884)*
 
 Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
