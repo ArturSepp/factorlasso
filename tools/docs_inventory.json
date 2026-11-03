@@ -3,6 +3,7 @@
   "project": "factorlasso",
   "description": "Explicit ownership of reader-facing pages, of every name in factorlasso.__all__ and of every LassoModel configuration parameter, plus the paper citation ledger. Read by tools/check_docs.py and by docs/conf.py, which generates the API reference from 'symbols' and 'parameters' in the order given here (the order of the sidebar). 'retained' marks README and legacy RST pages kept in their native format; 'planned' lists pages that are not written yet. An optional 'example' names the canonical script of a page: every Python block of the page must be a verbatim excerpt of it unless marked as a fragment. Move a page from 'planned' to 'pages' when its file is created, and mark it 'adopted' only after the verification in docs/documentation_standard.md. Paper titles are taken from the LaTeX source of each manuscript; a retired title may not appear on any reader-facing page, in CITATION.cff or in a paper README.",
   "pages": {
+    "docs/conditional_pooled_signs_theory.md": {"form": "methodology", "status": "pending", "example": "examples/docs/conditional_pooled_signs_theory.py"},
     "docs/production_test_inversion.md": {"form": "methodology", "status": "pending", "example": "examples/docs/production_test_inversion.py"},
     "docs/production_bootstrap.md": {"form": "methodology", "status": "pending", "example": "examples/docs/production_bootstrap.py"},
     "docs/hierarchical_pooling.md": {"form": "methodology", "status": "pending", "example": "examples/docs/hierarchical_pooling.py"},
@@ -49,6 +50,7 @@
   },
   "planned": {},
   "symbols": {
+    "docs/conditional_pooled_signs_theory.md": ["ConditionalGaussianGeometry", "GaussianSignGateRisk", "compute_conditional_gaussian_geometry", "gaussian_sign_gate_risk"],
     "docs/production_test_inversion.md": ["FactorTestInversion", "FactorTestInversionResult", "TestInversionCalibration", "calibrate_inversion_tests"],
     "docs/production_bootstrap.md": ["FactorBootstrapResult", "bootstrap_factor_betas"],
     "docs/hierarchical_pooling.md": ["HierarchicalMeanPosterior", "pool_gaussian_means"],
@@ -69,13 +71,16 @@
       "sample_gaussian_estimates"
     ],
     "docs/sparse_factor_model.md": [
-      "LassoModel", "LassoModelType", "LassoEstimationResult", "solve_lasso_cvx_problem", "get_x_y_np"
+      "LassoModel", "LassoModelType", "LassoEstimationResult", "solve_lasso_cvx_problem", "get_x_y_np",
+      "fit_pooled_loading_shrinkage", "PooledLoadingShrinkageResult"
     ],
     "docs/ewma_weighting_and_ragged_histories.md": [
       "compute_ewm", "compute_ewm_covar", "compute_expanding_power"
     ],
     "docs/gated_cluster_pooled_signs.md": [
-      "derive_sign_constraints", "validate_cluster_signs"
+      "derive_sign_constraints", "validate_cluster_signs",
+      "compute_pooled_sign_gate", "PooledSignGateResult",
+      "compute_ragged_pooled_sign_gate", "RaggedPooledSignGateResult"
     ],
     "docs/group_penalties_hcgl_fcgl.md": [
       "solve_group_lasso_cvx_problem", "set_group_loadings"

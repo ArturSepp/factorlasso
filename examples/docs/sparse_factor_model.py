@@ -14,12 +14,18 @@ means, the multi-output fit against one fit per response, and the scaling rule o
 against a refit in percent units.
 The dense ridge baseline is independently checked against augmented least squares on the same
 centred training panel, including its zero- and infinite-penalty endpoints.
+The final recipe selects pooled shrinkage using blocked reconstruction loss,
+refits all training-derived inputs at a decision date, and combines raw-unit
+loadings with supplied one-month excess premiums and explicitly admitted alpha.
+Conditional HCGL is illustrated at a fixed penalty, separately from selection.
 
 Synthetic data, fixed seed, no network, no files written. Solver: CVXPY with CLARABEL.
 """
 
 import numpy as np
 import pandas as pd
+from dataclasses import dataclass
+from scipy.cluster.hierarchy import fcluster
 
 import factorlasso as fl
 
@@ -34,6 +40,9 @@ RESIDUAL_VOL = 0.02                # per-month idiosyncratic volatility, decimal
 REG_LAMBDA = 10.0 ** -3.5          # penalty of the point fit examined in detail
 PENALTY_GRID = np.logspace(-2.0, -6.0, 17)
 ZERO_TOLERANCE = 1e-3              # absolute cut below which a loading counts as zero
+FORECAST_PENALTIES = (0.0, 0.1, 1.0, np.inf)   # illustrative standardized-coordinate grid
+FORECAST_SPAN = 24.0                          # EW span in calendar months
+HCGL_ILLUSTRATIVE_PENALTY = 0.1                # fixed, not selected by the pooled-fit grid
 
 # True loadings, responses by factors. Only the first three factors carry any response.
 TRUE_BETA = np.array([
@@ -109,6 +118,236 @@ def check_ridge_reference(x: pd.DataFrame, y: pd.DataFrame) -> None:
     assert np.all(fit_ridge(x, y, np.inf).coef_.to_numpy() == 0.0)
 
 
+def check_pooled_shrinkage_reference(x: pd.DataFrame, y: pd.DataFrame) -> None:
+    """Check pooled-target shrinkage by augmented least squares and assemble a forecast."""
+    groups = pd.Series([0, 0, 1, 1, 2, 2], index=y.columns)
+    weights = pd.Series(np.linspace(0.5, 1.5, len(x)), index=x.index)
+    fitted = fl.fit_pooled_loading_shrinkage(
+        x, y, groups, REG_LAMBDA, weights=weights,
+    )
+    assert isinstance(fitted, fl.PooledLoadingShrinkageResult)
+    w = weights.to_numpy() / weights.mean()
+    x_mean = np.average(x.to_numpy(), axis=0, weights=w)
+    y_mean = np.average(y.to_numpy(), axis=0, weights=w)
+    xw = np.sqrt(w[:, None]) * (x.to_numpy() - x_mean)
+    yw = np.sqrt(w[:, None]) * (y.to_numpy() - y_mean)
+    individual = np.linalg.lstsq(xw, yw, rcond=None)[0].T
+    target = np.empty_like(individual)
+    for group in groups.unique():
+        members = groups.to_numpy() == group
+        target[members] = individual[members].mean(axis=0)
+    penalty_root = np.sqrt(len(x) * REG_LAMBDA)
+    augmented_x = np.vstack([xw, penalty_root * np.eye(x.shape[1])])
+    augmented_y = np.vstack([yw, penalty_root * target.T])
+    reference = np.linalg.lstsq(augmented_x, augmented_y, rcond=None)[0].T
+    assert np.allclose(fitted.pooled_target, target, atol=1e-11)
+    assert np.allclose(fitted.coefficients, reference, rtol=1e-6, atol=1e-7)
+    assert np.allclose(fitted.intercept, y_mean - reference @ x_mean, atol=1e-8)
+    assert fitted.stationarity_residual <= 1e-7
+    endpoint = fl.fit_pooled_loading_shrinkage(x, y, groups, np.inf, weights=weights)
+    assert np.array_equal(endpoint.coefficients, endpoint.pooled_target)
+    assert endpoint.stationarity_residual is None and endpoint.objective is None
+
+    # Supplied one-month excess-return premiums; admit no residual alpha to the forecast.
+    premium = pd.Series([0.003, 0.001, 0.002, 0.0, 0.0, 0.0, 0.0, 0.0], index=x.columns)
+    admitted_alpha = pd.Series(0.0, index=y.columns)
+    assert premium.index.equals(fitted.coefficients.columns)
+    assert admitted_alpha.index.equals(fitted.coefficients.index)
+    forecast = fitted.coefficients.dot(premium) + admitted_alpha
+    reference_forecast = reference @ premium.to_numpy() + admitted_alpha.to_numpy()
+    assert np.allclose(forecast, reference_forecast, atol=1e-9)
+
+
+@dataclass(frozen=True)
+class ForecastWindow:
+    """Example-local training transforms and evidence; not a package API."""
+
+    x: pd.DataFrame
+    y: pd.DataFrame
+    weights: pd.Series
+    x_mean: pd.Series
+    y_mean: pd.Series
+    x_scale: pd.Series
+    y_scale: pd.Series
+    groups: pd.Series
+    gate: fl.PooledSignGateResult
+
+
+@dataclass(frozen=True)
+class ForecastRecipeResult:
+    """Example-local outputs in monthly decimal excess-return units."""
+
+    penalty: float
+    validation_losses: pd.DataFrame
+    coefficients: pd.DataFrame
+    regression_intercept: pd.Series
+    forecast: pd.Series
+    hcgl_forecast: pd.Series
+    window: ForecastWindow
+    pooled_fit: fl.PooledLoadingShrinkageResult
+
+
+def prepare_forecast_window(x: pd.DataFrame, y: pd.DataFrame) -> ForecastWindow:
+    """Prepare only the supplied prefix, preserving calendar-month ages in weights."""
+    if (not isinstance(x.index, pd.DatetimeIndex) or x.index.hasnans
+            or not x.index.is_unique or not x.index.is_monotonic_increasing
+            or not x.index.equals(y.index) or len(x) <= x.shape[1] + 1):
+        raise ValueError(
+            "use aligned ordered unique dates and positive residual degrees of freedom")
+    if (not np.isfinite(x.to_numpy()).all() or not np.isfinite(y.to_numpy()).all()):
+        raise ValueError("the training prefix must be complete and finite")
+    months = x.index.to_period("M").asi8
+    if np.any(np.diff(months) <= 0):
+        raise ValueError("the example accepts at most one observation per calendar month")
+    weights = pd.Series((1 - 2 / (FORECAST_SPAN + 1)) ** (months[-1] - months), index=x.index)
+    weights /= weights.mean()
+    xm = pd.Series(np.average(x, axis=0, weights=weights), index=x.columns)
+    ym = pd.Series(np.average(y, axis=0, weights=weights), index=y.columns)
+    xc, yc = x - xm, y - ym
+    xs = pd.Series(np.sqrt(np.average(xc**2, axis=0, weights=weights)), index=x.columns)
+    ys = pd.Series(np.sqrt(np.average(yc**2, axis=0, weights=weights)), index=y.columns)
+    if not np.all(xs > 0) or not np.all(ys > 0):
+        raise ValueError("training factors and responses must have positive weighted scale")
+    xa, ya = xc / xs, yc / ys
+    corr = (ya.mul(weights, axis=0).T @ ya) / len(ya)
+    _, linkage, _ = fl.compute_clusters_from_corr_matrix(
+        corr, linkage_method="ward", distance_transform=fl.DistanceTransform.CHORD,
+    )
+    # The paper cut scales the final merge height; the core default scales pairwise distance.
+    labels = (fcluster(linkage, 0.6 * linkage[-1, 2], criterion="distance")
+              if len(linkage) else np.ones(y.shape[1], dtype=int))
+    groups = pd.Series(labels, index=y.columns)
+    gate = fl.compute_pooled_sign_gate(xa, ya, groups, weights=weights, action="exclude")
+    return ForecastWindow(xa, ya, weights, xm, ym, xs, ys, groups, gate)
+
+
+def fit_forecast_window(
+    window: ForecastWindow, penalty: float,
+) -> tuple[pd.DataFrame, pd.Series, fl.PooledLoadingShrinkageResult]:
+    """Fit pooled shrinkage in analysis units and recover slopes/intercept in raw units."""
+    fitted = fl.fit_pooled_loading_shrinkage(
+        window.x, window.y, window.groups, penalty, weights=window.weights,
+    )
+    beta = fitted.coefficients.mul(window.y_scale, axis=0).div(window.x_scale, axis=1)
+    alpha = window.y_mean - beta.dot(window.x_mean)
+    return beta, alpha, fitted
+
+
+def select_forecast_penalty(losses: pd.DataFrame) -> float:
+    """Require every blocked score; choose the largest penalty within 1e-12 of the minimum."""
+    complete = np.isfinite(losses.to_numpy()).all(axis=1)
+    if not np.any(complete):
+        raise RuntimeError("no candidate has a finite score in every validation block")
+    average = losses.loc[complete].mean(axis=1)
+    return float(max(average.index[average <= average.min() + 1e-12]))
+
+
+def assemble_expected_return(
+    coefficients: pd.DataFrame, premium: pd.Series, admitted_alpha: pd.Series,
+) -> pd.Series:
+    """Combine supplied same-horizon inputs, with strict factor and response labels."""
+    if (not isinstance(premium, pd.Series) or not isinstance(admitted_alpha, pd.Series)
+            or not premium.index.is_unique or not admitted_alpha.index.is_unique
+            or not premium.index.equals(coefficients.columns)
+            or not admitted_alpha.index.equals(coefficients.index)
+            or not np.isfinite(premium.to_numpy()).all()
+            or not np.isfinite(admitted_alpha.to_numpy()).all()):
+        raise ValueError("premiums and admitted alpha must be finite and match labels in order")
+    return (coefficients.dot(premium) + admitted_alpha).rename("monthly_excess_forecast")
+
+
+def forecast_recipe(
+    x: pd.DataFrame,
+    y: pd.DataFrame,
+    decision_date: pd.Timestamp,
+    premium: pd.Series,
+    admitted_alpha: pd.Series,
+    premium_asof: pd.Timestamp,
+    alpha_asof: pd.Timestamp,
+) -> ForecastRecipeResult:
+    """Select/refit on 60 eligible months; later rows do not enter any calculation.
+
+    Training prefixes 30/40/50 each precede ten validation observations. The
+    score is raw reconstruction MSE divided by that prefix's response variance,
+    not expected-return loss. The caller declares premiums and alpha available
+    no later than decision_date, in one-month decimal excess-return units.
+    """
+    if (not isinstance(x.index, pd.DatetimeIndex) or x.index.hasnans
+            or not x.index.is_unique or not x.index.is_monotonic_increasing
+            or not x.index.equals(y.index)):
+        raise ValueError("panels must have aligned, ordered, unique, nonmissing dates")
+    dates = [pd.Timestamp(value) for value in (decision_date, premium_asof, alpha_asof)]
+    if any(pd.isna(value) for value in dates) or any(value > dates[0] for value in dates[1:]):
+        raise ValueError("premium/alpha dates must be known and no later than the decision")
+    eligible = x.index <= dates[0]
+    x_train, y_train = x.loc[eligible], y.loc[eligible]
+    if len(x_train) != N_TRAIN:
+        raise ValueError("this bounded teaching recipe requires 60 eligible training months")
+    losses = pd.DataFrame(np.nan, index=FORECAST_PENALTIES, columns=[30, 40, 50])
+    for stop in losses.columns:
+        window = prepare_forecast_window(x_train.iloc[:stop], y_train.iloc[:stop])
+        for penalty in losses.index:
+            try:
+                beta, alpha, _ = fit_forecast_window(window, float(penalty))
+                predicted = x_train.iloc[stop:stop+10] @ beta.T + alpha
+                errors = (y_train.iloc[stop:stop+10] - predicted) / window.y_scale
+                losses.loc[penalty, stop] = float(np.mean(errors.to_numpy()**2))
+            except RuntimeError:
+                # A failed numerical fit invalidates this candidate, not just its bad block.
+                continue
+    selected = select_forecast_penalty(losses)
+    window = prepare_forecast_window(x_train, y_train)
+    beta, alpha, fitted = fit_forecast_window(window, selected)
+    forecast = assemble_expected_return(beta, premium, admitted_alpha)
+    root_weights = np.sqrt(window.weights)
+    hcgl = fl.LassoModel(
+        model_type=fl.LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+        reg_lambda=HCGL_ILLUSTRATIVE_PENALTY,
+        demean=False, span=None, warmup_period=None,
+        loss_normalization="sample", group_penalty="normalized", l1_weight=0.5,
+        auto_sign_constraints=False, apply_ols_prior=False, auto_sign_adaptive_weights=False,
+        factors_beta_loading_signs=window.gate.restrictions,
+    ).fit(window.x.mul(root_weights, axis=0), window.y.mul(root_weights, axis=0),
+          external_clusters=window.groups)
+    hcgl_beta = hcgl.coef_.mul(window.y_scale, axis=0).div(window.x_scale, axis=1)
+    hcgl_forecast = assemble_expected_return(hcgl_beta, premium, admitted_alpha)
+    return ForecastRecipeResult(selected, losses, beta, alpha, forecast, hcgl_forecast, window,
+                                fitted)
+
+
+def check_forecast_recipe(x: pd.DataFrame, y: pd.DataFrame) -> None:
+    """Run the bounded forecast recipe and independently check its selected raw-unit fit."""
+    decision_date = x.index[N_TRAIN - 1]
+    premium = pd.Series([0.003, 0.001, 0.002, 0.0, 0.0, 0.0, 0.0, 0.0], index=x.columns)
+    admitted_alpha = pd.Series(0.0, index=y.columns)  # distinct from the regression intercept
+    result = forecast_recipe(x, y, decision_date, premium, admitted_alpha,
+                             premium_asof=decision_date, alpha_asof=decision_date)
+    assert np.isfinite(result.validation_losses.to_numpy()).all()
+    window = result.window
+    t, m = window.x.shape
+    xw = window.x.to_numpy() * np.sqrt(window.weights.to_numpy()[:, None])
+    yw = window.y.to_numpy() * np.sqrt(window.weights.to_numpy()[:, None])
+    individual = np.linalg.lstsq(xw, yw, rcond=None)[0].T
+    target = np.empty_like(individual)
+    for label in window.groups.unique():
+        members = window.groups.to_numpy() == label
+        target[members] = individual[members].mean(axis=0)
+    if np.isposinf(result.penalty):
+        reference = target
+    else:
+        penalty_root = np.sqrt(t * result.penalty)
+        reference = np.linalg.lstsq(np.vstack([xw, penalty_root * np.eye(m)]),
+                                   np.vstack([yw, penalty_root * target.T]), rcond=None)[0].T
+    raw = reference * window.y_scale.to_numpy()[:, None] / window.x_scale.to_numpy()[None, :]
+    assert np.allclose(result.coefficients, raw, rtol=1e-7, atol=1e-8)
+    assert np.allclose(result.regression_intercept,
+                       window.y_mean.to_numpy() - raw @ window.x_mean.to_numpy(), atol=1e-10)
+    assert np.allclose(result.forecast, raw @ premium.to_numpy(), atol=1e-10)
+    print(f"Pooled forecast recipe: selected standardized penalty {result.penalty:g}")
+    print(pd.concat([result.forecast, result.hcgl_forecast.rename("fixed_penalty_hcgl")],
+                    axis=1).round(6).to_string())
+
+
 def lasso_coordinate_descent(
     x: np.ndarray,
     y: np.ndarray,
@@ -167,6 +406,7 @@ def main() -> None:
     x, y = make_panel()
     x_train, y_train = x.iloc[:N_TRAIN], y.iloc[:N_TRAIN]
     check_ridge_reference(x_train, y_train)
+    check_pooled_shrinkage_reference(x_train, y_train)
     model = fit_lasso(x_train, y_train)
     beta = model.coef_.to_numpy()
 
@@ -247,6 +487,7 @@ def main() -> None:
     print(model.coef_.round(2).to_string())
     print("Penalty path, estimation on the first 60 months")
     print(summary.round(3).to_string())
+    check_forecast_recipe(x, y)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ myst:
     description: >-
       Gated cluster-pooled sign derivation in factorlasso: pooled univariate slopes within
       response clusters, a closed-form noise-floor gate, hard sign constraints from the surviving
-      signs, the weighted date-score variant, and a simulation of recovery and false signs.
+      signs, a separate conditional WLS/HC1 gate with explicit actions, and synthetic checks.
 ---
 
 # Gated cluster-pooled sign derivation
@@ -15,11 +15,14 @@ Implemented in [factorlasso](https://github.com/ArturSepp/factorlasso).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 Gated cluster-pooled sign derivation estimates the sign matrix of a factor model from the data.
-For each cluster of similar responses and each factor it computes one pooled univariate slope,
+The automatic estimator pathway computes one pooled univariate slope for each response cluster
+and factor,
 keeps the slope's sign only when its t-statistic clears a noise floor, and passes the surviving
 signs to the estimator as hard constraints. Pooling can improve precision when responses share
 an exposure direction, but correlated residuals limit the gain. A failed gate fixes the loading
-at zero; it does not leave the loading unrestricted.
+at zero; it does not leave the loading unrestricted. The separate
+`compute_pooled_sign_gate` function estimates joint conditional slopes and provides explicit
+exclusion, release and zero-only actions. It leaves the automatic pathway unchanged.
 
 ## Overview
 
@@ -105,8 +108,8 @@ active coefficient. It is not the release convention, which would leave that cel
 An exactly zero slope still gives a zero sign. Positive infinity explicitly fails every
 automatic gate, including an exactly noiseless nonzero slope whose statistic is itself infinite.
 The slopes and diagnostics remain available, and explicit constraints, prior signs and excluded
-factors retain their usual precedence. This endpoint repair applies to the current development
-source; older releases could retain noiseless signs at an infinite threshold.
+factors retain their usual precedence. Older implementations could retain noiseless signs
+at an infinite threshold.
 
 The statistic is a screening score, not a calibrated significance test. A larger threshold
 changes the balance between retained signs and exclusions, but no universal threshold controls
@@ -162,7 +165,118 @@ them, factors in `auto_sign_excluded_factors` are left free, and a finite non-ze
 replaces a conflicting derived sign. The [conventions page](conventions.md#precedence-of-signs-and-priors)
 draws the full order.
 
+### Conditional pooled evidence with explicit groups
+
+`compute_pooled_sign_gate` fits the arithmetic mean
+response of each supplied group on **all** factor columns and an intercept. Its `groups` Series
+assigns responses, unlike the factor-grouping argument of `derive_sign_constraints`. Group
+discovery and any scaling must be fitted on the current training prefix before this call.
+
+Let $\bar y_{t,\mathcal C}$ be the mean response of group $\mathcal C$, $z_t=(1,x_t^\top)^\top$,
+and $w_t$ strictly positive date weights normalized to mean one. With the joint WLS estimate
+$\hat\theta_{\mathcal C}$ and residual $e_{t,\mathcal C}=\bar y_{t,\mathcal C}-z_t^\top\hat\theta_{\mathcal C}$,
+the date scores and HC1 covariance are
+
+$$
+u_{t,\mathcal C}=w_t z_t e_{t,\mathcal C},\qquad
+A=\sum_t w_t z_tz_t^\top,\qquad
+\widehat V_{\mathcal C}=\frac{T}{T-M-1}
+A^{-1}\left(\sum_t u_{t,\mathcal C}u_{t,\mathcal C}^\top\right)A^{-1}.
+$$
+
+This is the White (1980) sandwich with the stated finite-sample HC1 correction. The mean is
+formed before scores are squared, retaining within-date response covariance. The reported
+effective sample size describes weight concentration; it does not replace $T$ in the HC1
+correction. Lag zero is fixed, so serial-dependence or learned-group calibration is not implied.
+
+The function requires complete real finite DataFrames with identical unique ordered indexes,
+strictly aligned response groups and optional date weights, full joint design rank, and
+$T>M+1$. It neither drops observations nor standardizes columns. Missing or unidentified inputs
+raise rather than falling back to marginal evidence. Supply subset weights on original dates
+when splitting a sample; the function does not infer an EWMA span.
+
+A nonzero slope passes when its absolute statistic is at least the finite nonnegative
+`threshold` (default 2.0). An exact zero slope stays weak at threshold zero. Zero standard error
+with a nonzero slope gives a signed infinite statistic; zero slope and zero error give zero.
+
+| `action` | Passing cells | Weak cells |
+|---|---|---|
+| `"exclude"` (default) | Detected sign | Hard zero |
+| `"release"` | Detected sign | Unrestricted, encoded as NaN |
+| `"zero_only"` | Unrestricted, encoded as NaN | Hard zero |
+
+The result keeps detected `signs` separate from actionable `restrictions`. To fit those
+restrictions with `LassoModel`, pass `factors_beta_loading_signs=gate.restrictions` and
+`auto_sign_constraints=False`: with automatic signs enabled an explicit NaN falls back to that
+automatic layer. `auto_sign_excluded_factors` exempts only automatic evidence; release an
+external gate cell explicitly with NaN. Hard `excluded_factors` still force zero. Use the same
+eligible sample, coordinates and intended weights for evidence and refitting. Supplying a
+full-sample gate statically to `LassoModelCV` does not rebuild it in each fold.
+
+### Conditional evidence with asynchronous histories
+
+`compute_ragged_pooled_sign_gate` is a separate opt-in interface for missing response
+observations. The complete-panel interface and automatic marginal gate are unchanged.
+Let $o_{tk}$ indicate an observed response with every factor observed that date, and define
+$n_t = \sum_{k \in \mathcal{C}} o_{tk}$. For $n_t > 0$, let $\bar{y}_t$ be the mean of those
+observed responses. The observed-cell objective has the same shared intercept and slopes as
+
+$$
+\sum_{t:n_t>0} w_t n_t
+\left(\bar{y}_t - a - x_t^{\top} b\right)^2.
+$$
+
+Thus the existing joint weighted least-squares engine can use response $\bar{y}_t$ and loss
+weight $w_t n_t$. Its date score is exactly the sum of the observed members' scores. Squaring
+that sum retains contemporaneous residual dependence. The HC1 correction uses the number
+of usable dates $T_g$, namely $T_g/(T_g-M-1)$, not the observed-cell count or Kish effective size.
+Original-grid weights are supplied before subsetting; a missing date never restarts EWMA age.
+
+NaN cells remain unobserved. A missing factor excludes the whole date from the joint fit;
+no factor-wise regression, return imputation or marginal fallback is performed. A group
+without enough dates or design rank raises by default. Explicit `on_unidentified='release'`
+returns NaN evidence and restrictions, records the failure status and raises a warning.
+This differs from an identified but weak gate, whose restriction follows `action`.
+
+This observed-cell target depends on the mix of reporting members. It is not a correction
+for informative missingness, an asset-fixed-effects regression, a serial-HAC estimator, or
+a guarantee about each member's conditional sign. Balanced panels recover the complete-panel
+conditional evidence.
+
 ## Worked example
+
+### Independent conditional HC1 check
+
+The canonical script checks the new conditional gate on the synthetic panel below with
+strictly positive unequal date weights:
+
+```python
+weights = pd.Series(np.linspace(0.5, 1.5, len(x)), index=x.index)
+gate = fl.compute_pooled_sign_gate(
+    x, y, groups, weights=weights, threshold=2.0, action="release",
+)
+```
+
+`check_conditional_gate` independently constructs an intercepted weighted design, solves least
+squares, and forms the score outer products for each mean response. It compares slopes,
+standard errors and statistics, and checks that the release matrix uses NaN exactly where the
+detected sign is zero. This is a numerical identity check, not evidence of forecast improvement.
+
+### Asynchronous observed-cell check
+
+The canonical example removes alternating response cells so that no date is complete across
+all responses. It verifies that the gate can still use the observed dates, then checks its
+joint slopes and date-score covariance against an independently repeated-cell regression.
+
+```python
+    ragged = fl.compute_ragged_pooled_sign_gate(x, y, groups, weights=weights)
+    assert isinstance(ragged, fl.RaggedPooledSignGateResult)
+    assert y.dropna().empty
+    assert (ragged.diagnostics['observations'] == len(x)).all()
+    assert ragged.observation_mask.equals(y.notna())
+```
+
+### Historical automatic-gate illustration
 
 The canonical script
 [`examples/docs/gated_cluster_pooled_signs.py`](../examples/docs/gated_cluster_pooled_signs.py)
@@ -229,9 +343,15 @@ default $\tau = 0.75$. Produced by `tools/docs_analytics/estimation.py` from the
 ## Implementation in factorlasso
 
 Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
+The conditional function and result type are opt-in additions; the automatic marginal
+pathway remains unchanged.
 
 | Name | Role |
 |---|---|
+| `compute_pooled_sign_gate` | Complete-panel joint WLS/HC1 evidence for supplied response groups, with threshold and action chosen explicitly. |
+| `PooledSignGateResult` | Owned response-by-factor `slopes`, `standard_errors`, `t_stats`, detected `signs` and actionable `restrictions`; copied `groups` and normalized `date_weights`; evidence, action, threshold, observation/df and HC1 metadata. Its pandas contents remain mutable. |
+| `compute_ragged_pooled_sign_gate` | Observed-cell conditional WLS/HC1 on asynchronous panels, with original-grid date weights and explicit unidentified-group handling. |
+| `RaggedPooledSignGateResult` | Labeled evidence and restrictions, actual observation mask, copied groups/date weights, and per-group observations, degrees of freedom, effective size, gaps and status diagnostics. |
 | `auto_sign_constraints` | Derive signs inside `fit`, pooled as in the table above. Default `False`. |
 | `auto_sign_threshold_t` | The gate $\tau$; `None` keeps every slope's sign, and positive infinity sets every automatic sign to zero before overrides. |
 | `auto_sign_variance` | `"independent"` (default) or `"date"`, the date-score sandwich. |
@@ -256,6 +376,10 @@ python examples/docs/gated_cluster_pooled_signs.py
 - **A screening rule, not a test.** The gate supplies no calibrated false-sign or multiplicity
   guarantee. Higher thresholds remove more cells, including genuinely active ones; the default
   and the teaching example's threshold sweep are not significance levels.
+- **Conditional evidence targets a group mean.** A passing joint slope need not describe every
+  member's sign or support. Fixed-group, known-scale Gaussian risk formulas do not automatically
+  transfer to learned groups, HC1/EW evidence or penalized refits. The explicit conditional helper
+  does not change the marginal automatic gate or establish expected-return-risk dominance.
 - **Pooling assumes coherent clusters.** A cluster that mixes opposite exposures pools them into
   one slope, and minority members can receive the wrong sign. Correlation-based HCGL clustering
   does not itself establish common conditional coefficient signs.
@@ -275,6 +399,9 @@ python examples/docs/gated_cluster_pooled_signs.py
 
 ## See also
 
+- [Conditional pooled signs: fixed-group Gaussian theory](conditional_pooled_signs_theory.md):
+  joint-regression directions and scalar exclusion/clipping risk under the stated known-law
+  assumptions; these differ from the empirical HC1 gate.
 - [Sign constraints and prior-centred penalties](sign_constraints_and_priors.md): what the derived
   signs do in the estimator.
 - [Prior targets](prior_targets.md): a centre's sign can replace a derived sign.
@@ -286,6 +413,10 @@ python examples/docs/gated_cluster_pooled_signs.py
   $\tau = 1.0$ in the JSS study, with its $\tau$ sweep.
 
 ## References
+
+- White, H. (1980). A heteroskedasticity-consistent covariance matrix estimator and a direct test
+  for heteroskedasticity. *Econometrica* 48(4), 817-838.
+  [doi:10.2307/1912934](https://doi.org/10.2307/1912934).
 
 - Cameron, A. C., and Miller, D. L. (2015). A practitioner's guide to cluster-robust inference.
   *Journal of Human Resources* 50(2), 317-372. DOI 10.3368/jhr.50.2.317.

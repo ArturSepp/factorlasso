@@ -139,6 +139,9 @@ structure; and the covariance is assembled from the fitted loadings.
 - [Gated cluster-pooled sign derivation](gated_cluster_pooled_signs.md): signs estimated from
   pooled univariate slopes within response clusters, and the noise-floor gate that abstains on
   weak evidence.
+- [Conditional pooled signs: fixed-group Gaussian theory](conditional_pooled_signs_theory.md):
+  joint-regression geometry, false-exclusion and sign-clipping risks under known Gaussian
+  parameters; additive development analytics with explicit estimator-scope limits.
 - [Prior targets: automatic and mapped OLS centres](prior_targets.md): where the centres come
   from, why a marginal slope can point the wrong way, and how a centre's sign overrides a
   detected sign.
@@ -302,6 +305,7 @@ ewma_weighting_and_ragged_histories
 
 sign_constraints_and_priors
 gated_cluster_pooled_signs
+conditional_pooled_signs_theory
 prior_targets
 expert_inputs
 prior_inference

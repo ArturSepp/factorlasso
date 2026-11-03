@@ -408,7 +408,7 @@ cluster-pooled sign derivation and screening gate (revised working manuscript pr
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {1.1.0},
+  version = {1.0.7},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 

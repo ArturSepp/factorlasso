@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.0.7 — 2026-11-03
+
+### Added
+
+- Publish the opt-in ridge baseline, conditional Gaussian sign-risk analytics,
+  complete and ragged pooled-sign gates, pooled-loading shrinkage, and checked
+  offline forecasting examples described in the development entries below.
+  Existing automatic estimator defaults remain unchanged.
+- This publication collects the previously unpublished 1.1.0–1.3.0 development
+  entries; those development version numbers were not uploaded to PyPI.
+
 ### Removed
 
 - Untrack the sign-pooling manuscript and paper replication workspace. Preserve
@@ -9,8 +20,57 @@
   obsolete eQTL, legacy simulation and deferred weekly runners before removing
   them from the active tree. Public CI and documentation no longer depend on this
   workspace. Package APIs and defaults are unchanged.
-- Defer the next package release until the forecasting draft is finished. Older
-  Git history and published archives remain unchanged.
+- Preserve older Git history and published archives. This upload does not publish
+  private paper workspaces or create a GitHub Release page.
+
+## 1.3.0 — 2026-11-01 (development)
+
+### Added
+
+- `compute_ragged_pooled_sign_gate` and `RaggedPooledSignGateResult`: opt-in
+  conditional joint WLS for asynchronous panels. Use observed-cell loss,
+  original-date weights and date-clustered HC1, with per-group support and rank
+  diagnostics. Unidentified groups raise by default; an explicit release policy
+  returns missing evidence/restrictions and warns, never marginal fallback or
+  zero-return imputation. The existing complete-panel API and automatic estimator
+  defaults are unchanged. Independent stacked-cell reference tests cover the
+  missing-data extension. No publication or production-default change is included.
+- `compute_pooled_sign_gate` and `PooledSignGateResult`: conditional group-mean
+  loading evidence using the existing intercepted WLS/date-score HC1 engine,
+  with explicit exclusion, release and zero-only restriction matrices. The new
+  interface validates complete labeled panels and positive date weights; it does
+  not change legacy marginal automatic signs or add post-selection calibration.
+- `fit_pooled_loading_shrinkage` and `PooledLoadingShrinkageResult`: squared-L2
+  shrinkage toward group means of joint WLS loadings, using the existing ridge
+  solver on target-offset responses. Includes asset-specific unpenalized
+  intercepts, exact zero/infinite endpoints and an independent stationarity check.
+- Independent synthetic references, compatibility tests and owned documentation
+  for both additions. Existing estimator modes, defaults, CV rules and numerical
+  engines are unchanged. Default HCGL fitting does not guarantee the paper's
+  stricter stationarity acceptance rule; its separate audit/refinement remains
+  necessary. No dependency, empirical execution or publication is included.
+- An offline forecasting recipe with training-prefix preparation, blocked
+  pooled-penalty selection, original-unit recovery and explicitly supplied
+  premiums/admitted alpha. Independent tests check selection and information
+  cutoffs; conditional HCGL is shown at a fixed illustrative penalty.
+
+## 1.2.0 — 2026-10-30 (development)
+
+### Added
+
+- Opt-in fixed-group Gaussian analytics for conditional pooled signs:
+  `compute_conditional_gaussian_geometry` and `gaussian_sign_gate_risk`, with
+  immutable geometry/risk result containers. Geometry retains factor correlation,
+  contemporaneous residual dependence, fixed date covariance and same-data gate/fit
+  dependence. Scalar risks include wrong-sign gates, false exclusions, sign clipping
+  and the distinction between exclusion and release.
+- Exact known-covariance reference derivations, a checked offline example and
+  independent numerical validation. Coordinate-clipped risks describe the explicit
+  Gaussian reference estimator; they are not exact risks for general correlated
+  HCGL/FCGL refits, learned partitions or estimated-HC1 gates.
+- Public documentation and API ownership for the additive analytics. Existing
+  estimator signatures, modes, defaults, penalty objectives and production paths
+  are unchanged. No dependency, package installation or publication is required.
 
 ## 1.1.0 — 2026-10-29 (development)
 

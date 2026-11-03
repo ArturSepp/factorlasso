@@ -4,8 +4,8 @@ myst:
     description: >-
       The sparse multi-output factor model in factorlasso: the weighted squared loss with an L1
       penalty on an N by M loading matrix, its optimality conditions, the two intercepts, the units
-      of the penalty, a ridge baseline, and examples verified against independent least-squares
-      and coordinate-descent calculations.
+      of the penalty, zero-centred and pooled-target ridge fits, and examples verified against
+      independent least-squares and coordinate-descent calculations.
 ---
 
 # Sparse multi-output factor model
@@ -20,6 +20,8 @@ penalises the absolute size of every loading, so that loadings the data do not s
 estimated as zero. It is the base estimator of the package: sign constraints, priors, group
 penalties and the covariance decomposition all act on the loading matrix defined here.
 The same estimator interface also provides a dense ridge baseline with a squared-L2 penalty.
+The separate `fit_pooled_loading_shrinkage` function shrinks joint loading estimates toward
+supplied response groups' mean WLS loadings, with asset-specific unpenalized intercepts.
 
 ## Overview
 
@@ -146,7 +148,7 @@ retains its separate unweighted two-stage objective and rejects the option.
 
 ### Ridge baseline
 
-`LassoModelType.RIDGE`, added in the 1.1.0 development source, replaces the L1 penalty by the
+`LassoModelType.RIDGE` replaces the L1 penalty by the
 squared Frobenius norm (Hoerl and Kennard 1970):
 
 $$
@@ -190,6 +192,42 @@ Ridge provides a comparison for generic coefficient shrinkage under correlated f
 not impose shared directions or establish that its attribution is more accurate. Its penalty
 must be selected independently on training data; copying a LASSO penalty is not a fair tuning
 procedure merely because the configuration parameter has the same name.
+
+### Squared shrinkage toward pooled joint loadings
+
+`fit_pooled_loading_shrinkage` is an explicit
+complete-panel fit. Let $B_0$ be the individual joint weighted least-squares loading matrix and
+let $G_i$ be the average of its rows in response $i$'s supplied group. With strictly positive
+date weights $w_t$ normalized to mean one, it fits
+
+$$
+\widehat B=\arg\min_B
+\frac{1}{T}\sum_t w_t\lVert\widetilde Y_t-B\widetilde X_t\rVert_2^2
++\lambda\lVert B-G\rVert_F^2,\qquad
+\widehat\alpha=\bar y_w-\widehat B\bar x_w.
+$$
+
+Here both panels are centered using their fixed training-window weighted means. The intercept
+is asset-specific and unpenalized; it is not pooled with other assets. All factors enter the
+joint WLS target. The automatic selected-factor OLS prior supplies a different target, and
+passing a target to an L1/group penalty does not turn that penalty into squared shrinkage.
+Existing `LassoModelType.RIDGE` remains zero-centred and rejects prior/sign inputs.
+
+The fit reuses the ridge solver on the centered response minus its pooled-target prediction,
+then adds the target back. Zero penalty returns individual joint WLS exactly; positive infinity
+returns the pooled target exactly with reconstructed intercepts. The full weighted-centered
+design must have rank $M$ even at a positive or infinite penalty, because the WLS target must be
+identified. Thus $T\ge M+1$ is allowed, including the boundary where an HC1 gate has no residual
+degrees of freedom. Missing observations are rejected. No sign cone or factor standardization
+is implicit, and changing coordinates can change pooling and fixed-penalty shrinkage.
+
+The result exposes the target, individual WLS, normalized weights, means, objective and numerical
+diagnostics. At finite penalty the independently recomputed scaled stationarity residual must
+not exceed $10^{-7}$; an invalid numerical result raises. This threshold is not a coefficient
+error bound for ill-conditioned designs. At infinity the finite-penalty objective and
+stationarity are `None`, while the distance from the target is exactly zero. Default solver and
+optional fallback choices follow the existing ridge solver. No new statistical distribution or
+forecast-dominance theorem is implied by this target-centred adaptation.
 
 ### Separability
 
@@ -395,10 +433,121 @@ def fit_ridge(x: pd.DataFrame, y: pd.DataFrame, reg_lambda: float = REG_LAMBDA) 
     ).fit(x=x, y=y)
 ```
 
+### Pooled fit and an explicitly supplied expected-return forecast
+
+The same synthetic training panel is also fitted with three supplied response groups and
+unequal positive date weights:
+
+```python
+groups = pd.Series([0, 0, 1, 1, 2, 2], index=y.columns)
+weights = pd.Series(np.linspace(0.5, 1.5, len(x)), index=x.index)
+fitted = fl.fit_pooled_loading_shrinkage(
+    x, y, groups, REG_LAMBDA, weights=weights,
+)
+```
+
+The canonical script constructs the joint WLS target independently and augments the weighted
+least-squares system with the square-root penalty times the identity and target. It checks the
+returned loadings, intercepts and infinite endpoint against that reference. These are synthetic
+identities; the groups and penalty are illustrative, not empirical model-selection results.
+
+For an expected-return forecast, premiums and admitted alpha are separate inputs. Here all
+inputs are one-month decimal excess returns, the premiums are supplied for illustration, and
+the policy admits zero residual alpha:
+
+```python
+# Supplied one-month excess-return premiums; admit no residual alpha to the forecast.
+premium = pd.Series([0.003, 0.001, 0.002, 0.0, 0.0, 0.0, 0.0, 0.0], index=x.columns)
+admitted_alpha = pd.Series(0.0, index=y.columns)
+assert premium.index.equals(fitted.coefficients.columns)
+assert admitted_alpha.index.equals(fitted.coefficients.index)
+forecast = fitted.coefficients.dot(premium) + admitted_alpha
+```
+
+The script verifies this forecast against the independent coefficient reference. Replacing the
+supplied premium by observed factor returns would instead be factor-return reconstruction.
+Neither this fit nor `LassoModel.predict` estimates a premium history or decides which regression
+alpha an investment mandate should admit. Such choices require an explicit information cutoff,
+horizon and unit convention.
+
+### Select within the available history, refit and forecast
+
+The final part of the same offline script is a complete, bounded forecasting recipe. It uses
+the first 60 synthetic months available at an explicit decision date. Rows after that date do
+not enter preparation, selection or the final fit. Every input return and supplied premium is
+a one-month decimal excess return. The supplied alpha has the same horizon; no cash return or
+annualization is added.
+
+Within the 60-month history, training prefixes of 30, 40 and 50 observations each precede a
+ten-observation validation block. Each prefix has its own calendar-month EW weights with span
+24, weighted means and scales, response correlations, CHORD/Ward tree, group cut, conditional
+gate and joint-WLS target. The cut is 0.6 times the final Ward merge height; it is not the core
+clustering default's fraction of maximum pairwise distance. The example keeps gate and penalty
+groups equal explicitly. The gate is inspectable, but it does not impose restrictions on the
+pooled-shrinkage comparator.
+
+Pooled shrinkage is fitted on standardized inputs at the illustrative penalties 0, 0.1, 1 and
+positive infinity. For each candidate, validation loss is the mean squared raw reconstruction
+error divided response by response by that prefix's squared training scale. All validation
+blocks must have finite losses. A failed numerical fit invalidates the candidate, and the
+largest penalty within $10^{-12}$ of the smallest average loss is selected:
+
+```python
+def select_forecast_penalty(losses: pd.DataFrame) -> float:
+    """Require every blocked score; choose the largest penalty within 1e-12 of the minimum."""
+    complete = np.isfinite(losses.to_numpy()).all(axis=1)
+    if not np.any(complete):
+        raise RuntimeError("no candidate has a finite score in every validation block")
+    average = losses.loc[complete].mean(axis=1)
+    return float(max(average.index[average <= average.min() + 1e-12]))
+```
+
+This criterion tunes factor-return reconstruction, not expected-return error. The small
+standardized grid is a teaching choice, not a replacement for any frozen paper grid.
+`LassoModelCV` uses different folds, scoring and tie/failure rules; supplying a full-sample gate
+or target to it would not rebuild those objects inside each fold.
+
+After selection, the recipe rebuilds every training-derived quantity on all 60 eligible months
+and refits the selected penalty. If $s_x$ and $s_y$ are the saved training scales, analysis-unit
+loadings are converted as $\hat B_{ij}=s_{y,i}\hat B^*_{ij}/s_{x,j}$, and the raw regression
+intercept is $\hat\alpha_i=\bar y_i-\hat B_i\bar x$. The forecast admits the separately supplied
+alpha rather than automatically using this regression intercept:
+
+```python
+decision_date = x.index[N_TRAIN - 1]
+premium = pd.Series([0.003, 0.001, 0.002, 0.0, 0.0, 0.0, 0.0, 0.0], index=x.columns)
+admitted_alpha = pd.Series(0.0, index=y.columns)  # distinct from the regression intercept
+result = forecast_recipe(x, y, decision_date, premium, admitted_alpha,
+                         premium_asof=decision_date, alpha_asof=decision_date)
+```
+
+`forecast_recipe` is an example-local function, not a package export. Its result exposes the
+validation-loss table, selected penalty, original-unit loadings and regression intercept,
+final groups, gate statistics, pooled target and expected-return forecast. Premium/alpha labels
+must match the factor/response order exactly; duplicate, reordered, missing or nonfinite inputs
+are rejected. Their declared information dates cannot follow the decision date. The caller
+still owns the truth of those availability declarations and the common-horizon convention.
+
+For comparison, the same final training window is fitted with conditional HCGL at a fixed
+illustrative penalty of 0.1, using the explicit gate restrictions with automatic signs disabled.
+The inputs are square-root preweighted, and centering inside `LassoModel` is disabled. The raw
+loadings are recovered before multiplying by the supplied premium. This is a separate fixed
+penalty composition, not a selected paper HCGL procedure. Default solver output does not
+guarantee the paper's stricter stationarity acceptance; its separate auditor/refinement remains
+necessary. The recipe does not estimate a premium history, execute a portfolio or compare
+empirical investment performance.
+
+The script checks the selected pooled fit against independently augmented least squares.
+Additional tests independently reconstruct every fold's weighted regression, Ward groups,
+validation scores and final forecast, and verify the behavior under a failed candidate,
+near ties, altered validation outcomes and data after the decision date. An injected
+full-history preparation error fails those independent score checks.
+
 ## Implementation in factorlasso
 
 Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
-The ridge addition requires the 1.1.0 source revision; publication to PyPI is a separate step.
+The ridge mode and pooled-loading function are opt-in additions; existing LASSO defaults
+remain unchanged.
 
 All names below are exported from the top-level package and documented in the
 [API reference](api.rst).
@@ -410,6 +559,17 @@ All names below are exported from the top-level package and documented in the
 | `LassoEstimationResult` | Solver output stored as `estimation_result_`: `estimated_beta`, `alpha` (the residual mean that becomes `intercept_`), and the weighted `ss_total`, `ss_res` and `r2` per response. |
 | `solve_lasso_cvx_problem` | The CVXPY programme for NumPy inputs. `LassoModel` calls it after centring; it accepts `valid_mask`, `span`, `factors_beta_loading_signs`, `factors_beta_prior` and `penalty_weights`. |
 | `get_x_y_np` | Converts identically indexed pandas panels to the arrays the solver receives: centred, zero-filled where missing, with the validity mask. With EWMA demeaning the first row is dropped. |
+| `fit_pooled_loading_shrinkage` | Standalone complete-panel weighted fit toward supplied response groups' mean joint WLS loadings, with squared target distance and an unpenalized intercept. |
+| `PooledLoadingShrinkageResult` | Owned `coefficients`, `pooled_target` and `individual_wls` frames; `intercept`, `target_intercept`, `x_mean`, `y_mean`, copied groups/date weights, penalty/rank and numerical diagnostics. Its pandas contents remain mutable. |
+
+The standalone fit accepts only real finite DataFrames `x` and `y`, including a one-column
+frame for one response. Their unique nonmissing row indexes must match exactly in order;
+column labels must also be unique/nonmissing. `groups` is a response-indexed Series of
+nonmissing strings or finite nonboolean real IDs, and optional `weights` is a strictly positive
+finite Series on the same row index. The helper performs no alignment, row dropping, grouping
+or standardization. Build every training-derived group, scale and target inside its own fitting
+prefix; a static matrix supplied to existing CV is not a per-fold callback. The fit does not
+change `LassoModelCV` scoring, tie rules or failure handling.
 
 The constructor parameters explained in this article are `model_type` (default
 `LassoModelType.LASSO`, which selects the penalty), `reg_lambda`, `demean`, `solver` and
@@ -442,7 +602,7 @@ python examples/docs/sparse_factor_model.py
 `fit` requires equal row counts and rejects mismatched labelled indexes. An unlabelled input
 adopts the other input's index when lengths agree; see [alignment conventions](conventions.md).
 If an exception escapes, all fitted attributes revert to their values before the call. A
-low-level solve with fewer than five rows, or one that ends without a solution and without
+LASSO low-level solve with fewer than five rows, or one that ends without a solution and without
 raising, returns NaN loadings with a warning. Warmup handling may subsequently zero short-history
 responses. Solver exceptions propagate unless `solver_fallbacks` names solvers to try in turn;
 exhausting that chain raises a solver error.
@@ -462,6 +622,10 @@ and the hash of the image.
 - **Ridge is dense.** Ridge shrinks magnitudes without selecting factor support or enforcing
   economic signs. A smaller coefficient change need not imply better premium attribution or
   portfolio decisions; compare those outcomes separately from fitted-return error.
+- **Pooled shrinkage depends on the target.** A heterogeneous group can introduce bias, and
+  changing analysis units changes the target and penalty geometry. A target-centred fit is not
+  evidence that group members share signs. Neither improved reconstruction nor a small
+  stationarity residual establishes more accurate expected-return forecasts.
 - **Selection is not guaranteed.** The LASSO recovers the true support only under conditions on
   the factor correlations (Zhao and Yu 2006). With correlated factors it can keep the wrong one
   of a pair. The worked example uses uncorrelated factors;

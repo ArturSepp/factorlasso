@@ -1,5 +1,15 @@
 {
  "root_all": [
+  "PooledLoadingShrinkageResult",
+  "fit_pooled_loading_shrinkage",
+  "PooledSignGateResult",
+  "compute_pooled_sign_gate",
+  "RaggedPooledSignGateResult",
+  "compute_ragged_pooled_sign_gate",
+  "ConditionalGaussianGeometry",
+  "GaussianSignGateRisk",
+  "compute_conditional_gaussian_geometry",
+  "gaussian_sign_gate_risk",
   "FactorTestInversion",
   "FactorTestInversionResult",
   "TestInversionCalibration",
@@ -109,6 +119,1133 @@
   "partition_variance_share"
  ],
  "exports": {
+  "PooledLoadingShrinkageResult": {
+   "kind": "class",
+   "module": "factorlasso.linear_model._pooled_shrinkage",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "coefficients",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "pooled_target",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "individual_wls",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "intercept",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "target_intercept",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "y_mean",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "x_mean",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "groups",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "date_weights",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "reg_lambda",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "design_rank",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "weighted_sse",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "penalty",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "objective",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "stationarity_residual",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "target_violation",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "coefficients",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "pooled_target",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "individual_wls",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "intercept",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "target_intercept",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y_mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "x_mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "groups",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "date_weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "reg_lambda",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "design_rank",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weighted_sse",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "penalty",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "objective",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "stationarity_residual",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "target_violation",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "fit_pooled_loading_shrinkage": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "groups",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "reg_lambda",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "solver",
+     "KEYWORD_ONLY",
+     "CLARABEL"
+    ],
+    [
+     "solver_fallbacks",
+     "KEYWORD_ONLY",
+     null
+    ]
+   ]
+  },
+  "PooledSignGateResult": {
+   "kind": "class",
+   "module": "factorlasso.inference._pooled_signs",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "slopes",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "standard_errors",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "t_stats",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "signs",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "restrictions",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "groups",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "date_weights",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "threshold",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "action",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "evidence",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "variance_estimator",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "hac_lags",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "fit_intercept",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "observations",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "residual_df",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "effective_n",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "hc1_correction",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "slopes",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "standard_errors",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "t_stats",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "signs",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "restrictions",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "groups",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "date_weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "threshold",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "action",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "evidence",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "variance_estimator",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "hac_lags",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "fit_intercept",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "observations",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "residual_df",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "effective_n",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "hc1_correction",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "compute_pooled_sign_gate": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "groups",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "threshold",
+     "KEYWORD_ONLY",
+     2.0
+    ],
+    [
+     "action",
+     "KEYWORD_ONLY",
+     "exclude"
+    ]
+   ]
+  },
+  "RaggedPooledSignGateResult": {
+   "kind": "class",
+   "module": "factorlasso.inference._ragged_signs",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "slopes",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "standard_errors",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "t_stats",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "signs",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "restrictions",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "groups",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "date_weights",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "observation_mask",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "diagnostics",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "threshold",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "action",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "on_unidentified",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "evidence",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "variance_estimator",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "fit_intercept",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "hac_lags",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "slopes",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "standard_errors",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "t_stats",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "signs",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "restrictions",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "groups",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "date_weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "observation_mask",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "diagnostics",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "threshold",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "action",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "on_unidentified",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "evidence",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "variance_estimator",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "fit_intercept",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "hac_lags",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "compute_ragged_pooled_sign_gate": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "groups",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "threshold",
+     "KEYWORD_ONLY",
+     2.0
+    ],
+    [
+     "action",
+     "KEYWORD_ONLY",
+     "exclude"
+    ],
+    [
+     "on_unidentified",
+     "KEYWORD_ONLY",
+     "raise"
+    ]
+   ]
+  },
+  "ConditionalGaussianGeometry": {
+   "kind": "class",
+   "module": "factorlasso.inference._conditional_signs",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "coefficient_map",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "factor_covariance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "coefficients",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "pooling_weights",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "residual_covariance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "date_covariance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "pooled_means",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "fit_sd",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "gate_sd",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "fit_gate_covariance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "fit_gate_correlation",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "coefficient_map",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "factor_covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "coefficients",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "pooling_weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "residual_covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "date_covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "pooled_means",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "fit_sd",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "gate_sd",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "fit_gate_covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "fit_gate_correlation",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "GaussianSignGateRisk": {
+   "kind": "class",
+   "module": "factorlasso.inference._conditional_signs",
+   "dataclass": {
+    "frozen": true,
+    "fields": [
+     {
+      "name": "estimate_mean",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "estimate_second_moment",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "bias",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "variance",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "mse",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "baseline_mse",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "positive_mse",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "negative_mse",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "weak_mse",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "probability_positive",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "probability_negative",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "probability_weak",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "probability_wrong_sign",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "probability_false_exclusion",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "probability_false_admission",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "probability_clipped",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     },
+     {
+      "name": "integration_error",
+      "init": true,
+      "default": "<no default>",
+      "factory": null
+     }
+    ]
+   },
+   "init": [
+    [
+     "self",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimate_mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "estimate_second_moment",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "bias",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "variance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "mse",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "baseline_mse",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "positive_mse",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "negative_mse",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weak_mse",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "probability_positive",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "probability_negative",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "probability_weak",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "probability_wrong_sign",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "probability_false_exclusion",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "probability_false_admission",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "probability_clipped",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "integration_error",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ]
+   ],
+   "members": {}
+  },
+  "compute_conditional_gaussian_geometry": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "coefficients",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "residual_covariance",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "pooling_weights",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "fit_intercept",
+     "KEYWORD_ONLY",
+     true
+    ],
+    [
+     "date_covariance",
+     "KEYWORD_ONLY",
+     null
+    ]
+   ]
+  },
+  "gaussian_sign_gate_risk": {
+   "kind": "function",
+   "signature": [
+    [
+     "beta",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "gate_mean",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "fit_sd",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "gate_sd",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "correlation",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "threshold",
+     "KEYWORD_ONLY",
+     1.0
+    ],
+    [
+     "action",
+     "KEYWORD_ONLY",
+     "exclude"
+    ]
+   ]
+  },
   "FactorTestInversion": {
    "kind": "class",
    "module": "factorlasso.linear_model._test_inversion",
@@ -7345,6 +8482,14 @@
  },
  "subpackages": {
   "inference": [
+   "PooledSignGateResult",
+   "compute_pooled_sign_gate",
+   "RaggedPooledSignGateResult",
+   "compute_ragged_pooled_sign_gate",
+   "ConditionalGaussianGeometry",
+   "GaussianSignGateRisk",
+   "compute_conditional_gaussian_geometry",
+   "gaussian_sign_gate_risk",
    "aggregate_influence_calendar",
    "compute_hac_covariance",
    "delta_method_hac_intervals",
@@ -7376,6 +8521,8 @@
    "set_group_loadings"
   ],
   "linear_model": [
+   "PooledLoadingShrinkageResult",
+   "fit_pooled_loading_shrinkage",
    "FactorTestInversion",
    "FactorTestInversionResult",
    "TestInversionCalibration",

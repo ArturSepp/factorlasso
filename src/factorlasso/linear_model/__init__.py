@@ -9,6 +9,9 @@ from factorlasso.linear_model._types import (
     LassoEstimationResult, LassoModelType, LassoNowcastResult,
 )
 from factorlasso.linear_model._estimator import LassoModel
+from factorlasso.linear_model._pooled_shrinkage import (
+    PooledLoadingShrinkageResult, fit_pooled_loading_shrinkage,
+)
 from factorlasso.linear_model._bootstrap import FactorBootstrapResult, bootstrap_factor_betas
 from factorlasso.linear_model._test_inversion import (
     FactorTestInversion, FactorTestInversionResult, TestInversionCalibration,
@@ -24,6 +27,7 @@ from factorlasso.linear_model._solvers.lasso import solve_lasso_cvx_problem
 from factorlasso.linear_model._solvers.unilasso import solve_unilasso_cvx_problem
 
 __all__ = [
+    "PooledLoadingShrinkageResult", "fit_pooled_loading_shrinkage",
     "FactorTestInversion",
     "FactorTestInversionResult",
     "TestInversionCalibration",

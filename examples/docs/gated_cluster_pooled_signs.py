@@ -88,9 +88,75 @@ def gate_sweep(seed: int = SEED, n_panels: int = N_PANELS) -> pd.DataFrame:
     return pd.DataFrame(rows).groupby(["derivation", "tau"]).mean()
 
 
+def check_conditional_gate(x: pd.DataFrame, y: pd.DataFrame, groups: pd.Series) -> None:
+    """Check joint pooled HC1 evidence with an independent intercepted weighted regression."""
+    weights = pd.Series(np.linspace(0.5, 1.5, len(x)), index=x.index)
+    gate = fl.compute_pooled_sign_gate(
+        x, y, groups, weights=weights, threshold=2.0, action="release",
+    )
+    assert isinstance(gate, fl.PooledSignGateResult)
+    design = np.column_stack([np.ones(len(x)), x.to_numpy()])
+    w = weights.to_numpy() / weights.mean()
+    weighted_design = np.sqrt(w[:, None]) * design
+    bread = np.linalg.inv(design.T @ (w[:, None] * design))
+    correction = len(x) / (len(x) - design.shape[1])
+    for group in groups.unique():
+        members = list(groups.index[groups == group])
+        response = y[members].mean(axis=1).to_numpy()
+        reference = np.linalg.lstsq(weighted_design, np.sqrt(w) * response, rcond=None)[0]
+        residual = response - design @ reference
+        scores = (w * residual)[:, None] * design
+        covariance = correction * bread @ (scores.T @ scores) @ bread
+        standard_errors = np.sqrt(np.diag(covariance))[1:]
+        assert np.allclose(gate.slopes.loc[members], reference[1:], atol=1e-11)
+        assert np.allclose(gate.standard_errors.loc[members], standard_errors, atol=1e-11)
+        expected_t = reference[1:] / standard_errors
+        assert np.allclose(gate.t_stats.loc[members], expected_t, atol=1e-11)
+        signs = np.where(np.abs(expected_t) >= 2.0, np.sign(reference[1:]), 0.0)
+        assert np.array_equal(gate.signs.loc[members[0]], signs)
+    assert np.array_equal(gate.restrictions.isna(), gate.signs == 0.0)
+    assert gate.hc1_correction == correction
+    assert gate.evidence == "conditional" and gate.variance_estimator == "HC1_date"
+    assert gate.date_weights.index.equals(x.index)
+
+
+def check_ragged_gate() -> None:
+    """Check observed-cell pooling against a repeated-cell normal/sandwich solve."""
+    x, y, _, groups = make_panel(np.random.default_rng(SEED + 3))
+    for col in range(y.shape[1]):
+        y.iloc[np.arange(len(y)) % 3 == col % 3, col] = np.nan
+    weights = pd.Series(.94 ** np.arange(len(x)-1, -1, -1), index=x.index)
+    ragged = fl.compute_ragged_pooled_sign_gate(x, y, groups, weights=weights)
+    assert isinstance(ragged, fl.RaggedPooledSignGateResult)
+    assert y.dropna().empty
+    assert (ragged.diagnostics['observations'] == len(x)).all()
+    assert ragged.observation_mask.equals(y.notna())
+    for group in groups.unique():
+        members = groups.index[groups.eq(group)]
+        rows, response, loss_weights, times = [], [], [], []
+        for date in range(len(x)):
+            for value in y.loc[:, members].iloc[date]:
+                if np.isfinite(value):
+                    rows.append(np.r_[1., x.iloc[date]])
+                    response.append(value)
+                    loss_weights.append(weights.iloc[date])
+                    times.append(date)
+        design, response, w = np.asarray(rows), np.asarray(response), np.asarray(loss_weights)
+        beta = np.linalg.lstsq(design*np.sqrt(w[:,None]), response*np.sqrt(w), rcond=None)[0]
+        bread = np.linalg.inv(design.T @ (w[:,None]*design))
+        scores = np.zeros((len(x), design.shape[1]))
+        np.add.at(scores, times, w[:,None]*design*(response-design@beta)[:,None])
+        covariance = bread @ (scores.T@scores) @ bread * len(x)/(len(x)-design.shape[1])
+        assert np.allclose(ragged.slopes.loc[members], beta[1:], atol=1e-11)
+        assert np.allclose(ragged.standard_errors.loc[members],
+                           np.sqrt(np.diag(covariance))[1:], atol=1e-11)
+
+
 def main() -> None:
     rng = np.random.default_rng(SEED)
     x, y, beta, clusters = make_panel(rng)
+    check_conditional_gate(x, y, clusters)
+    check_ragged_gate()
 
     # --- the pooled slope and t-statistic of one cluster, by hand ------------------------------
     members = list(clusters.index[clusters == 0])

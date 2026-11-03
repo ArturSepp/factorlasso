@@ -106,6 +106,7 @@ from factorlasso.diagnostics import (
     suggest_tolerance,
 )
 from factorlasso.linear_model import (
+    PooledLoadingShrinkageResult, fit_pooled_loading_shrinkage,
     LassoEstimationResult,
     LassoModel,
     LassoModelType,
@@ -118,6 +119,10 @@ from factorlasso.linear_model import (
 )
 from factorlasso.model_selection import LassoModelCV, LassoModelDiagonalityCV
 from factorlasso.inference import (
+    PooledSignGateResult, compute_pooled_sign_gate,
+    RaggedPooledSignGateResult, compute_ragged_pooled_sign_gate,
+    ConditionalGaussianGeometry, GaussianSignGateRisk,
+    compute_conditional_gaussian_geometry, gaussian_sign_gate_risk,
     aggregate_influence_calendar, compute_hac_covariance, delta_method_hac_intervals,
     calibrate_covariance_moments,
     HierarchicalMeanPosterior, pool_gaussian_means,
@@ -164,6 +169,11 @@ except PackageNotFoundError:  # pragma: no cover - editable install before metad
     __version__ = "0.0.0+unknown"
 
 __all__ = [
+    "PooledLoadingShrinkageResult", "fit_pooled_loading_shrinkage",
+    "PooledSignGateResult", "compute_pooled_sign_gate",
+    "RaggedPooledSignGateResult", "compute_ragged_pooled_sign_gate",
+    "ConditionalGaussianGeometry", "GaussianSignGateRisk",
+    "compute_conditional_gaussian_geometry", "gaussian_sign_gate_risk",
     "FactorTestInversion",
     "FactorTestInversionResult",
     "TestInversionCalibration",
