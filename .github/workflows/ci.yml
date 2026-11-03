@@ -28,7 +28,8 @@ jobs:
       fail-fast: false
       # The full OS × Python product is an existing FactorLasso compatibility gate.
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Pin Intel macOS while the hosted ARM pool fails runner allocation.
+        os: [ubuntu-latest, windows-latest, macos-15-intel]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         include:
           - {os: ubuntu-latest, python-version: "3.12", primary: true}
