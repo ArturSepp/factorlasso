@@ -1,7 +1,9 @@
 """Weighted regression uncertainty and fixed-model Gaussian interval calibration."""
 
 from factorlasso.inference._pooling import HierarchicalMeanPosterior, pool_gaussian_means
-from factorlasso.inference._pooled_signs import PooledSignGateResult, compute_pooled_sign_gate
+from factorlasso.inference._pooled_signs import (
+    PooledSignGateResult, compute_pooled_sign_gate, compute_sign_guided_gate,
+)
 from factorlasso.inference._ragged_signs import (
     RaggedPooledSignGateResult, compute_ragged_pooled_sign_gate,
 )
@@ -32,7 +34,7 @@ from factorlasso.inference._scalar_capacity import (
 )
 
 __all__ = [
-    "PooledSignGateResult", "compute_pooled_sign_gate",
+    "PooledSignGateResult", "compute_pooled_sign_gate", "compute_sign_guided_gate",
     "RaggedPooledSignGateResult", "compute_ragged_pooled_sign_gate",
     "ConditionalGaussianGeometry", "GaussianSignGateRisk",
     "compute_conditional_gaussian_geometry", "gaussian_sign_gate_risk",

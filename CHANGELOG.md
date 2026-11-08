@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+## 1.0.9 — 2026-11-08
+
+### Added
+
+- The automatic sign rules carry the names of the sign-pooling manuscript.
+  `LassoModel(auto_sign_method='sign_guided')` fits the sign-guided Lasso
+  (pooled joint-regression signs: joint observed-cell WLS with date-clustered
+  HC1), spelled `'conditional'` before this release.
+  `auto_sign_method='ols_sign_guided'` fits the OLS-sign-guided Lasso (pooled
+  single-factor OLS signs), spelled `'marginal'` before this release, and is
+  the default. Both legacy spellings remain accepted for the same two rules
+  and emit no warning. The fitted `auto_sign_method_` records the canonical
+  spelling (`'sign_guided'` or `'ols_sign_guided'`) whichever spelling was
+  requested, and `adaptive_sign_method_` records `'ols_sign_guided'`.
+- `compute_sign_guided_gate`: the complete-panel gate under the method's
+  name. It is the same object as `compute_pooled_sign_gate`, with the same
+  signature and `PooledSignGateResult`.
+
+### Changed
+
+- The constructor default of `auto_sign_method` reads `'ols_sign_guided'`
+  instead of `'marginal'`. The rule, the estimates and every other default are
+  unchanged; `get_params()` and the API contract show the new spelling. Code
+  that compares `auto_sign_method_` or `adaptive_sign_method_` with
+  `'conditional'` or `'marginal'` must compare with the new spellings.
+
 ## 1.0.8 — 2026-11-03
 
 ### Added

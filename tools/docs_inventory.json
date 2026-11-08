@@ -79,7 +79,7 @@
     ],
     "docs/gated_cluster_pooled_signs.md": [
       "derive_sign_constraints", "validate_cluster_signs",
-      "compute_pooled_sign_gate", "PooledSignGateResult",
+      "compute_pooled_sign_gate", "compute_sign_guided_gate", "PooledSignGateResult",
       "compute_ragged_pooled_sign_gate", "RaggedPooledSignGateResult"
     ],
     "docs/group_penalties_hcgl_fcgl.md": [

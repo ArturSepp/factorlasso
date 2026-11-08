@@ -95,6 +95,7 @@ def check_conditional_gate(x: pd.DataFrame, y: pd.DataFrame, groups: pd.Series) 
         x, y, groups, weights=weights, threshold=2.0, action="release",
     )
     assert isinstance(gate, fl.PooledSignGateResult)
+    assert fl.compute_sign_guided_gate is fl.compute_pooled_sign_gate  # one gate, two names
     design = np.column_stack([np.ones(len(x)), x.to_numpy()])
     w = weights.to_numpy() / weights.mean()
     weighted_design = np.sqrt(w[:, None]) * design
@@ -153,17 +154,23 @@ def check_ragged_gate() -> None:
 
 
 def check_native_conditional_gate(x, y, clusters):
-    """Conditional screening leaves the calibrated marginal penalty evidence intact."""
+    """Sign-guided screening leaves the calibrated single-factor penalty evidence intact."""
     options = dict(model_type=fl.LassoModelType.GROUP_LASSO, group_data=clusters,
                    reg_lambda=1e-3, auto_sign_constraints=True,
                    auto_sign_adaptive_weights=True, auto_sign_variance='date')
-    marginal = fl.LassoModel(**options).fit(x, y)
-    conditional = fl.LassoModel(**options, auto_sign_method='conditional').fit(x, y)
-    assert conditional.auto_sign_method_ == 'conditional'
-    assert conditional.adaptive_sign_method_ == 'marginal'
-    pd.testing.assert_frame_equal(conditional.sign_penalty_weights_, marginal.sign_penalty_weights_)
-    pd.testing.assert_frame_equal(conditional.adaptive_sign_slopes_, marginal.sign_slopes_)
-    assert conditional.sign_group_diagnostics_.status.eq('ok').all()
+    ols_sign_guided = fl.LassoModel(**options).fit(x, y)
+    sign_guided = fl.LassoModel(**options, auto_sign_method='sign_guided').fit(x, y)
+    assert ols_sign_guided.auto_sign_method_ == 'ols_sign_guided'
+    assert sign_guided.auto_sign_method_ == 'sign_guided'
+    assert sign_guided.adaptive_sign_method_ == 'ols_sign_guided'
+    pd.testing.assert_frame_equal(sign_guided.sign_penalty_weights_,
+                                  ols_sign_guided.sign_penalty_weights_)
+    pd.testing.assert_frame_equal(sign_guided.adaptive_sign_slopes_, ols_sign_guided.sign_slopes_)
+    assert sign_guided.sign_group_diagnostics_.status.eq('ok').all()
+    # The pre-1.0.9 spelling selects the same rule and the same fitted evidence.
+    legacy = fl.LassoModel(**options, auto_sign_method='conditional').fit(x, y)
+    assert legacy.auto_sign_method_ == 'sign_guided'
+    pd.testing.assert_frame_equal(legacy.derived_signs_, sign_guided.derived_signs_)
 
 
 def main() -> None:

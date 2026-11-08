@@ -97,7 +97,11 @@ solver consumes, pooling per `model_type` (per response for LASSO, per group or 
 cluster for the grouped modes). `auto_sign_threshold_t` (default `0.75`, not a significance test)
 pins factors below the noise floor to zero; explicit sign entries override the derived matrix
 per cell; `auto_sign_adaptive_weights=True` adds Zou (2006) adaptive L1 weights from the same
-slopes. See [gated cluster-pooled signs](docs/gated_cluster_pooled_signs.md) and
+slopes. This default rule is the OLS-sign-guided Lasso (`auto_sign_method='ols_sign_guided'`);
+`auto_sign_method='sign_guided'` fits the sign-guided Lasso, which replaces the pooled univariate
+slopes by pooled joint-regression (WLS, date-score HC1) signs and keeps the univariate slopes for
+the adaptive weights. The standalone gate is `compute_sign_guided_gate`. See
+[gated cluster-pooled signs](docs/gated_cluster_pooled_signs.md) and
 [adaptive penalty weights](docs/adaptive_penalty_weights.md).
 
 **3. Prior-centered regularisation.** `factors_beta_prior` penalises `‖β − β₀‖` instead of
@@ -362,7 +366,7 @@ their figures.
 
 | Method | Implementation | Article · script |
 |---|---|---|
-| Gated cluster-pooled sign derivation and screening threshold | `auto_sign_constraints`, `auto_sign_threshold_t`, `derived_signs_` | [article](docs/gated_cluster_pooled_signs.md) · [`gated_cluster_pooled_signs.py`](examples/docs/gated_cluster_pooled_signs.py) |
+| Gated cluster-pooled sign derivation and screening threshold (sign-guided and OLS-sign-guided Lasso) | `auto_sign_constraints`, `auto_sign_method`, `auto_sign_threshold_t`, `derived_signs_`, `compute_sign_guided_gate` | [article](docs/gated_cluster_pooled_signs.md) · [`gated_cluster_pooled_signs.py`](examples/docs/gated_cluster_pooled_signs.py) |
 | Adaptive L1 and adaptive group weights (Zou 2006; Wang and Leng 2008) | `auto_sign_adaptive_weights`, `auto_sign_adaptive_gamma`, `auto_sign_adaptive_floor` | [article](docs/adaptive_penalty_weights.md) · [`adaptive_penalty_weights.py`](examples/docs/adaptive_penalty_weights.py) |
 | HCGL and FCGL group penalties, sparse-group mixing | `HIERARCHICAL_CLUSTER_GROUP_LASSO`, `FACTOR_CLUSTER_GROUP_LASSO`, `l1_weight` | [article](docs/group_penalties_hcgl_fcgl.md) · [`group_penalties_hcgl_fcgl.py`](examples/docs/group_penalties_hcgl_fcgl.py) |
 | Distance transforms, dependence measures, dominant common-mode removal | `DistanceTransform`, `DependenceMeasure`, `ClusterCorrelationTransform` | [cluster discovery](docs/cluster_discovery.md), [common-mode removal](docs/common_mode_removal.md) · [`common_mode_removal.py`](examples/docs/common_mode_removal.py) |
@@ -408,7 +412,7 @@ cluster-pooled sign derivation and screening gate (revised working manuscript pr
   title   = {factorlasso: Sparse Multi-Output Factor-Model Estimation in
              {Python}},
   year    = {2026},
-  version = {1.0.8},
+  version = {1.0.9},
   url     = {https://github.com/ArturSepp/factorlasso},
 }
 

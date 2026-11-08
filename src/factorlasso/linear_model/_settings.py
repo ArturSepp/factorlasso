@@ -277,10 +277,34 @@ def validate_sign_settings(model) -> None:
         raise ValueError("select either auto_sign_use_fit_span or auto_sign_ewma_span")
 
 
+#: Canonical spellings of ``auto_sign_method``: the sign-guided Lasso (pooled joint-regression
+#: signs) and the OLS-sign-guided Lasso (pooled single-factor OLS signs), as named in the
+#: sign-pooling manuscript.
+SIGN_METHODS = ('sign_guided', 'ols_sign_guided')
+#: Spellings accepted before 1.0.9. They select the same rules and emit no warning.
+LEGACY_SIGN_METHODS = {'conditional': 'sign_guided', 'marginal': 'ols_sign_guided'}
+
+
+def resolve_sign_method(value) -> str:
+    """Return the canonical spelling of an ``auto_sign_method`` value.
+
+    ``'sign_guided'`` and ``'ols_sign_guided'`` are returned unchanged. The legacy spellings
+    ``'conditional'`` and ``'marginal'`` map onto them. Anything else raises ``ValueError``.
+    The caller's parameter is never rewritten; only the fitted attributes carry the result.
+    """
+    if isinstance(value, str) and value in LEGACY_SIGN_METHODS:
+        return LEGACY_SIGN_METHODS[value]
+    if isinstance(value, str) and value in SIGN_METHODS:
+        return value
+    raise ValueError(
+        "auto_sign_method must be 'sign_guided' or 'ols_sign_guided' "
+        f"(legacy spellings 'conditional' and 'marginal' are accepted), got {value!r}"
+    )
+
+
 def validate_sign_method(model) -> None:
     """Validate opt-in evidence and failure policy without changing legacy settings."""
-    if model.auto_sign_method not in ('marginal','conditional'):
-        raise ValueError("auto_sign_method must be 'marginal' or 'conditional'")
+    resolve_sign_method(model.auto_sign_method)
     if model.auto_sign_on_unidentified not in ('raise','release'):
         raise ValueError("auto_sign_on_unidentified must be 'raise' or 'release'")
 

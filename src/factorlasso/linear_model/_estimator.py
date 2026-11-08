@@ -347,23 +347,30 @@ class LassoModel:
         Excluded factor columns remain exempt. Non-NaN entries of
         ``factors_beta_loading_signs`` take precedence over both prior and
         detected signs. Adaptive weights retain the original detected values.
-    auto_sign_method : {"marginal", "conditional"}, default "marginal"
-        Automatic sign-screening evidence only. Marginal retains the historical
-        pooled univariate rule. Conditional uses joint observed-cell WLS with
+    auto_sign_method : {"ols_sign_guided", "sign_guided"}, default "ols_sign_guided"
+        Automatic sign-screening evidence only. ``"ols_sign_guided"`` (the
+        OLS-sign-guided Lasso) retains the historical rule: pooled single-factor
+        OLS signs within each response group. ``"sign_guided"`` (the sign-guided
+        Lasso) uses pooled joint-regression signs: joint observed-cell WLS with
         date-clustered HC1 and a shared intercept within each response group.
         Missing cells are not imputed and original-grid EWMA ages are preserved.
         Explicit signs, exclusions, priors and expert bounds retain precedence.
-        Adaptive penalties always retain marginal signs and slope magnitudes;
-        selecting conditional does not change their construction.
+        Adaptive penalties always retain the pooled single-factor signs and slope
+        magnitudes; selecting ``"sign_guided"`` does not change their construction.
+        The spellings ``"marginal"`` and ``"conditional"`` used before 1.0.9 remain
+        accepted for the same two rules and emit no warning; the fitted attributes
+        record the canonical spelling.
     auto_sign_on_unidentified : {"raise", "release"}, default "raise"
-        Conditional groups with insufficient dates or deficient design rank
+        Sign-guided groups with insufficient dates or deficient design rank
         raise by default. Explicit release warns and records missing automatic
-        restrictions/evidence, never marginal fallback or weak-zero gates.
-        Inert for marginal screening. Fitted ``sign_group_diagnostics_`` records
-        group support and status; ``auto_sign_method_`` records the method.
-        ``adaptive_detected_signs_`` and ``adaptive_sign_slopes_`` hold marginal
-        penalty evidence when adaptive weights are enabled; the corresponding
-        ``adaptive_sign_method_`` is then ``'marginal'``.
+        restrictions/evidence, never a fallback to single-factor signs or
+        weak-zero gates. Inert for ``"ols_sign_guided"`` screening. Fitted
+        ``sign_group_diagnostics_`` records group support and status;
+        ``auto_sign_method_`` records the method as ``'sign_guided'`` or
+        ``'ols_sign_guided'``. ``adaptive_detected_signs_`` and
+        ``adaptive_sign_slopes_`` hold the pooled single-factor penalty evidence
+        when adaptive weights are enabled; the corresponding
+        ``adaptive_sign_method_`` is then ``'ols_sign_guided'``.
     auto_sign_threshold_t : float, optional, default 0.75
         Noise-floor gate on the univariate screening statistic. For finite
         positive thresholds, cells whose absolute statistic falls below it
@@ -387,9 +394,9 @@ class LassoModel:
         gate). ``"date"`` sums scores by date and retains within-date response
         covariance. It assumes independent dates; it is not HAC inference.
         Both are screening rules without calibrated p-values. The variance
-        choice changes gates, not raw slopes. Conditional screening always uses
-        date-clustered HC1; this option still controls the marginal evidence
-        retained for its adaptive penalties.
+        choice changes gates, not raw slopes. Sign-guided screening always uses
+        date-clustered HC1; this option still controls the pooled single-factor
+        evidence retained for its adaptive penalties.
     auto_sign_adaptive_weights : bool, default False
         If True, together with ``auto_sign_constraints=True``, each cell's L1
         penalty is weighted by ``1 / max(|b|, floor) ** gamma`` of its pooled
@@ -765,8 +772,9 @@ class LassoModel:
     excluded_factors: Optional[Union[Mapping, pd.Series]] = None
     excluded_factor_mask_: Optional[pd.DataFrame] = field(default=None, init=False)
 
-    # Opt-in: preserve all historical constructor positions and marginal defaults.
-    auto_sign_method: str = 'marginal'
+    # Opt-in: preserve all historical constructor positions and the OLS-sign-guided default
+    # (spelled 'marginal' before 1.0.9; both spellings select the same rule).
+    auto_sign_method: str = 'ols_sign_guided'
     auto_sign_on_unidentified: str = 'raise'
     auto_sign_method_: Optional[str] = field(default=None, init=False)
     sign_group_diagnostics_: Optional[pd.DataFrame] = field(default=None, init=False)

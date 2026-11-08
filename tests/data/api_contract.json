@@ -4,6 +4,7 @@
   "fit_pooled_loading_shrinkage",
   "PooledSignGateResult",
   "compute_pooled_sign_gate",
+  "compute_sign_guided_gate",
   "RaggedPooledSignGateResult",
   "compute_ragged_pooled_sign_gate",
   "ConditionalGaussianGeometry",
@@ -557,6 +558,41 @@
    "members": {}
   },
   "compute_pooled_sign_gate": {
+   "kind": "function",
+   "signature": [
+    [
+     "x",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "y",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "groups",
+     "POSITIONAL_OR_KEYWORD",
+     "<no default>"
+    ],
+    [
+     "weights",
+     "KEYWORD_ONLY",
+     null
+    ],
+    [
+     "threshold",
+     "KEYWORD_ONLY",
+     2.0
+    ],
+    [
+     "action",
+     "KEYWORD_ONLY",
+     "exclude"
+    ]
+   ]
+  },
+  "compute_sign_guided_gate": {
    "kind": "function",
    "signature": [
     [
@@ -3579,7 +3615,7 @@
      {
       "name": "auto_sign_method",
       "init": true,
-      "default": "marginal",
+      "default": "ols_sign_guided",
       "factory": null
      },
      {
@@ -3962,7 +3998,7 @@
     [
      "auto_sign_method",
      "POSITIONAL_OR_KEYWORD",
-     "marginal"
+     "ols_sign_guided"
     ],
     [
      "auto_sign_on_unidentified",
@@ -8536,6 +8572,7 @@
   "inference": [
    "PooledSignGateResult",
    "compute_pooled_sign_gate",
+   "compute_sign_guided_gate",
    "RaggedPooledSignGateResult",
    "compute_ragged_pooled_sign_gate",
    "ConditionalGaussianGeometry",

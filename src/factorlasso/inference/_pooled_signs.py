@@ -1,5 +1,8 @@
 """Conditional pooled sign screening from complete labeled panels.
 
+The gate of the sign-guided Lasso: pooled joint-regression (WLS, date-score HC1)
+slopes within response groups, thresholded into explicit restrictions.
+
 References
 ----------
 White, H. (1980), "A Heteroskedasticity-Consistent Covariance Matrix Estimator
@@ -101,6 +104,10 @@ def compute_pooled_sign_gate(
     action: str = 'exclude',
 ) -> PooledSignGateResult:
     """Screen group-mean partial slopes using joint WLS and date-score HC1.
+
+    This is the gate step of the sign-guided Lasso: pooled joint-regression
+    signs with explicit exclusion, release or zero-only restrictions.
+    ``compute_sign_guided_gate`` is the same function under that name.
 
     Parameters
     ----------
@@ -205,3 +212,8 @@ def compute_pooled_sign_gate(
         fit_intercept=True, observations=t, residual_df=t-m-1,
         effective_n=float(w.sum()**2 / (w @ w)), hc1_correction=t/(t-m-1),
     )
+
+
+#: The gate under the method's name (sign-guided Lasso); the same object as
+#: ``compute_pooled_sign_gate``, so signatures, results and ``evidence`` labels agree.
+compute_sign_guided_gate = compute_pooled_sign_gate

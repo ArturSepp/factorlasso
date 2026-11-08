@@ -4,7 +4,7 @@ myst:
     description: >-
       Gated cluster-pooled sign derivation in factorlasso: pooled univariate slopes within
       response clusters, a closed-form noise-floor gate, hard sign constraints from the surviving
-      signs, a separate conditional WLS/HC1 gate with explicit actions, and synthetic checks.
+      signs, the sign-guided gate (joint WLS/HC1 with explicit actions), and synthetic checks.
 ---
 
 # Gated cluster-pooled sign derivation
@@ -21,10 +21,14 @@ keeps the slope's sign only when its t-statistic clears a noise floor, and passe
 signs to the estimator as hard constraints. Pooling can improve precision when responses share
 an exposure direction, but correlated residuals limit the gain. A failed gate fixes the loading
 at zero; it does not leave the loading unrestricted. The separate
-`compute_pooled_sign_gate` function estimates joint conditional slopes and provides explicit
-exclusion, release and zero-only actions. The opt-in native
-`auto_sign_method='conditional'` option uses joint observed-cell evidence for automatic
-screening while preserving the marginal evidence used for adaptive penalties.
+`compute_pooled_sign_gate` function (also exported as `compute_sign_guided_gate`) estimates
+joint conditional slopes and provides explicit exclusion, release and zero-only actions. The
+opt-in native `auto_sign_method='sign_guided'` option uses joint observed-cell evidence for
+automatic screening while preserving the pooled single-factor evidence used for adaptive
+penalties. The two automatic rules carry the names of the sign-pooling manuscript: the
+sign-guided Lasso (`'sign_guided'`, pooled joint-regression signs) and the OLS-sign-guided
+Lasso (`'ols_sign_guided'`, the default, pooled single-factor OLS signs). The spellings
+`'conditional'` and `'marginal'` used before 1.0.9 select the same rules.
 
 ## Overview
 
@@ -167,9 +171,10 @@ them, factors in `auto_sign_excluded_factors` are left free, and a finite non-ze
 replaces a conflicting derived sign. The [conventions page](conventions.md#precedence-of-signs-and-priors)
 draws the full order.
 
-### Conditional pooled evidence with explicit groups
+### Sign-guided (conditional pooled) evidence with explicit groups
 
-`compute_pooled_sign_gate` fits the arithmetic mean
+`compute_pooled_sign_gate`, or `compute_sign_guided_gate` (the same function under the method's
+name), fits the arithmetic mean
 response of each supplied group on **all** factor columns and an intercept. Its `groups` Series
 assigns responses, unlike the factor-grouping argument of `derive_sign_constraints`. Group
 discovery and any scaling must be fitted on the current training prefix before this call.
@@ -344,25 +349,28 @@ default $\tau = 0.75$. Produced by `tools/docs_analytics/estimation.py` from the
 
 ## Implementation in factorlasso
 
-Implementation and canonical example verified with factorlasso 1.0.0 on 2026-10-03.
+Implementation and canonical example verified with factorlasso 1.0.9 on 2026-11-08.
 The standalone conditional functions and result types are opt-in additions. Native
-conditional integration is opt-in; the generic estimator default remains marginal.
+sign-guided integration is opt-in; the generic estimator default remains the OLS-sign-guided
+rule.
 
 | Name | Role |
 |---|---|
 | `compute_pooled_sign_gate` | Complete-panel joint WLS/HC1 evidence for supplied response groups, with threshold and action chosen explicitly. |
+| `compute_sign_guided_gate` | The same function under the name of the sign-guided Lasso (added in 1.0.9); identical signature and result. |
 | `PooledSignGateResult` | Owned response-by-factor `slopes`, `standard_errors`, `t_stats`, detected `signs` and actionable `restrictions`; copied `groups` and normalized `date_weights`; evidence, action, threshold, observation/df and HC1 metadata. Its pandas contents remain mutable. |
 | `compute_ragged_pooled_sign_gate` | Observed-cell conditional WLS/HC1 on asynchronous panels, with original-grid date weights and explicit unidentified-group handling. |
 | `RaggedPooledSignGateResult` | Labeled evidence and restrictions, actual observation mask, copied groups/date weights, and per-group observations, degrees of freedom, effective size, gaps and status diagnostics. |
 | `auto_sign_constraints` | Derive signs inside `fit`, pooled as in the table above. Default `False`. |
-| `auto_sign_method` | Explicit choice of `marginal` (generic default) or joint observed-cell `conditional` screening. Adaptive penalties always retain marginal signs and slopes. |
-| `auto_sign_on_unidentified` | Conditional policy: `raise` by default, or explicit warned `release` with missing automatic restrictions. No marginal fallback. |
+| `auto_sign_method` | `ols_sign_guided` (generic default; pooled single-factor OLS signs) or `sign_guided` (joint observed-cell screening). The pre-1.0.9 spellings `marginal` and `conditional` remain accepted for the same rules. Adaptive penalties always retain the pooled single-factor signs and slopes. |
+| `auto_sign_on_unidentified` | Sign-guided policy: `raise` by default, or explicit warned `release` with missing automatic restrictions. No fallback to single-factor signs. |
 | `auto_sign_threshold_t` | The gate $\tau$; `None` keeps every slope's sign, and positive infinity sets every automatic sign to zero before overrides. |
 | `auto_sign_variance` | `"independent"` (default) or `"date"`, the date-score sandwich. |
 | `auto_sign_ewma_span`, `auto_sign_use_fit_span` | Weights of the sign statistics: a separate span, or the fit's own span. The default weights dates equally. |
 | `auto_sign_excluded_factors` | Factors exempt from derived signs and from the zero gate. |
-| `sign_group_diagnostics_` | Native conditional support, rank and identification status for each supplied or discovered response group. |
-| `adaptive_detected_signs_`, `adaptive_sign_slopes_`, `adaptive_sign_method_` | Marginal evidence retained for adaptive penalties, separate from conditional hard-sign evidence. |
+| `sign_group_diagnostics_` | Native sign-guided support, rank and identification status for each supplied or discovered response group. |
+| `auto_sign_method_` | The fitted method in its canonical spelling, `'sign_guided'` or `'ols_sign_guided'`, whichever spelling was requested. |
+| `adaptive_detected_signs_`, `adaptive_sign_slopes_`, `adaptive_sign_method_` | Pooled single-factor evidence retained for adaptive penalties (`adaptive_sign_method_ == 'ols_sign_guided'`), separate from the sign-guided hard-sign evidence. |
 | `derived_signs_` | The final sign matrix the solver used, after explicit signs and prior centres. |
 | `detected_signs_`, `sign_slopes_`, `sign_t_stats_`, `sign_effective_n_`, `sign_valid_counts_` | The detection layer before overrides: signs, pooled slopes, statistics, effective dates and observation counts. |
 | `derive_sign_constraints` | The standalone derivation for one pool of responses: the columns of `y` passed are pooled. Its `clusters` argument groups factors, not responses, and `master_constraints` overrides single factors. |
@@ -384,8 +392,8 @@ python examples/docs/gated_cluster_pooled_signs.py
   and the teaching example's threshold sweep are not significance levels.
 - **Conditional evidence targets a group mean.** A passing joint slope need not describe every
   member's sign or support. Fixed-group, known-scale Gaussian risk formulas do not automatically
-  transfer to learned groups, HC1/EW evidence or penalized refits. The explicit conditional helper
-  does not change the marginal automatic default or establish expected-return-risk dominance.
+  transfer to learned groups, HC1/EW evidence or penalized refits. The explicit sign-guided helper
+  does not change the OLS-sign-guided automatic default or establish expected-return-risk dominance.
 - **Pooling assumes coherent clusters.** A cluster that mixes opposite exposures pools them into
   one slope, and minority members can receive the wrong sign. Correlation-based HCGL clustering
   does not itself establish common conditional coefficient signs.
