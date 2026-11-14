@@ -10,6 +10,8 @@
   warnings. The constructor retains the spelling supplied by the caller.
   `auto_sign_method_` reports the canonical name, and `adaptive_sign_method_`
   reports `'single_factor_sign_guided'` when adaptive sign weights are used.
+- Updated the locked documentation dependency SoupSieve to the newest compatible
+  version, resolving the four advisory findings in the Python 3.12 docs tree.
 
 ## 1.0.9 — 2026-11-08
 
