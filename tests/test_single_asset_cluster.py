@@ -9,6 +9,7 @@ from factorlasso.linear_model import LassoModel, LassoModelType
 
 # production overlay that exposed the FCGL block-weights crash at N=1
 _PROD = dict(
+    auto_sign_method="single_factor_sign_guided",
     auto_sign_constraints=True,
     auto_sign_threshold_t=1.0,
     auto_sign_adaptive_weights=True,

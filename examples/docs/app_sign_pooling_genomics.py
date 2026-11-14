@@ -18,6 +18,7 @@ CONFIGURATION = {
     "model_type": fl.LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
     "reg_lambda": 0.1,  # Illustrative fixed penalty; the empirical study tunes it in inner folds.
     "l1_weight": 0.5,
+    "auto_sign_method": "single_factor_sign_guided",
     "auto_sign_constraints": True,
     "auto_sign_threshold_t": 2.0,
     "auto_sign_variance": "date",

@@ -21,6 +21,7 @@ def model_for(y, **kwargs):
     """Use fixed groups so sign precedence can be compared independently."""
     return LassoModel(model_type=LassoModelType.GROUP_LASSO,
                       group_data=pd.Series(1, index=y.columns), span=36,
+                      auto_sign_method="single_factor_sign_guided",
                       auto_sign_constraints=True, reg_lambda=.02, **kwargs)
 
 
@@ -108,6 +109,7 @@ def test_adaptive_weights_are_unchanged_by_prior_sign_override(monkeypatch):
     prior = pd.DataFrame(0.,index=y.columns,columns=x.columns)
     prior.loc['IL','Inflation'] = .8
     base = LassoModel(model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+        auto_sign_method="single_factor_sign_guided",
         n_clusters=1,span=36,auto_sign_constraints=True,auto_sign_adaptive_weights=True,
         reg_lambda=.02)
     base.fit(x,y)

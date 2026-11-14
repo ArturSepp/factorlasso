@@ -206,6 +206,7 @@ def test_copy_of_unfitted_model_roundtrips_params():
     m1 = LassoModel(
         model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-3, cutoff_fraction=0.4,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True, auto_sign_threshold_t=1.0,
         l1_weight=0.1,
     )

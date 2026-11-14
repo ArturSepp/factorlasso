@@ -449,6 +449,7 @@ def test_auto_sign_constraints_basic_fit():
     model = LassoModel(
         model_type=LassoModelType.LASSO,
         reg_lambda=1e-4,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
     ).fit(x=X, y=Y)
 
@@ -469,6 +470,7 @@ def test_auto_sign_constraints_lasso_mode_is_per_y_column():
     X, Y, beta_true, _ = _make_factor_data(seed=21, noise_sigma=0.5)
     model = LassoModel(
         model_type=LassoModelType.LASSO, reg_lambda=1e-4,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
     ).fit(x=X, y=Y)
 
@@ -497,6 +499,7 @@ def test_auto_sign_constraints_group_lasso_uses_group_data():
     model = LassoModel(
         model_type=LassoModelType.GROUP_LASSO, reg_lambda=1e-4,
         group_data=group_data,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
     ).fit(x=X, y=Y)
 
@@ -515,6 +518,7 @@ def test_auto_sign_constraints_group_lasso_clusters_uses_hcgl():
     X, Y, _, _ = _make_factor_data(seed=23, T=300, noise_sigma=0.5)
     model = LassoModel(
         model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO, reg_lambda=1e-4,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
     ).fit(x=X, y=Y)
 
@@ -547,6 +551,7 @@ def test_auto_signs_with_explicit_overlay_for_asset_specific_overrides():
 
     model = LassoModel(
         model_type=LassoModelType.LASSO, reg_lambda=1e-4,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
         factors_beta_loading_signs=override,
     ).fit(x=X, y=Y)
@@ -572,6 +577,7 @@ def test_auto_sign_constraints_uses_demeaned_data():
 
     model_auto = LassoModel(
         model_type=LassoModelType.LASSO, reg_lambda=1e-4,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True, demean=True,
     ).fit(x=X, y=Y)
 
@@ -594,6 +600,7 @@ def test_auto_sign_constraints_propagate_through_cv():
 
     base = LassoModel(
         model_type=LassoModelType.LASSO,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
     )
     cv = LassoModelCV(

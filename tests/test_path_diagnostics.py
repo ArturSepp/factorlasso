@@ -49,6 +49,7 @@ def _panel():
 def _restricted(model_type):
     """A configuration that populates the sign, adaptive-weight and prior diagnostics."""
     params = dict(
+        auto_sign_method="single_factor_sign_guided",
         model_type=model_type, reg_lambda=1e-3, span=36, auto_sign_constraints=True,
         auto_sign_adaptive_weights=True, auto_sign_use_fit_span=True, apply_ols_prior=True,
     )
@@ -96,6 +97,7 @@ def test_refit_without_signs_clears_derived_signs():
     """A refit whose configuration enforces no signs leaves ``derived_signs_`` unset."""
     x, y = _panel()
     model = LassoModel(model_type=LassoModelType.LASSO, reg_lambda=1e-3,
+                       auto_sign_method="single_factor_sign_guided",
                        auto_sign_constraints=True).fit(x, y)
     assert model.derived_signs_ is not None
     model.set_params(auto_sign_constraints=False)
@@ -107,6 +109,7 @@ def test_path_from_refitted_template_has_no_stale_signs():
     """Path models never inherit the template's signs from an earlier configuration."""
     x, y = _panel()
     params = dict(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO, reg_lambda=1e-3,
+                  auto_sign_method="single_factor_sign_guided",
                   n_clusters=2, auto_sign_constraints=True)
     template = LassoModel(**params).fit(x, y)
     template.set_params(auto_sign_constraints=False)

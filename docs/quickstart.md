@@ -105,6 +105,7 @@ def select_and_fit(x: pd.DataFrame, y: pd.DataFrame) -> fl.LassoModelCV:
     """Select ``reg_lambda`` by out-of-sample R-squared and refit on the full sample."""
     template = fl.LassoModel(
         model_type=fl.LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,        # signs from cluster-pooled univariate slopes
     )
     selector = fl.LassoModelCV(

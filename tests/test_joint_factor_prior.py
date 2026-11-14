@@ -53,6 +53,7 @@ def test_joint_priors_override_detected_signs_but_preserve_explicit_hard_signs()
     x,y=sample()
     y=y[['il']]
     model=LassoModel(named_set_max_vif=None,
+                      auto_sign_method="single_factor_sign_guided",
                       apply_ols_prior=True,auto_sign_constraints=True,auto_sign_threshold_t=0.,
                       factor_for_prior={'il':['Rates','Inflation']}).fit(x,y)
     assert model.ols_betas_.loc['il','Inflation'] < 0

@@ -53,6 +53,7 @@ def test_exclusions_allow_negative_partial_slopes_and_preserve_weights(kind, mon
         model_type=kind,
         n_clusters=1,
         reg_lambda=1e-8,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
         auto_sign_adaptive_weights=True,
         auto_sign_adaptive_floor=0.5,
@@ -82,6 +83,7 @@ def test_explicit_signs_still_win_and_empty_exclusion_is_exact():
     signs = pd.DataFrame(np.nan, index=y.columns, columns=x.columns)
     signs.loc["Stock", "Oil"] = 0.0
     base = LassoModel(
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
         factors_beta_loading_signs=signs,
         reg_lambda=1e-8,
@@ -100,13 +102,15 @@ def test_invalid_exclusions_fail_closed(bad):
     """Reject ambiguous, duplicate and unavailable factor names at fit time."""
     x, y = panel()
     with pytest.raises(ValueError, match="auto_sign_excluded_factors"):
-        LassoModel(auto_sign_constraints=True, auto_sign_excluded_factors=bad).fit(x, y)
+        LassoModel(auto_sign_method="single_factor_sign_guided",
+                   auto_sign_constraints=True, auto_sign_excluded_factors=bad).fit(x, y)
 
 
 def test_exclusion_bypasses_zero_gate_and_is_inert_without_auto_signs():
     """Weak-evidence gating is removed only on excluded factor columns."""
     x, y = panel()
     gated = LassoModel(
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True, auto_sign_threshold_t=1e6, reg_lambda=1e-8, solver="CLARABEL"
     ).fit(x, y, verbose=False)
     free = replace(gated, auto_sign_excluded_factors=("Oil", "Gold")).fit(x, y, verbose=False)

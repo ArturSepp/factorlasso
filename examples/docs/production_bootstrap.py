@@ -11,6 +11,7 @@ y = pd.DataFrame(x.to_numpy() @ np.array([[.7, .4], [.2, .5]])
 y.loc[:11, 'Asset B'] = np.nan
 model = LassoModel(model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
     span=36, reg_lambda=1e-5, loss_normalization='weight_sum', solver='CLARABEL',
+    auto_sign_method="single_factor_sign_guided",
     apply_ols_prior=True, auto_sign_constraints=True, auto_sign_adaptive_weights=True)
 bootstrap = bootstrap_factor_betas(model, x, y, draws=30, seed=92, bandwidth=3.)
 weights = pd.Series({'Asset A': .8, 'Asset B': .4})

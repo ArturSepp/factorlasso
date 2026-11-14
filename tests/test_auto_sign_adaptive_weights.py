@@ -71,11 +71,13 @@ def test_adaptive_default_reproduces_v038():
         warnings.simplefilter("ignore")
         m_default = LassoModel(
             model_type=LassoModelType.LASSO, reg_lambda=5e-3, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             # adaptive flag not set → defaults to False
         ).fit(x=X, y=Y, verbose=False)
         m_explicit = LassoModel(
             model_type=LassoModelType.LASSO, reg_lambda=5e-3, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=False,
         ).fit(x=X, y=Y, verbose=False)
@@ -121,11 +123,13 @@ def test_adaptive_preserves_strong_signal_more_than_uniform():
         warnings.simplefilter("ignore")
         m_uniform = LassoModel(
             model_type=LassoModelType.LASSO, reg_lambda=5e-3, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=False,
         ).fit(x=X, y=Y, verbose=False)
         m_adaptive = LassoModel(
             model_type=LassoModelType.LASSO, reg_lambda=5e-3, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=True,
         ).fit(x=X, y=Y, verbose=False)
@@ -158,12 +162,14 @@ def test_adaptive_with_gamma_larger_amplifies_effect():
         warnings.simplefilter("ignore")
         m_g1 = LassoModel(
             model_type=LassoModelType.LASSO, reg_lambda=5e-3, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=True,
             auto_sign_adaptive_gamma=1.0,
         ).fit(x=X, y=Y, verbose=False)
         m_g2 = LassoModel(
             model_type=LassoModelType.LASSO, reg_lambda=5e-3, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=True,
             auto_sign_adaptive_gamma=2.0,
@@ -203,6 +209,7 @@ def test_adaptive_floor_prevents_explosion():
         warnings.simplefilter("ignore")
         m = LassoModel(
             model_type=LassoModelType.LASSO, reg_lambda=5e-3, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=True,
             auto_sign_adaptive_floor=1e-3,  # explicit floor
@@ -349,6 +356,7 @@ def test_adaptive_group_lasso_has_impact_in_production_config():
         m_off = LassoModel(
             model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-3, span=None,           # production-like reg
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=False,
             # l1_weight defaults to 0 — production setting
@@ -356,6 +364,7 @@ def test_adaptive_group_lasso_has_impact_in_production_config():
         m_on = LassoModel(
             model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-3, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=True,
         ).fit(x=Xdf, y=Ydf, verbose=False)
@@ -387,11 +396,13 @@ def test_adaptive_group_lasso_default_off_backward_compatible():
         m_default = LassoModel(
             model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-3, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
         ).fit(x=Xdf, y=Ydf, verbose=False)
         m_explicit_off = LassoModel(
             model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-3, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_adaptive_weights=False,
         ).fit(x=Xdf, y=Ydf, verbose=False)

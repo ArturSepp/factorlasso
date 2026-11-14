@@ -67,7 +67,8 @@ def test_sign_matrix_set_after_construction_is_rejected_at_fit(model_type):
 @pytest.mark.parametrize("model_type", UNSUPPORTED)
 def test_derived_signs_stay_none_when_the_solver_takes_none(model_type):
     x, y = _panel()
-    model = LassoModel(auto_sign_constraints=True, **_kwargs(model_type, y)).fit(x=x, y=y)
+    model = LassoModel(auto_sign_method="single_factor_sign_guided",
+                       auto_sign_constraints=True, **_kwargs(model_type, y)).fit(x=x, y=y)
     assert model.coef_.shape == (4, 3)
     assert model.derived_signs_ is None
 

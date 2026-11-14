@@ -229,6 +229,7 @@ def test_fcgl_external_partition_is_coefficient_identical():
         model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-5,
         span=36,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
     ).fit(x, y)
     external = plain.copy().fit(

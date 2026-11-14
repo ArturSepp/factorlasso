@@ -59,16 +59,19 @@ def _group_models():
                              group_data=G6, span=52), X6, Y6),
         "GROUP_sgl_autosign": (
             LassoModel(model_type=LassoModelType.GROUP_LASSO, group_data=G6,
+                       auto_sign_method="single_factor_sign_guided",
                        span=52, l1_weight=0.3, auto_sign_constraints=True),
             X6, Y6),
         "HCGL": (LassoModel(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
                             span=52, cutoff_fraction=0.5), X9, Y9),
         "HCGL_adaptive": (
             LassoModel(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
+                       auto_sign_method="single_factor_sign_guided",
                        span=52, cutoff_fraction=0.5, auto_sign_constraints=True,
                        auto_sign_adaptive_weights=True), X9, Y9),
         "FCGL_adaptive": (
             LassoModel(model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
+                       auto_sign_method="single_factor_sign_guided",
                        span=52, cutoff_fraction=0.5, auto_sign_constraints=True,
                        auto_sign_adaptive_weights=True), X9, Y9),
     }

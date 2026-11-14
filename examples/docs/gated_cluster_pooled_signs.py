@@ -158,18 +158,20 @@ def check_native_conditional_gate(x, y, clusters):
     options = dict(model_type=fl.LassoModelType.GROUP_LASSO, group_data=clusters,
                    reg_lambda=1e-3, auto_sign_constraints=True,
                    auto_sign_adaptive_weights=True, auto_sign_variance='date')
-    ols_sign_guided = fl.LassoModel(**options).fit(x, y)
-    sign_guided = fl.LassoModel(**options, auto_sign_method='sign_guided').fit(x, y)
-    assert ols_sign_guided.auto_sign_method_ == 'ols_sign_guided'
-    assert sign_guided.auto_sign_method_ == 'sign_guided'
-    assert sign_guided.adaptive_sign_method_ == 'ols_sign_guided'
+    ols_sign_guided = fl.LassoModel(
+        **options, auto_sign_method="single_factor_sign_guided",
+    ).fit(x, y)
+    sign_guided = fl.LassoModel(**options, auto_sign_method='multi_factor_sign_guided').fit(x, y)
+    assert ols_sign_guided.auto_sign_method_ == 'single_factor_sign_guided'
+    assert sign_guided.auto_sign_method_ == 'multi_factor_sign_guided'
+    assert sign_guided.adaptive_sign_method_ == 'single_factor_sign_guided'
     pd.testing.assert_frame_equal(sign_guided.sign_penalty_weights_,
                                   ols_sign_guided.sign_penalty_weights_)
     pd.testing.assert_frame_equal(sign_guided.adaptive_sign_slopes_, ols_sign_guided.sign_slopes_)
     assert sign_guided.sign_group_diagnostics_.status.eq('ok').all()
     # The pre-1.0.9 spelling selects the same rule and the same fitted evidence.
     legacy = fl.LassoModel(**options, auto_sign_method='conditional').fit(x, y)
-    assert legacy.auto_sign_method_ == 'sign_guided'
+    assert legacy.auto_sign_method_ == 'multi_factor_sign_guided'
     pd.testing.assert_frame_equal(legacy.derived_signs_, sign_guided.derived_signs_)
 
 
@@ -200,6 +202,7 @@ def main() -> None:
         model_type=fl.LassoModelType.GROUP_LASSO,
         group_data=clusters,
         reg_lambda=1e-3,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
         auto_sign_threshold_t=0.75,
     ).fit(x=x, y=y)

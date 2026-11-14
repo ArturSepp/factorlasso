@@ -51,14 +51,14 @@ def settings(mode, groups, **overrides):
     return options
 
 
-def test_generic_default_stays_ols_sign_guided():
+def test_generic_default_stays_single_factor_sign_guided():
     """ROSAA's policy must not become a FactorLasso-wide default change.
 
-    The default rule is the OLS-sign-guided Lasso (pooled single-factor OLS signs), spelled
+    The default rule is the single-factor sign-guided Lasso (pooled OLS signs), spelled
     ``'marginal'`` before 1.0.9.
     """
     model = fl.LassoModel()
-    assert model.auto_sign_method == "ols_sign_guided"
+    assert model.auto_sign_method == "single_factor_sign_guided"
     assert model.auto_sign_on_unidentified == "raise"
 
 
@@ -105,7 +105,9 @@ def test_native_conditional_matches_research_and_keeps_marginal_adaptive_weights
         factors_beta_loading_signs=signs,
         auto_sign_excluded_factors=("Fx",),
     )
-    marginal = fl.LassoModel(**options).fit(x, y, **external)
+    marginal = fl.LassoModel(
+        **options, auto_sign_method="single_factor_sign_guided",
+    ).fit(x, y, **external)
     # ROSAA passes the pre-1.0.9 spelling; the fitted attributes report the canonical names.
     native = fl.LassoModel(**options, auto_sign_method="conditional").fit(x, y, **external)
     original_signs = preparation.automatic_signs
@@ -155,7 +157,9 @@ def test_native_conditional_matches_research_and_keeps_marginal_adaptive_weights
         patch.object(preparation, "automatic_signs", reference_gate),
         patch.object(preparation, "adaptive_penalty_weights", reference_adaptive),
     ):
-        reference = fl.LassoModel(**options).fit(x, y, **external)
+        reference = fl.LassoModel(
+            **options, auto_sign_method="single_factor_sign_guided",
+        ).fit(x, y, **external)
     for name in (
         "detected_signs_",
         "sign_slopes_",
@@ -171,9 +175,9 @@ def test_native_conditional_matches_research_and_keeps_marginal_adaptive_weights
     np.testing.assert_equal(native.sign_block_weights_, marginal.sign_block_weights_)
     pd.testing.assert_frame_equal(native.adaptive_detected_signs_, marginal.detected_signs_)
     pd.testing.assert_frame_equal(native.adaptive_sign_slopes_, marginal.sign_slopes_)
-    assert native.auto_sign_method_ == "sign_guided"
-    assert native.adaptive_sign_method_ == "ols_sign_guided"
-    assert marginal.auto_sign_method_ == "ols_sign_guided"
+    assert native.auto_sign_method_ == "multi_factor_sign_guided"
+    assert native.adaptive_sign_method_ == "single_factor_sign_guided"
+    assert marginal.auto_sign_method_ == "single_factor_sign_guided"
     assert native.sign_group_diagnostics_.status.eq("ok").all()
     assert not native.detected_signs_.equals(marginal.detected_signs_)
 
@@ -226,7 +230,7 @@ def test_path_and_refits_own_and_reset_conditional_diagnostics():
     model.fit(x, y)
     model.set_params(auto_sign_method="ols_sign_guided").fit(x, y)
     assert model.sign_group_diagnostics_ is None
-    assert model.auto_sign_method_ == "ols_sign_guided"
+    assert model.auto_sign_method_ == "single_factor_sign_guided"
     model.set_params(auto_sign_constraints=False).fit(x, y)
     assert model.auto_sign_method_ is None
     assert model.adaptive_sign_method_ is None

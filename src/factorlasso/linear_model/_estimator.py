@@ -347,30 +347,25 @@ class LassoModel:
         Excluded factor columns remain exempt. Non-NaN entries of
         ``factors_beta_loading_signs`` take precedence over both prior and
         detected signs. Adaptive weights retain the original detected values.
-    auto_sign_method : {"ols_sign_guided", "sign_guided"}, default "ols_sign_guided"
-        Automatic sign-screening evidence only. ``"ols_sign_guided"`` (the
-        OLS-sign-guided Lasso) retains the historical rule: pooled single-factor
-        OLS signs within each response group. ``"sign_guided"`` (the sign-guided
-        Lasso) uses pooled joint-regression signs: joint observed-cell WLS with
-        date-clustered HC1 and a shared intercept within each response group.
-        Missing cells are not imputed and original-grid EWMA ages are preserved.
+    auto_sign_method : {"single_factor_sign_guided", "multi_factor_sign_guided"}
+        Default "single_factor_sign_guided". This rule pools single-factor OLS signs within each
+        response group. The sign-guided Lasso takes its signs from a pooled
+        multi-factor WLS regression with a shared group intercept and date-clustered
+        HC1. It uses observed cells and preserves original-grid EWMA ages.
         Explicit signs, exclusions, priors and expert bounds retain precedence.
-        Adaptive penalties always retain the pooled single-factor signs and slope
-        magnitudes; selecting ``"sign_guided"`` does not change their construction.
-        The spellings ``"marginal"`` and ``"conditional"`` used before 1.0.9 remain
-        accepted for the same two rules and emit no warning; the fitted attributes
-        record the canonical spelling.
+        Adaptive penalties use the pooled single-factor signs and slope magnitudes
+        for either rule. The single-factor aliases "ols_sign_guided" and "marginal"
+        and the multi-factor aliases "sign_guided" and "conditional" remain accepted
+        without warnings.
     auto_sign_on_unidentified : {"raise", "release"}, default "raise"
-        Sign-guided groups with insufficient dates or deficient design rank
-        raise by default. Explicit release warns and records missing automatic
-        restrictions/evidence, never a fallback to single-factor signs or
-        weak-zero gates. Inert for ``"ols_sign_guided"`` screening. Fitted
-        ``sign_group_diagnostics_`` records group support and status;
-        ``auto_sign_method_`` records the method as ``'sign_guided'`` or
-        ``'ols_sign_guided'``. ``adaptive_detected_signs_`` and
-        ``adaptive_sign_slopes_`` hold the pooled single-factor penalty evidence
-        when adaptive weights are enabled; the corresponding
-        ``adaptive_sign_method_`` is then ``'ols_sign_guided'``.
+        Multi-factor screening raises for insufficient dates or deficient design
+        rank. Explicit release warns and records missing automatic restrictions
+        and evidence for that group. This policy is inert for single-factor screening.
+        ``sign_group_diagnostics_`` records group support and status, and
+        ``auto_sign_method_`` records the canonical spelling of the rule.
+        When adaptive weights are enabled, ``adaptive_detected_signs_`` and
+        ``adaptive_sign_slopes_`` hold their pooled single-factor evidence and
+        ``adaptive_sign_method_`` records "single_factor_sign_guided".
     auto_sign_threshold_t : float, optional, default 0.75
         Noise-floor gate on the univariate screening statistic. For finite
         positive thresholds, cells whose absolute statistic falls below it
@@ -772,9 +767,8 @@ class LassoModel:
     excluded_factors: Optional[Union[Mapping, pd.Series]] = None
     excluded_factor_mask_: Optional[pd.DataFrame] = field(default=None, init=False)
 
-    # Opt-in: preserve all historical constructor positions and the OLS-sign-guided default
-    # (spelled 'marginal' before 1.0.9; both spellings select the same rule).
-    auto_sign_method: str = 'ols_sign_guided'
+    # Preserve the historical single-factor default and constructor field order.
+    auto_sign_method: str = 'single_factor_sign_guided'
     auto_sign_on_unidentified: str = 'raise'
     auto_sign_method_: Optional[str] = field(default=None, init=False)
     sign_group_diagnostics_: Optional[pd.DataFrame] = field(default=None, init=False)

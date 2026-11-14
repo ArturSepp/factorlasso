@@ -57,6 +57,7 @@ def fit(x: pd.DataFrame, y: pd.DataFrame, adaptive: bool,
     model = fl.LassoModel(
         model_type=model_type,
         reg_lambda=REG_LAMBDA,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
         auto_sign_threshold_t=TAU,
         auto_sign_adaptive_weights=adaptive,

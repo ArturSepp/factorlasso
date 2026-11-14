@@ -251,6 +251,7 @@ def fit(x: pd.DataFrame, y: pd.DataFrame, reg_lambda: float, **policy) -> fl.Las
         named_set_max_vif=None,  # Controlled legacy joint-prior illustration.
         model_type=fl.LassoModelType.LASSO,
         reg_lambda=reg_lambda,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
         **policy,
     )

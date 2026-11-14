@@ -23,6 +23,7 @@ def panel():
 def config():
     return LassoModel(model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
         span=36, reg_lambda=1e-5, loss_normalization='weight_sum', solver='CLARABEL',
+        auto_sign_method="single_factor_sign_guided",
         apply_ols_prior=True, auto_sign_constraints=True, auto_sign_adaptive_weights=True)
 
 

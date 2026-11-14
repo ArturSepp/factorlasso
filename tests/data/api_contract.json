@@ -3615,7 +3615,7 @@
      {
       "name": "auto_sign_method",
       "init": true,
-      "default": "ols_sign_guided",
+      "default": "single_factor_sign_guided",
       "factory": null
      },
      {
@@ -3998,7 +3998,7 @@
     [
      "auto_sign_method",
      "POSITIONAL_OR_KEYWORD",
-     "ols_sign_guided"
+     "single_factor_sign_guided"
     ],
     [
      "auto_sign_on_unidentified",

@@ -70,6 +70,7 @@ def test_summary(panel):
     model = LassoModel(
         model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-3,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
         auto_sign_adaptive_weights=True,
     ).fit(x=X, y=Y)
@@ -91,6 +92,7 @@ def test_plot_signs(panel):
     model = LassoModel(
         model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-3,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
     ).fit(x=X, y=Y)
     ax = model.plot_signs()

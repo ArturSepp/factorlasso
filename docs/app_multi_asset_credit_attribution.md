@@ -80,6 +80,7 @@ REG_LAMBDAS = [1e-7, 1e-5, 1e-4, 1e-3]
 # EWMA span, as in the paper's stationary designs.
 PRODUCTION = {
     "cutoff_fraction": 0.40,
+    "auto_sign_method": "single_factor_sign_guided",
     "auto_sign_constraints": True,
     "auto_sign_threshold_t": 1.0,
     "auto_sign_adaptive_weights": True,

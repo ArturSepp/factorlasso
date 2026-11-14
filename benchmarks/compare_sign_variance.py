@@ -334,6 +334,7 @@ def synthetic_applications(comparison):
                                       sign_weighting="equal weights on EWMA-demeaned fit panel"))
     x, y, _, groups = gated.make_panel(np.random.default_rng(gated.SEED))
     template = fl.LassoModel(model_type=fl.LassoModelType.GROUP_LASSO, group_data=groups,
+                            auto_sign_method="single_factor_sign_guided",
                             reg_lambda=1e-3, auto_sign_constraints=True, auto_sign_threshold_t=.75)
     comparison.pair("gate_teaching_panel", x, y, template,
                     metadata=dict(source="examples/docs/gated_cluster_pooled_signs.py",
@@ -357,6 +358,7 @@ def yeast_application(comparison, solver):
                     group_data=state.clusters if method == "hcgl" else None,
                     reg_lambda=.3 * maximum, demean=False, warmup_period=0,
                     solver=solver, solver_fallbacks=None, loss_normalization="sample",
+                    auto_sign_method="single_factor_sign_guided",
                     auto_sign_constraints=True, auto_sign_threshold_t=protocol.gate_threshold,
                     auto_sign_adaptive_weights=False, group_penalty="normalized",
                     l1_weight=protocol.l1_weight)

@@ -1,6 +1,6 @@
-"""Conditional pooled sign screening from complete labeled panels.
+"""Multi-factor pooled sign screening from complete labeled panels.
 
-The gate of the sign-guided Lasso: pooled joint-regression (WLS, date-score HC1)
+The gate of the sign-guided Lasso: pooled multi-factor (WLS, date-score HC1)
 slopes within response groups, thresholded into explicit restrictions.
 
 References
@@ -12,7 +12,7 @@ doi:10.2307/1912934.
 Arithmetic response pooling, positive date weights, the T/(T-M-1) HC1
 correction and threshold/action mapping are implementation choices. The
 screen is not calibrated for learned groups, serial dependence or selection;
-a group-mean partial slope need not have every member's sign or support.
+a group-mean loading need not have every member's sign or support.
 """
 
 from dataclasses import dataclass
@@ -27,7 +27,7 @@ from factorlasso.utils._pooled_inputs import _validate_pooled_inputs
 
 @dataclass(frozen=True)
 class PooledSignGateResult:
-    """Inspect a conditional pooled gate in the supplied analysis coordinates.
+    """Inspect a pooled multi-factor gate in the supplied analysis coordinates.
 
     Attributes
     ----------
@@ -103,9 +103,9 @@ def compute_pooled_sign_gate(
     threshold: float = 2.0,
     action: str = 'exclude',
 ) -> PooledSignGateResult:
-    """Screen group-mean partial slopes using joint WLS and date-score HC1.
+    """Screen group-mean loadings using joint WLS and date-score HC1.
 
-    This is the gate step of the sign-guided Lasso: pooled joint-regression
+    This is the gate step of the sign-guided Lasso: pooled multi-factor
     signs with explicit exclusion, release or zero-only restrictions.
     ``compute_sign_guided_gate`` is the same function under that name.
 
@@ -146,7 +146,7 @@ def compute_pooled_sign_gate(
         weighted design fails the existing WLS engine's scaled-SVD rank rule.
     RuntimeError
         Valid finite inputs lead to unrepresentable arithmetic or nonfinite
-        coefficients/standard errors. No marginal or neutral fallback is used.
+        coefficients/standard errors. No single-factor or neutral fallback is used.
 
     Notes
     -----
@@ -157,9 +157,9 @@ def compute_pooled_sign_gate(
     zero slope gives t=0; no standard-error floor is introduced.
 
     To pass ``restrictions`` into LassoModel, set auto_sign_constraints=False:
-    explicit NaNs otherwise fall back to its existing automatic marginal
+    explicit NaNs otherwise fall back to its configured automatic sign
     layer. Neither learning groups nor using EW weights supplies significance
-    calibration or a guarantee for each member's partial slope. The caller
+    calibration or a guarantee for each member's loading. The caller
     owns training-prefix selection, information availability and units.
     """
     panel = _validate_pooled_inputs(x, y, groups, weights)

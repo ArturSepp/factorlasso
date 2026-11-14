@@ -40,6 +40,7 @@ def _snapshot(model):
 def _signed_hcgl(**overrides):
     """An HCGL model that populates sign, prior and bound diagnostics."""
     params = dict(model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO, reg_lambda=1e-3,
+                  auto_sign_method="single_factor_sign_guided",
                   n_clusters=2, span=36, auto_sign_constraints=True,
                   auto_sign_adaptive_weights=True, apply_ols_prior=True,
                   expert_prior_bound_n_std=2.0)

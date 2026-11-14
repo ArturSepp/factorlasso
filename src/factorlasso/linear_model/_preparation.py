@@ -254,20 +254,18 @@ def prepare_fit(
             x, x_np, y_np, valid_mask, asset_clusters, sign_span,
             model.auto_sign_threshold_t, model.auto_sign_variance,
         )
-        # Keep BOTH pooled single-factor (OLS-sign-guided) zero gates and slopes for the
-        # unchanged adaptive penalty. Sign-guided (pooled joint-regression) evidence changes
-        # the constraint layer only. Fitted attributes record the canonical spelling, so a
-        # legacy 'conditional' or 'marginal' request is reported as its 1.0.9 name.
+        # The adaptive penalty always uses the single-factor zero gates and slopes.
+        # Multi-factor evidence changes only the hard constraints.
         adaptive_signs_np,adaptive_slopes_np=auto_signs_np,auto_slopes_np
         sign_method=resolve_sign_method(model.auto_sign_method)
-        if sign_method=='sign_guided':
+        if sign_method=='multi_factor_sign_guided':
             (auto_signs_np,auto_slopes_np,diagnostics,
              model.sign_group_diagnostics_)=conditional_automatic_signs(
                 x,x_np,y_np,valid_mask,y.columns,asset_clusters,sign_span,
                 model.auto_sign_threshold_t,model.auto_sign_on_unidentified)
         model.auto_sign_method_=sign_method
         if model.auto_sign_adaptive_weights:
-            model.adaptive_sign_method_='ols_sign_guided'
+            model.adaptive_sign_method_='single_factor_sign_guided'
             model.adaptive_detected_signs_=pd.DataFrame(
                 adaptive_signs_np,index=y.columns,columns=x.columns)
             model.adaptive_sign_slopes_=pd.DataFrame(

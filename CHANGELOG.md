@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.1.0 — 2026-11-14
+
+- The sign-guided Lasso uses `auto_sign_method='multi_factor_sign_guided'`.
+  The single-factor sign-guided Lasso uses `'single_factor_sign_guided'` and remains
+  the default. All four earlier spellings still select their original rules without
+  warnings. The constructor retains the spelling supplied by the caller.
+  `auto_sign_method_` reports the canonical name, and `adaptive_sign_method_`
+  reports `'single_factor_sign_guided'` when adaptive sign weights are used.
+
 ## 1.0.9 — 2026-11-08
 
 ### Added

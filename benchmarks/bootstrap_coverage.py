@@ -60,6 +60,7 @@ def synthetic_panel(case, seed):
     model = LassoModel(model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-5, span=36, cutoff_fraction=.6, warmup_period=12,
         apply_ols_prior=True, prior_selection_type='highest_r2',
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True, auto_sign_adaptive_weights=True,
         auto_sign_threshold_t=1., auto_sign_adaptive_floor=.5,
         factors_beta_loading_signs=signs, solver='CLARABEL', loss_normalization='weight_sum')

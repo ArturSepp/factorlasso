@@ -105,6 +105,7 @@ def fit_three(x: pd.DataFrame, y: pd.DataFrame, reg_lambda: float = REG_LAMBDA) 
     hard = fl.LassoModel(
         model_type=fl.LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
         reg_lambda=reg_lambda,
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
         auto_sign_threshold_t=None,
     ).fit(x=x, y=y, external_clusters=CLUSTERS)

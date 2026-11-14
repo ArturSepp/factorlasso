@@ -1,10 +1,4 @@
-"""The 1.0.9 sign-method names select the pre-1.0.9 rules exactly, and the old spellings still work.
-
-``auto_sign_method='sign_guided'`` is the sign-guided Lasso (pooled joint-regression signs),
-spelled ``'conditional'`` before 1.0.9; ``'ols_sign_guided'`` is the OLS-sign-guided Lasso (pooled
-single-factor OLS signs), spelled ``'marginal'`` before 1.0.9 and still the default rule.
-``compute_sign_guided_gate`` is ``compute_pooled_sign_gate`` under the method's name.
-"""
+"""Test canonical sign-method names and warning-free aliases across fitted state."""
 
 import warnings
 
@@ -45,13 +39,12 @@ def settings(groups, **overrides):
     return options
 
 
-FITTED_FRAMES = ("derived_signs_", "detected_signs_", "sign_slopes_", "sign_penalty_weights_",
-                 "adaptive_detected_signs_", "adaptive_sign_slopes_")
-
-
 def test_resolve_sign_method_maps_legacy_spellings_and_rejects_the_rest():
-    assert SIGN_METHODS == ("sign_guided", "ols_sign_guided")
-    assert LEGACY_SIGN_METHODS == {"conditional": "sign_guided", "marginal": "ols_sign_guided"}
+    assert SIGN_METHODS == ("multi_factor_sign_guided", "single_factor_sign_guided")
+    assert LEGACY_SIGN_METHODS == {
+        "sign_guided": "multi_factor_sign_guided", "conditional": "multi_factor_sign_guided",
+        "ols_sign_guided": "single_factor_sign_guided", "marginal": "single_factor_sign_guided",
+    }
     for name in SIGN_METHODS:
         assert resolve_sign_method(name) == name
     for legacy, canonical in LEGACY_SIGN_METHODS.items():
@@ -61,7 +54,7 @@ def test_resolve_sign_method_maps_legacy_spellings_and_rejects_the_rest():
             resolve_sign_method(bad)
 
 
-@pytest.mark.parametrize("name", ["sign_guided", "ols_sign_guided", "conditional", "marginal"])
+@pytest.mark.parametrize("name", [*SIGN_METHODS, *LEGACY_SIGN_METHODS])
 def test_every_spelling_validates_at_construction_and_after_set_params(name):
     model = fl.LassoModel(auto_sign_method=name)
     assert model.auto_sign_method == name  # constructor parameters are stored unmodified
@@ -69,14 +62,17 @@ def test_every_spelling_validates_at_construction_and_after_set_params(name):
     assert mutated.get_params()["auto_sign_method"] == name
 
 
-def test_default_is_the_ols_sign_guided_rule_under_its_new_name():
+def test_default_is_the_single_factor_rule():
     model = fl.LassoModel()
-    assert model.auto_sign_method == "ols_sign_guided"
-    assert model.get_params()["auto_sign_method"] == "ols_sign_guided"
+    assert model.auto_sign_method == "single_factor_sign_guided"
+    assert model.get_params()["auto_sign_method"] == "single_factor_sign_guided"
 
 
 @pytest.mark.parametrize(
-    "legacy,canonical", [("conditional", "sign_guided"), ("marginal", "ols_sign_guided")]
+    "legacy,canonical", [
+        ("sign_guided", "multi_factor_sign_guided"), ("conditional", "multi_factor_sign_guided"),
+        ("ols_sign_guided", "single_factor_sign_guided"), ("marginal", "single_factor_sign_guided"),
+    ]
 )
 def test_legacy_and_canonical_spellings_fit_identically_without_warnings(legacy, canonical):
     """Same signs, same penalties, same coefficients; the fitted attributes report the new name."""
@@ -86,13 +82,21 @@ def test_legacy_and_canonical_spellings_fit_identically_without_warnings(legacy,
         warnings.simplefilter("error", DeprecationWarning)
         old = fl.LassoModel(**settings(groups, auto_sign_method=legacy)).fit(x, y)
         new = fl.LassoModel(**settings(groups, auto_sign_method=canonical)).fit(x, y)
-    for attribute in FITTED_FRAMES:
-        pd.testing.assert_frame_equal(getattr(old, attribute), getattr(new, attribute))
-    np.testing.assert_array_equal(old.coef_.to_numpy(), new.coef_.to_numpy())
+    for attribute, expected in vars(new).items():
+        if not attribute.endswith("_"):
+            continue
+        actual = getattr(old, attribute)
+        if isinstance(expected, pd.DataFrame):
+            pd.testing.assert_frame_equal(actual, expected, check_exact=True)
+            for column in expected.select_dtypes(include="number"):
+                assert actual[column].to_numpy().tobytes() == expected[column].to_numpy().tobytes()
+        elif isinstance(expected, pd.Series):
+            pd.testing.assert_series_equal(actual, expected, check_exact=True)
+    assert old.coef_.to_numpy().tobytes() == new.coef_.to_numpy().tobytes()
     assert old.auto_sign_method == legacy and new.auto_sign_method == canonical
     assert old.auto_sign_method_ == new.auto_sign_method_ == canonical
-    assert old.adaptive_sign_method_ == new.adaptive_sign_method_ == "ols_sign_guided"
-    if canonical == "sign_guided":
+    assert old.adaptive_sign_method_ == new.adaptive_sign_method_ == "single_factor_sign_guided"
+    if canonical == "multi_factor_sign_guided":
         pd.testing.assert_frame_equal(old.sign_group_diagnostics_, new.sign_group_diagnostics_)
     else:
         assert old.sign_group_diagnostics_ is None and new.sign_group_diagnostics_ is None

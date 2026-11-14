@@ -83,6 +83,7 @@ def test_default_threshold_pins_weak_factor_to_zero():
             model_type=LassoModelType.LASSO,
             reg_lambda=1e-6,
             span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             # No explicit auto_sign_threshold_t — should use default 0.75
         )
@@ -107,6 +108,7 @@ def test_none_threshold_reproduces_v036_behaviour():
             model_type=LassoModelType.LASSO,
             reg_lambda=1e-6,
             span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_threshold_t=None,  # explicit opt-out
         )
@@ -168,6 +170,7 @@ def test_master_constraint_overrides_threshold_gate():
             model_type=LassoModelType.LASSO,
             reg_lambda=1e-6,
             span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_threshold_t=0.75,
             factors_beta_loading_signs=signs_df,
@@ -242,6 +245,7 @@ def test_cluster_mode_strong_cluster_survives_gate():
             model_type=LassoModelType.GROUP_LASSO,
             reg_lambda=1e-6, span=None,
             group_data=group_data,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_threshold_t=0.75,
         )
@@ -280,6 +284,7 @@ def test_cluster_mode_weak_cluster_pinned_uniformly():
             model_type=LassoModelType.GROUP_LASSO,
             reg_lambda=1e-6, span=None,
             group_data=group_data,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_threshold_t=0.75,
         )
@@ -314,6 +319,7 @@ def test_cluster_mode_master_constraint_pins_single_member():
             model_type=LassoModelType.GROUP_LASSO,
             reg_lambda=1e-6, span=None,
             group_data=group_data,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_threshold_t=0.75,
             factors_beta_loading_signs=override,
@@ -339,6 +345,7 @@ def test_cluster_mode_hcgl_path_threshold_gates_uniformly():
         m = LassoModel(
             model_type=LassoModelType.HIERARCHICAL_CLUSTER_GROUP_LASSO,
             reg_lambda=1e-6, span=None,
+            auto_sign_method="single_factor_sign_guided",
             auto_sign_constraints=True,
             auto_sign_threshold_t=0.75,
         )
@@ -389,7 +396,8 @@ def test_infinite_threshold_model_matches_explicit_zero_reference(variance, mode
     y = pd.DataFrame({"a": 2. * x.factor, "b": 2. * x.factor})
     kwargs = dict(model_type=model_type, group_data=pd.Series(1, index=y.columns),
                   span=None, demean=False, reg_lambda=.01)
-    gated = LassoModel(**kwargs, auto_sign_constraints=True,
+    gated = LassoModel(**kwargs, auto_sign_method="single_factor_sign_guided",
+                       auto_sign_constraints=True,
                        auto_sign_variance=variance, auto_sign_threshold_t=np.inf).fit(x, y)
     # This comparison bypasses sign derivation entirely and hands the solver
     # the endpoint's explicitly prescribed zero constraints.
@@ -433,7 +441,8 @@ def test_infinite_threshold_keeps_prior_hard_sign_and_exclusion_precedence(varia
                             index=y.columns, columns=x.columns)
     kwargs = dict(model_type=model_type, group_data=pd.Series(1, index=y.columns),
                   span=None, demean=False, reg_lambda=.01, factors_beta_prior=prior)
-    gated = LassoModel(**kwargs, auto_sign_constraints=True,
+    gated = LassoModel(**kwargs, auto_sign_method="single_factor_sign_guided",
+                       auto_sign_constraints=True,
                        auto_sign_variance=variance, auto_sign_threshold_t=np.inf,
                        auto_sign_excluded_factors=["free"],
                        factors_beta_loading_signs=hard).fit(x, y)

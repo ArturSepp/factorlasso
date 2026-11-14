@@ -118,6 +118,7 @@ def test_fit_restores_missing_response_and_factor_masks(monkeypatch):
 
     monkeypatch.setattr(sc, "_compute_sign_matrix_per_response", spy)
     LassoModel(
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
         auto_sign_adaptive_weights=True,
         demean=False,
@@ -137,6 +138,7 @@ def test_model_fit_span_and_path_route_same_sign_horizon():
     )
     y.iloc[:95, 0] = np.nan
     kwargs = dict(
+        auto_sign_method="single_factor_sign_guided",
         auto_sign_constraints=True,
         auto_sign_use_fit_span=True,
         auto_sign_adaptive_weights=True,

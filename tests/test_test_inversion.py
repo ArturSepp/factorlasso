@@ -16,6 +16,7 @@ def panel(seed=9):
     y.loc[:7, 'b'] = np.nan
     model = LassoModel(model_type=LassoModelType.FACTOR_CLUSTER_GROUP_LASSO,
         reg_lambda=1e-5, span=36, warmup_period=8, loss_normalization='weight_sum',
+        auto_sign_method="single_factor_sign_guided",
         apply_ols_prior=True, auto_sign_constraints=True, auto_sign_adaptive_weights=True,
         solver='CLARABEL')
     contrast = pd.DataFrame([[1.2, 0.], [-.4, 0.]], index=y.columns, columns=x.columns)
