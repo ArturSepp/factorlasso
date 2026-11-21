@@ -2,12 +2,11 @@
 
 *Author: [Artur Sepp](https://github.com/ArturSepp)*
 
-Software: [factorlasso](https://github.com/ArturSepp/factorlasso).
+Software: [factorlasso 1.1.0](https://github.com/ArturSepp/factorlasso/releases/tag/v1.1.0).
 Citation: [CITATION.cff](https://github.com/ArturSepp/factorlasso/blob/main/CITATION.cff).
 
 All paper workspaces are retained privately and excluded from the current source
 tree in Git. Only this availability index and the paper policy are tracked.
-The next package release is deferred until the forecasting draft is finished.
 
 | Workspace | Availability |
 |---|---|

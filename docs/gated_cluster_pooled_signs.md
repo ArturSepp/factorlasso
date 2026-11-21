@@ -25,7 +25,7 @@ at zero; it does not leave the loading unrestricted. The separate
 multi-factor loadings and provides explicit exclusion, release and zero-only actions. The
 opt-in native `auto_sign_method='multi_factor_sign_guided'` option uses joint observed-cell evidence for
 automatic screening while preserving the pooled single-factor evidence used for adaptive
-penalties. The two automatic rules carry the names of the sign-pooling manuscript: the
+penalties. In version 1.1.0, the two automatic rules carry the names of the sign-pooling manuscript: the
 sign-guided Lasso (`'multi_factor_sign_guided'`, pooled multi-factor signs) and the single-factor sign-guided
 Lasso (`'single_factor_sign_guided'`, the default, pooled single-factor OLS signs). The earlier spellings `'sign_guided'` and
 `'conditional'` select the multi-factor rule. Both `'ols_sign_guided'` and

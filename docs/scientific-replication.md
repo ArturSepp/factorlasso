@@ -94,8 +94,8 @@ privately and excluded from the current Git tree. Their manuscripts, empirical f
 inputs and replication commands are not distributed with this checkout. Public teaching
 examples and the reusable FactorLasso API remain available.
 
-The next package release is deferred until the forecasting draft is finished. The
-replication package for that revision has not been released. Earlier public Git commits
+FactorLasso 1.1.0 provides the single-factor and multi-factor sign rules used in
+the forecasting paper. The paper's replication package remains private. Earlier public Git commits
 and historical archives retain their original contents and environments. They do not
 establish reproduction of the current draft.
 
